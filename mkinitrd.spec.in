@@ -56,6 +56,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Mar 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.46-1
+- new-kernel-pkg: add necessary bits for s390, some logic cleanups
+- grubby: fix root detection for s390{,x}
+
 * Sun Mar 23 2003 Jeremy Katz <katzj@redhat.com> 3.4.45-1
 - grubby: add silo support (sparc)
 - grubby: add zipl support (s390{,x})
