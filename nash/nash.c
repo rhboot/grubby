@@ -154,16 +154,10 @@ char * getArg(char * cmd, char * end, char ** arg) {
     return cmd;
 }
 
-#ifdef __powerpc__
-#define CMDLINESIZE 256
-#else
-#define CMDLINESIZE 1024
-#endif
-
 /* get the contents of the kernel command line from /proc/cmdline */
 static char * getKernelCmdLine(void) {
     int fd, i;
-    char * buf;
+    char buf[512];
 
     fd = open("/proc/cmdline", O_RDONLY, 0);
     if (fd < 0) {
@@ -171,11 +165,7 @@ static char * getKernelCmdLine(void) {
 	return NULL;
     }
 
-    buf = malloc(CMDLINESIZE);
-    if (!buf)
-        return buf;
-
-    i = read(fd, buf, CMDLINESIZE);
+    i = read(fd, buf, 511);
     if (i < 0) {
 	printf("getKernelCmdLine: failed to read /proc/cmdline: %d\n", errno);
 	close(fd);
@@ -186,8 +176,8 @@ static char * getKernelCmdLine(void) {
     if (i == 0)
         buf[0] = '\0';
     else
-        *(buf + i - 1) = '\0';
-    return buf;
+        buf[i - 1] = '\0';
+    return strdup(buf);
 }
 
 /* get the start of a kernel arg "arg".  returns everything after it
