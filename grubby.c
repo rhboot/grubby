@@ -27,6 +27,9 @@
 
 #define _(A) (A)
 
+#define CODE_SEG_SIZE	    128	 /* code segment checked by --lilo-installed */
+
+
 struct newKernelInfo {
     char * image;
     char * args;
@@ -42,7 +45,7 @@ struct lineElement {
 };
 
 enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
-       LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS };
+       LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS, LT_BOOT };
 
 struct singleLine {
     char * indent;
@@ -114,6 +117,7 @@ struct keywordTypes liloKeywords[] = {
     { "image",	    LT_KERNEL,	    '=' },
     { "initrd",	    LT_INITRD,	    '=' },
     { "append",	    LT_KERNELARGS,  '=' },
+    { "boot",	    LT_BOOT,	    '=' },
     { NULL,	    0 },
 };
 
@@ -998,6 +1002,133 @@ int displayInfo(struct grubConfig * config, char * kernel,
     
 }
 
+int checkLiloDevice(const char * device, const unsigned char * boot) {
+    int fd;
+    unsigned char lilo[512];
+    int offset;
+
+    fd = open(device, O_RDONLY);
+    if (fd < 0) {
+	fprintf(stderr, _("grubby: unable to open %s: %s\n"),
+		device, strerror(errno));
+	return 1;
+    }
+
+    if (read(fd, lilo, 512) != 512) {
+	fprintf(stderr, _("grubby: unable to read %s: %s\n"),
+		device, strerror(errno));
+	return 1;
+    }
+    close(fd);
+
+    /* first three bytes should match, second should be jmp short */
+    if (memcmp(boot, lilo, 3))
+	return 0;
+
+    if (boot[1] != 0xeb)
+	return 0;
+
+    offset = boot[2] + 2;
+
+    if (memcmp(boot + offset, lilo + offset, CODE_SEG_SIZE))
+	return 0;
+
+    return 2;
+}
+
+int checkLiloOnRaid(char * mdDev, const char * boot) {
+    FILE * f;
+    char line[500];
+    int inSection = 0;
+    char * end;
+    char * chptr;
+    int rc;
+
+    /* it's on raid; we need to parse /etc/raidtab and check all of the
+       *raw* devices listed in there */
+    if (!(f = fopen("/etc/raidtab", "r"))) {
+	fprintf(stderr, _("grubby: failed to open /etc/raidtab: %s\n"),
+		strerror(errno));
+	return 2;
+    }
+
+    while (fgets(line, sizeof(line), f)) {
+	chptr = line;
+	while (*chptr && isspace(*chptr)) chptr++;
+	if (!*chptr) continue;
+
+	if (!strncmp(chptr, "raiddev", 7) && isspace(*(chptr + 7))) {
+	    /* we're done! */
+	    if (inSection) break;
+
+	    chptr += 7;
+	    while (*chptr && isspace(*chptr)) chptr++;
+	    if (!*chptr) continue;
+
+	    end = chptr;
+	    while (*end != '\n' && *end) end++;
+	    *end = '\0';
+
+	    if (!strcmp(mdDev, chptr))
+		inSection = 1;
+	} else if (inSection && !strncmp(chptr, "device", 6) && 
+		   isspace(*(chptr + 6))) {
+	    chptr += 6;
+
+	    while (*chptr && isspace(*chptr)) chptr++;
+	    if (!*chptr || *chptr != '/') continue;
+
+	    end = chptr;
+	    while (*end != '\n' && *end) end++;
+	    end--;
+	    while (isdigit(*end)) end--;
+	    end++;
+	    *end = '\0';
+
+	    rc = checkLiloDevice(chptr, boot);
+	    if (rc != 2) {
+		fclose(f);
+		return rc;
+	    }
+        }
+    }
+
+    fclose(f);
+
+    return 2;
+}
+
+int checkForLilo(struct grubConfig * config) {
+    int fd;
+    unsigned char boot[512];
+    struct singleLine * line;
+
+    for (line = config->theLines; line; line = line->next)
+	if (line->type == LT_BOOT) break;
+
+    if (!line) return 1;
+    if (line->numElements != 2) return 1;
+
+    fd = open("/boot/boot.b", O_RDONLY);
+    if (fd < 0) {
+	fprintf(stderr, _("grubby: unable to open %s: %s\n"),
+		"/boot/boot.b", strerror(errno));
+	return 1;
+    }
+
+    if (read(fd, boot, 512) != 512) {
+	fprintf(stderr, _("grubby: unable to read %s: %s\n"),
+		"/boot/boot.b", strerror(errno));
+	return 1;
+    }
+    close(fd);
+
+    if (!strncmp("/dev/md", line->elements[1].item, 7))
+	return checkLiloOnRaid(line->elements[1].item, boot);
+
+    return checkLiloDevice(line->elements[1].item, boot);
+}
+
 int main(int argc, const char ** argv) {
     poptContext optCon;
     char * grubConfig = NULL;
@@ -1007,6 +1138,7 @@ int main(int argc, const char ** argv) {
     int badImageOkay = 0;
     int configureLilo = 0;
     int configureGrub = 0;
+    int liloInstalled = 0;
     char * newKernelPath = NULL;
     char * oldKernelPath = NULL;
     char * newKernelArgs = NULL;
@@ -1055,6 +1187,10 @@ int main(int argc, const char ** argv) {
 	    _("initrd image for the new kernel"), _("args") },
 	{ "lilo", 0, POPT_ARG_NONE, &configureLilo, 0,
 	    _("configure lilo instead of grub") },
+#ifdef __i386__
+	{ "lilo-installed", 0, POPT_ARG_NONE, &liloInstalled, 0,
+	    _("check if lilo is installed on lilo.conf boot sector") },
+#endif
 	{ "make-default", 0, 0, &makeDefault, 0,
 	    _("make the newly added entry the default boot entry"), NULL },
 	{ "output-file", 'o', POPT_ARG_STRING, &outputFile, 0,
@@ -1096,7 +1232,11 @@ int main(int argc, const char ** argv) {
     if (configureLilo && configureGrub) {
 	fprintf(stderr, _("grubby: cannot specify --grub and --lilo\n"));
 	return 1;
-    } else if (configureLilo) {
+    } else if (liloInstalled && configureGrub) {
+	fprintf(stderr, 
+		_("grubby: cannot specify --lil-installed and --grub\n"));
+	return 1;
+    } else if (liloInstalled || configureLilo) {
 	cfi = &liloConfigType;
     } else if (configureGrub) {
 	cfi = &grubConfigType;
@@ -1104,6 +1244,14 @@ int main(int argc, const char ** argv) {
 
     if (!grubConfig) 
 	grubConfig = cfi->defaultConfig;
+
+    if (liloInstalled && (displayDefault || kernelInfo || newKernelVersion ||
+			  newKernelPath || oldKernelPath || makeDefault ||
+			  defaultKernel)) {
+	fprintf(stderr, _("grubby: --lilo-installed may not be used with "
+			  "specified option"));
+	return 1;
+    }
 
     if ((displayDefault || kernelInfo) && (newKernelVersion || newKernelPath ||
 			   oldKernelPath)) {
@@ -1143,7 +1291,7 @@ int main(int argc, const char ** argv) {
     }
 
     if (!oldKernelPath && !newKernelPath && !displayDefault && !defaultKernel
-	&& !kernelInfo) {
+	&& !kernelInfo && !liloInstalled) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -1182,9 +1330,9 @@ int main(int argc, const char ** argv) {
 	printf("%s%s\n", bootPrefix, line->elements[1].item);
 
 	return 0;
-    } 
-    
-    if (kernelInfo)
+    } else if (liloInstalled) {
+	return checkForLilo(config);
+    } else if (kernelInfo)
 	return displayInfo(config, kernelInfo, bootPrefix);
 
     if (copyDefault) {
