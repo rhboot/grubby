@@ -60,6 +60,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Sep  3 2003 Jeremy Katz <katzj@redhat.com> 3.5.11-1
+- really only do grub configs on grub arches
+- some usb mkinitrd fixes
+
 * Fri Aug 29 2003 Jeremy Katz <katzj@redhat.com> 3.5.10-1
 - clean up bogus warning in installkernel
 - only try to do grub configs on arches which support grub (#103261)
