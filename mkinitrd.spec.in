@@ -56,6 +56,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Apr 07 2003 Karsten Hopp <karsten@redhat.com> 3.4.48-1
+- Fix segfault on mainframe
+
 * Wed Mar 26 2003 Jeremy Katz <katzj@redhat.com> 3.4.47-1
 - mkinitrd: fix using options for loading modules
 - mkinitrd: don't use kernel parameters for dasd at mkinitrd time, 
