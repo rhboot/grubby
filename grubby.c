@@ -668,7 +668,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 
     if (tmpOutName) {
 	if (rename(tmpOutName, outName)) {
-	    fprintf(stderr, _("grubb: error moving %s to %s: %s\n"),
+	    fprintf(stderr, _("grubby: error moving %s to %s: %s\n"),
 		    tmpOutName, outName, strerror(errno));
 	    unlink(outName);
 	}
@@ -903,6 +903,7 @@ int main(int argc, const char ** argv) {
     int flags = 0;
     int badImageOkay = 0;
     int configureLilo = 0;
+    int configureGrub = 0;
     char * newKernelPath = NULL;
     char * oldKernelPath = NULL;
     char * newKernelArgs = NULL;
@@ -911,7 +912,11 @@ int main(int argc, const char ** argv) {
     char * newKernelVersion = NULL;
     char * bootPrefix = NULL;
     char * defaultKernel = NULL;
+#ifdef __ia64__
+    struct configFileInfo * cfi = &liloConfigType;
+#else
     struct configFileInfo * cfi = &grubConfigType;
+#endif
     struct grubConfig * config;
     struct newKernelInfo newKernel;
     struct singleEntry * template = NULL;
@@ -938,6 +943,8 @@ int main(int argc, const char ** argv) {
 	      "template"), NULL },
 	{ "default-kernel", 0, 0, &displayDefault, 0,
 	    _("display the path of the default kernel") },
+	{ "grub", 0, POPT_ARG_NONE, &configureGrub, 0,
+	    _("configure grub instead of lilo") },
 	{ "initrd", 0, POPT_ARG_STRING, &newKernelInitrd, 0,
 	    _("initrd image for the new kernel"), _("args") },
 	{ "lilo", 0, POPT_ARG_NONE, &configureLilo, 0,
@@ -961,10 +968,6 @@ int main(int argc, const char ** argv) {
 	{ 0, 0, 0, 0, 0 }
     };
 
-#ifdef __ia64__
-    configureLilo = 1;
-#endif
-
     optCon = poptGetContext("grubby", argc, argv, options, 0);
     poptReadDefaultConfig(optCon, 1);
 
@@ -984,8 +987,14 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
-    if (configureLilo)
+    if (configureLilo && configureGrub) {
+	fprintf(stderr, _("grubby: cannot specify --grub and --lilo\n"));
+	return 1;
+    } else if (configureLilo) {
 	cfi = &liloConfigType;
+    } else if (configureGrub) {
+	cfi = &grubConfigType;
+    }
 
     if (!grubConfig) 
 	grubConfig = cfi->defaultConfig;
