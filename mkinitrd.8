@@ -1,0 +1,75 @@
+.TH MKINITRD 8 "Wed Nov 13 1996"
+.UC 4
+.SH NAME
+mkinitrd \- creates initial ramdisk images for preloading modules
+.SH SYNOPSIS
+\fBmkinitrd\fR [-fv] [--with=module] image kernel-version
+.SH DESCRIPTION
+\fBmkinitrd\fR creates filesystem images which are suitable for use
+as Linux initial ramdisk (initrd) images. Such images are often
+used for preloading the block device modules (such as SCSI or RAID)
+which are needed to access the root filesystem. \fBmkinitrd\fR
+automatically loads all \fIscsi_hostadapter\fR entries in
+\fI/etc/conf.modules\fR, which makes it simple to build and use kernels
+using moduler SCSI devices.
+
+Any module options specified in \fI/etc/conf.modules\fR are passed
+to the modules as they are loaded by the initial ramdisk.
+
+.SH OPTIONS
+.TP
+\fB-f\fR
+Allows \fBmkinitrd\fR to overwrite an existing image file.
+
+.TP
+\fB-\-ifneeded
+Only builds the image if their are modules that need to be loaded at boot
+time.
+
+.TP
+\fB-\-needs-scsi-modules
+Loads the 'scsi_mod' and 'sd_mod' modules before the hardware-specific
+SCSI modules, but after the \fB-\-preload\fR modules.
+
+.TP
+\fB-\-preload=\fR\fImodule\fR
+Load the module \fImodule\fR in the initial ramdisk image. The module gets
+loaded before any SCSI modules which are specified in \fI/etc/conf.modules\fR.
+This option may be used as many times as necessary.
+
+.TP
+\fB-v\fR
+Prints out verbose information while creating the image (normally
+the \fBmkinitrd\fR runs silently). 
+
+.TP
+\fB-\-version\fR
+Prints the version of \fBmkinitrd\fR that's being used and then exits.
+
+.TP
+\fB-\-with=\fR\fImodule\fR
+Load the modules \fImodule\fR in the initial ramdisk image. The module
+gets loaded after any SCSI modules which are specified in 
+\fI/etc/conf.modules\fR. This option may be used as many times as 
+necessary.
+
+.SH FILES
+.PD 0
+.TP 20
+\fI/dev/loop*\fR
+A block loopback device is used to create the image, which makes this
+script useless on systems without block loopback support available.
+
+.TP 20
+\fI/etc/conf.modules\fR
+Specified SCSI modules to be loaded and module options to be used.
+.PD
+.SH "SEE ALSO"
+.BR insmod (1),
+.BR kerneld (8),
+.BR lilo (8)
+
+.SH AUTHOR
+.nf
+Erik Troan <ewt@redhat.com>
+.fi

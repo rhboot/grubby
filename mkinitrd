@@ -1,0 +1,250 @@
+#!/bin/sh
+
+# mkinitrd
+#
+# Written by Erik Troan <ewt@redhat.com>
+#
+# Contributors:
+#	Elliot Lee <sopwith@cuc.edu>
+#	Miguel de Icaza <miguel@nuclecu.unam.mx>
+#	Christian 'Dr. Disk' Hechelmann <drdisk@ds9.au.s.shuttle.de>
+#	Michael K. Johnson <johnsonm@redhat.com>
+
+PATH=/sbin:$PATH
+export PATH
+
+VERSION=1.7
+
+target=""
+kernel=""
+force=""
+verbose=""
+MODULES=""
+img_vers=""
+IMAGESIZE=1500
+
+usage () {
+    echo "usage: `basename $0` [--version] [-v] [-f] [--ifneeded] [--preload <module>]" >&2
+    echo "       [--needs-scsi-modules] [--with <module>] [--image-version] <initrd-image>" >&2
+    echo "       <kernel>" >&2
+    echo "       (ex: `basename $0` /boot/initrd 2.0.3)" >&2
+    exit 1
+}
+
+findmodule() {
+    if [ -n "$1" ]; then
+	fmPath="$1"/"$2".o
+    else
+	fmPath=`(cd /lib/modules/$kernel; echo */$2.o)`
+    fi
+
+    if [ ! -f /lib/modules/$kernel/$fmPath ]; then
+	echo "No module $2 found for kernel $kernel" >&2
+	exit 1
+    fi
+
+    MODULES="$MODULES $fmPath"
+}
+
+inst() {
+    if [ "$#" != "2" ];then
+        echo "usage: inst <file> <destination>"
+        return
+    fi 
+    [ -n "$verbose" ] && echo "$1 -> $2"
+    install $1 $2
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+	--with*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	modname=`echo $1 | sed 's/^--with=//'`
+	    else
+		modname=$2
+		shift
+	    fi		    
+
+	    basicmodules="$basicmodules $modname"
+	    ;;
+
+	--version)
+	    echo "mkinitrd: version $VERSION"
+	    exit 0
+	    ;;
+
+	-v)
+	    verbose=-v
+	    ;;
+
+	--ifneeded)
+	    ifneeded=1
+	    ;;
+
+	-f)
+	    force=1
+	    ;;
+	--preload)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	modname=`echo $1 | sed 's/^--preload=//'`
+	    else
+		modname=$2
+		shift
+	    fi		    
+	    PREMODS="$PREMODS $modname"
+	    ;;
+	--needs-scsi-modules)
+	    PRESCSIMODS="scsi_mod sd_mod"
+	    ;;
+	--image-version)
+	    img_vers=yes
+	    ;;
+	*)
+	    if [ -z "$target" ]; then
+		target=$1
+	    elif [ -z "$kernel" ]; then
+		kernel=$1
+	    else
+		usage
+	    fi
+	    ;;
+    esac
+
+    shift
+done
+
+if [ -z "$target" -o -z "$kernel" ]; then
+    usage
+fi
+
+if [ -n "$img_vers" ]; then
+    target="$target-$kernel"
+fi
+
+if [ -z "$force" -a -f $target ]; then
+    echo "$target already exists." >&2
+    exit 1
+fi
+
+if [ ! -d /lib/modules/$kernel ]; then
+    echo "/lib/modules/$kernel is not a directory." >&2
+    exit 1
+fi
+
+for n in $PREMODS; do
+	findmodule "" $n
+done
+for n in $PRESCSIMODS; do
+	findmodule scsi $n
+done
+
+if [ -f /etc/conf.modules ]; then
+    scsimodules=`grep scsi_hostadapter /etc/conf.modules | grep -v '^[ 	]*#' | sort -u | awk '{ print $3 }'`
+    for n in $scsimodules; do
+	findmodule scsi $n
+    done
+fi
+
+for n in $basicmodules; do 
+    findmodule "" $n
+done
+
+if [ -n "$ifneeded" -a -z "$MODULES" ]; then
+    if [ -n "$verbose" ]; then
+	echo "No modules are needed -- not building initrd image."
+    fi
+    exit 0
+fi
+
+if [ -n "$verbose" ]; then
+    echo "Using modules: $MODULES"
+fi
+
+MNTIMAGE=/tmp/initrd.$$
+IMAGE=/tmp/initrd.img-$$
+MNTPOINT=/tmp/initrd.mnt-$$
+RCFILE=$MNTIMAGE/linuxrc
+
+if [ -f $MNTIMAGE ]; then
+    echo "$MNTIMAGE already exists.  Remove it and try again" >&2
+    exit 1
+fi
+
+if [ -f $IMAGE ]; then
+    echo "$IMAGE already exists. Remove it and try again" >&2
+    exit 1
+fi
+
+dd if=/dev/zero of=$IMAGE bs=1k count=1500 2> /dev/null
+
+for devnum in 0 1 2 3 4 5 6 7 8; do
+    if losetup /dev/loop$devnum $IMAGE 2>/dev/null ; then break; fi
+done
+
+if [ "$devnum" = "8" ]; then
+    rm -rf $MNTPOINT $IMAGE
+    echo "All of your loopback devices are in use!" >&2
+    exit 1
+fi
+
+LODEV=/dev/loop$devnum
+
+# We have to "echo y |" so that it doesn't complain about $IMAGE not
+# being a block device
+echo y | mke2fs $LODEV $IMAGESIZE >/dev/null 2>/dev/null
+
+if [ -n "$verbose" ]; then
+    echo "Using loopback device $LODEV"
+fi
+
+mkdir -p $MNTPOINT
+mount -t ext2 $LODEV $MNTPOINT || {
+	echo "Can't get a loopback device"
+	exit 1
+}
+
+mkdir -p $MNTIMAGE
+mkdir -p $MNTIMAGE/lib
+mkdir -p $MNTIMAGE/bin
+mkdir -p $MNTIMAGE/etc
+mkdir -p $MNTIMAGE/dev
+
+# We don't need this directory, so let's save space
+rm -rf $MNTPOINT/lost+found
+
+inst /bin/ash.static "$MNTIMAGE/bin/sh"
+inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
+
+for MODULE in $MODULES; do
+    cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
+done
+
+for n in console null ram systty tty[1234]; do
+    cp -a /dev/$n $MNTIMAGE/dev
+done
+
+echo "#!/bin/sh" > $RCFILE
+echo "" >> $RCFILE
+
+for MODULE in $MODULES; do
+    module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
+
+    options=`grep $module /etc/conf.modules | grep "^options" | sed "s/.*$module *//"`
+
+    if [ -n "$verbose" ]; then
+        echo "Loading module $module with options $options"
+    fi
+    echo "echo \"Loading $module module\"" >> $RCFILE
+    echo "insmod /lib/$module.o $options" >> $RCFILE
+done
+
+chmod +x $RCFILE
+
+(cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -)
+
+umount $MNTPOINT
+losetup -d $LODEV
+
+gzip -9 < $IMAGE > $target
+rm -rf $MNTIMAGE $MNTPOINT $IMAGE
+
