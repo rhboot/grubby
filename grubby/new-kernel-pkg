@@ -23,26 +23,44 @@ else
     grubby=/sbin/grubby
 fi
 
+cfgGrub=""
+cfgLilo=""
+runLilo=""
+
 ARCH=$(uname -m)
 
 if [ $ARCH = 'ia64' ]; then
     liloConfig=/boot/efi/EFI/redhat/elilo.conf
     bootPrefix=/boot/efi/EFI/redhat
     liloFlag=elilo
+    isx86=""
 elif [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
     liloConfig=/etc/yaboot.conf
     bootPrefix=/boot
     lilo=/usr/sbin/ybin
     kernelName=vmlinux
     liloFlag=yaboot
+    runLilo="yes"
+    isx86=""
 elif [ $ARCH = 'sparc' -o $ARCH = 'sparc64' ]; then
     liloConfig=/etc/silo.conf
     bootPrefix=/boot
     liloFlag=silo
+    lilo=/sbin/silo
+    isx86=""
+elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
+    liloConfig=/etc/zipl.conf
+    bootPrefix=/boot
+    liloFlag=zipl
+    lilo=/sbin/zipl
+    runLilo="yes"
+    isx86=""
 else
+    # this leaves i?86 and x86_64
     liloConfig=/etc/lilo.conf
     bootPrefix=/boot
     liloFlag=lilo
+    isx86="yes"
 fi
 
 mode=""
@@ -113,7 +131,11 @@ install() {
 
 	if [ -n "$runLilo" ]; then 
 	    [ -n "$verbose" ] && echo "running $lilo"
-	    $lilo > /dev/null
+	    if [ ! -x $lilo ] ; then
+		[ -n "$verbose" ] && echo "$lilo does not exist"
+	    else
+		$lilo > /dev/null
+	    fi
 	fi
     else
 	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
@@ -136,7 +158,11 @@ remove() {
 
 	if [ -n "$runLilo" ]; then 
 	    [ -n "$verbose" ] && echo "running $lilo"
-	    $lilo > /dev/null
+	    if [ ! -x $lilo ] ; then
+		[ -n "$verbose" ] && echo "$lilo does not exist"
+	    else
+		$lilo > /dev/null
+	    fi
 	fi
     else
 	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
@@ -252,21 +278,13 @@ if [ ! -x $grubby ] ; then
 fi
 
 
-cfgGrub=""
-cfgLilo=""
-runLilo=""
-
 [ -f $grubConfig ] && cfgGrub=1;
 [ -f $liloConfig ] && cfgLilo=1;
 
-if [ -n "$cfgLilo" -a $ARCH != 'ia64' ]; then
-    if [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
-       if [ -x $lilo ]; then
-           runLilo="yes"
-       fi
-    else
-        runLilo=$($grubby --bootloader-probe | grep lilo)
-    fi
+# if we have a lilo config on an x86 box, see if the default boot loader
+# is lilo to determine if it should be run
+if [ -n "$cfgLilo" -a -n "$isx86" ]; then
+    runLilo=$($grubby --bootloader-probe | grep lilo)
 fi
 
 if [ "$mode" == "--install" ]; then
