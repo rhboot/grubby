@@ -60,6 +60,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri May 16 2003 Jeremy Katz <katzj@redhat.com> 3.4.51-1
+- grubby: error out gracefully if we run out of space (#85424)
+- mkinitrd: copy parent dirs for pvs (#88962)
+- mkinitrd: exit with an exit status if tar fails (#90123)
+- new-kernel-pkg: only use the first entry for / (#90155)
+
 * Wed Apr 30 2003 Jeremy Katz <katzj@redhat.com> 3.4.50-1
 - fix typo in new-kernel-pkg for iSeries
 
