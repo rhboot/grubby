@@ -720,7 +720,7 @@ int echoCommand(char * cmd, char * end) {
 	nextArg++, num++;
 
     if ((nextArg - args >= 2) && !strcmp(*(nextArg - 2), ">")) {
-	outFd = open(*(nextArg - 1), O_RDWR | O_CREAT | O_TRUNC, 0644);
+	outFd = open(*(nextArg - 1), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (outFd < 0) {
 	    printf("echo: cannot open %s for write: %d\n", 
 		    *(nextArg - 1), errno);
