@@ -4,7 +4,7 @@ ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
 ARCH := $(patsubst ppc%,ppc,$(ARCH))
 
-CFLAGS = -Wall -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
+CFLAGS = -Wall -Werror -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
 LDFLAGS = -g
 
 LOADLIBES = -lpopt
@@ -26,5 +26,8 @@ install:    all
 grubby:	grubby.o mount_by_label.o
 	$(CC) -o $@ $^ -Wl,-Bstatic $(LOADLIBES) -Wl,-Bdynamic $(CFLAGS) $(LDFLAGS)
 
+%.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $<
+
 clean:
-	rm -f grubby
+	rm -f grubby *.o

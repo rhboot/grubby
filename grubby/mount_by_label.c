@@ -167,7 +167,7 @@ uuidcache_init(void) {
 
 		if (isdigit(s[-1])) {
 			char * ptr;
-			char * deviceDir;
+			char * deviceDir = NULL;
 			int mustRemove = 0;
 			int mustRemoveDir = 0;
 			int i;

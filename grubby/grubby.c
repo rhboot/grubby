@@ -1852,7 +1852,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		 char * newKernelPath, char * newKernelTitle,
 		 char * newKernelArgs, char * newKernelInitrd) {
     struct singleEntry * new;
-    struct singleLine * newLine, * tmplLine;
+    struct singleLine * newLine = NULL, * tmplLine;
     int needs;
     char * indent = NULL;
     char * rootspec = NULL;
