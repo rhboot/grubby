@@ -9,7 +9,6 @@ ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 Requires: filesystem >= 2.1.0
-BuildRequires: dietlibc
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -58,7 +57,6 @@ rm -rf $RPM_BUILD_ROOT
 - cleaned up usage message
 - added --omit-lvm-modules to man page
 - added --builtin option (65250)
-- added buildrequires: dietlibc (64364)
 - skip comments in fstab (65249)
 - added findlodev to nash, use that to pick block device (63421)
 - support -o option in nash's mount (59185)
