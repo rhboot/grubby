@@ -987,6 +987,8 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 
     if (config->defaultImage > -1) 
 	entry = findEntryByIndex(config, config->defaultImage);
+    else
+	entry = NULL;
 
     if (entry && !entry->skip) {
 	/* we can preserve the default */
