@@ -1,0 +1,27 @@
+prompt
+timeout=50
+default=linux
+boot=/dev/md1
+map=/boot/map
+install=/boot/boot.b
+message=/boot/message
+
+image=/boot/vmlinuz-2.4.18-4
+	label=linux-up
+	root=/dev/hda2
+	read-only
+	initrd=/boot/initrd-2.4.18-4.img
+	append="hda=ide-scsi"
+
+image=/boot/vmlinuz-2.4.18-4
+	label=single
+	root=/dev/hda2
+	read-only
+	append="hda=ide-scsi"
+	initrd=/boot/initrd-2.4.18-4.img
+
+image=/boot/vmlinuz-2.4.18-4smp
+	label=linux
+	root=/dev/hda2
+	read-only
+	initrd=/boot/initrd-2.4.18-4smp.img

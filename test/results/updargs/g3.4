@@ -1,0 +1,16 @@
+#boot=/dev/hda
+timeout=10
+splashimage=(hd0,1)/grub/splash.xpm.gz
+title Red Hat Linux (2.4.7-2smp)
+	root (hd0,1)
+	kernel /vmlinuz-2.4.7-2smp ro root=/dev/hda5
+	initrd /initrd-2.4.7-2smp.img
+title Red Hat Linux-up (2.4.7-2)
+	root (hd0,1)
+	kernel /vmlinuz-2.4.7-2 ro root=/dev/hda5
+	initrd /initrd-2.4.7-2.img
+title DOS
+	rootnoverify (hd0,0)
+	chainloader +1
+
+
