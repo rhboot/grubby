@@ -45,6 +45,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Thu Jun 21 2001 Erik Troan <ewt@redhat.com>
+- added a bunch of commands to nash
+- use pivot_root
+- support ext3
+
 * Fri Jun 08 2001 Florian La Roche <Florian.LaRoche@redhat.de>
 - delete the exclusivearch line completely
 
