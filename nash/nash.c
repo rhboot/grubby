@@ -1498,6 +1498,7 @@ int runStartup(int fd) {
 	printf("Failed to read /startup.rc -- file too large.\n");
 	return 1;
     }
+    close(fd);
 
     contents[i] = '\0';
 
@@ -1646,8 +1647,8 @@ int main(int argc, char **argv) {
 	}
     }
 
+    /* runStartup closes fd */
     rc = runStartup(fd);
-    close(fd);
 
     return rc;
 }
