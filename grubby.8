@@ -41,12 +41,14 @@ Add a new boot entry for the kernel located at \fIkernel-path\fR.
 .TP
 \fB-\-args\fR=\fIkernel-args\fR
 When a new kernel is added, this specifies the command line arguments
-which should be passed to the kernel by default. When \fB-\-update-kernel\fR
-is used, this specifies new arguments to add to the argument list. Multiple,
-space separated arguments may be used. If an argument already exists the
-new value replaces the old values. The \fBroot=\fR kernel argument gets
-special handling if the configuration file has special handling for specifying
-the root filesystem (like lilo.conf does).
+which should be passed to the kernel by default (note they are merged
+with the arguments from the template if \fB-\-copy-default\fR is used).
+When \fB-\-update-kernel\fR is used, this specifies new arguments to add
+to the argument list. Multiple, space separated arguments may be used. If
+an argument already exists the new value replaces the old values. The
+\fBroot=\fR kernel argument gets special handling if the configuration
+file has special handling for specifying the root filesystem (like
+lilo.conf does).
 
 .TP
 \fB-\-bad-image-okay\fR
