@@ -3,7 +3,11 @@ CVSTAG = r$(subst .,-,$(VERSION))
 
 mandir=usr/share/man
 
+all:
+	(cd nash; make)
+
 install:
+	(cd nash; make install BUILDROOT=$(BUILDROOT))
 	for i in sbin $(mandir)/man8; do \
 		if [ ! -d $(BUILDROOT)/$$i ]; then \
 			mkdir -p $(BUILDROOT)/$$i; \

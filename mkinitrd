@@ -18,7 +18,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=2.9
+VERSION=3.0
 
 compress=1
 target=""
@@ -328,11 +328,12 @@ mkdir -p $MNTIMAGE/bin
 mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
 mkdir -p $MNTIMAGE/loopfs
+ln -s bin $(MNTIMAGE)/sbin
 
 # We don't need this directory, so let's save space
 rm -rf $MNTPOINT/lost+found
 
-inst /sbin/sash "$MNTIMAGE/bin/sash"
+inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 
 for MODULE in $MODULES; do
@@ -349,7 +350,7 @@ for i in 1 2 3 4; do
     mknod $MNTIMAGE/dev/tty$i c 4 1
 done
 
-echo "#!/bin/sash" > $RCFILE
+echo "#!/bin/nash" > $RCFILE
 echo "" >> $RCFILE
 echo "aliasall" >> $RCFILE
 echo "" >> $RCFILE

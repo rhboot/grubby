@@ -7,7 +7,7 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveArch: i386 sparc sparc64 ia64 alpha ppc
 ExclusiveOs: Linux
-Requires: sash >= 3.4, e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mkinitrd
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -41,6 +41,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
+* Tue Jan 23 2001 Erik Troan <ewt@redhat.com>
+- switched to using nash from sash
+
 * Tue Jan 23 2001 Matt Wilson <msw@redhat.com>
 - added patch from twaugh to avoid blindly adding scsi_mod
   and sd_mod to initrd if they are not needed (#24114)
