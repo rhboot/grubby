@@ -10,6 +10,9 @@ test:	all
 	@echo "Parse/write comparison..."
 	@for n in test/grub.[0-9]*; do \
 		./grubby --remove-kernel 1234 -c $$n -o - | cmp $$n; \
+		if [ $rc != 0 ]; then \
+		    ./grubby --remove-kernel 1234 -c $$n -o - | diff -u - $$n; \
+		fi \
 	done
 
 install:    all
