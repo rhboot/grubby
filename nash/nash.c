@@ -983,7 +983,7 @@ int mkrootdevCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    if (root && !strncpy(root, "UUID=", 5)) {
+    if (root && !strncmp(root, "UUID=", 5)) {
         if (get_spec_by_uuid(root+5, &major, &minor)) {
             if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
                 printf("mount: cannot create device %s (%d,%d)\n",
