@@ -910,8 +910,27 @@ int mkdevicesCommand(char * cmd, char * end) {
 		    if (testing) {
 			printf("% 3d % 3d %s\n", major, minor, start);
 		    } else {
+			char * ptr, * deviceDir;
+			int i;
+
 			sprintf(devName, "%s/%s", prefix, start);
 			unlink(devName);
+
+			ptr = devName;
+			i = 0;
+			while (*ptr)
+			    if (*ptr++ == '/')
+				i++;
+			if (i > 2) {
+			    deviceDir = alloca(strlen(devName) + 1);
+			    strcpy(deviceDir, devName);
+			    ptr = deviceDir + (strlen(devName) - 1);
+			    while (*ptr != '/')
+				*ptr-- = '\0';
+			    if (access(deviceDir, X_OK) && mkdir(deviceDir, 0644)) {
+				printf("mkdir: cannot create directory %s: %d\n", deviceDir, errno);
+			    }
+			}
 			if (mknod(devName, S_IFBLK | 0600, 
 				  makedev(major, minor))) {
 			    printf("failed to create %s\n", devName);
