@@ -66,10 +66,16 @@ findmodule() {
 	findmodule soc
 	modName="pluto"
     fi
+
     if [ "$modName" = "fcal" ]; then
 	findmodule fc4
 	findmodule socal
 	modName="fcal"
+    fi
+
+    if [ "$modName" = "ext3" ]; then
+	findmodule jbd
+	modName="ext3"
     fi
 
     fmPath=`(cd /lib/modules/$kernel; find -type f -name $modName.o)`
@@ -280,6 +286,9 @@ fi
 
 rootfs=$(awk '{ if ($2 == "/") { print $3; }}' $fstab)
 
+# in case the root filesystem is modular
+findmodule -${rootfs}
+
 for n in $basicmodules; do 
     findmodule $n
 done
@@ -389,10 +398,7 @@ done
 echo "mount -t proc /proc /proc" >> $RCFILE
 
 if [ -n "$loopDev" ]; then
-    if [ ! -d /initrd ]; then
-	mkdir /initrd
-    fi
-
+    mkdir /initrd
     cp -a $loopDev $MNTIMAGE/dev
     cp -a $rootdev $MNTIMAGE/dev
     echo "echo Mounting device containing loopback root filesystem" >> $RCFILE
@@ -406,18 +412,17 @@ else
     rootdev=/dev/root
 fi
 
+if [ -n "$startraid" ]; then
+    cp -a /dev/md0 $MNTIMAGE/dev
+    echo "raidautorun /dev/md0" >> $RCFILE
+fi
+
 echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
 echo "umount /proc" >> $RCFILE
 
 echo "echo Mounting root filesystem" >> $RCFILE
 echo "mount --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
-echo "exec /sbin/cleaninitrd" >> $RCFILE
-
-if [ -n "$startraid" ]; then
-    cp -a /dev/md0 $MNTIMAGE/dev
-    echo "raidautorun /dev/md0" >> $RCFILE
-fi
 
 chmod +x $RCFILE
 
