@@ -1,8 +1,16 @@
 VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
 
+ARCH := $(patsubst i%86,i386,$(shell uname -m))
+ARCH := $(patsubst sparc%,sparc,$(ARCH))
+
 CFLAGS = -Wall -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
 LDFLAGS = -g
+
+ifneq (x86_64, $(ARCH))
 LOADLIBES = /usr/lib/libpopt.a
+else
+LOADLIBS = /usr/lib64/libpopt.a
+endif
 
 all:	grubby
 
