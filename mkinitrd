@@ -388,7 +388,7 @@ if [ -n "$dasd" ]; then
     findmodule -dasd_fba_mod
 fi
 
-if [ -z "$noraid" ]; then
+if [ -z "$noraid" -a -f /proc/mdstat ]; then
     # load appropriate raid devices if necessary -- we'll load whatever
     # /proc/mdstat suggests
 
