@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 1
+Release: 2
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -61,7 +61,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Mon Jan 10 2005 Peter Jones <pjones@redhat.com> - 3.5.13.2-1
-- handle multipath correctly (#100174)
+- handle multipath correctly (#123079)
 
 * Wed Nov  3 2004 Jeremy Katz <katzj@redhat.com>
 - handle machines with lots of disks in /proc/partitions (#137816)
