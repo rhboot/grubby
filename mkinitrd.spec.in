@@ -56,6 +56,9 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Fri Jul 26 2002 Erik Troan <ewt@redhat.com>
+- suitableImage() could dereference and undefined pointer
+
+* Fri Jul 26 2002 Erik Troan <ewt@redhat.com>
 - didn't close /proc/partitions in mkdevices
 
 * Thu Jul 25 2002 Jeremy Katz <katzj@redhat.com>
