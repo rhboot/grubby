@@ -74,7 +74,7 @@ verbose=""
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
     echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
-    echo "       [--kernel-args=<args>]" >&2
+    echo "       [--kernel-args=<args>] [--banner=<banner>]" >&2
     echo "       <--install | --remove> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -123,7 +123,9 @@ install() {
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
 
-	if [ -f /etc/redhat-release ]; then
+	if [ -n "$banner" ]; then
+            title="$banner ($version)"
+	elif [ -f /etc/redhat-release ]; then
 	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
 	else
 	    title="Red Hat Linux ($version)"
@@ -242,6 +244,15 @@ while [ $# -gt 0 ]; do
 	    	kernargs=`echo $1 | sed 's/^--kernel-args=//'`
 	    else
 		kernargs=$2
+		shift
+	    fi		    
+	    ;;
+
+	--banner*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	banner=`echo $1 | sed 's/^--banner=//'`
+	    else
+		banner=$2
 		shift
 	    fi		    
 	    ;;
