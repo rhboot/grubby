@@ -42,7 +42,7 @@ struct lineElement {
 };
 
 enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
-       LT_UNKNOWN, LT_ROOT, LT_FALLBACK };
+       LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS };
 
 struct singleLine {
     char * indent;
@@ -62,8 +62,10 @@ struct singleEntry {
 
 #define GRUB_CONFIG_NO_DEFAULT	    (1 << 0)	/* don't write out default=0 */
 
-#define KERNEL_IMAGE	    (1 << 0)
+#define KERNEL_KERNEL	    (1 << 0)
 #define KERNEL_INITRD	    (1 << 2)
+#define KERNEL_TITLE	    (1 << 3)
+#define KERNEL_ARGS	    (1 << 4)
 
 #define MAIN_DEFAULT	    (1 << 0)
 #define DEFAULT_SAVED       -2
@@ -74,6 +76,7 @@ struct singleEntry {
 struct keywordTypes {
     char * key;
     enum lineType_e type;
+    char nextChar;
 } ;
 
 struct configFileInfo {
@@ -85,12 +88,12 @@ struct configFileInfo {
 };
 
 struct keywordTypes grubKeywords[] = {
-    { "title",	    LT_TITLE },
-    { "root",	    LT_ROOT },
-    { "default",    LT_DEFAULT },
-    { "fallback",   LT_FALLBACK },
-    { "kernel",	    LT_KERNEL },
-    { "initrd",	    LT_INITRD },
+    { "title",	    LT_TITLE,	    ' ' },
+    { "root",	    LT_ROOT,	    ' ' },
+    { "default",    LT_DEFAULT,	    ' ' },
+    { "fallback",   LT_FALLBACK,    ' ' },
+    { "kernel",	    LT_KERNEL,	    ' ' },
+    { "initrd",	    LT_INITRD,	    ' ' },
     { NULL,	    0 },
 };
 
@@ -103,11 +106,12 @@ struct configFileInfo grubConfigType = {
 };
 
 struct keywordTypes liloKeywords[] = {
-    { "label",	    LT_TITLE },
-    { "root",	    LT_ROOT },
-    { "default",    LT_DEFAULT },
-    { "image",	    LT_KERNEL },
-    { "initrd",	    LT_INITRD },
+    { "label",	    LT_TITLE,	    '=' },
+    { "root",	    LT_ROOT,	    '=' },
+    { "default",    LT_DEFAULT,	    '=' },
+    { "image",	    LT_KERNEL,	    '=' },
+    { "initrd",	    LT_INITRD,	    '=' },
+    { "append",	    LT_KERNELARGS,  '=' },
     { NULL,	    0 },
 };
 
@@ -380,7 +384,8 @@ static struct grubConfig * readConfig(const char * inName,
 	} else if (defaultLine->numElements >= 2) {
 	    i = 0;
 	    while ((entry = findEntryByIndex(cfg, i))) {
-		for (line = entry->lines; line; line = line->next);
+		for (line = entry->lines; line; line = line->next)
+		    if (line->type == LT_TITLE) break;
 
 		if (line && !strcmp(defaultLine->elements[1].item,
 				    line->elements[1].item)) break;
@@ -410,11 +415,22 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
     else
 	line = NULL;
 
+    needs = KERNEL_KERNEL | KERNEL_INITRD | KERNEL_TITLE | KERNEL_ARGS;
+
+    for (i = 0; cfg->cfi->keywords[i].key; i++)
+	if (cfg->cfi->keywords[i].type == cfg->cfi->entrySeparator) break;
+
+    switch (cfg->cfi->keywords[i].type) {
+	case LT_KERNEL:	    needs &= ~KERNEL_KERNEL, chptr = nki->image; break;
+	case LT_TITLE:	    needs &= ~KERNEL_TITLE, chptr = nki->title; break;
+	default:	    abort();
+    }
+
     indent = line ? nki->template->lines->indent : cfg->primaryIndent;
-    fprintf(out, "%stitle %s\n", indent, nki->title);
+    fprintf(out, "%s%s%c%s\n", indent, cfg->cfi->keywords[i].key,
+	    cfg->cfi->keywords[i].nextChar, chptr);
 
     if (line) line = line->next;
-    needs = KERNEL_IMAGE | KERNEL_INITRD;
 
     indent = NULL;
 
@@ -424,6 +440,8 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 	    indent = line->indent;
 
 	if (line->type == LT_KERNEL && line->numElements > 2) {
+	    /* this always rights out args, even if a LT_KERNELARGS is
+	       present -- okay for config file types I've seen */
 	    fprintf(out, "%s%s%s%s%s", line->indent,
 		    line->elements[0].item, line->elements[0].indent,
 		    nki->image + strlen(prefix),
@@ -439,7 +457,7 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 		fprintf(out, "\n");
 	    }
 
-	    needs &= ~KERNEL_IMAGE;
+	    needs &= ~(KERNEL_KERNEL | KERNEL_ARGS);
 	} else if (line->type == LT_INITRD && line->numElements == 2 &&
 		   nki->initrd) {
 	    fprintf(out, "%s%s%s%s%s\n", line->indent,
@@ -448,6 +466,28 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 		    line->elements[1].indent);
 
 	    needs &= ~KERNEL_INITRD;
+	} else if (line->type == LT_KERNELARGS) {
+	    /* assumes args need to be in " */
+	    fprintf(out, "%s%s%s", line->indent,
+		    line->elements[0].item, line->elements[0].indent);
+
+	    if (nki->args) {
+		fprintf(out, "\"%s\"\n", nki->args);
+	    } else {
+		for (i = 1; i < line->numElements; i++)
+		    fprintf(out, "%s%s", line->elements[i].item,
+			    line->elements[i].indent);
+		fprintf(out, "\n");
+	    }
+
+	    needs &= ~KERNEL_ARGS;
+	} else if (line->type == LT_TITLE && line->numElements == 2) {
+	    fprintf(out, "%s%s%s%s%s\n", line->indent,
+		    line->elements[0].item, line->elements[0].indent,
+		    nki->title,
+		    line->elements[1].indent);
+
+	    needs &= ~KERNEL_TITLE;
 	} else if (line->type == LT_KERNEL || line->type == LT_INITRD) {
 	    /* skip these if they are badly formed */
 	} else if (!line->numElements) {
@@ -465,24 +505,48 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 
     if (!indent) indent = cfg->secondaryIndent;
 
-    if (needs & KERNEL_IMAGE) {
+    if ((needs & KERNEL_TITLE) && nki->title) {
+	for (i = 0; cfg->cfi->keywords[i].key; i++)
+	    if (cfg->cfi->keywords[i].type == LT_TITLE) break;
+
+	fprintf(out, "%s%s%c%s\n", indent, cfg->cfi->keywords[i].key,
+		cfg->cfi->keywords[i].nextChar, nki->title);
+    }
+
+    if ((needs & KERNEL_ARGS) && nki->args) {
+	for (i = 0; cfg->cfi->keywords[i].key; i++)
+	    if (cfg->cfi->keywords[i].type == LT_KERNELARGS) break;
+	if (cfg->cfi->keywords[i].key) {
+	    fprintf(out, "%s%s%c\"%s\"\n", indent, cfg->cfi->keywords[i].key,
+		    cfg->cfi->keywords[i].nextChar, nki->args);
+	    needs &= ~KERNEL_ARGS;
+	}
+    }
+
+    if (needs & KERNEL_KERNEL) {
 	fprintf(out, "%skernel %s", indent, nki->image + strlen(prefix));
-	if (nki->args)
+	if (nki->args && (needs & KERNEL_ARGS))
 	    fprintf(out, " %s", nki->args);
 	fprintf(out, "\n");
     }
 
     if ((needs & KERNEL_INITRD) && nki->initrd) {
-	fprintf(out, "%sinitrd %s\n", indent, nki->initrd + strlen(prefix));
+	for (i = 0; cfg->cfi->keywords[i].key; i++)
+	    if (cfg->cfi->keywords[i].type == LT_INITRD) break;
+
+	fprintf(out, "%s%s%c%s\n", indent, cfg->cfi->keywords[i].key,
+		cfg->cfi->keywords[i].nextChar, nki->initrd + strlen(prefix));
     }
 
     return 0;
 }
 
 static void writeDefault(FILE * out, char * indent, 
-			 char * separator, struct grubConfig * cfg) {
+			 char * separator, struct grubConfig * cfg,
+			 struct newKernelInfo * nki) {
     struct singleEntry * entry;
     struct singleLine * line;
+    int i;
 
     if (!cfg->defaultImage && cfg->flags == GRUB_CONFIG_NO_DEFAULT) return;
 
@@ -492,8 +556,24 @@ static void writeDefault(FILE * out, char * indent,
 	if (cfg->cfi->defaultIsIndex) {
 	    fprintf(out, "%sdefault%s%d\n", indent, separator, 
 		    cfg->defaultImage);
+	} else if (nki && cfg->defaultImage == 0) {
+	    fprintf(out, "%sdefault%s%s\n", indent, separator, 
+		    nki->title);
 	} else {
-	    entry = findEntryByIndex(cfg, cfg->defaultImage);
+	    int image = cfg->defaultImage;
+
+	    if (nki) image--;
+
+	    entry = cfg->entries;
+	    while (entry && entry->skip) entry = entry->next;
+
+	    i = 0;
+	    while (entry && i < image) {
+		entry = entry->next;
+
+		while (entry && entry->skip) entry = entry->next;
+		i++;
+	    }
 
 	    if (!entry) return;
 
@@ -543,7 +623,8 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     line = cfg->theLines;
     while (line) {
 	if (line->type == LT_DEFAULT) {
-	    writeDefault(out, line->indent, line->elements[0].indent, cfg);
+	    writeDefault(out, line->indent, line->elements[0].indent, cfg,
+			 nki);
 	    needs &= ~MAIN_DEFAULT;
 	} else if (line->type == LT_FALLBACK) {
 	    if (cfg->fallbackImage > -1)
@@ -558,7 +639,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     }
 
     if (needs & MAIN_DEFAULT) {
-	writeDefault(out, cfg->primaryIndent, "=", cfg);
+	writeDefault(out, cfg->primaryIndent, "=", cfg, nki);
 	needs &= ~MAIN_DEFAULT;
     }
 
