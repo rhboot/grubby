@@ -1,4 +1,4 @@
-.TH GRUBBY 8 "Thu Jun 6 2002"
+.TH GRUBBY 8 "Thu Jun 21 2002"
 .UC 4
 .SH NAME
 grubby \- command line tool for configuring grub, lilo, and elilo
@@ -6,10 +6,11 @@ grubby \- command line tool for configuring grub, lilo, and elilo
 .SH SYNOPSIS
 \fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR] 
        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
-       [--bootloader-probe] [-c \fIpath\fR] [--copy-default] 
-       [--default-kernel] [--grub] [--info=\fIkernel-path\fR]
-       [--initrd=\fIinitrd-path\fR] [--lilo] [--make-default] 
-       [-o path] [--remove-kernel=\fIkernel-path\fR] 
+       [--bootloader-probe] [--config-file \fIpath\fR] 
+       [--copy-default] [--default-kernel] [--grub] 
+       [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
+       [--lilo] [--make-default] [-o path] 
+       [--remove-kernel=\fIkernel-path\fR] 
        [--set-default=\fIkernel-path\fR] [--title=entry-title] 
 
 .SH DESCRIPTION
@@ -25,6 +26,11 @@ Intel ia64 platforms, \fBlilo\fR mode is used (elilo is almost entirely
 configuration compatible with lilo) and the default location for the
 configuration file is \fB/boot/grub/grub.conf\fR.
 
+When a kernel path is specified for the \fB-\-info\fR, 
+\fB-\-remove-kernel\fR, or \fB-\-update-kernel\fR,
+\fBDEFAULT\fR selects the default kernel entry and
+\fBALL\fR selects all of the kernel entries.
+
 .SH OPTIONS
 .TP
 \fB-\-add-kernel\fR=\fIkernel-path\fR
@@ -33,7 +39,12 @@ Add a new boot entry for the kernel located at \fIkernel-path\fR.
 .TP
 \fB-\-args\fR=\fIkernel-args\fR
 When a new kernel is added, this specifies the command line arguments
-which should be passed to the kernel by default.
+which should be passed to the kernel by default. When \fB-\-update-kernel\fR
+is used, this specifies new arguments to add to the argument list. Multiple,
+space separated arguments may be used. If an argument already exists the
+new value replaces the old values. The \fBroot=\fR kernel argument gets
+special handling if the configuration file has special handling for specifying
+the root filesystem (like lilo.conf does).
 
 .TP
 \fB-\-bad-image-okay\fR
@@ -66,7 +77,7 @@ This option is only available on ia32 platforms.
 
 
 .TP
-\fB-c\fR \fIpath\fR
+\fB-\-config-file\fR=\fIpath\fR
 Use \fIpath\fR as the configuration file rather then the default.
 
 .TP
@@ -86,9 +97,7 @@ is the default on ia32 platforms.
 
 .TP
 \fB-\-info\fR=\fIkernel-path\fR
-Display information on the first boot entry found for the kernel at
-\fIkernel-path\fR. If \fIkernel-path\fR is \fBDEFAULT\fR, then information
-on the default kernel is displayed. 
+Display information on all boot entries which match \fIkernel-path\fR. I
 
 .TP
 \fB-\-initrd\fR=\fIinitrd-path\fR
@@ -106,8 +115,15 @@ default configuration file path to \fB/etc/lilo.conf\fR.
 Make the new kernel entry being added the default entry.
 
 .TP
+\fB-\-remove-args\fR=\fIkernel-args\fR
+The arguments specified by \fIkernel-args\fR are removed from the 
+kernels specified by \fB-\-update-kernel\fR. The \fBroot\fR argument
+gets special handling for configuration files that support separate root
+filesystem configuration.
+
+.TP
 \fB-\-remove-kernel\fR=\fIkernel-path\fR
-Removes all boot entries associated with the specified kernel.
+Removes all boot entries which match \fIkernel-path\fR.
 
 .TP
 \fB-\-set-default\fR=\fIkernel-path\fR
@@ -118,6 +134,17 @@ boot entry.
 \fB-\-title\fR=\fIentry-path\fR
 When a new kernel entry is added \fIentry-path\fR is used as the title
 (\fBlilo\fR label) for the entry.
+
+.TP
+\fB-\-update-kernel\fR=\fIkernel-path\fR
+The entries for kernels matching \fRkernel-path\fR are updated. Currently
+the only items that can be updated is the kernel argument list, which is
+modified via the \fB-\-args\fR and \fB-\-remove-args\fR options.
+
+.SH "BUGS"
+The command line syntax is more then a little baroque. This probably
+won't be fixed as \fBgrubby\fR is only intended to be called from shell
+scripts which can get it right.
 
 .SH "SEE ALSO"
 .BR grub (8),
