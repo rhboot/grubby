@@ -125,43 +125,55 @@ char * getArg(char * cmd, char * end, char ** arg) {
 }
 
 int mountCommand(char * cmd, char * end) {
-    char * fsType;
+    char * fsType = NULL;
     char * device;
     char * mntPoint;
     char * deviceDir;
+    char * options = NULL;
     int readOnly = 0;
     int mustRemove = 0;
     int mustRemoveDir = 0;
     int rc;
 
-    cmd = getArg(cmd, end, &fsType);
+    cmd = getArg(cmd, end, &device);
     if (!cmd) {
 	printf("usage: mount [--ro] -t <type> <device> <mntpoint>\n");
 	return 1;
     }
 
-    if (!strcmp(fsType, "--ro")) {
-	readOnly = MS_RDONLY;
-	cmd = getArg(cmd, end, &fsType);
+    printf("is %d\n", readOnly);
+
+    while (cmd && *device == '-') {
+	if (!strcmp(device, "--ro")) {
+	    readOnly = MS_RDONLY;
+	} else if (!strcmp(device, "-o")) {
+	    cmd = getArg(cmd, end, &options);
+	    if (!cmd) {
+		printf("mount: -o requires arguments\n");
+		return 1;
+	    }
+	} else if (!strcmp(device, "-t")) {
+	    if (!(cmd = getArg(cmd, end, &fsType))) {
+		printf("mount: missing filesystem type\n");
+		return 1;
+	    }
+	}
+
+	cmd = getArg(cmd, end, &device);
     }
 
-    if (!cmd || strcmp(fsType, "-t")) {
-	printf("mount: -t must be first argument (after --ro)\n");
-	return 1;
-    }
-
-    if (!(cmd = getArg(cmd, end, &fsType))) {
-	printf("mount: missing filesystem type\n");
-	return 1;
-    }
-
-    if (!(cmd = getArg(cmd, end, &device))) {
+    if (!cmd) {
 	printf("mount: missing device\n");
 	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &mntPoint))) {
 	printf("mount: missing mount point\n");
+	return 1;
+    }
+
+    if (!fsType) {
+	printf("mount: filesystem type expected\n");
 	return 1;
     }
 
@@ -209,10 +221,14 @@ int mountCommand(char * cmd, char * end) {
     }
 
     if (testing) {
-	printf("mount %s-t '%s' '%s' '%s'\n", readOnly ? "--ro " : "",
+	printf("mount %s%s%s%s-t '%s' '%s' '%s'\n", 
+		options ? "-o '" : "",	
+		options ? options : "",	
+		options ? "\' " : "",	
+		readOnly ? "--ro " : "",
 		fsType, device, mntPoint);
     } else {
-	if (mount(device, mntPoint, fsType, readOnly | MS_MGC_VAL, NULL)) {
+	if (mount(device, mntPoint, fsType, readOnly | MS_MGC_VAL, options)) {
 	    printf("mount: error %d mounting %s\n", errno, fsType);
 	    rc = 1;
 	}
@@ -786,6 +802,7 @@ int main(int argc, char **argv) {
 	if (!strcmp(*argv, "--force")) {
 	    if (!quiet) printf("(forcing normal run)\n");
 	    argv++, argc--;
+	    testing = 0;
 	} else if (!strcmp(*argv, "--quiet")) {
 	    quiet = 1;
 	    argv++, argc--;
