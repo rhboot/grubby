@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Fri Aug 23 2002 Bill Nottingham <notting@redhat.com>
+- fix mpt fusion stuff
+
 * Tue Aug 13 2002 Jeremy Katz <katzj@redhat.com>
 - /boot/efi/redhat -> /boot/efi/EFI/redhat on ia64
 
