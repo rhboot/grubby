@@ -46,7 +46,7 @@ struct lineElement {
 
 enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
        LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS, LT_BOOT,
-       LT_BOOTROOT};
+       LT_BOOTROOT, LT_LBA};
 
 struct singleLine {
     char * indent;
@@ -100,7 +100,6 @@ struct keywordTypes grubKeywords[] = {
     { "fallback",   LT_FALLBACK,    ' ' },
     { "kernel",	    LT_KERNEL,	    ' ' },
     { "initrd",	    LT_INITRD,	    ' ' },
-    { "#boot",	    LT_BOOT,	    '=' },
     { NULL,	    0 },
 };
 
@@ -122,6 +121,7 @@ struct keywordTypes liloKeywords[] = {
     { "initrd",	    LT_INITRD,	    '=' },
     { "append",	    LT_KERNELARGS,  '=' },
     { "boot",	    LT_BOOT,	    '=' },
+    { "lba",	    LT_LBA,	    ' ' },
     { NULL,	    0 },
 };
 
@@ -1117,6 +1117,48 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     }
 }
 
+void dumpSysconfigGrub(void) {
+    FILE * in;
+    char buf[1024];
+    char * chptr;
+    char * start;
+    char * param;
+
+    in = fopen("/etc/sysconfig/grub", "r");
+    if (!in) return;
+
+    while (fgets(buf, sizeof(buf), in)) {
+	start = buf;
+	while (isspace(*start)) start++;
+	if (*start == '#') continue;
+
+	chptr = strchr(start, '=');
+	if (!chptr) continue;
+	chptr--;
+	while (*chptr && isspace(*chptr)) chptr--;
+	chptr++;
+	*chptr = '\0';
+
+	param = chptr + 1;
+	while (*param && isspace(*param)) param++;
+	if (*param == '=') {
+	    param++;
+	    while (*param && isspace(*param)) param++;
+	}
+
+	chptr = param;
+	while (*chptr && !isspace(*chptr)) chptr++;
+	*chptr = '\0';
+
+	if (!strcmp(start, "forcelba") && !strcmp(param, "1"))
+	    printf("lba\n");
+	else if (!strcmp(start, "boot"))
+	    printf("boot=%s\n", param);
+    }
+
+    fclose(in);
+}
+
 int displayInfo(struct grubConfig * config, char * kernel,
 		const char * prefix) {
     int i = 0;
@@ -1129,10 +1171,20 @@ int displayInfo(struct grubConfig * config, char * kernel,
 	return 1;
     }
 
-    line = config->theLines;
-    while (line && line->type != LT_BOOT) line = line->next;
-    if (line && line->numElements >= 1) {
-	printf("boot=%s\n", line->elements[1].item);
+    /* this is a horrible hack to support /etc/sysconfig/grub; there must
+       be a better way */
+    if (config->cfi == &grubConfigType) {
+	dumpSysconfigGrub();
+    } else {
+	line = config->theLines;
+	while (line && line->type != LT_BOOT) line = line->next;
+	if (line && line->numElements >= 1) {
+	    printf("boot=%s\n", line->elements[1].item);
+	}
+
+	line = config->theLines;
+	while (line && line->type != LT_LBA) line = line->next;
+	if (line) printf("lba\n");
     }
 
     displayEntry(entry, prefix, i);
