@@ -1010,7 +1010,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     }
 }
 
-void dumpSysconfigGrub(void) {
+int parseSysconfigGrub(int * lbaPtr, char ** bootPtr) {
     FILE * in;
     char buf[1024];
     char * chptr;
@@ -1018,7 +1018,10 @@ void dumpSysconfigGrub(void) {
     char * param;
 
     in = fopen("/etc/sysconfig/grub", "r");
-    if (!in) return;
+    if (!in) return 1;
+
+    if (lbaPtr) *lbaPtr = 0;
+    if (bootPtr) *bootPtr = NULL;
 
     while (fgets(buf, sizeof(buf), in)) {
 	start = buf;
@@ -1043,13 +1046,25 @@ void dumpSysconfigGrub(void) {
 	while (*chptr && !isspace(*chptr)) chptr++;
 	*chptr = '\0';
 
-	if (!strcmp(start, "forcelba") && !strcmp(param, "1"))
-	    printf("lba\n");
-	else if (!strcmp(start, "boot"))
-	    printf("boot=%s\n", param);
+	if (!strcmp(start, "forcelba") && !strcmp(param, "1") && lbaPtr)
+	    *lbaPtr = 1;
+	else if (!strcmp(start, "boot") && bootPtr)
+	    *bootPtr = strdup(param);
     }
 
     fclose(in);
+
+    return 0;
+}
+
+void dumpSysconfigGrub(void) {
+    char * boot;
+    int lba;
+
+    if (!parseSysconfigGrub(&lba, &boot)) {
+	if (lba) printf("lba\n");
+	if (boot) printf("boot=%s\n", boot);
+    }
 }
 
 int displayInfo(struct grubConfig * config, char * kernel,
@@ -1499,31 +1514,29 @@ int checkForLilo(struct grubConfig * config) {
 
 int checkForGrub(struct grubConfig * config) {
     int fd;
-    unsigned char boot[512];
-    struct singleLine * line;
+    unsigned char bootSect[512];
+    char * boot;
 
-    for (line = config->theLines; line; line = line->next)
-	if (line->type == LT_BOOT) break;
-
-    /* assume grub is not installed -- not an error condition */
-    if (!line)
+    if (parseSysconfigGrub(NULL, &boot))
 	return 0;
 
-    if (line->numElements != 2) return 1;
+    /* assume grub is not installed -- not an error condition */
+    if (!boot)
+	return 0;
 
     fd = open("/boot/grub/stage1", O_RDONLY);
     if (fd < 0)
 	/* this doesn't exist if grub hasn't been installed */
 	return 0;
 
-    if (read(fd, boot, 512) != 512) {
+    if (read(fd, bootSect, 512) != 512) {
 	fprintf(stderr, _("grubby: unable to read %s: %s\n"),
 		"/boot/grub/stage1", strerror(errno));
 	return 1;
     }
     close(fd);
 
-    return checkDeviceBootloader(line->elements[1].item, boot);
+    return checkDeviceBootloader(boot, bootSect);
 }
 
 int addNewKernel(struct grubConfig * config, struct singleEntry * template, 
