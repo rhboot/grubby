@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -60,6 +60,13 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Jun 12 2003 Jeremy Katz <katzj@redhat.com> 3.5.3-1
+- mkinitrd: fix copying of pvs (#97314, #97289)
+- mkinitrd: use pvscan instead of lvmdiskscan to find PVs to work 
+  better on other arches
+- mkinitrd: better check for dasd existence
+- mkinitrd: make certain lvm-mod is included if root on lvm
+
 * Wed Jun 11 2003 Jeremy Katz <katzj@redhat.com> 3.5.2-1
 - mkinitrd: revert use of modprobe -c.  it breaks in the installer when we 
   don't have a modules.dep for the BOOT kernel

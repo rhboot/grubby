@@ -24,7 +24,7 @@
 PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.5.2
+VERSION=3.5.3
 
 compress=1
 target=""
