@@ -3,7 +3,7 @@
 .SH NAME
 nash \- script interpretor to interpret linuxrc images
 .SH SYNOPSIS
-\fBnash\fR [--force] \fIscript\fR
+\fBnash\fR [--quiet] [--force] \fIscript\fR
 
 .SH DESCRIPTION
 \fBnash\fR is a very simple script interpretor designed to be as small as
@@ -22,6 +22,12 @@ a path, nash will search it's builtin PATH, which is /usr/bin, /bin,
 /sbin, /usr/sbin.
 
 Currently, \fBnash\fR supports the following built in commands.
+
+.TP
+\fBaccess -[r][w][x][f] \fIpath\fR
+Tells whether the current user has sufficient permissions to read, write, or
+execture \fIpath\fR, or if the file exists (see \fBaccess(2)\fR for more
+information).
 
 .TP
 \fBecho [item]* [> \fIfilename\fR]\fR
@@ -67,6 +73,9 @@ be a raid device (any will do).
 .TP
 \fBumount \fIpath\fR
 Unmounts the filesystem mounted at \fIpath\fR.
+
+.SH RETURN VALUE
+Returns 0 is the last command succeeded or 1 if it failed.
 
 .SH OPTIONS
 .TP

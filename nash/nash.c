@@ -75,7 +75,7 @@ static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 
-int testing = 0;
+int testing = 0, quiet = 0;
 
 #define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
 
@@ -123,17 +123,18 @@ char * getArg(char * cmd, char * end, char ** arg) {
     return cmd;
 }
 
-void mountCommand(char * cmd, char * end) {
+int mountCommand(char * cmd, char * end) {
     char * fsType;
     char * device;
     char * mntPoint;
     int readOnly = 0;
     int mustRemove = 0;
+    int rc;
 
     cmd = getArg(cmd, end, &fsType);
     if (!cmd) {
 	printf("usage: mount [--ro] -t <type> <device> <mntpoint>\n");
-	return;
+	return 1;
     }
 
     if (!strcmp(fsType, "--ro")) {
@@ -143,27 +144,27 @@ void mountCommand(char * cmd, char * end) {
 
     if (!cmd || strcmp(fsType, "-t")) {
 	printf("mount: -t must be first argument (after --ro)\n");
-	return;
+	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &fsType))) {
 	printf("mount: missing filesystem type\n");
-	return;
+	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &device))) {
 	printf("mount: missing device\n");
-	return;
+	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &mntPoint))) {
 	printf("mount: missing mount point\n");
-	return;
+	return 1;
     }
 
     if (cmd < end) {
 	printf("mount: unexpected arguments\n");
-	return;
+	return 1;
     }
 
     if (!strncmp("LABEL=", device, 6)) {
@@ -178,7 +179,7 @@ void mountCommand(char * cmd, char * end) {
 		if (mknod(device, S_IFBLK | 0600, makedev(major, minor))) {
 		    printf("mount: cannot create device %s (%d,%d)\n",
 			   device, major, minor);
-		    return;
+		    return 1;
 		}
 		mustRemove = 1;
 	    }
@@ -191,14 +192,17 @@ void mountCommand(char * cmd, char * end) {
     } else {
 	if (mount(device, mntPoint, fsType, readOnly | MS_MGC_VAL, NULL)) {
 	    printf("mount: error %d mounting %s\n", errno, fsType);
+	    rc = 1;
 	}
     }
 
     if (mustRemove)
 	unlink(device);
+
+    return rc;
 }
 
-void otherCommand(char * bin, char * cmd, char * end, int doFork) {
+int otherCommand(char * bin, char * cmd, char * end, int doFork) {
     char * args[32];
     char ** nextArg;
     int pid;
@@ -252,28 +256,31 @@ void otherCommand(char * bin, char * cmd, char * end, int doFork) {
 	    /* child */
 	    execve(args[0], args, env);
 	    printf("ERROR: failed in exec of %s\n", args[0]);
-	    exit(1);
+	    return 1;
 	}
 
 	wait4(-1, &status, 0, NULL);
 	if (!WIFEXITED(status) || WEXITSTATUS(status)) {
 	    printf("ERROR: %s exited abnormally!\n", args[0]);
+	    return 1;
 	}
     }
+
+    return 0;
 }
 
-void execCommand(char * cmd, char * end) {
+int execCommand(char * cmd, char * end) {
     char * bin;
 
     if (!(cmd = getArg(cmd, end, &bin))) {
 	printf("exec: argument expected\n");
-	return;
+	return 1;
     }
 
-    otherCommand(bin, cmd, end, 0);
+    return otherCommand(bin, cmd, end, 0);
 }
 
-void losetupCommand(char * cmd, char * end) {
+int losetupCommand(char * cmd, char * end) {
     char * device;
     char * file;
     int fd;
@@ -282,17 +289,17 @@ void losetupCommand(char * cmd, char * end) {
 
     if (!(cmd = getArg(cmd, end, &device))) {
 	printf("losetup: missing device\n");
-	return;
+	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &file))) {
 	printf("losetup: missing file\n");
-	return;
+	return 1;
     }
 
     if (cmd < end) {
 	printf("losetup: unexpected arguments\n");
-	return;
+	return 1;
     }
 
     if (testing) {
@@ -301,21 +308,21 @@ void losetupCommand(char * cmd, char * end) {
 	dev = open(device, O_RDWR, 0);
 	if (dev < 0) {
 	    printf("losetup: failed to open %s: %d\n", device, errno);
-	    return;
+	    return 1;
 	}
 
 	fd = open(file, O_RDWR, 0);
 	if (fd < 0) {
 	    printf("losetup: failed to open %s: %d\n", file, errno);
 	    close(dev);
-	    return;
+	    return 1;
 	}
 
 	if (ioctl(dev, LOOP_SET_FD, (void *) fd)) {
 	    printf("losetup: LOOP_SET_FD failed: %d\n", errno);
 	    close(dev);
 	    close(fd);
-	    return;
+	    return 1;
 	}
 
 	close(fd);
@@ -328,68 +335,78 @@ void losetupCommand(char * cmd, char * end) {
 
 	close(dev);
     }
+
+    return 0;
 }
 
-void raidautorunCommand(char * cmd, char * end) {
+int raidautorunCommand(char * cmd, char * end) {
     char * device;
     int fd;
 
     if (!(cmd = getArg(cmd, end, &device))) {
 	printf("raidautorun: raid device expected as first argument\n");
-	return;
+	return 1;
     }
 
     if (cmd < end) {
 	printf("raidautorun: unexpected arguments\n");
-	return;
+	return 1;
     }
 
     fd = open(device, O_RDWR, 0);
     if (fd < 0) {
 	printf("raidautorun: failed to open %s: %d\n", device, errno);
-	return;
+	return 1;
     }
 
     if (ioctl(fd, RAID_AUTORUN, 0)) {
 	printf("raidautorun: RAID_AUTORUN failed: %d\n", errno);
+	close(fd);
+	return 1;
     }
 
     close(fd);
+    return 0;
 }
 
-void pivotrootCommand(char * cmd, char * end) {
+int pivotrootCommand(char * cmd, char * end) {
     char * new;
     char * old;
 
     if (!(cmd = getArg(cmd, end, &new))) {
 	printf("pivotroot: new root mount point expected\n");
-	return;
+	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &old))) {
 	printf("pivotroot: old root mount point expected\n");
-	return;
+	return 1;
     }
 
     if (cmd < end) {
 	printf("pivotroot: unexpected arguments\n");
-	return;
+	return 1;
     }
 
     if (pivot_root(new, old)) {
 	printf("pivotroot: pivot_root(%s,%s) failed: %d\n", new, old, errno);
+	return 1;
     }
+
+    return 0;
 }
 
-void echoCommand(char * cmd, char * end) {
+int echoCommand(char * cmd, char * end) {
     char * args[256];
     char ** nextArg = args;
     int outFd = 1;
     int num = 0;
     int i;
 
-    if (testing)
+    if (testing && !quiet) {
 	printf("(echo) ");
+	fflush(stdout);
+    }
 
     while ((cmd = getArg(cmd, end, nextArg)))
 	nextArg++, num++;
@@ -399,7 +416,7 @@ void echoCommand(char * cmd, char * end) {
 	if (outFd < 0) {
 	    printf("echo: cannot open %s for write: %d\n", 
 		    *(nextArg - 1), errno);
-	    return;
+	    return 1;
 	}
 
 	num -= 2;
@@ -414,28 +431,32 @@ void echoCommand(char * cmd, char * end) {
     write(outFd, "\n", 1);
 
     if (outFd != 1) close(outFd);
+
+    return 0;
 }
 
-void umountCommand(char * cmd, char * end) {
+int umountCommand(char * cmd, char * end) {
     char * path;
 
     if (!(cmd = getArg(cmd, end, &path))) {
 	printf("umount: path expected\n");
-	return;
+	return 1;
     }
 
     if (cmd < end) {
 	printf("umount: unexpected arguments\n");
-	return;
+	return 1;
     }
 
     if (umount(path)) {
 	printf("umount %s failed: %d\n", path, errno);
+	return 1;
     }
+
+    return 0;
 }
 
-
-void mkrootdevCommand(char * cmd, char * end) {
+int mkrootdevCommand(char * cmd, char * end) {
     char * path;
     unsigned int devNum = 0;
     int fd;
@@ -444,25 +465,25 @@ void mkrootdevCommand(char * cmd, char * end) {
 
     if (!(cmd = getArg(cmd, end, &path))) {
 	printf("mkrootdev: path expected\n");
-	return;
+	return 1;
     }
 
     if (cmd < end) {
 	printf("mkrootdev: unexpected arguments\n");
-	return;
+	return 1;
     }
 
     fd = open("/proc/sys/kernel/real-root-dev", O_RDONLY, 0);
     if (fd < 0) {
 	printf("mkrootdev: failed to open /proc/sys/kernel/real-root-dev: %d\n", errno);
-	return;
+	return 1;
     }
 
     i = read(fd, buf, sizeof(buf));
     if (i < 0) {
 	printf("mkrootdev: failed to read real-root-dev: %d\n", errno);
 	close(fd);
-	return;
+	return 1;
     }
 
     close(fd);
@@ -471,15 +492,18 @@ void mkrootdevCommand(char * cmd, char * end) {
     devNum = atoi(buf);
     if (devNum < 0) {
 	printf("mkrootdev: bad device %s\n", buf);
-	return;
+	return 1;
     }
 
     if (mknod(path, S_IFBLK | 0700, devNum)) {
 	printf("mkrootdev: mknod failed: %d\n", errno);
+	return 1;
     }
+
+    return 0;
 }
 
-void mkdirCommand(char * cmd, char * end) {
+int mkdirCommand(char * cmd, char * end) {
     char * dir;
     int ignoreExists = 0;
 
@@ -492,13 +516,51 @@ void mkdirCommand(char * cmd, char * end) {
 
     if (!cmd) {
 	printf("mkdir: directory expected\n");
-	return;
+	return 1;
     }
 
     if (mkdir(dir, 0755)) {
-	if (!ignoreExists && errno == EEXIST)
+	if (!ignoreExists && errno == EEXIST) {
 	    printf("mkdir: failed to create %s: %d\n", dir, errno);
+	    return 1;
+	}
     }
+
+    return 0;
+}
+
+int accessCommand(char * cmd, char * end) {
+    char * permStr;
+    int perms = 0;
+    char * file;
+
+    cmd = getArg(cmd, end, &permStr);
+    if (cmd) cmd = getArg(cmd, end, &file);
+
+    if (!cmd || *permStr != '-') {
+	printf("usage: access -[perm] file\n");
+	return 1;
+    }
+
+    permStr++;
+    while (*permStr) {
+	switch (*permStr) {
+	  case 'r': perms |= R_OK; break;
+	  case 'w': perms |= W_OK; break;
+	  case 'x': perms |= X_OK; break;
+	  case 'f': perms |= F_OK; break;
+	  default:
+	    printf("perms must be -[r][w][x][f]\n");
+	    return 1;
+	}
+
+	permStr++;
+    }
+
+    if (access(file, perms))
+	return 1;
+
+    return 0;
 }
 
 int runStartup(int fd) {
@@ -506,6 +568,7 @@ int runStartup(int fd) {
     int i;
     char * start, * end;
     char * chptr;
+    int rc;
 
     i = read(fd, contents, sizeof(contents) - 1);
     if (i == (sizeof(contents) - 1)) {
@@ -547,38 +610,40 @@ int runStartup(int fd) {
 	while (chptr < end && !isspace(*chptr)) chptr++;
 
 	if (!strncmp(start, "mount", MAX(5, chptr - start)))
-	    mountCommand(chptr, end);
+	    rc = mountCommand(chptr, end);
 	else if (!strncmp(start, "losetup", MAX(7, chptr - start)))
-	    losetupCommand(chptr, end);
+	    rc = losetupCommand(chptr, end);
 	else if (!strncmp(start, "echo", MAX(4, chptr - start)))
-	    echoCommand(chptr, end);
+	    rc = echoCommand(chptr, end);
 	else if (!strncmp(start, "raidautorun", MAX(11, chptr - start)))
-	    raidautorunCommand(chptr, end);
+	    rc = raidautorunCommand(chptr, end);
 	else if (!strncmp(start, "pivot_root", MAX(10, chptr - start)))
-	    pivotrootCommand(chptr, end);
+	    rc = pivotrootCommand(chptr, end);
 	else if (!strncmp(start, "mkrootdev", MAX(9, chptr - start)))
-	    mkrootdevCommand(chptr, end);
+	    rc = mkrootdevCommand(chptr, end);
 	else if (!strncmp(start, "umount", MAX(6, chptr - start)))
-	    umountCommand(chptr, end);
+	    rc = umountCommand(chptr, end);
 	else if (!strncmp(start, "exec", MAX(4, chptr - start)))
-	    execCommand(chptr, end);
+	    rc = execCommand(chptr, end);
 	else if (!strncmp(start, "mkdir", MAX(5, chptr - start)))
-	    mkdirCommand(chptr, end);
+	    rc = mkdirCommand(chptr, end);
+	else if (!strncmp(start, "access", MAX(6, chptr - start)))
+	    rc = accessCommand(chptr, end);
 	else {
 	    *chptr = '\0';
-	    otherCommand(start, chptr + 1, end, 1);
+	    rc = otherCommand(start, chptr + 1, end, 1);
 	}
 
 	start = end + 1;
     }
 
-    return 0;
+    return rc;
 }
 
 int main(int argc, char **argv) {
     int fd = 0;
-    char ** nextArg = argv + 1;
     char * name;
+    int rc;
 
     name = strchr(argv[0], '/');
     if (!name) 
@@ -589,27 +654,37 @@ int main(int argc, char **argv) {
     if (!strcmp(name, "modprobe"))
 	exit(0);
 
-    if (argc > 1 && !strcmp(*nextArg, "--force")) {
-	printf("(forcing normal run)\n");
-	nextArg++;
-    } else
-	testing = (getppid() != 0) && (getppid() != 1);
+    testing = (getppid() != 0) && (getppid() != 1);
+    argv++, argc--;
 
-    if (testing)
+    while (argc && **argv == '-') {
+	if (!strcmp(*argv, "--force")) {
+	    if (!quiet) printf("(forcing normal run)\n");
+	    argv++, argc--;
+	} else if (!strcmp(*argv, "--quiet")) {
+	    quiet = 1;
+	    argv++, argc--;
+	} else {
+	    printf("unknown argument %s\n", *argv);
+	    return 1;
+	}
+    }
+
+    if (testing && !quiet)
 	printf("(running in test mode).\n");
 
-    printf("Red Hat nash version %s starting\n", VERSION);
+    if (!quiet) printf("Red Hat nash version %s starting\n", VERSION);
 
-    if (*nextArg) {
-	fd = open(*nextArg, O_RDONLY, 0);
+    if (*argv) {
+	fd = open(*argv, O_RDONLY, 0);
 	if (fd < 0) {
-	    printf("nash: cannot open %s: %d\n", *nextArg, errno);
+	    printf("nash: cannot open %s: %d\n", *argv, errno);
 	    exit(1);
 	}
     }
 
-    runStartup(fd);
+    rc = runStartup(fd);
     close(fd);
 
-    return 0;
+    return rc;
 }
