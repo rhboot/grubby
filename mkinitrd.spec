@@ -2,7 +2,7 @@ Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 %define version 2.4
 Version: %{version}
-Release: 3
+Release: 4
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
@@ -39,9 +39,12 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 %attr(755,root,root) /sbin/mkinitrd
-%attr(644,root,root) /usr/man/man8/mkinitrd.8
+%attr(644,root,root) /usr/man/man8/mkinitrd.8.gz
 
 %changelog
+* Thu Feb  3 2000 Matt Wilson <msw@redhat.com>
+- gzip manpage
+
 * Mon Jan 10 2000 Erik Troan <ewt@redhat.com>
 - use sash, not ash
 
