@@ -45,7 +45,8 @@ struct lineElement {
 };
 
 enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
-       LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS, LT_BOOT };
+       LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS, LT_BOOT,
+       LT_BOOTROOT};
 
 struct singleLine {
     char * indent;
@@ -89,11 +90,12 @@ struct configFileInfo {
     int defaultSupportSaved;
     enum lineType_e entrySeparator;
     int needsBootPrefix;
+    int argsInQuotes;
 };
 
 struct keywordTypes grubKeywords[] = {
     { "title",	    LT_TITLE,	    ' ' },
-    { "root",	    LT_ROOT,	    ' ' },
+    { "root",	    LT_BOOTROOT,    ' ' },
     { "default",    LT_DEFAULT,	    ' ' },
     { "fallback",   LT_FALLBACK,    ' ' },
     { "kernel",	    LT_KERNEL,	    ' ' },
@@ -109,6 +111,7 @@ struct configFileInfo grubConfigType = {
     1,					    /* defaultSupportSaved */
     LT_TITLE,				    /* entrySeparator */
     1,					    /* needsBootPrefix */
+    0,					    /* argsInQuotes */
 };
 
 struct keywordTypes liloKeywords[] = {
@@ -133,6 +136,7 @@ struct configFileInfo liloConfigType = {
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
     0,					    /* needsBootPrefix */
+    1,					    /* argsInQuotes */
 };
 
 struct grubConfig {
@@ -149,11 +153,15 @@ struct grubConfig {
 
 
 struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index);
+struct singleEntry * findEntryByPath(struct grubConfig * cfg, 
+				     const char * path, const char * prefix,
+				     int * index);
 static char * strndup(char * from, int len);
 static int readFile(int fd, char ** bufPtr);
 static void lineInit(struct singleLine * line);
 static void lineFree(struct singleLine * line);
-static int lineWrite(FILE * out, struct singleLine * line);
+static int lineWrite(FILE * out, struct singleLine * line,
+		     struct configFileInfo * cfi);
 static int getNextLine(char ** bufPtr, struct singleLine * line,
 		       struct keywordTypes * keywords);
 
@@ -215,14 +223,22 @@ static void lineFree(struct singleLine * line) {
     lineInit(line);
 }
 
-static int lineWrite(FILE * out, struct singleLine * line) {
+static int lineWrite(FILE * out, struct singleLine * line,
+		     struct configFileInfo * cfi) {
     int i;
 
     fprintf(out, line->indent);
+
     for (i = 0; i < line->numElements; i++) {
+	if (i == 1 && line->type == LT_KERNELARGS && cfi->argsInQuotes)
+	    fputc('"', out);
+
 	fprintf(out, line->elements[i].item);
 	fprintf(out, line->elements[i].indent);
     }
+
+    if (line->type == LT_KERNELARGS && cfi->argsInQuotes)
+	fputc('"', out);
 
     fprintf(out, "\n");
 
@@ -401,6 +417,24 @@ static struct grubConfig * readConfig(const char * inName,
 	} else if (line->type == LT_FALLBACK && line->numElements == 2) {
 	    cfg->fallbackImage = strtol(line->elements[1].item, &end, 10);
 	    if (*end) cfg->fallbackImage = -1;
+	} else if (line->type == LT_KERNELARGS && cfi->argsInQuotes) {
+	    /* Strip off any " which may be present; they'll be put back
+	       on write. This is one of the few (the only?) places that grubby
+	       canonicalizes the output */
+
+	    if (line->numElements >= 2) {
+		int last, len;
+
+		if (*line->elements[1].item == '"')
+		    memcpy(line->elements[1].item, line->elements[1].item + 1,
+			   strlen(line->elements[1].item + 1) + 1);
+
+		last = line->numElements - 1;
+		len = strlen(line->elements[last].item) - 1;
+		if (line->elements[last].item[len] == '"')
+		    line->elements[last].item[len] = '\0';
+	    }
+
 	}
 
 	if (sawEntry) {
@@ -487,7 +521,7 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 	    indent = line->indent;
 
 	if (line->type == LT_KERNEL && line->numElements > 2) {
-	    /* this always rights out args, even if a LT_KERNELARGS is
+	    /* this always writes out args, even if a LT_KERNELARGS is
 	       present -- okay for config file types I've seen */
 	    fprintf(out, "%s%s%s%s%s", line->indent,
 		    line->elements[0].item, line->elements[0].indent,
@@ -542,9 +576,9 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 	    chptr = line->indent;
 	    while (*chptr && isspace(*chptr)) chptr++;
 	    if (*chptr != '#')
-		lineWrite(out, line);
+		lineWrite(out, line, cfg->cfi);
 	} else {
-	    lineWrite(out, line);
+	    lineWrite(out, line, cfg->cfi);
 	}
 
 	line = line->next;
@@ -679,7 +713,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 			line->elements[0].item, line->elements[0].indent,
 			cfg->fallbackImage);
 	} else {
-	    lineWrite(out, line);
+	    lineWrite(out, line, cfg->cfi);
 	}
 
 	line = line->next;
@@ -701,7 +735,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 
 	line = entry->lines;
 	while (line) {
-	    lineWrite(out, line);
+	    lineWrite(out, line, cfg->cfi);
 	    line = line->next;
 	}
     }
@@ -769,6 +803,76 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     return 1;
 }
 
+/* returns the first match on or after the one pointed to by index (if index 
+   is not NULL) which is not marked as skip */
+struct singleEntry * findEntryByPath(struct grubConfig * config, 
+				     const char * kernel, const char * prefix,
+				     int * index) {
+    struct singleEntry * entry = NULL;
+    struct singleLine * line;
+    int i;
+
+    if (!strcmp(kernel, "DEFAULT")) {
+	if (index && *index > config->defaultImage) {
+	    entry = NULL;
+	} else {
+	    entry = findEntryByIndex(config, config->defaultImage);
+	    if (entry && entry->skip) 
+		entry = NULL;
+	    else if (index) 
+		*index = config->defaultImage;
+	}
+    } else if (!strcmp(kernel, "ALL")) {
+	if (index)
+	    i = *index;
+	else
+	    i = 0;
+
+	while ((entry = findEntryByIndex(config, i))) {
+	    if (!entry->skip) break;
+	    i++;
+	}
+
+	if (entry && index)
+	    *index = i;
+    } else {
+	if (index)
+	    i = *index;
+	else
+	    i = 0;
+
+	while ((entry = findEntryByIndex(config, i))) {
+	    /* entries can't be removed in this mode; don't need to check
+	       entry->skip */
+
+	    line = entry->lines;
+	    while (line && line->type != LT_KERNEL) line=line->next;
+
+	    if (line && line->numElements >= 2 && !entry->skip &&
+	        !strcmp(line->elements[1].item, kernel + strlen(prefix)))
+		break;
+
+	    i++;
+	}
+
+	if (index) *index = i;
+    }
+
+    if (!entry) return NULL;
+
+    /* make sure this entry has a kernel identifier; this skips non-Linux
+       boot entries (could find netbsd etc, though, which is unfortunate) */
+    line = entry->lines;
+    while (line && line->type != LT_KERNEL) line = line->next;
+    if (!line) {
+	if (!index) index = &i;
+	(*index)++;
+	return findEntryByPath(config, kernel, prefix, index);
+    }
+
+    return entry;
+}
+
 struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index) {
     struct singleEntry * entry;
 
@@ -828,29 +932,17 @@ char * findBootPrefix(void) {
 
 void markRemovedImage(struct grubConfig * cfg, const char * image, 
 		      const char * prefix) {
-    struct singleLine * line;
     struct singleEntry * entry;
-    int i;
 
     if (!image) return;
 
-    i = 0;
-    while ((entry = findEntryByIndex(cfg, i++))) {
-	line = entry->lines;
-	while (line && line->type != LT_KERNEL)
-	    line = line->next;
-
-	if (!line || line->numElements < 2) continue;
-
-	if (!strcmp(line->elements[1].item, image + strlen(prefix))) 
-	    entry->skip = 1;
-    }
+    while ((entry = findEntryByPath(cfg, image, prefix, NULL)))
+	entry->skip = 1;
 }
 
 void setDefaultImage(struct grubConfig * config, int hasNew, 
 		     const char * defaultKernelPath, int newIsDefault,
 		     const char * prefix, int flags) {
-    struct singleLine * line;
     struct singleEntry * entry, * entry2, * newDefault;
     int i, j;
 
@@ -859,30 +951,9 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 	return;
     } else if (defaultKernelPath) {
 	i = 0;
-	while ((entry = findEntryByIndex(config, i))) {
-	    if (entry->skip) {
-		i++;
-		continue;
-	    }
-
-	    line = entry->lines;
-	    while (line && line->type != LT_KERNEL) line=line->next;
-
-	    if (!line || line->numElements < 2) {
-		config->defaultImage = -1;
-		return;
-	    }
-
-	    if (!strcmp(line->elements[1].item, defaultKernelPath + 
-						strlen(prefix))) {
-		config->defaultImage = i;
-		break;
-	    }
-
-	    i++;
-	}
-
-	if (!line) {
+	if (findEntryByPath(config, defaultKernelPath, prefix, &i)) {
+	    config->defaultImage = i;
+	} else {
 	    config->defaultImage = -1;
 	    return;
 	}
@@ -944,43 +1015,17 @@ void setFallbackImage(struct grubConfig * config, int hasNew) {
     }
 }
 
-int displayInfo(struct grubConfig * config, char * kernel,
-		const char * prefix) {
-    int i = 0;
-    struct singleEntry * entry;
+void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     struct singleLine * line;
     char * root = NULL;
+    int i;
 
-    if (!strcmp(kernel, "DEFAULT")) {
-	entry = findEntryByIndex(config, config->defaultImage);
-	if (entry) {
-	    line = entry->lines;
-	    while (line && line->type != LT_KERNEL) line=line->next;
-	    if (!line) entry = NULL;
-	}
-    } else {
-	while ((entry = findEntryByIndex(config, i))) {
-	    /* entries can't be removed in this mode; don't need to check
-	       entry->skip */
+    line = entry->lines;
+    while (line && line->type != LT_KERNEL) line = line->next;
 
-	    line = entry->lines;
-	    while (line && line->type != LT_KERNEL) line=line->next;
+    printf("index=%d\n", index);
 
-	    if (!line || line->numElements < 2) {
-		return 1;
-	    }
-
-	    if (!strcmp(line->elements[1].item, kernel + strlen(prefix)))
-		break;
-
-	    i++;
-	}
-    }
-
-    if (!entry) {
-	fprintf(stderr, _("grubby: kernel not found\n"));
-	return 1;
-    }
+    printf("kernel=%s\n", line->elements[1].item);
 
     if (line->numElements >= 3) {
 	printf("args=\"");
@@ -1010,7 +1055,6 @@ int displayInfo(struct grubConfig * config, char * kernel,
 		    root = line->elements[i].item + 5;
 		} else {
 		    s = line->elements[i].item;
-		    if (*s == '"') s++;
 
 		    printf("%s%s", s, line->elements[i].indent);
 		}
@@ -1019,8 +1063,7 @@ int displayInfo(struct grubConfig * config, char * kernel,
 	    }
 
 	    s = line->elements[i - 1].indent;
-	    if (s[strlen(s) - 1] != '"') printf("\"");
-	    printf("\n");
+	    printf("\"\n");
 	}
     }
 
@@ -1051,12 +1094,281 @@ int displayInfo(struct grubConfig * config, char * kernel,
 	    printf("%s%s", line->elements[i].item, line->elements[i].indent);
 	printf("\n");
     }
+}
+
+int displayInfo(struct grubConfig * config, char * kernel,
+		const char * prefix) {
+    int i = 0;
+    struct singleEntry * entry;
+    struct singleLine * line;
+
+    entry = findEntryByPath(config, kernel, prefix, &i);
+    if (!entry) {
+	fprintf(stderr, _("grubby: kernel not found\n"));
+	return 1;
+    }
 
     line = config->theLines;
     while (line && line->type != LT_BOOT) line = line->next;
     if (line && line->numElements >= 1) {
 	printf("boot=%s\n", line->elements[1].item);
     }
+
+    displayEntry(entry, prefix, i);
+
+    i++;
+    while ((entry = findEntryByPath(config, kernel, prefix, &i))) {
+	displayEntry(entry, prefix, i);
+	i++;
+    }
+
+    return 0;
+}
+
+struct singleLine *  addLine(struct singleEntry * entry, 
+			     struct configFileInfo * cfi, 
+			     enum lineType_e type) {
+    struct singleLine * line, * prev;
+    int i;
+
+    for (i = 0; cfi->keywords[i].key; i++)
+	if (cfi->keywords[i].type == type) break;
+    if (!cfi->keywords[i].key) abort();
+
+    /* The last non-empty line gives us the indention to us and the line
+       to insert after. Note that comments are considered empty lines, which
+       may not be ideal? */
+    line = entry->lines;
+    prev = NULL;
+    while (line) {
+	if (line->numElements) prev = line;
+	line = line->next;
+    }
+    if (!prev) {
+	/* just use the last line */
+	prev = entry->lines;
+	while (prev->next) prev = prev->next;
+    }
+
+    line = prev->next;
+    prev->next = malloc(sizeof(*line));
+    prev->next->next = line;
+    line = prev->next;
+
+    line->indent = strdup(prev->indent);
+    line->type = LT_KERNELARGS;
+    line->numElements = 1;
+    line->elements = malloc(sizeof(*line->elements));
+    line->elements[0].item = strdup(cfi->keywords[i].key);
+    line->elements[0].indent = malloc(2);
+    line->elements[0].indent[0] = cfi->keywords[i].nextChar;
+    line->elements[0].indent[1] = '\0';
+
+    return line;
+}
+
+void removeLine(struct singleEntry * entry, struct singleLine * line) {
+    struct singleLine * prev;
+    int i;
+
+    for (i = 0; i < line->numElements; i++) {
+	free(line->elements[i].item);
+	free(line->elements[i].indent);
+    }
+    free(line->elements);
+    free(line->indent);
+
+    if (line == entry->lines) {
+	entry->lines = line->next;
+    } else {
+	prev = entry->lines;
+	while (prev->next != line) prev = prev->next;
+	prev->next = line->next;
+    }
+
+    free(line);
+}
+
+int argMatch(const char * one, const char * two) {
+    char * first, * second;
+    char * chptr;
+
+    first = strcpy(alloca(strlen(one)), one);
+    second = strcpy(alloca(strlen(two)), two);
+
+    chptr = strchr(first, '=');
+    if (chptr) *chptr = '\0';
+
+    chptr = strchr(second, '=');
+    if (chptr) *chptr = '\0';
+
+    return strcmp(first, second);
+}
+
+int updateImage(struct grubConfig * cfg, const char * image,
+	        const char * prefix, const char * addArgs,
+		const char * removeArgs) {
+    struct singleEntry * entry;
+    struct singleLine * line, * rootLine;
+    int index = 0;
+    int i, j;
+    const char ** newArgs, ** oldArgs;
+    const char ** arg;
+    const char * chptr;
+    int useKernelArgs = 0;
+    int useRoot = 0;
+    int firstElement;
+
+    if (!image) return 0;
+
+    if (!addArgs) {
+	newArgs = malloc(sizeof(*newArgs));
+	*newArgs = NULL;
+    } else {
+	if (poptParseArgvString(addArgs, NULL, &newArgs)) {
+	    fprintf(stderr, 
+		    _("grubby: error separating arguments '%s'\n"), addArgs);
+	    return 1;
+	}
+    }
+
+    if (!removeArgs) {
+	oldArgs = malloc(sizeof(*oldArgs));
+	*oldArgs = NULL;
+    } else {
+	if (poptParseArgvString(removeArgs, NULL, &oldArgs)) {
+	    fprintf(stderr, 
+		    _("grubby: error separating arguments '%s'\n"), removeArgs);
+	    return 1;
+	}
+    }
+
+    for (i = 0; cfg->cfi->keywords[i].key; i++)
+	if (cfg->cfi->keywords[i].type == LT_KERNELARGS) break;
+
+    if (cfg->cfi->keywords[i].key)
+	useKernelArgs = 1;
+
+    for (i = 0; cfg->cfi->keywords[i].key; i++)
+	if (cfg->cfi->keywords[i].type == LT_ROOT) break;
+
+    if (cfg->cfi->keywords[i].key)
+	useRoot = 1;
+
+    while ((entry = findEntryByPath(cfg, image, prefix, &index))) {
+	index++;
+
+	line = entry->lines;
+	while (line && line->type != LT_KERNEL) line = line->next;
+	if (!line) continue;
+	firstElement = 2;
+
+	if (useKernelArgs) {
+	    while (line && line->type != LT_KERNELARGS) line = line->next;
+	    firstElement = 1;
+	}
+
+	for (arg = newArgs; *arg; arg++) {
+	    if (!line) {
+		/* no append in there, need to add it */
+		line = addLine(entry, cfg->cfi, LT_KERNELARGS);
+	    }
+
+	    for (i = firstElement; i < line->numElements; i++)
+		if (!argMatch(line->elements[i].item, *arg))
+		    break;
+
+	    chptr = strchr(*arg, '=');
+
+	    if (i < line->numElements) {
+		/* replace */
+		free(line->elements[i].item);
+		line->elements[i].item = strdup(*arg);
+	    } else if (useRoot && !strncmp(*arg, "root=/dev/", 10) && *chptr) {
+		rootLine = entry->lines;
+		while (rootLine && rootLine->type != LT_ROOT) 
+		    rootLine = rootLine->next;
+		if (!rootLine) {
+		    rootLine = addLine(entry, cfg->cfi, LT_ROOT);
+		    rootLine->elements = realloc(rootLine->elements,
+			    2 * sizeof(*rootLine->elements));
+		    rootLine->numElements++;
+		    rootLine->elements[1].indent = strdup("");
+		    rootLine->elements[1].item = strdup("");
+		}
+
+		free(rootLine->elements[1].item);
+		rootLine->elements[1].item = strdup(chptr + 1);
+	    } else {
+		/* append */
+		line->elements = realloc(line->elements,
+			(line->numElements + 1) * sizeof(*line->elements));
+		line->elements[line->numElements].item = strdup(*arg);
+
+		if (line->numElements > 1) {
+		    /* add to existing list of arguments */
+		    line->elements[line->numElements].indent = 
+			line->elements[line->numElements - 1].indent;
+		    line->elements[line->numElements - 1].indent = strdup(" ");
+		} else {
+		    /* First thing on this line; treat a bit differently. Note
+		       this is only possible if we've added a LT_KERNELARGS
+		       entry */
+		    line->elements[line->numElements].indent = strdup("");
+		}
+
+		line->numElements++;
+
+		/* if we updated a root= here even though there is a
+		   LT_ROOT available we need to remove the LT_ROOT entry
+		   (this will happen if we switch from a device to a label) */
+		if (useRoot && !strncmp(*arg, "root=", 5)) {
+		    rootLine = entry->lines;
+		    while (rootLine && rootLine->type != LT_ROOT)
+			rootLine = rootLine->next;
+		    if (rootLine) {
+			removeLine(entry, rootLine);
+		    }
+		}
+	    }
+	}
+
+	/* no arguments to remove (i.e. no append line) */
+	if (!line) continue;
+
+	/* this won't remove an LT_ROOT item properly (but then again,
+	   who cares? */
+	for (arg = oldArgs; *arg; arg++) {
+	    for (i = firstElement; i < line->numElements; i++)
+		if (!argMatch(line->elements[i].item, *arg))
+		    break;
+
+	    if (i < line->numElements) {
+		/* if this isn't the first argument the previous argument
+		   gets this arguments post-indention */
+		if (i > firstElement) {
+		    free(line->elements[i - 1].indent);
+		    line->elements[i - 1].indent = line->elements[i].indent;
+		}
+		
+		free(line->elements[i].item);
+
+		for (j = i + 1; j < line->numElements; j++)
+		    line->elements[j - 1] = line->elements[j];
+
+		line->numElements--;
+	    }
+	}
+
+	if (line->numElements == 1) {
+	    /* don't need the line at all (note it has to be a
+	       LT_KERNELARGS for this to happen */
+	    removeLine(entry, line);
+	}
+    }
+
+    free(newArgs);
+    free(oldArgs);
 
     return 0;
 }
@@ -1239,15 +1551,18 @@ int main(int argc, const char ** argv) {
     int configureLilo = 0;
     int configureGrub = 0;
     int bootloaderProbe = 0;
+    char * updateKernelPath = NULL;
     char * newKernelPath = NULL;
-    char * oldKernelPath = NULL;
+    char * removeKernelPath = NULL;
     char * newKernelArgs = NULL;
     char * newKernelInitrd = NULL;
     char * newKernelTitle = NULL;
     char * newKernelVersion = NULL;
     char * bootPrefix = NULL;
     char * defaultKernel = NULL;
+    char * removeArgs = NULL;
     char * kernelInfo = NULL;
+    const char * chptr;
 #ifdef __ia64__
     struct configFileInfo * cfi = &liloConfigType;
 #else
@@ -1261,7 +1576,9 @@ int main(int argc, const char ** argv) {
     struct poptOption options[] = {
 	{ "add-kernel", 0, POPT_ARG_STRING, &newKernelPath, 0,
 	    _("add an entry for the specified kernel"), _("kernel-path") },
-	{ "args", 0, POPT_ARG_STRING, &newKernelArgs, 0, _("default arguments for the new kernel"), _("args") },
+	{ "args", 0, POPT_ARG_STRING, &newKernelArgs, 0, 
+	    _("default arguments for the new kernel or new arguments for "
+	      "kernel being updated"), _("args") },
 	{ "bad-image-okay", 0, 0, &badImageOkay, 0,
 	    _("don't sanity check images in boot entries (for testing only)"), 
 	    NULL },
@@ -1297,7 +1614,9 @@ int main(int argc, const char ** argv) {
 	{ "output-file", 'o', POPT_ARG_STRING, &outputFile, 0,
 	    _("path to output updated config file (\"-\" for stdout)"), 
 	    _("path") },
-	{ "remove-kernel", 0, POPT_ARG_STRING, &oldKernelPath, 0,
+	{ "remove-args", 0, POPT_ARG_STRING, &removeArgs, 0,
+	    _("remove kernel arguments"), _("args") },
+	{ "remove-kernel", 0, POPT_ARG_STRING, &removeKernelPath, 0,
 	    _("remove all entries for the specified kernel"), 
 	    _("kernel-path") },
 	{ "set-default", 0, POPT_ARG_STRING, &defaultKernel, 0,
@@ -1305,6 +1624,9 @@ int main(int argc, const char ** argv) {
 	      "the default"), _("kernel-path") },
 	{ "title", 0, POPT_ARG_STRING, &newKernelTitle, 0,
 	    _("title to use for the new kernel entry"), _("entry-title") },
+	{ "update-kernel", 0, POPT_ARG_STRING, &updateKernelPath, 0,
+	    _("updated information for the specified kernel"), 
+	    _("kernel-path") },
 	{ "version", 'v', 0, NULL, 'v',
 	    _("print the version of this program and exit"), NULL },
 	POPT_AUTOHELP
@@ -1330,6 +1652,11 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
+    if ((chptr = poptGetArg(optCon))) {
+	fprintf(stderr, _("grubby: unexpected argument %s\n"), chptr);
+	return 1;
+    }
+
     if (configureLilo && configureGrub) {
 	fprintf(stderr, _("grubby: cannot specify --grub and --lilo\n"));
 	return 1;
@@ -1347,7 +1674,7 @@ int main(int argc, const char ** argv) {
 	grubConfig = cfi->defaultConfig;
 
     if (bootloaderProbe && (displayDefault || kernelInfo || newKernelVersion ||
-			  newKernelPath || oldKernelPath || makeDefault ||
+			  newKernelPath || removeKernelPath || makeDefault ||
 			  defaultKernel)) {
 	fprintf(stderr, _("grubby: --bootloader-probe may not be used with "
 			  "specified option"));
@@ -1355,7 +1682,7 @@ int main(int argc, const char ** argv) {
     }
 
     if ((displayDefault || kernelInfo) && (newKernelVersion || newKernelPath ||
-			   oldKernelPath)) {
+			   removeKernelPath)) {
 	fprintf(stderr, _("grubby: --default-kernel and --info may not "
 			  "be used when adding or removing kernels\n"));
 	return 1;
@@ -1371,12 +1698,18 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
+    if (newKernelPath && updateKernelPath) {
+	fprintf(stderr, _("grubby: --add-kernel and --update-kernel may"
+		          "not be used together"));
+	return 1;
+    }
+
     if (makeDefault && defaultKernel) {
 	fprintf(stderr, _("grubby: --make-default and --default-kernel "
 			  "may not be used together\n"));
 	return 1;
-    } else if (defaultKernel && oldKernelPath &&
-		!strcmp(defaultKernel, oldKernelPath)) {
+    } else if (defaultKernel && removeKernelPath &&
+		!strcmp(defaultKernel, removeKernelPath)) {
 	fprintf(stderr, _("grubby: cannot make removed kernel the default\n"));
 	return 1;
     } else if (defaultKernel && newKernelPath &&
@@ -1391,8 +1724,8 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
-    if (!oldKernelPath && !newKernelPath && !displayDefault && !defaultKernel
-	&& !kernelInfo && !bootloaderProbe) {
+    if (!removeKernelPath && !newKernelPath && !displayDefault && !defaultKernel
+	&& !kernelInfo && !bootloaderProbe && !updateKernelPath) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -1467,10 +1800,12 @@ int main(int argc, const char ** argv) {
 	if (!template) return 1;
     }
 
-    markRemovedImage(config, oldKernelPath, bootPrefix);
+    markRemovedImage(config, removeKernelPath, bootPrefix);
     setDefaultImage(config, newKernelPath != NULL, defaultKernel, makeDefault, 
 		    bootPrefix, flags);
     setFallbackImage(config, newKernelPath != NULL);
+    if (updateImage(config, updateKernelPath, bootPrefix, newKernelArgs,
+		removeArgs)) return 1;
 
     newKernel.title = newKernelTitle;
     newKernel.image = newKernelPath;
