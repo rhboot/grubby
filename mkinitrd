@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.1.1
+VERSION=4.1.2
 
 compress=1
 allowmissing=""
@@ -671,6 +671,14 @@ for MODULE in $MODULES; do
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" ]; then
 	echo "sleep 5" >> $RCFILE
+    fi
+    if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
+        echo "sleep 2" >> $RCFILE
+        cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICESCSIID WWPN SCSILUN FCPLUN; do
+            echo "echo -n $WWPN > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/port_add" >>$RCFILE
+            echo "echo -n $FCPLUN > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/$WWPN/unit_add" >>$RCFILE
+            echo "echo -n 1 > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/online" >>$RCFILE
+        done
     fi
 done
 
