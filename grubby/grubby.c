@@ -520,7 +520,7 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 static struct grubConfig * readConfig(const char * inName,
 				      struct configFileInfo * cfi) {
     int in;
-    char * incoming, * head;
+    char * incoming = NULL, * head;
     int rc;
     int sawEntry = 0;
     struct grubConfig * cfg;
