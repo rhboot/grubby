@@ -81,6 +81,7 @@
 #endif
 
 extern dev_t name_to_dev_t(char *name);
+extern int display_uuid_cache(void);
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 
@@ -156,7 +157,11 @@ char * getArg(char * cmd, char * end, char ** arg) {
 /* get the contents of the kernel command line from /proc/cmdline */
 static char * getKernelCmdLine(void) {
     int fd, i;
-    char * buf = malloc(1024);
+    char * buf;
+
+    buf = malloc(1024);
+    if (!buf)
+        return buf;
 
     fd = open("/proc/cmdline", O_RDONLY, 0);
     if (fd < 0) {
@@ -172,7 +177,10 @@ static char * getKernelCmdLine(void) {
     }
 
     close(fd);
-    *(buf + i - 1) = '\0';
+    if (i == 0)
+        buf[0] = '\0';
+    else
+        *(buf + i - 1) = '\0';
     return buf;
 }
 
@@ -183,6 +191,7 @@ static char * getKernelArg(char * arg) {
     char * start, * cmdline;
 
     cmdline = start = getKernelCmdLine();
+    if (start == NULL) return NULL;
     while (*start) {
 	if (isspace(*start)) {
 	    start++;
@@ -203,7 +212,7 @@ int mountCommand(char * cmd, char * end) {
     char * fsType = NULL;
     char * device;
     char * mntPoint;
-    char * deviceDir;
+    char * deviceDir = NULL;
     char * options = NULL;
     int mustRemove = 0;
     int mustRemoveDir = 0;
@@ -386,17 +395,20 @@ int mountCommand(char * cmd, char * end) {
 }
 
 int otherCommand(char * bin, char * cmd, char * end, int doFork) {
-    char * args[128];
+    char ** args;
     char ** nextArg;
     int pid;
     int status;
     char fullPath[255];
-    const static char * sysPath = PATH;
+    static const char * sysPath = PATH;
     const char * pathStart;
     const char * pathEnd;
     char * stdoutFile = NULL;
     int stdoutFd = 0;
 
+    args = (char **)malloc(sizeof(char *) * 128);
+    if (!args)
+        return 1;
     nextArg = args;
 
     if (!strchr(bin, '/')) {
@@ -420,7 +432,7 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 	}
     }
 
-    *nextArg = bin;
+    *nextArg = strdup(bin);
 
     while (cmd && cmd < end) {
 	nextArg++;
@@ -615,7 +627,7 @@ int switchrootCommand(char * cmd, char * end) {
     char * initprogs[] = { "/sbin/init", "/etc/init", 
                            "/bin/init", "/bin/sh", NULL };
     char * init, * cmdline = NULL;
-    char * initargs[MAX_INIT_ARGS];
+    char ** initargs;
     int fd, i = 0;
 
     if (!(cmd = getArg(cmd, end, &new))) {
@@ -653,17 +665,18 @@ int switchrootCommand(char * cmd, char * end) {
     }
 
     if (init == NULL) {
-        int i;
-        for (i = 0; initprogs[i] != NULL; i++) {
-            if (!access(initprogs[i], X_OK)) {
-                init = initprogs[i];
+        int j;
+        for (j = 0; initprogs[j] != NULL; j++) {
+            if (!access(initprogs[j], X_OK)) {
+                init = initprogs[j];
                 break;
             }
         }
     }
 
+    initargs = (char **)malloc(sizeof(char *)*(MAX_INIT_ARGS+1));
     if (cmdline && init) {
-        initargs[i++] = init;
+        initargs[i++] = strdup(init);
     } else {
         cmdline = init;
     }
@@ -675,7 +688,7 @@ int switchrootCommand(char * cmd, char * end) {
         for (; (i < MAX_INIT_ARGS) && (*start != '\0'); i++) {
             while (*chptr && !isspace(*chptr)) chptr++;
             if (*chptr != '\0') *(chptr++) = '\0';
-            initargs[i] = start;
+            (char *)initargs[i] = strdup(start);
             start = chptr;
         }
     }
@@ -808,7 +821,10 @@ int mkrootdevCommand(char * cmd, char * end) {
     }
 
     close(fd);
-    buf[i - 1] = '\0';
+    if (i == 0)
+        buf[i] = '\0';
+    else
+        buf[i - 1] = '\0';
 
     devNum = atoi(buf);
     if (devNum < 0) {
@@ -856,7 +872,7 @@ int mkdirCommand(char * cmd, char * end) {
 int accessCommand(char * cmd, char * end) {
     char * permStr;
     int perms = 0;
-    char * file;
+    char * file = NULL;
 
     cmd = getArg(cmd, end, &permStr);
     if (cmd) cmd = getArg(cmd, end, &file);
@@ -881,7 +897,7 @@ int accessCommand(char * cmd, char * end) {
 	permStr++;
     }
 
-    if (access(file, perms))
+    if ((file == NULL) || (access(file, perms)))
 	return 1;
 
     return 0;
@@ -906,6 +922,7 @@ int readlinkCommand(char * cmd, char * end) {
     char * path;
     char * buf, * respath, * fullpath;
     struct stat sb;
+    int rc = 0;
 
     if (!(cmd = getArg(cmd, end, &path))) {
         printf("readlink: file expected\n");
@@ -925,12 +942,14 @@ int readlinkCommand(char * cmd, char * end) {
     buf = malloc(512);
     if (readlink(path, buf, 512) == -1) {
 	fprintf(stderr, "error readlink %s: %d\n", path, errno);
+        free(buf);
 	return 1;
     }
 
     /* symlink is absolute */
     if (buf[0] == '/') {
         printf("%s\n", buf);
+        free(buf);
         return 0;
     } 
    
@@ -946,11 +965,16 @@ int readlinkCommand(char * cmd, char * end) {
     respath = malloc(PATH_MAX);
     if (!(respath = realpath(fullpath, respath))) {
         fprintf(stderr, "error realpath %s: %d\n", fullpath, errno);
-        return 1;
+        rc = 1;
+        goto readlinkout;
     }
 
     printf("%s\n", respath);
-    return 0;
+ readlinkout:
+    free(buf);
+    free(respath);
+    free(fullpath);
+    return rc;
 }
 
 int doFind(char * dirName, char * name) {

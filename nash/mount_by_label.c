@@ -167,7 +167,7 @@ uuidcache_init(void) {
 
 		if (isdigit(s[-1])) {
 			char * ptr;
-			char * deviceDir;
+			char * deviceDir = NULL;
 			int mustRemove = 0;
 			int mustRemoveDir = 0;
 			int i;
@@ -279,7 +279,7 @@ get_spec_by_volume_label(const char *s, int * major, int * minor) {
 
 int display_uuid_cache(void) {
 	struct uuidCache_s * u;
-	int i;
+	size_t i;
 
 	uuidcache_init();
 

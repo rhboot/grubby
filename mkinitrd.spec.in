@@ -60,6 +60,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Aug 16 2004 Jeremy Katz <katzj@redhat.com> - 4.0.6-1
+- various fixes from a code review by Steve Grubb which should fix 
+  some of the lingering problems (#129673)
+- nash: warning fix from Michal Jaegermann (#129673)
+- grubby: removal with (hd0,0)
+
 * Thu Aug 12 2004 Jeremy Katz <katzj@redhat.com> - 4.0.5-1
 - nash: oops, let's try that again
 

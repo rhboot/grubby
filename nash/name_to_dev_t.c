@@ -89,7 +89,7 @@ dev_t name_to_dev_t(char *name)
 	int part;
 
 	if (strncmp(name, "/dev/", 5) != 0) {
-#if kernel_had_not_done_it
+#if 1 /* kernel used to do this */
 		unsigned maj, min;
 
 		if (sscanf(name, "%u:%u", &maj, &min) == 2) {
@@ -107,7 +107,7 @@ dev_t name_to_dev_t(char *name)
 
 	name += 5;
 
-#if kernel_had_not_done_it
+#if 1 /* kernel used to do this */
 	if (strcmp(name, "nfs") == 0)
 		return makedev(0, 255);
 #endif
