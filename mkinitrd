@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.5.11
+VERSION=3.5.12
 
 compress=1
 target=""
@@ -472,7 +472,7 @@ fi
 
 dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null || exit 1
 
-LODEV=$(echo findlodev $modName.o | /sbin/nash --quiet)
+LODEV=$(echo findlodev | /sbin/nash --quiet)
 
 if [ -z "$LODEV" ]; then
     rm -rf $MNTPOINT $IMAGE
