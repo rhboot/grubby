@@ -167,6 +167,8 @@ grubTest grub.7 remove/g7.1 --boot-filesystem=/ \
     --remove-kernel=/boot/vmlinuz-2.4.7-2.5
 grubTest grub.3 remove/g3.1 --boot-filesystem=/ \
     --remove-kernel=DEFAULT
+grubTest grub.9 remove/g9.1 --boot-filesystem=/boot \
+    --remove-kernel=/boot/vmlinuz-2.4.7-2
 
 echo "YABOOT remove kernel..."
 yabootTest yaboot.1 remove/y1.1 --boot-filesystem=/ --remove-kernel=DEFAULT
