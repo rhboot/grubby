@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Apr 13 2004 Jeremy Katz <katzj@redhat.com> - 3.5.20-1
+- mkinitrd: minor regex fix for some kernel names (#120624)
+
 * Mon Feb  9 2004 Jeremy Katz <katzj@redhat.com> - 3.5.19-1
 - nash/mkinitrd: quiet mode for nash and necessary mkinitrd changes 
   to work with it

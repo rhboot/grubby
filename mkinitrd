@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.19
+VERSION=3.5.20
 
 compress=1
 target=""
@@ -65,7 +65,7 @@ moduledep() {
 
     [ -n "$verbose" ] && echo -n "Looking for deps of module $1"
     deps=$(awk 'BEGIN { searched=ARGV[2]; ARGV[2]=""; rc=1 } \
-                function modname(filename) { match(filename, /\/([^\/]+)\.k?o/, ret); return ret[1] } \
+                function modname(filename) { match(filename, /\/([^\/]+)\.k?o:?$/, ret); return ret[1] } \
                 function show() { if (orig == searched) { print dep; orig=""; rc=0; exit } } \
                 /^\/lib/ { show(); \
                            orig=modname($1); dep=""; \
