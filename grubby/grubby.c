@@ -552,6 +552,7 @@ static struct grubConfig * readConfig(const char * inName,
     cfg->cfi = cfi;
     cfg->theLines = NULL;
     cfg->entries = NULL;
+    cfg->fallbackImage = 0;
 
     /* copy everything we have */
     while (*head) {
@@ -1041,6 +1042,18 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
                             kernel + strlen(prefix)))
                     break;
             }
+            
+            /* have to check multiboot lines too */
+            if (entry->multiboot) {
+                while (line && line->type != LT_MBMODULE) line = line->next;
+                if (line && line->numElements >= 2 && !entry->skip) {
+                    rootspec = getRootSpecifier(line->elements[1].item);
+                    if (!strcmp(line->elements[1].item  + 
+                                ((rootspec != NULL) ? strlen(rootspec) : 0),
+                                kernel + strlen(prefix)))
+                        break;
+                }
+            }
 
 	    i++;
 	}
@@ -1082,7 +1095,7 @@ struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index) {
  * bail. */
 struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
 				 int * indexPtr, int skipRemoved, int flags) {
-    struct singleEntry * entry;
+    struct singleEntry * entry, * entry2;
     int index;
 
     if (cfg->defaultImage > -1) {
@@ -1096,7 +1109,13 @@ struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
     index = 0;
     while ((entry = findEntryByIndex(cfg, index))) {
 	if (suitableImage(entry, prefix, skipRemoved, flags)) {
+            int j;
+            for (j = 0; j < index; j++) {
+                entry2 = findEntryByIndex(cfg, j);
+                if (entry2->skip) index--;
+            }
 	    if (indexPtr) *indexPtr = index;
+
 	    return entry;
 	}
 
@@ -1159,7 +1178,6 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 
     /* defaultImage now points to what we'd like to use, but before any order 
        changes */
-
     if (config->defaultImage == DEFAULT_SAVED) 
       /* default is set to saved, we don't want to change it */
       return;
@@ -1171,7 +1189,6 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 
     if (entry && !entry->skip) {
 	/* we can preserve the default */
-
 	if (hasNew)
 	    config->defaultImage++;
 	
@@ -2203,6 +2220,7 @@ int main(int argc, const char ** argv) {
     char * newMBKernel = NULL;
     char * newMBKernelArgs = NULL;
     char * removeMBKernelArgs = NULL;
+    char * removeMBKernel = NULL;
     char * bootPrefix = NULL;
     char * defaultKernel = NULL;
     char * removeArgs = NULL;
@@ -2268,6 +2286,8 @@ int main(int argc, const char ** argv) {
 	{ "remove-kernel", 0, POPT_ARG_STRING, &removeKernelPath, 0,
 	    _("remove all entries for the specified kernel"), 
 	    _("kernel-path") },
+	{ "remove-multiboot", 0, POPT_ARG_STRING, &removeMBKernel, 0,
+            _("remove all entries for the specified multiboot kernel"), NULL },
 	{ "set-default", 0, POPT_ARG_STRING, &defaultKernel, 0,
 	    _("make the first entry referencing the specified kernel "
 	      "the default"), _("kernel-path") },
@@ -2405,7 +2425,8 @@ int main(int argc, const char ** argv) {
     }
 
     if (!removeKernelPath && !newKernelPath && !displayDefault && !defaultKernel
-	&& !kernelInfo && !bootloaderProbe && !updateKernelPath) {
+	&& !kernelInfo && !bootloaderProbe && !updateKernelPath 
+        && !removeMBKernel) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -2484,6 +2505,7 @@ int main(int argc, const char ** argv) {
     }
 
     markRemovedImage(config, removeKernelPath, bootPrefix);
+    markRemovedImage(config, removeMBKernel, bootPrefix);
     setDefaultImage(config, newKernelPath != NULL, defaultKernel, makeDefault, 
 		    bootPrefix, flags);
     setFallbackImage(config, newKernelPath != NULL);
@@ -2492,6 +2514,7 @@ int main(int argc, const char ** argv) {
     if (addNewKernel(config, template, bootPrefix, newKernelPath, 
                      newKernelTitle, newKernelArgs, newKernelInitrd, 
                      newMBKernel, newMBKernelArgs)) return 1;
+    
 
     if (numEntries(config) == 0) {
         fprintf(stderr, _("grubby: doing this would leave no kernel entries. "
