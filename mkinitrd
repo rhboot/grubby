@@ -522,7 +522,7 @@ done
 if [ -n "$root_lvm" ]; then
     pvs=$(/sbin/lvmdiskscan |grep "0x8E" | /bin/awk {'print $3;'})
     for pv in $pvs; do
-	cp --parents -a $pv $MNTIMAGE/$pv
+	cp --parents -a $pv $MNTIMAGE/
     done
 
     inst /sbin/vgwrapper "$MNTIMAGE/bin/vgwrapper"
