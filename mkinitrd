@@ -677,7 +677,7 @@ for MODULE in $MODULES; do
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" ]; then
-	echo "sleep 5" >> $RCFILE
+	echo "sleep 8" >> $RCFILE
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
         echo "sleep 2" >> $RCFILE
