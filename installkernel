@@ -14,20 +14,26 @@ fi
 KERNEL_VERSION=$1
 BOOTIMAGE=$2
 MAPFILE=$3
-
-if [ -f $INSTALL_PATH/vmlinuz-$KERNEL_VERSION ]; then 
-      mv $INSTALL_PATH/vmlinuz-$KERNEL_VERSION \
-              $INSTALL_PATH/vmlinuz-$KERNEL_VERSION.old;
+ARCH=$(uname -m)
+if [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
+    KERNEL_NAME=vmlinux
+else
+    KERNEL_NAME=vmlinuz
 fi
 
-if [ ! -L $INSTALL_PATH/vmlinuz ]; then
-    if [ -e $INSTALLPATH/vmlinuz ]; then 
-	mv $INSTALL_PATH/vmlinuz $INSTALL_PATH/vmlinuz.old
+if [ -f $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION ]; then 
+      mv $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION \
+              $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION.old;
+fi
+
+if [ ! -L $INSTALL_PATH/$KERNEL_NAME ]; then
+    if [ -e $INSTALLPATH/$KERNEL_NAME ]; then 
+	mv $INSTALL_PATH/$KERNEL_NAME $INSTALL_PATH/$KERNEL_NAME.old
     fi
-    mv $INSTALL_PATH/vmlinuz $INSTALL_PATH/vmlinuz.old
+    mv $INSTALL_PATH/$KERNEL_NAME $INSTALL_PATH/$KERNEL_NAME.old
 fi
 
-ln -sf vmlinuz-$KERNEL_VERSION $INSTALL_PATH/vmlinuz
+ln -sf $KERNEL_NAME-$KERNEL_VERSION $INSTALL_PATH/$KERNEL_NAME
 
 if [ -f $INSTALL_PATH/System.map-$KERNEL_VERSION ]; then 
       mv $INSTALL_PATH/System.map-$KERNEL_VERSION \
@@ -41,10 +47,10 @@ if [ ! -L $INSTALL_PATH/System.map ]; then
 fi
 ln -sf System.map-$KERNEL_VERSION $INSTALL_PATH/System.map
 
-cat $BOOTIMAGE > $INSTALL_PATH/vmlinuz-$KERNEL_VERSION
+cat $BOOTIMAGE > $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION
 cp $MAPFILE $INSTALL_PATH/System.map-$KERNEL_VERSION
 
-ln -fs vmlinuz-$KERNEL_VERSION $INSTALL_PATH/vmlinuz
+ln -fs $KERNEL_NAME-$KERNEL_VERSION $INSTALL_PATH/$KERNEL_NAME
 ln -fs System.map-$KERNEL_VERSION $INSTALL_PATH/System.map
 
 if [ -n "$cfgLoader" -a -x /sbin/new-kernel-pkg ]; then
