@@ -239,6 +239,10 @@ int mountCommand(char * cmd, char * end) {
 		flags |= MS_SYNCHRONOUS;
 	    else if (!strcmp(start, "async"))
 		flags &= ~MS_SYNCHRONOUS;
+	    else if (!strcmp(start, "nodiratime"))
+		flags |= MS_NODIRATIME;
+	    else if (!strcmp(start, "diratime"))
+		flags &= ~MS_NODIRATIME;
 	    else if (!strcmp(start, "noatime"))
 		flags |= MS_NOATIME;
 	    else if (!strcmp(start, "atime"))
