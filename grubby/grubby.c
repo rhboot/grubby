@@ -1413,8 +1413,8 @@ int argMatch(const char * one, const char * two) {
     char * first, * second;
     char * chptr;
 
-    first = strcpy(alloca(strlen(one)), one);
-    second = strcpy(alloca(strlen(two)), two);
+    first = strcpy(alloca(strlen(one) + 1), one);
+    second = strcpy(alloca(strlen(two) + 1), two);
 
     chptr = strchr(first, '=');
     if (chptr) *chptr = '\0';
