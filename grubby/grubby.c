@@ -57,7 +57,10 @@ struct grubConfig {
     char * secondaryIndent;
     int defaultImage;		    /* -1 if none specified -- this value is
 				     * written out, overriding original */
+    int flags;
 };
+
+#define GRUB_CONFIG_NO_DEFAULT	    (1 << 0)	/* don't write out default=0 */
 
 #define KERNEL_IMAGE	    (1 << 0)
 #define KERNEL_INITRD	    (1 << 2)
@@ -236,6 +239,7 @@ static struct grubConfig * readConfig(const char * inName) {
     cfg = malloc(sizeof(*cfg));
     cfg->primaryIndent = strdup("");
     cfg->secondaryIndent = strdup("\t");
+    cfg->flags = GRUB_CONFIG_NO_DEFAULT;
 
     /* copy everything we have */
     while (*head) {
@@ -265,12 +269,13 @@ static struct grubConfig * readConfig(const char * inName) {
 	if (line->type == LT_TITLE) {
 	    sawTitle = 1;
 	} else if (line->type == LT_DEFAULT && line->numElements == 2) {
-	  if (strncmp(line->elements[1].item, "saved", 5) == 0) {
-	    cfg->defaultImage = DEFAULT_SAVED;
-	  } else {
-	    cfg->defaultImage = strtol(line->elements[1].item, &end, 10);
-	    if (*end) cfg->defaultImage = -1;
-	  }
+	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
+	    if (strncmp(line->elements[1].item, "saved", 5) == 0) {
+	        cfg->defaultImage = DEFAULT_SAVED;
+	    } else {
+	        cfg->defaultImage = strtol(line->elements[1].item, &end, 10);
+	        if (*end) cfg->defaultImage = -1;
+	    }
 	}
     }
 
@@ -361,6 +366,16 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
     return 0;
 }
 
+static void writeDefault(FILE * out, char * tag, char * indent, 
+			 char * separator, int defaultImage, int flags) {
+    if (!defaultImage && flags == GRUB_CONFIG_NO_DEFAULT) return;
+
+    if (defaultImage > -1)
+	fprintf(out, "%s%s%s%d\n", indent, tag, separator, defaultImage);
+    else if (defaultImage == DEFAULT_SAVED)
+	fprintf(out, "%s%s%ssaved\n", indent, tag, separator);
+}
+
 static int writeConfig(struct grubConfig * cfg, const char * outName, 
 		       struct newKernelInfo * nki, const char * prefix) {
     FILE * out;
@@ -386,13 +401,11 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     while (line) {
 	if (!line->skip) {
 	    if (line->type ==LT_TITLE && needs){
-		if ((needs & MAIN_DEFAULT) && cfg->defaultImage > -1)
-		    fprintf(out, "%sdefault=%d\n", cfg->primaryIndent,
-			    cfg->defaultImage);
-		else if ((needs & MAIN_DEFAULT) && cfg->defaultImage == DEFAULT_SAVED)
-		    fprintf(out, "%sdefault=saved\n", cfg->primaryIndent);
-		needs = 0;
-
+		if (needs & MAIN_DEFAULT) {
+		    writeDefault(out, "default", cfg->primaryIndent, 
+				 "=", cfg->defaultImage, cfg->flags);
+		    needs &= ~MAIN_DEFAULT;
+		}
 	    }
 
 	    if (line->type == LT_TITLE && nki) {
@@ -400,16 +413,9 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 		nki = NULL;
 		lineWrite(out, line);
 	    } else if (line->type == LT_DEFAULT) {
-		if (cfg->defaultImage > -1) {
-		    fprintf(out, "%s%s%s%d\n", line->indent,
-			    line->elements[0].item,
-			    line->elements[0].indent, cfg->defaultImage);
-		    needs &= ~MAIN_DEFAULT;
-		} else if (cfg->defaultImage == DEFAULT_SAVED) {
-		    fprintf(out, "%sdefault%ssaved\n", line->indent,
-			 line->elements[0].indent);
-		    needs &= ~MAIN_DEFAULT;
-		}
+		writeDefault(out, "default", line->indent, 
+		    line->elements[0].indent, cfg->defaultImage, cfg->flags);
+		needs &= ~MAIN_DEFAULT;
 	    } else {
 		lineWrite(out, line);
 	    }
@@ -487,7 +493,7 @@ struct singleLine * findTitleByIndex(struct grubConfig * cfg, int index) {
 }
 
 /* Find a good template to use for the new kernel. An entry is
- * old good if the kernel and mkinitrd exist (even if the entry
+ * good if the kernel and mkinitrd exist (even if the entry
  * is going to be removed). Try and use the default entry, but
  * if that doesn't work just take the first. If we can't find one,
  * bail. */
