@@ -229,7 +229,7 @@ echo "" >> $RCFILE
 for MODULE in $MODULES; do
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
 
-    options=`sed -n -e "s/^options[ \t][ \t]*$module[ \t][ \t]*//p" /etc/conf.modules`
+    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" /etc/conf.modules`
 
     if [ -n "$verbose" ]; then
         echo "Loading module $module with options $options"
