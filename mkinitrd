@@ -466,9 +466,9 @@ fi
 rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
 if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
-    if ! grep "$key" $fstab > /dev/null; then
-	echo "The root filesystem is on a $rootdev, but there is no magic entry in $fstab" 1>&2
-	echo "for this device. Consult the mkinitrd man page for more information" 2>&2
+    if ! grep "$key" $fstab >> /dev/null; then
+	echo "The root filesystem is on a $rootdev, but there is no magic entry in $fstab" >&2
+	echo "for this device. Consult the mkinitrd man page for more information" >&2
 	exit 1
     fi
 
@@ -627,7 +627,7 @@ if [ -n "$root_lvm" -a "$kernelmajor" == "2.6" ]; then
     fi
 fi
 
-echo "#!/bin/nash" > $RCFILE
+echo "#!/bin/nash" >| $RCFILE
 echo "" >> $RCFILE
 
 echo "mount -t proc /proc /proc" >> $RCFILE
@@ -771,11 +771,11 @@ if [ -z "$initramfs" ]; then
   umount $MNTPOINT
   losetup -d $LODEV
 else
-  (cd $MNTIMAGE; find . | cpio --quiet -c -o) > $IMAGE || exit 1
+  (cd $MNTIMAGE; find . | cpio --quiet -c -o) >| $IMAGE || exit 1
 fi
 
 if [ -n "$compress" ]; then
-    gzip -9 < $IMAGE > $target || rc=1
+    gzip -9 < $IMAGE >| $target || rc=1
 else
     cp -a $IMAGE $target || rc=1
 fi
