@@ -23,7 +23,7 @@
 PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.4.44
+VERSION=3.4.44.1
 
 compress=1
 target=""
@@ -555,7 +555,7 @@ for MODULE in $MODULES; do
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
     if [ "$module" = "dasd_mod" ]; then
-        `cat /proc/cmdline | grep "dasd=" && options="$options `cat /proc/cmdline | sed 's/.*\(dasd=.*\).*/\1/'`"
+        options=$(cat /proc/cmdline | grep "dasd=" && options="$options `cat /proc/cmdline | sed 's/.*\(dasd=.*\).*/\1/'`")
     fi
  
     if [ -n "$verbose" ]; then

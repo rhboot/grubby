@@ -62,6 +62,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Mar 19 2003 Jeremy Katz <katzj@redhat.com> 3.4.44.1-1
+- fix dasd option reading
+
 * Fri Mar 14 2003 Phil Knirsch <pknirsch@redhat.com> 3.4.44
 - Added automatic dasd= parameters for kernel parameter on s390(x).
 
