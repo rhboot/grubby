@@ -181,7 +181,7 @@ int mountCommand(char * cmd, char * end) {
 	if (devName) {
 	    device = devName;
 	    if (access(device, F_OK)) {
-	        ptr = device + 5;
+	        ptr = device;
 		i = 0;
 		while (*ptr)
 		    if (*ptr++ == '/')
@@ -192,7 +192,10 @@ int mountCommand(char * cmd, char * end) {
 		    ptr = deviceDir + (strlen(device) - 1);
 		    while (*ptr != '/')
 			*ptr-- = '\0';
-		    mkdir(deviceDir, 0644);
+		    if (mkdir(deviceDir, 0644)) {
+		      printf("mkdir: cannot create directory %s\n", deviceDir);
+		      return 1;
+		    }
 		    mustRemoveDir = 1;
 		}
 		if (mknod(device, S_IFBLK | 0600, makedev(major, minor))) {
