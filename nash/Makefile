@@ -6,6 +6,7 @@ ARCH := $(patsubst sparc%,sparc,$(ARCH))
 
 ifeq (i386, $(ARCH))
 CC:=diet $(CC)
+CFLAGS += -DUSE_DIET=1
 else
 STATIC=-static
 endif
