@@ -55,8 +55,11 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Sun Aug 11 2002 Jeremy Katz <katzj@redhat.com>
+- fix grubby to work correctly on ia64
+
 * Thu Aug 08 2002 Michael Fulbright <msf@redhat.com>
-- added sleep command to nash and fixed createing initrd with / or /boot on usb
+- added sleep command to nash and fixed creating initrd with / or /boot on usb
 
 * Tue Jul 30 2002 Jeremy Katz <katzj@redhat.com>
 - grubby: adding kernels to lilo.conf when not using root=LABEL will work 

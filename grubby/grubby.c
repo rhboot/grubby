@@ -126,7 +126,11 @@ struct configFileInfo liloConfigType = {
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
+#ifdef __ia64__
+    1,			
+#else
     0,					    /* needsBootPrefix */
+#endif
     1,					    /* argsInQuotes */
 };
 
@@ -851,7 +855,7 @@ char * findBootPrefix(void) {
 
     stat("/", &sb);
 #ifdef __ia64__
-    stat("/boot/efi", &sb2);
+    stat("/boot/efi/redhat/", &sb2);
 #else
     stat("/boot", &sb2);
 #endif
@@ -859,7 +863,11 @@ char * findBootPrefix(void) {
     if (sb.st_dev == sb2.st_dev)
 	return strdup("");
 
+#ifdef __ia64__
+    return strdup("/boot/efi/redhat/");
+#else
     return strdup("/boot");
+#endif
 }
 
 void markRemovedImage(struct grubConfig * cfg, const char * image, 
