@@ -58,6 +58,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Dec 20 2004 Jeremy Katz <katzj@redhat.com> - 4.1.20-1
+- grubby: fix mac yaboot.conf updating if magicboot line is present
+
 * Mon Nov 22 2004 Jeremy Katz <katzj@redhat.com> - 4.1.19-1
 - remove use of dietlibc for nash
 
