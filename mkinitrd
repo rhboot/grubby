@@ -399,6 +399,10 @@ if [ -z "$noraid" -a -f /proc/mdstat ]; then
 	    findmodule linear
 	    startraid=1
 	    ;;
+	multipath)
+	    findmodule multipath
+	    startraid=1
+	    ;;
 	raid[0145])
 	    findmodule $level
 	    startraid=1
