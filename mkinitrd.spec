@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-Version: 2.9
+Version: 3.0
 Release: 1
 Copyright: GPL
 Group: System Environment/Base
@@ -41,6 +41,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
+* Tue Jan 23 2001 Matt Wilson <msw@redhat.com>
+- added patch from twaugh to avoid blindly adding scsi_mod
+  and sd_mod to initrd if they are not needed (#24114)
+
 * Thu Jan 11 2001 Bernhard Rosenkraenzer <bero@redhat.com>
 - Enlarge initrds, needed for systems with both IDE and SCSI
   (Bug #23846)
