@@ -983,6 +983,22 @@ int mkrootdevCommand(char * cmd, char * end) {
 	return 1;
     }
 
+    if (root && !strncpy(root, "UUID=", 5)) {
+        if (get_spec_by_uuid(root+5, &major, &minor)) {
+            if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
+                printf("mount: cannot create device %s (%d,%d)\n",
+                       path, major, minor);
+                return 1;
+            }
+
+            return 0;
+        }
+
+        printf("mkrootdev: UUID %s not found\n", root+5);
+
+        return 1;
+    }
+
     fd = open("/proc/sys/kernel/real-root-dev", O_RDONLY, 0);
     if (fd < 0) {
 	printf("mkrootdev: failed to open /proc/sys/kernel/real-root-dev: %d\n", errno);
