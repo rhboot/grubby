@@ -269,6 +269,8 @@ static int isBracketedTitle(struct singleLine * line) {
 /* figure out if this is a entry separator */
 static int isEntrySeparator(struct singleLine * line,
                             struct configFileInfo * cfi) {
+    if (line->type == LT_WHITESPACE)
+	return 0;
     if (line->type == cfi->entrySeparator)
         return 1;
     if (line->type == LT_OTHER)
