@@ -1,5 +1,5 @@
 CFLAGS=-O2 -Wall -DVERSION=\"$(VERSION)\"
-VERSION=0.1
+VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
 
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
