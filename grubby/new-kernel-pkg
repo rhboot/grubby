@@ -6,7 +6,7 @@
 # run of depmod/removal of depmod generated files
 # addition/removal of kernel images from grub/lilo configuration (via grubby)
 #
-# Copyright (C) 2002-2004 Red Hat, Inc.
+# Copyright (C) 2002-2005 Red Hat, Inc.
 # 
 
 PATH=/sbin:/bin:$PATH
@@ -73,11 +73,14 @@ moddep=""
 verbose=""
 makedefault=""
 package=""
+mbkernel=""
+mbargs=""
 
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
     echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
     echo "       [--kernel-args=<args>] [--banner=<banner>]" >&2
+    echo "       [--multiboot=multiboot] [--mbargs=mbargs]" >&2
     echo "       [--make-default] <--install | --remove> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -123,6 +126,15 @@ install() {
 	fi
     fi
 
+    if [ -n "$mbkernel" ]; then
+	mb="--add-multiboot=$mbkernel"
+	if [ -n "$mbargs" ]; then
+	    mb="$mb --mbargs=$mbargs"
+	fi
+	[ -n "$verbose" ] && echo "multiboot specified, not updating lilo.conf"
+	cfgLilo=""
+    fi
+
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
 
@@ -134,7 +146,7 @@ install() {
 	    title="Red Hat Linux ($version)"
 	fi
 	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD    \
-		     --copy-default $makedefault --title "$title"	    \
+		     --copy-default $makedefault $mb --title "$title"	    \
 		     --args="root=$rootdevice $kernargs"	    \
 		     --remove-kernel="TITLE=$title"                 
     else
@@ -258,6 +270,29 @@ while [ $# -gt 0 ]; do
 		banner=$2
 		shift
 	    fi		    
+	    ;;
+
+	--multiboot*)
+	    if echo $1 |grep '=' >/dev/null; then
+		mbkernel=`echo $1 | sed's/^--multiboot=//'`
+	    else
+		# don't you love bash arg parsing?
+		if `echo $2 |grep -q -- "--"`; then
+		    mbkernel=$2
+		    shift
+		else
+		    mbkernel="/boot/xen.gz"
+		fi
+	    fi
+	    ;;
+
+	--mbargs*)
+	    if echo $1 |grep '=' >/dev/null; then
+		mbargs=`echo $1 | sed's/^--mbargs=//'`
+	    else
+		mbargs=$2
+		shift
+	    fi
 	    ;;
 
 	--depmod)
