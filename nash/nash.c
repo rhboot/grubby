@@ -855,10 +855,12 @@ int mkdevicesCommand(char * cmd, char * end) {
 
     i = read(fd, buf, sizeof(buf));
     if (i < 1) {
+	close(fd);
 	printf("failed to read /proc/partitions: %d\n", errno);
 	return 1;
     }
     buf[i] = '\0';
+    close(fd);
 
     start = strchr(buf, '\n');
     if (start) {
