@@ -452,7 +452,7 @@ rm -rf $MNTPOINT/lost+found
 
 inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
-ln -s /bin/nash $MNTIMAGE/sbin/modprobe
+ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
     cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
