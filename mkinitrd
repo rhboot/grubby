@@ -128,7 +128,7 @@ findmodule() {
 	modName="sbp2"
     fi
     
-    fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o | /sbin/nash --quiet)`
+    fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o -type f | /sbin/nash --quiet)`
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
 	if [ -n "$skiperrors" ]; then
