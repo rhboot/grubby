@@ -48,6 +48,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Wed Jan 24 2001 Matt Wilson <msw@redhat.com>
 - code in RAID_AUTORUN ioctl fallback
+- fixed raidstart check flag from -z to -n
 
 * Tue Jan 23 2001 Erik Troan <ewt@redhat.com>
 - switched to using nash from sash

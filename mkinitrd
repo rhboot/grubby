@@ -18,7 +18,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.0.3
+VERSION=3.0.4
 
 compress=1
 target=""
@@ -379,7 +379,7 @@ if [ -n "$loopDev" ]; then
     echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
 fi
 
-if [ -z "$startraid" ]; then
+if [ -n "$startraid" ]; then
     cp -a /dev/md0 $MNTIMAGE/dev
     echo "raidautorun /dev/md0" >> $RCFILE
 fi
