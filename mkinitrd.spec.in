@@ -52,6 +52,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed Aug 29 2001 Erik Troan <ewt@redhat.com>
+- minor grubby fixes
+
 * Tue Aug 28 2001 Jeremy Katz <katzj@redhat.com>
 - let new-kernel-pkg be able to do more (initrds, modules.*)
 - include grubby only on x86
