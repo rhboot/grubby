@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Aug 23 2004 Karsten Hopp <karsten@redhat.de> 4.1.2-2
+- add support for zfcp devices (mainframe)
+
 * Thu Aug 19 2004 Jeremy Katz <katzj@redhat.com> - 4.1.1-1
 - don't remove lost+found (#130327)
 - don't try to mount/umount /sys on 2.4 (#130298)
