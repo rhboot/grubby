@@ -1,0 +1,6 @@
+default=0
+title xen
+	root (hd0,1)
+	kernel /xen.gz
+	module /vmlinuz-2.6.10-1.1082_FC4 ro root=/dev/hda3 rhgb quiet acpi=off
+	module /initrd-2.6.10-1.1082_FC4

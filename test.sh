@@ -291,5 +291,9 @@ grubTest grub.10 multiboot/g10.3 --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
 grubTest grub.10 multiboot/g10.4 --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
     --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo
 
+echo "GRUB remove multiboot..."
+grubTest grub.10 multiboot/g10.5 --remove-kernel=/boot/vmlinuz-2.6.10-1.1076_FC4
+grubTest grub.10 multiboot/g10.6 --remove-kernel=/boot/vmlinuz-2.6.10-1.1082_FC4
+grubTest grub.10 multiboot/g10.7 --remove-multiboot=/boot/xen.gz
 
 exit $RESULT
