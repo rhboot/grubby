@@ -60,9 +60,13 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Aug  4 2004 Jeremy Katz <katzj@redhat.com> - 4.0.1-1
+- improve handling of arguments to init with initramfs (#129057)
+
 * Mon Aug  2 2004 Jeremy Katz <katzj@redhat.com> - 4.0.0-1
 - create an initramfs on 2.6 kernels instead of an initrd
-- use new mount magic instead of pivot_root on 2.6 kernels
+- use new mount magic instead of pivot_root 
+  on 2.6 kernels
 - try to handle the case of modules going away on kernel upgrades a 
   little bit more nicely (#123994)
 - avoid over-zealous creation of /dev/mapper/control (#127115)

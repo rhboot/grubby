@@ -149,31 +149,36 @@ char * getArg(char * cmd, char * end, char ** arg) {
     return cmd;
 }
 
-/* get the start of a kernel arg "arg".  returns everything after it
- * (useful for things like getting the args to init=).  so if you only
- * want one arg, you need to terminate it at the n */
-static char * getKernelArg(char * arg) {
+/* get the contents of the kernel command line from /proc/cmdline */
+static char * getKernelCmdLine(void) {
     int fd, i;
     char buf[1024];
-    char * start;
 
     fd = open("/proc/cmdline", O_RDONLY, 0);
     if (fd < 0) {
-	printf("getKernelArg: failed to open /proc/cmdline: %d\n", errno);
+	printf("getKernelCmdLine: failed to open /proc/cmdline: %d\n", errno);
 	return NULL;
     }
 
     i = read(fd, buf, sizeof(buf));
     if (i < 0) {
-	printf("getKernelArg: failed to read /proc/cmdline: %d\n", errno);
+	printf("getKernelCmdLine: failed to read /proc/cmdline: %d\n", errno);
 	close(fd);
 	return NULL;
     }
 
     close(fd);
     buf[i - 1] = '\0';
+    return buf;
+}
 
-    start = buf;
+/* get the start of a kernel arg "arg".  returns everything after it
+ * (useful for things like getting the args to init=).  so if you only
+ * want one arg, you need to terminate it at the n */
+static char * getKernelArg(char * arg) {
+    char * start;
+
+    start = getKernelCmdLine();
     while (*start) {
 	if (isspace(*start)) {
 	    start++;
@@ -601,9 +606,9 @@ int switchrootCommand(char * cmd, char * end) {
     char * new;
     char * initprogs[] = { "/sbin/init", "/etc/init", 
                            "/bin/init", "/bin/sh", NULL };
-    char * init;
+    char * init, * cmdline = NULL;
     char * initargs[MAX_INIT_ARGS];
-    int fd;
+    int fd, i = 0;
 
     if (!(cmd = getArg(cmd, end, &new))) {
 	printf("switchroot: new root mount point expected\n");
@@ -626,6 +631,8 @@ int switchrootCommand(char * cmd, char * end) {
         close(fd);
 
     init = getKernelArg("init=");
+    if (init == NULL)
+        cmdline = getKernelCmdLine();
 
     if (mount(".", "/", NULL, MS_MOVE, NULL)) {
         printf("switchroot: mount failed: %d\n", errno);
@@ -647,12 +654,17 @@ int switchrootCommand(char * cmd, char * end) {
         }
     }
 
-    if (init != NULL) {
-        char * chptr, * start;
-        int i;
+    if (cmdline && init) {
+        initargs[i++] = init;
+    } else {
+        cmdline = init;
+    }
 
-        start = chptr = init;
-        for (i = 0; (i < MAX_INIT_ARGS) && (*start != '\0'); i++) {
+    if (cmdline != NULL) {
+        char * chptr, * start;
+
+        start = chptr = cmdline;
+        for (; (i < MAX_INIT_ARGS) && (*start != '\0'); i++) {
             while (*chptr && !isspace(*chptr)) chptr++;
             if (*chptr != '\0') *(chptr++) = '\0';
             initargs[i] = start;
