@@ -655,6 +655,10 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	    return 0;
     }
 
+    /* XXX should compare this against the label for this root device */
+    if (!strncmp(dev, "LABEL=", 6))
+	return 1;
+
     if (*dev == '/') {
 	if (stat(dev, &sb))
 	    return 0;
