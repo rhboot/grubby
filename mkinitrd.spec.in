@@ -44,11 +44,18 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 %attr(755,root,root) /sbin/nash
 %attr(644,root,root) %{_mandir}/man8/nash.8*
-%attr(755,root,root) /sbin/grubby
 %attr(755,root,root) /sbin/installkernel
 %attr(755,root,root) /sbin/new-kernel-pkg
+%ifarch i386 i586 i686 athlon
+%attr(755,root,root) /sbin/grubby
+%endif
+
 
 %changelog
+* Tue Aug 28 2001 Jeremy Katz <katzj@redhat.com>
+- let new-kernel-pkg be able to do more (initrds, modules.*)
+- include grubby only on x86
+
 * Mon Aug 27 2001 Jeremy Katz <katzj@redhat.com>
 - more grubby fixups for having a /boot
 - added new-kernel-pkg
