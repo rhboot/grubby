@@ -529,7 +529,7 @@ ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
     if [ -x /usr/bin/strip ]; then
-	/usr/bin/strip -g -v /lib/modules/$kernel/$MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
+	/usr/bin/strip -g $verbose /lib/modules/$kernel/$MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
     else
 	cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
     fi

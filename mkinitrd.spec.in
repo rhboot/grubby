@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Dec 24 2003 Jeremy Katz <katzj@redhat.com> 
+- quiet strip by default
+
 * Mon Dec 22 2003 Jeremy Katz <katzj@redhat.com> 3.5.16.1-1
 - make stripping less aggressive
 
