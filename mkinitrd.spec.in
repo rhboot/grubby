@@ -59,6 +59,15 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Sun Jan  5 2003 Jeremy Katz <katzj@redhat.com> 3.4.34-1
+- grubby: fix segfault finding default if default doesn't have a root= (#66000)
+- don't include usb modules by default.  pass --with-usb to get usb modules
+- make sure kudzu exists before trying to exec it
+- handle multiple scsi hosts being present (#77422)
+- add /usr/sbin to default path (#79581)
+- fix using --builtin= (#80448)
+- grubby: preserve the mode on config files (#80776)
+
 * Mon Dec 16 2002 Jeremy Katz <katzj@redhat.com>
 - errno fixes
 
