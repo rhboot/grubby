@@ -146,6 +146,10 @@ char * getArg(char * cmd, char * end, char ** arg) {
 	*arg = cmd;
 	while (!isspace(*cmd) && cmd < end) cmd++;
 	*cmd = '\0';
+	if (**arg == '$')
+            *arg = getenv(*arg+1);
+        if (*arg == NULL)
+            *arg = "";
     }
 
     cmd++;
@@ -436,7 +440,7 @@ int mountCommand(char * cmd, char * end) {
 int otherCommand(char * bin, char * cmd, char * end, int doFork) {
     char ** args;
     char ** nextArg;
-    int pid;
+    int pid, wpid;
     int status;
     char fullPath[255];
     static const char * sysPath = PATH;
@@ -512,10 +516,20 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 
 	close(stdoutFd);
 
-	wait4(-1, &status, 0, NULL);
-	if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-	    printf("ERROR: %s exited abnormally!\n", args[0]);
-	    return 1;
+	for (;;) {
+	     wpid = wait4(-1, &status, 0, NULL);
+	     if (wpid == -1) {
+		  printf("ERROR: Failed to wait for process %d\n", wpid);
+	     }
+
+	     if (wpid != pid)
+		  continue;
+
+	     if (!WIFEXITED(status) || WEXITSTATUS(status)) {
+		  printf("ERROR: %s exited abnormally! (pid %d)\n", args[0], pid);
+		  return 1;
+	     }
+	     break;
 	}
     }
 

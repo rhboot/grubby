@@ -58,6 +58,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Jan 21 2005 Peter Jones <pjones@redhat.com> - 4.2.0.3-1
+- Make nash expand environment variables on command lines (#144474)
+- Make nash check pids returned from wait*() (#145660)
+
 * Fri Jan 21 2005 Peter Jones <pjones@redhat.com> - 4.2.0.2-1
 - Make getArg return NULL on cmd=NULL, fixing #144472 .  Based on a
   patch from Kasper Dupont.
