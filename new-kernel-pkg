@@ -20,9 +20,14 @@ else
     grubby=/sbin/grubby
 fi
 
-if [ $(uname -m) = 'ia64' ]; then
+ARCH=$(uname -m)
+
+if [ $ARCH = 'ia64' ]; then
     liloConfig=/boot/efi/EFI/redhat/elilo.conf
     bootPrefix=/boot/efi/EFI/redhat
+elif [ $ARCH = 'ppc64' -o $ARCH = 'ppc32' ]; then
+    liloConfig=/etc/yaboot.conf
+    bootPrefix=/boot
 else
     liloConfig=/etc/lilo.conf
     bootPrefix=/boot
