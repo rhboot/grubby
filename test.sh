@@ -45,3 +45,11 @@ oneTest grub.5 results/fallback/5.2 --remove-kernel=/boot/vmlinuz-2.4.7-2.5 \
 oneTest grub.5 results/fallback/5.3 --remove-kernel=/boot/vmlinuz-2.4.7-2.5 \
     --boot-filesystem=/ --copy-default --add-kernel=/boot/new-kernel \
     --title="Some_Title"
+
+echo "GRUB kernel argument handling..."
+oneTest grub.1 results/args/1.1 --add-kernel=/boot/foo --title=some_title \
+    --args="1234" --copy-default
+oneTest grub.1 results/args/1.2 --add-kernel=/boot/foo --title=some_title \
+    --args="1234" 
+
+
