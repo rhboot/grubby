@@ -255,12 +255,18 @@ static char * strndup(char * from, int len) {
     return to;
 }
 
+static char * sdupprintf(const char *format, ...)
+#ifdef __GNUC__
+        __attribute__ ((format (printf, 1, 2)));
+#else
+        ;
+#endif
+
 static char * sdupprintf(const char *format, ...) {
     char *buf = NULL;
     char c;
     va_list args;
     size_t size = 0;
-
     va_start(args, format);
     
     /* XXX requires C99 vsnprintf behavior */
@@ -334,12 +340,16 @@ static int readFile(int fd, char ** bufPtr) {
 
     if (i < 0) {
 	fprintf(stderr, _("error reading input: %s\n"), strerror(errno));
+        free(buf);
 	return 1;
     }
 
     buf = realloc(buf, size + 2);
-    if (buf[size - 1] != '\n')
-	buf[size++] = '\n';
+    if (size == 0)
+        buf[size++] = '\n';
+    else 
+        if (buf[size - 1] != '\n')
+            buf[size++] = '\n';
     buf[size] = '\0';
 
     *bufPtr = buf;
