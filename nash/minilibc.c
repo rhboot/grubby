@@ -165,12 +165,12 @@ void printint(int i) {
     write(1, chptr + 1, j);
 }
 
-char * strchr(char * str, int ch) {
-    char * chptr;
+char * strchr(const char * str, int ch) {
+    const char * chptr;
 
     chptr = str;
     while (*chptr) {
-	if (*chptr == ch) return chptr;
+	if (*chptr == ch) return (char *) chptr;
 	chptr++;
     }
 

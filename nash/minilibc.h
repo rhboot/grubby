@@ -37,6 +37,11 @@ extern int errno;
 #include <asm/signal.h>
 
 #ifndef MINILIBC_INTERNAL
+
+#define X_OK	1
+#define W_OK	2
+#define R_OK	4
+
 static inline _syscall5(int,mount,const char *,spec,const char *,dir,const char *,type,unsigned long,rwflag,const void *,data);
 static inline _syscall5(int,_newselect,int,n,fd_set *,rd,fd_set *,wr,fd_set *,ex,struct timeval *,timeval);
 static inline _syscall4(int,wait4,pid_t,pid,int *,status,int,opts,void *,rusage)
@@ -45,6 +50,7 @@ static inline _syscall3(int,reboot,int,magic,int,magic_too,int,flag)
 static inline _syscall3(int,execve,const char *,fn,void *,argv,void *,envp)
 static inline _syscall3(int,read,int,fd,const char *,buf,unsigned long,count)
 static inline _syscall3(int,open,const char *,fn,int,flags,mode_t,mode)
+static inline _syscall2(int,access,const char *,fn,int,flags)
 static inline _syscall3(int,ioctl,int,fd,int,request,void *,argp)
 static inline _syscall2(int,dup2,int,one,int,two)
 static inline _syscall2(int,kill,pid_t,pid,int,sig)
@@ -112,6 +118,6 @@ int strcmp(const char * a, const char * b);
 int strncmp(const char * a, const char * b, int len);
 void printint(int i);
 void printf(char * fmt, ...);
-char * strchr(char * str, int ch);
+char * strchr(const char * str, int ch);
 char * strncpy(char * dst, const char * src, int len);
 void exit(int rc);
