@@ -1,0 +1,30 @@
+#! /bin/sh
+
+#
+# /sbin/installkernel  - written by tyson@rwii.com
+#
+
+INSTALL_PATH=/boot
+
+KERNEL_VERSION=$1
+BOOTIMAGE=$2
+MAPFILE=$3
+
+if [ -f $INSTALL_PATH/vmlinuz-$KERNEL_VERSION ]; then 
+      mv $INSTALL_PATH/vmlinuz-$KERNEL_VERSION \
+              $INSTALL_PATH/vmlinuz.old;
+fi
+
+if [ -f $INSTALL_PATH/System.map-$KERNEL_VERSION ]; then 
+      mv $INSTALL_PATH/System.map-$KERNEL_VERSION \
+              $INSTALL_PATH/System.map.old; 
+fi
+
+cat $BOOTIMAGE > $INSTALL_PATH/vmlinuz-$KERNEL_VERSION
+cp $MAPFILE $INSTALL_PATH/System.map-$KERNEL_VERSION
+
+ln -fs vmlinuz-$KERNEL_VERSION $INSTALL_PATH/vmlinuz
+ln -fs System.map-$KERNEL_VERSION $INSTALL_PATH/System.map
+
+if [ -x /sbin/lilo ]; then /sbin/lilo; else /etc/lilo/install; fi
+
