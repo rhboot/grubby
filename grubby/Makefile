@@ -1,4 +1,6 @@
-CFLAGS = -Wall -g $(RPM_OPT_FLAGS)
+VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
+
+CFLAGS = -Wall -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
 LDFLAGS = -g
 LOADLIBES = -lpopt
 
