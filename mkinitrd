@@ -409,23 +409,16 @@ fi
 
 dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null
 
-if [ -e /dev/.devfsd ]; then
-	LOOPDEV=/dev/loop/
-else
-	LOOPDEV=/dev/loop
-fi
+LODEV=$(echo findlodev $modName.o | /sbin/nash --quiet)
+echo loop: $LODEV
 
-for devnum in 0 1 2 3 4 5 6 7 8; do
-    if losetup ${LOOPDEV}${devnum} $IMAGE 2>/dev/null ; then break; fi
-done
-
-if [ "$devnum" = "8" ]; then
+if [ -z "$LODEV" ]; then
     rm -rf $MNTPOINT $IMAGE
-    echo "All of your loopback devices are in use!" >&2
+    echo "All of your loopback devices are in use." >&2
     exit 1
 fi
 
-LODEV=${LOOPDEV}${devnum}
+losetup ${LODEV} $IMAGE
 
 # We have to "echo y |" so that it doesn't complain about $IMAGE not
 # being a block device
