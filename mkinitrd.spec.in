@@ -3,7 +3,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -62,7 +62,7 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
-* Fri Mar 14 2003 Phil Knirsch <pknirsch@redhat.com> 3.4.43-2
+* Fri Mar 14 2003 Phil Knirsch <pknirsch@redhat.com> 3.4.44
 - Added automatic dasd= parameters for kernel parameter on s390(x).
 
 * Tue Mar  4 2003 Jeremy Katz <katzj@redhat.com> 3.4.43-1
