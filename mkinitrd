@@ -348,6 +348,7 @@ if [ -n "$loopDev" ]; then
 	mkdir /initrd
     fi
 
+    cp -a $loopDev $MNTIMAGE/dev
     cp -a $rootdev $MNTIMAGE/dev
     echo "echo Mounting device containing loopback root filesystem" >> $RCFILE
     echo "mount -t $loopFs $loopDev /loopfs" >> $RCFILE
