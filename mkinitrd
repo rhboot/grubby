@@ -31,7 +31,7 @@ if [ `uname -m` = "ia64" ]; then
 else
   IMAGESIZE=1500
 fi
-PRESCSIMODS="scsi_mod sd_mod"
+PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
 
 usage () {

@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.4.3
+%define version 2.4.4
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
+* Mon Jun 26 2000 Bill Nottingham <notting@redhat.com>
+- ignore 'unknown' aliases (they shouldn't be there anyways)
+
 * Thu Jun  1 2000 Bill Nottingham <notting@redhat.com>
 - build on ia64
 - bump up initrd size on ia64
