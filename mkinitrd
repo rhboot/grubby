@@ -60,7 +60,7 @@ findmodule() {
     fi
 
     # only need to add each module once
-    if ! grep $fmPath $MODULES >/dev/null 2>&1 ; then
+    if echo $MODULES | grep $fmPath >/dev/null 2>&1 ; then : ; else
 	MODULES="$MODULES $fmPath"
     fi
 }
