@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.0
+%define version 2.0.1
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Thu Jul 29 1999 Bill Nottingham <notting@redhat.com>
+- updates from bugzila (#4243, #4244)
+
 * Sat Mar 27 1999 Matt Wilson <msw@redhat.com>
 - --omit-scsi-modules now omits all scsi modules
 - updated documentation
