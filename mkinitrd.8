@@ -4,18 +4,18 @@
 mkinitrd \- creates initial ramdisk images for preloading modules
 .SH SYNOPSIS
 \fBmkinitrd\fR [-fv] [--with=\fImodule\fR] [--preload=\fImodule\fR] 
-         [--omit-scsi-modules] [--omit-raid-modules] 
-         [--version] [--fstab=\fIfstab\fR] \fIimage\fR 
+         [--omit-scsi-modules] [--omit-raid-modules] [--image-version]
+         [--nocompress] [--version] [--fstab=\fIfstab\fR] \fIimage\fR 
          \fIkernel-version\fR
 .SH DESCRIPTION
 \fBmkinitrd\fR creates filesystem images which are suitable for use
 as Linux initial ramdisk (initrd) images. Such images are often
 used for preloading the block device modules (such as IDE, SCSI or RAID)
 which are needed to access the root filesystem. \fBmkinitrd\fR
-automatically loads IDE modules, all \fIscsi_hostadapter\fR entries in
-\fI/etc/modules.conf\fR, and raid modules if the system's root partition
-is on raid, which makes it simple to build and use kernels using modular
-device drivers.
+automatically loads filesystem modules (such as ext3 and jbd), IDE modules, all
+\fIscsi_hostadapter\fR entries in \fI/etc/modules.conf\fR, and raid
+modules if the system's root partition is on raid, which makes it simple
+to build and use kernels using modular device drivers.
 
 Any module options specified in \fI/etc/modules.conf\fR are passed
 to the modules as they are loaded by the initial ramdisk.
@@ -47,6 +47,16 @@ root device is on. Normally, \fB/etc/fstab\fR is used.
 \fB-\-ifneeded
 Only builds the image if there are modules that need to be loaded at boot
 time.
+
+.UP
+\fB-\-image-version
+The kernel version number is appended to the initrd image path before the image
+is created.
+
+.UP
+\fB-\-nocompress
+Normally the created initrd image is compressed with \fBgzip\fR. If this
+option is specified, the compression is skipped.
 
 .TP
 \fB-\-omit-scsi-modules 
