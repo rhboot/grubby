@@ -275,16 +275,23 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 
 	chptr = start;
 	while (*chptr && !isspace(*chptr)) {
-	    if (first && *chptr == '=') break;
+	    if (first && *chptr == '=') break; 
 	    chptr++;
 	}
 	element->item = strndup(start, chptr - start);
 	start = chptr;
 
-	if (*start == '=')
-	    chptr = start + 1;
-	else
-	    for (chptr = start; *chptr && isspace(*chptr); chptr++) ;
+        /* lilo actually accepts the pathological case of append = " foo " */
+        if (*start == '=')
+            chptr = start + 1;
+        else 
+            chptr = start;
+
+        do {
+            for (; *chptr && isspace(*chptr); chptr++);
+            if (*chptr == '=')
+                chptr = chptr + 1;
+        } while (isspace(*chptr));
 
 	element->indent = strndup(start, chptr - start);
 	start = chptr;
