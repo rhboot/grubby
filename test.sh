@@ -1,9 +1,32 @@
 #!/bin/bash
 
-if [ `uname -m` = "ia64" ]; then
-    echo "no elilo.confs to run tests with yet"
-    exit 0
-fi
+ARCH=$(uname -m)
+
+elilotest=""
+lilotest=""
+grubtest=""
+zipltest=""
+yaboottest=""
+
+case "$ARCH" in
+    i?86)
+	lilotest="yes"
+	grubtest="yes"
+	;;
+    x86_64)
+	lilotest="yes"
+	grubtest="yes"
+	;;
+    ppc*)
+	yaboottest="yes"
+	;;
+    s390*)
+	zipltest="yes"
+	;;
+    *)
+	echo "Not running any tests for $ARCH"
+	exit 0
+esac
 
 export MALLOC_CHECK_=2
 
@@ -30,22 +53,27 @@ oneTest () {
 }
 
 liloTest() {
+    if [ -z "$lilotest" ]; then echo "skipping LILO test" ; return; fi
     oneTest --lilo "$@"
 }
 
 eliloTest() {
+    if [ -z "$elilotest" ]; then echo "skipping ELILO test" ; return; fi
     oneTest --elilo "$@"
 }
 
 grubTest() {
+    if [ -z "$grubtest" ]; then echo "skipping GRUB test" ; return; fi
     oneTest --grub "$@"
 }
 
 yabootTest() {
+    if [ -z "$yaboottest" ]; then echo "skipping YABOOT test" ; return; fi
     oneTest --yaboot "$@"
 }
 
 ziplTest() {
+    if [ -z "$zipltest" ]; then echo "skipping Z/IPL test" ; return; fi
     oneTest --zipl "$@"
 }
 
