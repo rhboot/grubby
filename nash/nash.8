@@ -34,14 +34,29 @@ Binds \fIfile\fR to the loopback device \fI/dev/loopdev\fR. See
 \fBlosetup(8)\fR for information on loopback devices.
 
 .TP
-\fBmount -t \fItype\fR \fIdevice\fR \fImntpoint\fR
+\fBmkrootdev \fIpath\fR
+Makes \fIpath\fR a block inode for the device whose device number is
+/proc/sys/kernel/real-root-dev.
+
+.TP
+\fBmount \fI[--ro] -t \fItype\fR \fIdevice\fR \fImntpoint\fR
 Mounts a filesystem. It does not support NFS, and it must be used in
-\fBexactly\fR the form given above.
+\fBexactly\fR the form given above. If \fI--ro\fR is given, the filesystem
+is mounted read only.
+
+.TP
+\fBpivot_root \fInewrootpath\fR \fIoldrootpath\fR
+Makes the filesystem mounted at \fInewrootpath\fR the new root filesystem,
+and mounts the current root filesystem as \fIoldrootpath\fR.
 
 .TP
 \fBraidautorun \fImddevice\fR
 Runs raid autodetection on all raid-typed partitions. \fImddevice\fR must
 be a raid device (any will do).
+
+.TP
+\fBumount \fIpath\fR
+Unmounts the filesystem mounted at \fIpath\fR.
 
 .SH OPTIONS
 .TP

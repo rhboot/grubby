@@ -129,9 +129,21 @@ void mountCommand(char * cmd, char * end) {
     char * fsType;
     char * device;
     char * mntPoint;
+    int readOnly = 0;
 
-    if (!(cmd = getArg(cmd, end, &fsType)) || strcmp(fsType, "-t")) {
-	printf("mount: -t must be first argument\n");
+    cmd = getArg(cmd, end, &fsType);
+    if (!cmd) {
+	printf("usage: mount [--ro] -t <type> <device> <mntpoint>\n");
+	return;
+    }
+
+    if (!strcmp(fsType, "--ro")) {
+	readOnly = MS_RDONLY;
+	cmd = getArg(cmd, end, &fsType);
+    }
+
+    if (!cmd || strcmp(fsType, "-t")) {
+	printf("mount: -t must be first argument (after --ro)\n");
 	return;
     }
 
@@ -155,10 +167,15 @@ void mountCommand(char * cmd, char * end) {
 	return;
     }
 
+    if (!strncmp("LABEL=", device, 6)) {
+	device += 6;
+    }
+
     if (testing) {
-	printf("mount -t '%s' '%s' '%s'\n", fsType, device, mntPoint);
+	printf("mount %s-t '%s' '%s' '%s'\n", readOnly ? "--ro " : "",
+		fsType, device, mntPoint);
     } else {
-	if (mount(device, mntPoint, fsType, MS_MGC_VAL, NULL)) {
+	if (mount(device, mntPoint, fsType, readOnly | MS_MGC_VAL, NULL)) {
 	    printf("mount: error %d mounting %s\n", errno, fsType);
 	}
     }
@@ -306,10 +323,34 @@ void raidautorunCommand(char * cmd, char * end) {
     }
 
     if (ioctl(fd, RAID_AUTORUN, 0)) {
-	printf("raidautorun: RAID_AUTORUN faileds: %d\n", errno);
+	printf("raidautorun: RAID_AUTORUN failed: %d\n", errno);
     }
 
     close(fd);
+}
+
+void pivotrootCommand(char * cmd, char * end) {
+    char * new;
+    char * old;
+
+    if (!(cmd = getArg(cmd, end, &new))) {
+	printf("pivotroot: new root mount point expected\n");
+	return;
+    }
+
+    if (!(cmd = getArg(cmd, end, &old))) {
+	printf("pivotroot: old root mount point expected\n");
+	return;
+    }
+
+    if (cmd < end) {
+	printf("pivotroot: unexpected arguments\n");
+	return;
+    }
+
+    if (pivot_root(new, old)) {
+	printf("pivotroot: pivot_root(%s,%s) failed: %d\n", new, old, errno);
+    }
 }
 
 void echoCommand(char * cmd, char * end) {
@@ -343,6 +384,69 @@ void echoCommand(char * cmd, char * end) {
     }
 
     write(outFd, "\n", 1);
+}
+
+void umountCommand(char * cmd, char * end) {
+    char * path;
+
+    if (!(cmd = getArg(cmd, end, &path))) {
+	printf("umount: path expected\n");
+	return;
+    }
+
+    if (cmd < end) {
+	printf("umount: unexpected arguments\n");
+	return;
+    }
+
+    if (umount(path)) {
+	printf("umount %s failed: %d\n", path, errno);
+    }
+}
+
+
+void mkrootdevCommand(char * cmd, char * end) {
+    char * path;
+    unsigned int devNum = 0;
+    int fd;
+    int i;
+    char buf[1024];
+
+    if (!(cmd = getArg(cmd, end, &path))) {
+	printf("mkrootdev: path expected\n");
+	return;
+    }
+
+    if (cmd < end) {
+	printf("mkrootdev: unexpected arguments\n");
+	return;
+    }
+
+    fd = open("/proc/sys/kernel/real-root-dev", O_RDONLY, 0);
+    if (fd < 0) {
+	printf("mkrootdev: failed to open /proc/sys/kernel/real-root-dev: %d\n", errno);
+	return;
+    }
+
+    i = read(fd, buf, sizeof(buf));
+    if (i < 0) {
+	printf("mkrootdev: failed to read real-root-dev: %d\n", errno);
+	close(fd);
+	return;
+    }
+
+    close(fd);
+    buf[i - 1] = '\0';
+
+    devNum = atoi(buf);
+    if (devNum < 0) {
+	printf("mkrootdev: bad device %s\n", buf);
+	return;
+    }
+
+    if (mknod(path, S_IFBLK | 0700, devNum)) {
+	printf("mkrootdev: mknod failed: %d\n", errno);
+    }
 }
 
 int runStartup(int fd) {
@@ -398,6 +502,12 @@ int runStartup(int fd) {
 	    echoCommand(chptr, end);
 	else if (!strncmp(start, "raidautorun", MAX(11, chptr - start)))
 	    raidautorunCommand(chptr, end);
+	else if (!strncmp(start, "pivot_root", MAX(10, chptr - start)))
+	    pivotrootCommand(chptr, end);
+	else if (!strncmp(start, "mkrootdev", MAX(9, chptr - start)))
+	    mkrootdevCommand(chptr, end);
+	else if (!strncmp(start, "umount", MAX(6, chptr - start)))
+	    umountCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    otherCommand(start, chptr + 1, end);
