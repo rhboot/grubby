@@ -336,6 +336,7 @@ mount -t ext2 $LODEV $MNTPOINT || {
 mkdir -p $MNTIMAGE
 mkdir -p $MNTIMAGE/lib
 mkdir -p $MNTIMAGE/bin
+mkdir -p $MNTIMAGE/sbin
 mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
 mkdir -p $MNTIMAGE/loopfs
@@ -346,6 +347,7 @@ rm -rf $MNTPOINT/lost+found
 
 inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
+ln -s /bin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
     cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
