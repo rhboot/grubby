@@ -5,7 +5,7 @@ Release: 1
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
-ExclusiveArch: i386 sparc sparc64 ia64 alpha ppc
+ExclusiveArch: i386 sparc sparc64 ia64 alpha ppc s390 s390x
 ExclusiveOs: Linux
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 BuildRoot: %{_tmppath}/%{name}-root
@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Fri Jun 08 2001 Florian La Roche <Florian.LaRoche@redhat.de>
+- add s390 s390x to the build archs
+
 * Fri Mar 23 2001 Matt Wilson <msw@redhat.com>
 - reset the state of findmodule after getting the modules we need
 
