@@ -33,7 +33,7 @@ usage () {
     echo "       [--omit-scsi-modules] [--omit-raid-modules] [--with=<module>]" >&2
     echo "       [--image-version] <initrd-image>" >&2
     echo "       <kernel>" >&2
-    echo "       (ex: `basename $0` /boot/initrd-2.2.5-15 2.2.5-15)" >&2
+    echo "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)" >&2
     exit 1
 }
 
