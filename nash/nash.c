@@ -92,6 +92,7 @@ int testing = 0, quiet = 0, reallyquiet = 0;
 
 char * env[] = {
     "PATH=" PATH,
+    "LVM_SUPPRESS_FD_WARNINGS=1",
     NULL
 };
 
