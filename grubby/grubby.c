@@ -109,6 +109,7 @@ struct keywordTypes liloKeywords[] = {
     { "root",	    LT_ROOT,	    '=' },
     { "default",    LT_DEFAULT,	    '=' },
     { "image",	    LT_KERNEL,	    '=' },
+    { "other",	    LT_KERNEL,	    '=' },
     { "initrd",	    LT_INITRD,	    '=' },
     { "append",	    LT_KERNELARGS,  '=' },
     { "boot",	    LT_BOOT,	    '=' },
