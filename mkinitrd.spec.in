@@ -11,6 +11,9 @@ ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm
 Requires: filesystem >= 2.1.0
+%ifarch i386
+BuildRequires: dietlibc
+%endif
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -59,6 +62,11 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Feb  4 2003 Jeremy Katz <katzj@redhat.com> 3.4.40-1
+- fix i2o module ordering (#83447)
+- ifarch'd build requires of dietlibc now that the build system has a way to
+  handle these
+
 * Sat Feb 01 2003 Florian La Roche <Florian.LaRoche@redhat.de>
 - change one test from a number to a string test that could otherwise
   fail in not properly setup chroot environments
