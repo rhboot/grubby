@@ -60,6 +60,14 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Aug  7 2003 Matt Wilson <msw@redhat.com> 3.5.9-1
+- add \n to error messages in grubby
+- NUL terminate buffer returned from readlink properly
+- symlinks are most likely relative, chdir to / before trying to
+  follow them
+- yaboot needs boot prefix
+- silo needs boot prefix too
+
 * Thu Jul 24 2003 Jeremy Katz <katzj@redhat.com> 
 - patch from zaitcev for uninitialized variable that can get hit in 
   the zipl case
