@@ -58,6 +58,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Jan 18 2005 Jeremy Katz <katzj@redhat.com> - 4.2.0-1
+- grubby: add multiboot support for xen0
+- new-kernel-pkg: likewise
+
 * Mon Dec 20 2004 Jeremy Katz <katzj@redhat.com> - 4.1.20-1
 - grubby: fix mac yaboot.conf updating if magicboot line is present
 
