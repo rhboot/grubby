@@ -46,6 +46,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Fri Jul 20 2001 Jeremy Katz <katzj@redhat.com>
+- skip errors finding jbd as a module if we're skipping them trying to find
+  ext3 so that you can build a kernel with ext3 built-in and still use an
+  initrd
+
 * Wed Jul 11 2001 Bill Nottingham <notting@redhat.com>
 - don't print errors if /etc/raidtab doesn't exist
 - or /etc/{modules.conf,conf.modules}, for that matter
