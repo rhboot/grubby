@@ -13,6 +13,7 @@
  * - Added XFS support
  */
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -170,7 +171,6 @@ uuidcache_init(void) {
 			int mustRemove = 0;
 			int mustRemoveDir = 0;
 			int i;
-			extern int errno;
 
 			sprintf(device, "%s/%s", DEVLABELDIR, ptname);
 			if (access(device, F_OK)) {
