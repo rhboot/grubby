@@ -12,7 +12,7 @@ timeout=10
 splashimage=(hd0,0)/grub/splash.xpm.gz
 title some_title
 	root (hd0,0)
-	kernel /foo 1234
+	kernel /foo ro root=/dev/sda1 1234
 title Red Hat Linux (2.4.7-2)
 	root (hd0,0)
 	kernel /vmlinuz-2.4.7-2 ro root=/dev/sda1
