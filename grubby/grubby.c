@@ -343,20 +343,20 @@ static int lineWrite(FILE * out, struct singleLine * line,
 		     struct configFileInfo * cfi) {
     int i;
 
-    fprintf(out, line->indent);
+    if (fprintf(out, line->indent) == -1) return -1;
 
     for (i = 0; i < line->numElements; i++) {
 	if (i == 1 && line->type == LT_KERNELARGS && cfi->argsInQuotes)
-	    fputc('"', out);
+	    if (fputc('"', out) == EOF) return -1;
 
-	fprintf(out, line->elements[i].item);
-	fprintf(out, line->elements[i].indent);
+	if (fprintf(out, line->elements[i].item) == -1) return -1;
+	if (fprintf(out, line->elements[i].indent) == -1) return -1;
     }
 
     if (line->type == LT_KERNELARGS && cfi->argsInQuotes)
-	fputc('"', out);
+	if (fputc('"', out) == EOF) return -1;
 
-    fprintf(out, "\n");
+    if (fprintf(out, "\n") == -1) return -1;
 
     return 0;
 }
@@ -737,6 +737,7 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
 		        tmpOutName, strerror(errno));
 		fclose(out);
 		unlink(tmpOutName);
+                return 1;
 	    }
 	} 
     }
@@ -752,7 +753,13 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
 			line->elements[0].item, line->elements[0].indent,
 			cfg->fallbackImage);
 	} else {
-	    lineWrite(out, line, cfg->cfi);
+	    if (lineWrite(out, line, cfg->cfi) == -1) {
+                fprintf(stderr, _("grubby: error writing %s: %s\n"),
+                        tmpOutName, strerror(errno));
+                fclose(out);
+                unlink(tmpOutName);
+                return 1;
+            }
 	}
 
 	line = line->next;
@@ -769,7 +776,13 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
 
 	line = entry->lines;
 	while (line) {
-	    lineWrite(out, line, cfg->cfi);
+	    if (lineWrite(out, line, cfg->cfi) == -1) {
+                fprintf(stderr, _("grubby: error writing %s: %s\n"),
+                        tmpOutName, strerror(errno));
+                fclose(out);
+                unlink(tmpOutName);
+                return 1;
+            }
 	    line = line->next;
 	}
     }
@@ -779,6 +792,7 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
 	    fprintf(stderr, _("grubby: error moving %s to %s: %s\n"),
 		    tmpOutName, outName, strerror(errno));
 	    unlink(outName);
+            return 1;
 	}
     }
 
