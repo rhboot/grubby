@@ -92,7 +92,7 @@ findmodule() {
 	modName="xfs"
     fi
 
-    fmPath=`(cd /lib/modules/$kernel; find -type f -name $modName.o)`
+    fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o | /sbin/nash --quiet)`
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
 	if [ -n "$skiperrors" ]; then
