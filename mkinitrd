@@ -501,6 +501,11 @@ if [ -n "$root_lvm" ]; then
 	findmodule -lvm-mod
     else
 	findmodule -dm-mod
+	# DM requires all of these to be there in case someone used the
+	# feature.  broken.  (#132001)
+	findmodule -dm-mirror
+	findmodule -dm-zero
+	findmodule -dm-snapshot
     fi
 fi
 
