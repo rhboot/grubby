@@ -1474,65 +1474,96 @@ int checkDeviceBootloader(const char * device, const unsigned char * boot) {
 }
 
 int checkLiloOnRaid(char * mdDev, const char * boot) {
-    FILE * f;
-    char line[500];
-    int inSection = 0;
+    int fd;
+    char buf[65536];
     char * end;
     char * chptr;
+    char * chptr2;
     int rc;
 
-    /* it's on raid; we need to parse /etc/raidtab and check all of the
+    /* it's on raid; we need to parse /proc/mdstat and check all of the
        *raw* devices listed in there */
-    if (!(f = fopen("/etc/raidtab", "r"))) {
-	fprintf(stderr, _("grubby: failed to open /etc/raidtab: %s\n"),
+
+    if (!strncmp(mdDev, "/dev/", 5))
+	mdDev += 5;
+
+    if ((fd = open("/proc/mdstat", O_RDONLY)) < 0) {
+	fprintf(stderr, _("grubby: failed to open /proc/mdstat: %s\n"),
 		strerror(errno));
 	return 2;
     }
 
-    while (fgets(line, sizeof(line), f)) {
-	chptr = line;
-	while (*chptr && isspace(*chptr)) chptr++;
-	if (!*chptr) continue;
+    rc = read(fd, buf, sizeof(buf) - 1);
+    if (rc < 0 || rc == (sizeof(buf) - 1)) {
+	fprintf(stderr, _("grubby: failed to read /proc/mdstat: %s\n"),
+		strerror(errno));
+	close(fd);
+	return 2;
+    }
+    close(fd);
+    buf[rc] = '\0';
 
-	if (!strncmp(chptr, "raiddev", 7) && isspace(*(chptr + 7))) {
-	    /* we're done! */
-	    if (inSection) break;
+    chptr = buf;
+    while (*chptr) {
+	end = strchr(chptr, '\n');
+	if (!end) break;
+	*end = '\0';
 
-	    chptr += 7;
+	if (!strncmp(chptr, mdDev, strlen(mdDev)) && 
+	    chptr[strlen(mdDev)] == ' ') {
+
+	    /* found the device */
+	    while (*chptr && *chptr != ':') chptr++;
+	    chptr++;
 	    while (*chptr && isspace(*chptr)) chptr++;
-	    if (!*chptr) continue;
 
-	    end = chptr;
-	    while (*end != '\n' && *end) end++;
-	    *end = '\0';
-
-	    if (!strcmp(mdDev, chptr))
-		inSection = 1;
-	} else if (inSection && !strncmp(chptr, "device", 6) && 
-		   isspace(*(chptr + 6))) {
-	    chptr += 6;
-
+	    /* skip the "active" bit */
+	    while (*chptr && !isspace(*chptr)) chptr++;
 	    while (*chptr && isspace(*chptr)) chptr++;
-	    if (!*chptr || *chptr != '/') continue;
 
-	    end = chptr;
-	    while (*end != '\n' && *end) end++;
-	    end--;
-	    while (isdigit(*end)) end--;
-	    end++;
-	    *end = '\0';
+	    /* skip the raid level */
+	    while (*chptr && !isspace(*chptr)) chptr++;
+	    while (*chptr && isspace(*chptr)) chptr++;
 
-	    rc = checkDeviceBootloader(chptr, boot);
-	    if (rc != 2) {
-		fclose(f);
-		return rc;
+	    /* everything else is partition stuff */
+	    while (*chptr) {
+		chptr2 = chptr;
+		while (*chptr2 && *chptr2 != '[') chptr2++;
+		if (!*chptr2) break;
+
+		/* yank off the numbers at the end */
+		chptr2--;
+		while (isdigit(*chptr2) && chptr2 > chptr) chptr2--;
+		chptr2++;
+		*chptr2 = '\0';
+
+		/* Better, now we need the /dev/ back. We're done with
+		 * everything before this point, so we can just put
+		 * the /dev/ part there. There will always be room. */
+		memcpy(chptr - 5, "/dev/", 5);
+		rc = checkDeviceBootloader(chptr - 5, boot);
+		if (rc != 2) {
+		    return rc;
+		}
+
+		chptr = chptr2 + 1;
+		/* skip the [11] bit */
+		while (*chptr && !isspace(*chptr)) chptr++;
+		/* and move to the next one */
+		while (*chptr && isspace(*chptr)) chptr++;
 	    }
-        }
+
+	    /*  we're good to go */
+	    return 2;
+	}
+
+	chptr = end + 1;
     }
 
-    fclose(f);
-
-    return 2;
+    fprintf(stderr, 
+	    _("grubby: raid device /dev/%s not found in /proc/mdstat\n"),
+	    mdDev);
+    return 0;
 }
 
 int checkForLilo(struct grubConfig * config) {
@@ -1566,7 +1597,7 @@ int checkForLilo(struct grubConfig * config) {
     close(fd);
 
     if (!strncmp("/dev/md", line->elements[1].item, 7))
-	return checkDeviceBootloader(line->elements[1].item, boot);
+	return checkLiloOnRaid(line->elements[1].item, boot);
 
     return checkDeviceBootloader(line->elements[1].item, boot);
 }
