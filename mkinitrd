@@ -389,35 +389,31 @@ if [ -n "$dasd" ]; then
 fi
 
 if [ -z "$noraid" ]; then
-    # load appropriate raid devices if necessary, this means that the
-    # /etc/raidtab *must* be up to date for raided root to work.
-    #if grep '^/dev/md' $fstab | grep -v noauto >/dev/null 2>&1 ; then
-	# note that this grep below contains a space and a tab
-	for number in $(grep '^[	 ]*raid-level' /etc/raidtab \
-		  2>/dev/null | awk '{print $2}' | LC_ALL=C sort -u) ; do
-	    case $number in
-	    linear)
-		findmodule -md
-		findmodule linear
-		startraid=1
-		;;
-	    [014])
-		findmodule -md
-		findmodule raid$number
-		startraid=1
-		;;
-	    5)
-		findmodule -md
+    # load appropriate raid devices if necessary -- we'll load whatever
+    # /proc/mdstat suggests
+
+    # note that the awk below contains a space and a tab
+    for level in $(awk '/^md[0-9][0-9]*[ 	]*:/ { print $4 }' \
+		    /proc/mdstat | sort -u); do
+	case $level in
+	linear)
+	    findmodule -md
+	    findmodule linear
+	    startraid=1
+	    ;;
+	raid[0145])
+	    findmodule -md
+	    if [ $level == raid5 ]; then
 		findmodule -xor
-		findmodule raid$number
-		startraid=1
-		;;
-	    *)
-		echo "raid level $number (in /etc/raidtab) not recognized" >&2
-		;;
-	    esac
-	done
-    #fi
+	    fi
+	    findmodule $level
+	    startraid=1
+	    ;;
+	*)
+	    echo "raid level $level (in /proc/mdstat) not recognized" >&2
+	    ;;
+	esac
+    done
 fi
 
 # check to see if we need to set up a loopback filesystem
