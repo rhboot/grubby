@@ -346,7 +346,8 @@ static struct grubConfig * readConfig(const char * inName,
     struct singleLine * last = NULL, * line, * defaultLine = NULL;
     char * end;
     struct singleEntry * entry = NULL;
-    int i;
+    int i, len;
+    char * buf;
 
     if (!strcmp(inName, "-")) {
 	in = 0;
@@ -403,12 +404,38 @@ static struct grubConfig * readConfig(const char * inName,
 	    entry->skip = 0;
 	    entry->lines = NULL;
 	    entry->next = NULL;
-	} else if (line->type == LT_DEFAULT && line->numElements == 2) {
+	}
+
+	if (line->type == LT_DEFAULT && line->numElements == 2) {
 	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 	    defaultLine = line;
 	} else if (line->type == LT_FALLBACK && line->numElements == 2) {
 	    cfg->fallbackImage = strtol(line->elements[1].item, &end, 10);
 	    if (*end) cfg->fallbackImage = -1;
+	} else if (line->type == LT_TITLE && line->numElements > 1) {
+	    /* make the title a single argument (undoing our parsing) */
+	    len = 0;
+	    for (i = 1; i < line->numElements; i++) {
+		len += strlen(line->elements[i].item);
+		len += strlen(line->elements[i].indent);
+	    }
+	    buf = malloc(len + 1);
+	    *buf = '\0';
+
+	    for (i = 1; i < line->numElements; i++) {
+		strcat(buf, line->elements[i].item);
+		free(line->elements[i].item);
+
+		if ((i + 1) != line->numElements) {
+		    strcat(buf, line->elements[i].indent);
+		    free(line->elements[i].indent);
+		}
+	    }
+
+	    line->elements[1].indent = 
+		    line->elements[line->numElements - 1].indent;
+	    line->elements[1].item = buf;
+	    line->numElements = 2;
 	} else if (line->type == LT_KERNELARGS && cfi->argsInQuotes) {
 	    /* Strip off any " which may be present; they'll be put back
 	       on write. This is one of the few (the only?) places that grubby
@@ -651,13 +678,33 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
     struct singleLine * line;
     int i;
     char * chptr;
-    int indexVar;
+    enum lineType_e checkType = LT_KERNEL;
 
-    indexVar = strtol(kernel, &chptr, 10);
-    if (!*chptr) {
-	if (index && *index > indexVar) return NULL;
+    if (isdigit(*kernel)) {
+	int * indexVars = alloca(sizeof(*indexVars) * strlen(kernel));
 
-	entry = findEntryByIndex(config, indexVar);
+	i = 0;
+	indexVars[i] = strtol(kernel, &chptr, 10);
+	while (*chptr == ',') {
+	    i++;
+	    kernel = chptr + 1;
+	    indexVars[i] = strtol(kernel, &chptr, 10);
+	}
+
+	if (*chptr) {
+	    /* can't parse it, bail */
+	    return NULL;
+	}
+
+	indexVars[i + 1] = -1;
+	
+	i = 0;
+	if (index) {
+	    while (indexVars[i] < *index) i++;
+	    if (indexVars[i] == -1) return NULL;
+	}
+
+	entry = findEntryByIndex(config, indexVars[i]);
 	if (!entry) return NULL;
 
 	line = entry->lines;
@@ -666,7 +713,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 
 	if (!line) return NULL;
 
-	if (*index) *index = indexVar;
+	if (index) *index = indexVars[i];
 	return entry;
     }
     
@@ -699,12 +746,15 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	else
 	    i = 0;
 
-	while ((entry = findEntryByIndex(config, i))) {
-	    /* entries can't be removed in this mode; don't need to check
-	       entry->skip */
+	if (!strncmp(kernel, "TITLE=", 6)) {
+	    prefix = "";
+	    checkType = LT_TITLE;
+	    kernel += 6;
+	}
 
+	while ((entry = findEntryByIndex(config, i))) {
 	    line = entry->lines;
-	    while (line && line->type != LT_KERNEL) line=line->next;
+	    while (line && line->type != checkType) line=line->next;
 
 	    if (line && line->numElements >= 2 && !entry->skip &&
 	        !strcmp(line->elements[1].item, kernel + strlen(prefix)))

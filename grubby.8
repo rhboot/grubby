@@ -26,12 +26,13 @@ Intel ia64 platforms, \fBlilo\fR mode is used (elilo is almost entirely
 configuration compatible with lilo) and the default location for the
 configuration file is \fB/boot/grub/grub.conf\fR.
 
-When a kernel path is specified for the \fB-\-info\fR, 
-\fB-\-remove-kernel\fR, or \fB-\-update-kernel\fR,
-\fBDEFAULT\fR selects the default kernel entry and
-\fBALL\fR selects all of the kernel entries. If a number is used for
-the kernel path the entry specified by the number is selected. All of the
-valid indexes are display when \fB-\-info=ALL\fR is used.
+There are a number of ways to specify the kernel used for \fB-\-info\fR,
+\fB-\-remove-kernel\fR, and \fB-\-update-kernel\fR. Specificying \fBDEFAULT\fR
+or \fBALL\fR selects the default entry and all of the entries, respectively.
+If a comma separated list of numbers is given, the boot entries indexed
+by those numbers are selected. Finally, the title of a boot entry may
+be specified by using \fBTITLE=\fItitle\fR as the argument; all entries
+with that title are used.
 
 .SH OPTIONS
 .TP
@@ -127,7 +128,9 @@ filesystem configuration.
 
 .TP
 \fB-\-remove-kernel\fR=\fIkernel-path\fR
-Removes all boot entries which match \fIkernel-path\fR.
+Removes all boot entries which match \fIkernel-path\fR. This may be used
+along with -\-add-kernel, in which case the new kernel being added will
+never be removed.
 
 .TP
 \fB-\-set-default\fR=\fIkernel-path\fR
