@@ -2,14 +2,14 @@ Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 %define version 2.4.1
 Version: %{version}
-Release: 2
+Release: 3
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
 ExclusiveArch: i386 sparc sparc64
 ExclusiveOs: Linux
 Requires: sash >= 3.4 e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static /sbin/losetup
-BuildRoot: /var/tmp/%{name}-root
+BuildRoot: %{_tmppath}/%{name}-root
 
 %description
 Mkinitrd creates filesystem images for use as initial ramdisk (initrd)
@@ -39,9 +39,12 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 %attr(755,root,root) /sbin/mkinitrd
-%attr(644,root,root) /usr/man/man8/mkinitrd.8.gz
+%attr(644,root,root) /usr/man/man8/mkinitrd.8*
 
 %changelog
+* Tue May  2 2000 Nalin Dahyabhai <nalin@redhat.com>
+- make RPM pick up man page, regardless of compression
+
 * Tue Feb 29 2000 Matt Wilson <msw@redhat.com>
 - add requirement for /sbin/losetup
 
