@@ -16,7 +16,7 @@ nash: nash.o mount_by_label.o
 	$(CC) $(STATIC) -g $(LDFLAGS) -o $@ nash.o mount_by_label.o
 
 clean:
-	rm -f nash $(MINILIBC) nash.o
+	rm -f nash $(MINILIBC) nash.o mount_by_label.o
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
