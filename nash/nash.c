@@ -22,6 +22,7 @@
    well, argument parsing is screwy. */
 
 #include <ctype.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <net/if.h>
@@ -563,6 +564,74 @@ int accessCommand(char * cmd, char * end) {
     return 0;
 }
 
+int doFind(char * dirName, char * name) {
+    struct stat sb;
+    DIR * dir;
+    struct dirent * d;
+    char * strBuf = alloca(strlen(dirName) + 1024);
+
+    if (!(dir = opendir(dirName))) {
+	fprintf(stderr, "error opening %s: %d\n", dirName, errno);
+	return 0;
+    }
+
+    errno = 0;
+    while ((d = readdir(dir))) {
+	errno = 0;
+
+	strcpy(strBuf, dirName);
+	strcat(strBuf, "/");
+	strcat(strBuf, d->d_name);
+
+	if (!strcmp(d->d_name, name))
+	    printf("%s\n", strBuf);
+
+	if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) {
+	    errno = 0;
+	    continue;
+	}
+
+	if (lstat(strBuf, &sb)) {
+	    fprintf(stderr, "failed to stat %s: %d\n", strBuf, errno);
+	    errno = 0;
+	    continue;
+	}
+
+	if (S_ISDIR(sb.st_mode))
+	    doFind(strBuf, name);
+    }
+
+    if (errno) {
+	closedir(dir);
+	printf("error reading from %s: %d\n", dirName, errno);
+	return 1;
+    }
+
+    closedir(dir);
+
+    return 0;
+}
+
+int findCommand(char * cmd, char * end) {
+    char * dir;
+    char * name;
+
+    cmd = getArg(cmd, end, &dir);
+    if (cmd) cmd = getArg(cmd, end, &name);
+    if (cmd && strcmp(name, "-name")) {
+	printf("usage: find [path] -name [file]\n");
+	return 1;
+    }
+
+    if (cmd) cmd = getArg(cmd, end, &name);
+    if (!cmd) {
+	printf("usage: find [path] -name [file]\n");
+	return 1;
+    }
+
+    return doFind(dir, name);
+}
+
 int runStartup(int fd) {
     char contents[32768];
     int i;
@@ -629,6 +698,8 @@ int runStartup(int fd) {
 	    rc = mkdirCommand(chptr, end);
 	else if (!strncmp(start, "access", MAX(6, chptr - start)))
 	    rc = accessCommand(chptr, end);
+	else if (!strncmp(start, "find", MAX(4, chptr - start)))
+	    rc = findCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);
