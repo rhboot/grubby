@@ -18,14 +18,12 @@
 #       Trond Eivind Glomsrød <teg@redhat.com>
 #       Jeremy Katz <katzj@redhat.com>
 #       Preston Brown <pbrown@redhat.com>
-#	Bill Nottingham <notting@redhat.com>
-#       Guillaume Cottenceau <gc@mandrakesoft.com>
 
 
-PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
+PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.5.14
+VERSION=3.4.24
 
 compress=1
 target=""
@@ -39,10 +37,10 @@ pivot=1
 modulefile=/etc/modules.conf
 rc=0
 
-if [ `uname -m` = "i386" ]; then
-  IMAGESIZE=4000
-else
+if [ `uname -m` = "ia64" ]; then
   IMAGESIZE=8000
+else
+  IMAGESIZE=3000
 fi
 PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
@@ -57,24 +55,6 @@ usage () {
     exit 1
 }
 
-moduledep() {
-    if [ ! -f "/lib/modules/$kernel/modules.dep" ]; then
-	echo "No dep file found for kernel $kernel" >&2
-	exit 1
-    fi
-
-    [ -n "$verbose" ] && echo -n "Looking for deps of module $1"
-    deps=$(awk 'BEGIN { searched=ARGV[2]; ARGV[2]=""; rc=1 } \
-                function modname(filename) { match(filename, /\/([^\/]+)\.k?o/, ret); return ret[1] } \
-                function show() { if (orig == searched) { print dep; orig=""; rc=0; exit } } \
-                /^\/lib/ { show(); \
-                           orig=modname($1); \
-                           if ($2) { dep=modname($2) } else { dep="" } } \
-                /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
-                END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
-    [ -n "$verbose" ] && echo -e "\t$deps"
-}
-
 findmodule() {
     skiperrors=""
 
@@ -83,9 +63,9 @@ findmodule() {
 	shift
     fi
 
-    local modName=$1
+    modName=$1
 
-    if [ "$modName" = "off" -o "$modName" = "null" ]; then
+    if [ modName = "off" -o modName = "null" ]; then
 	return
     fi
 
@@ -94,47 +74,55 @@ findmodule() {
 	modName=$(echo $modName | cut -b2-)
     fi
 
-    if echo $builtins | egrep -q '(^| )'$modName'( |$)' ; then
+    if [ $(echo $builtins | egrep '(^| )'$modName'( |$)' ) ]; then
 	[ -n "$verbose" ] && echo "module $modName assumed to be built in"
 	set +x
 	return
     fi
 
-    # special cases
     if [ "$modName" = "i2o_block" ]; then
-	findmodule i2o_core
 	findmodule i2o_pci
+	findmodule i2o_core
 	modName="i2o_block"
-    elif [ "$modName" = "ppa" ]; then
+    fi
+
+    if [ "$modName" = "mptscsih" ]; then
+        findmodule mptbase
+	modName="mptscsih"
+    fi
+
+    if [ "$modName" = "pluto" ]; then
+	findmodule fc4
+	findmodule soc
+	modName="pluto"
+    fi
+
+    if [ "$modName" = "fcal" ]; then
+	findmodule fc4
+	findmodule socal
+	modName="fcal"
+    fi
+
+    if [ "$modName" = "ext3" ]; then
+	findmodule $skiperrors mbcache
+	findmodule $skiperrors jbd
+	modName="ext3"
+    fi
+
+    if [ "$modName" = "xfs" ]; then
+	findmodule $skiperrors pagebuf
+	findmodule $skiperrors xfs_support
+	findmodule $skiperrors xfs_dmapi
+	modName="xfs"
+    fi
+
+    if [ "$modName" = "ppa" ]; then
 	findmodule parport
 	findmodule parport_pc
 	modName="ppa"
-    elif [ "$modName" = "sbp2" ]; then
-	findmodule ieee1394
-	findmodule ohci1394
-	modName="sbp2"
-    else
-	moduledep $modName
-	for i in $deps; do
-	    findmodule $i
-	done
     fi
 
-    for modExt in o.gz o ko ; do
-	if [ -d /lib/modules/$kernel/updates ]; then
-	    fmPath=`(cd /lib/modules/$kernel/updates; echo find . -name $modName.$modExt -type f | /sbin/nash --quiet) | /bin/awk {'print $1; exit;'}`
-	fi
-	
-	if [ -f /lib/modules/$kernel/updates/$fmPath ]; then
-	    fmPath=updates/$fmPath
-	    break
-	fi
-
-	fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.$modExt -type f | /sbin/nash --quiet) | /bin/awk {'print $1; exit;'}`
-	if [ -f /lib/modules/$kernel/$fmPath ]; then
-	    break
-	fi
-    done
+    fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o | /sbin/nash --quiet)`
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
 	if [ -n "$skiperrors" ]; then
@@ -148,12 +136,12 @@ findmodule() {
 	    fi
 	done;
     
-	echo "No module $modName found for kernel $kernel, aborting." >&2
+	echo "No module $modName found for kernel $kernel" >&2
 	exit 1
     fi
 
     # only need to add each module once
-    if ! echo $MODULES | grep -q "$fmPath" 2>/dev/null ; then
+    if echo $MODULES | grep $fmPath >/dev/null 2>&1 ; then : ; else
 	MODULES="$MODULES $fmPath"
     fi
 }
@@ -170,7 +158,7 @@ inst() {
 while [ $# -gt 0 ]; do
     case $1 in
 	--fstab*)
-	    if echo $1 | grep -q '=' ; then
+	    if echo $1 | grep '=' >/dev/null ; then
 	    	fstab=`echo $1 | sed 's/^--fstab=//'`
 	    else
 		fstab=$2
@@ -178,12 +166,8 @@ while [ $# -gt 0 ]; do
 	    fi		    
 	    ;;
 
-	--with-usb)
-	    withusb=yes
-	    ;;
-
 	--with*)
-	    if echo $1 | grep -q '=' ; then
+	    if echo $1 | grep '=' >/dev/null ; then
 	    	modname=`echo $1 | sed 's/^--with=//'`
 	    else
 		modname=$2
@@ -194,8 +178,8 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--builtin*)
-	    if echo $1 | grep -q '=' ; then
-	    	modname=`echo $1 | sed 's/^--builtin=//'`
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	modname=`echo $1 | sed 's/^--builtins=//'`
 	    else
 		modname=$2
 		shift
@@ -228,7 +212,7 @@ while [ $# -gt 0 ]; do
 	    force=1
 	    ;;
 	--preload*)
-	    if echo $1 | grep -q '=' ; then
+	    if echo $1 | grep '=' >/dev/null ; then
 	    	modname=`echo $1 | sed 's/^--preload=//'`
 	    else
 		modname=$2
@@ -281,7 +265,7 @@ if [ ! -d /lib/modules/$kernel ]; then
     exit 1
 fi
 
-if [ $UID != 0 ]; then
+if [ $(id -u) != 0 ]; then
     echo "mkinitrd must be run as root"
     exit 1
 fi
@@ -292,7 +276,7 @@ for t in /tmp /var/tmp /root ${PWD}; do
     if [ ! -d $t ]; then continue; fi
     if ! echo access -w $t | /sbin/nash --quiet; then continue; fi
 
-    fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
+    fs=$(df -T $t 2>/dev/null | tail -1 | awk '{printf $2}')
     if [ "$fs" != "tmpfs" ]; then 
 	TMPDIR=$t
 	break
@@ -313,20 +297,18 @@ for n in $PREMODS; do
 done
 
 needusb=""
-if [ -n "$withusb" ]; then
+if [ -z "$nousb" ]; then
     # If / or /boot is on a USB device include the driver. With root by
     # label we could still get some odd behaviors
     for fs in / /boot ; do
 	esc=$(echo $fs | sed 's,/,\\/,g')
 	dev=$(mount | awk "/ on ${esc} / { print \$1 }" | sed 's/[0-9]*$//' | cut -d/ -f3)
 	if [ "$(echo $dev | cut -c1-2)" = sd ]; then
-          if [ `which kudzu 2>/dev/null` ]; then
 	    host=$(kudzu --probe -b scsi |
-	      gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) { print $2; exit; } }')
+	      gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) print $2; }') 
 	    if [ -d /proc/scsi/usb-storage-${host} ]; then
 		needusb=1
 	    fi
-          fi
 	fi
     done
 fi
@@ -334,6 +316,7 @@ fi
 if [ -n "$needusb" ]; then
     drivers=$(awk '/^alias usb-controller[0-9]* / { print $3}' < /etc/modules.conf)
     if [ -n "$drivers" ]; then
+	findmodule usbcore
 	for driver in $drivers; do
 	    findmodule $driver
 	done
@@ -349,7 +332,7 @@ if [ -z "$noscsi" ]; then
     fi
 
     if [ -f $modulefile ]; then
-	scsimodules=`grep "alias[[:space:]]scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
+	scsimodules=`grep scsi_hostadapter $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
 
 	if [ -n "$scsimodules" ]; then
 	    for n in $PRESCSIMODS; do
@@ -368,56 +351,60 @@ fi
 # If we have ide devices and module ide, do the right thing
 ide=/proc/ide/ide*
 if [ -n "$ide" ]; then
+    findmodule -ide-mod
+    findmodule -ide-probe-mod
     findmodule -ide-disk
 fi
 
 # If we use LVM, include lvm-mod
 if [ -z "$nolvm" ]; then
-    if [ -f /proc/lvm/global  ]; then
-        if  grep -q '^VG:' /proc/lvm/global ; then
-	    findmodule -lvm-mod
-        fi
+    if  $(grep '^VG:' /proc/lvm/global  >/dev/null 2>&1) ; then
+	findmodule -lvm-mod
     fi
 fi
 
 # If we have dasd devices, include the necessary modules (S/390)
-if [ -d /proc/dasd ]; then
+dasd=/proc/dasd/dev*
+if [ -n "$dasd" ]; then
     findmodule -dasd_mod
     findmodule -dasd_eckd_mod
     findmodule -dasd_fba_mod
 fi
 
-if [ -z "$noraid" -a -f /proc/mdstat ]; then
-    # load appropriate raid devices if necessary -- we'll load whatever
-    # /proc/mdstat suggests
-
-    # note that the awk below contains a space and a tab
-    for level in $(awk '/^md[0-9][0-9]*[ 	]*:/ { print $4 }' \
-		    /proc/mdstat | sort -u); do
-	case $level in
-	linear)
-	    findmodule linear
-	    startraid=1
-	    ;;
-	raid[0145])
-	    findmodule $level
-	    startraid=1
-	    ;;
-	*)
-	    echo "raid level $level (in /proc/mdstat) not recognized" >&2
-	    ;;
-	esac
-    done
-
-    if [ -n "$startraid" ]; then
-	raiddevices=$(awk '/^md[0-9][0-9]*[        ]*:/ { print $1 }' \
-			    /proc/mdstat | sort)
-    fi
+if [ -z "$noraid" ]; then
+    # load appropriate raid devices if necessary, this means that the
+    # /etc/raidtab *must* be up to date for raided root to work.
+    #if grep '^/dev/md' $fstab | grep -v noauto >/dev/null 2>&1 ; then
+	for number in $(grep '^[	]*raid-level' /etc/raidtab 2>/dev/null |
+			  awk '{print $2}' | LC_ALL=C sort -u) ; do
+	    case $number in
+	    linear)
+		findmodule -md
+		findmodule linear
+		startraid=1
+		;;
+	    [014])
+		findmodule -md
+		findmodule raid$number
+		startraid=1
+		;;
+	    5)
+		findmodule -md
+		findmodule -xor
+		findmodule raid$number
+		startraid=1
+		;;
+	    *)
+		echo "raid level $number (in /etc/raidtab) not recognized" >&2
+		;;
+	    esac
+	done
+    #fi
 fi
 
 # check to see if we need to set up a loopback filesystem
 rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
-if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
+if echo $rootdev | cut -d/ -f3 | grep loop >/dev/null; then
     key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
     if ! grep "$key" $fstab > /dev/null; then
 	echo "The root filesystem is on a $rootdev, but there is no magic entry in $fstab" 1>&2
@@ -436,10 +423,9 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     fi
     basicmodules="$basicmodules -${loopFs}"
 # check if the root fs is on a logical volume
-elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
-    rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
-    major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
-    [ "$major" != "58" ] || root_lvm=1
+elif ! echo $rootdev | cut -c1-6 |grep "LABEL=" >/dev/null ; then
+    major=`ls -l "$rootdev" | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
+    [ "$major" -ne 58 ] || root_lvm=1
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
@@ -447,10 +433,6 @@ rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
 
 # in case the root filesystem is modular
 findmodule -${rootfs}
-
-if [ -n "$root_lvm" ]; then
-    findmodule -lvm-mod
-fi
 
 for n in $basicmodules; do 
     findmodule $n
@@ -473,10 +455,10 @@ fi
 
 dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null || exit 1
 
-LODEV=$(echo findlodev | /sbin/nash --quiet)
+LODEV=$(echo findlodev $modName.o | /sbin/nash --quiet)
 
 if [ -z "$LODEV" ]; then
-    rm -rf $MNTIMAGE $MNTPOINT $IMAGE
+    rm -rf $MNTPOINT $IMAGE
     echo "All of your loopback devices are in use." >&2
     exit 1
 fi
@@ -531,9 +513,9 @@ done
 
 # FIXME -- this won't work if you're using devfs
 if [ -n "$root_lvm" ]; then
-    pvs=$(/sbin/pvscan | grep " PV " | /bin/awk {'print $5;'} |sed 's/"//g')
+    pvs=$(/sbin/lvmdiskscan |grep "0x8E" | /bin/awk {'print $3;'})
     for pv in $pvs; do
-	cp $verbose --parents -a $pv $MNTIMAGE/
+	cp -a $pv $MNTIMAGE/$pv
     done
 
     inst /sbin/vgwrapper "$MNTIMAGE/bin/vgwrapper"
@@ -548,8 +530,7 @@ echo "" >> $RCFILE
 
 for MODULE in $MODULES; do
     text=""
-    module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
-    fullmodule=`echo $MODULE | sed "s|.*/||"`
+    module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
 
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
@@ -559,8 +540,8 @@ for MODULE in $MODULES; do
 	fi
         echo "Loading module $module$text"
     fi
-    echo "echo \"Loading $fullmodule module\"" >> $RCFILE
-    echo "insmod /lib/$fullmodule $options" >> $RCFILE
+    echo "echo \"Loading $module module\"" >> $RCFILE
+    echo "insmod /lib/$module.o $options" >> $RCFILE
 
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
@@ -573,10 +554,8 @@ echo "echo Mounting /proc filesystem" >> $RCFILE
 echo "mount -t proc /proc /proc" >> $RCFILE
 
 if [ -n "$startraid" ]; then
-    for dev in $raiddevices; do
-	cp -a /dev/${dev} $MNTIMAGE/dev
-	echo "raidautorun /dev/${dev}" >> $RCFILE
-    done
+    cp -a /dev/md0 $MNTIMAGE/dev
+    echo "raidautorun /dev/md0" >> $RCFILE
 fi
 
 echo "echo Creating block devices" >> $RCFILE
@@ -615,7 +594,7 @@ fi
 
 chmod +x $RCFILE
 
-(cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -) || exit 1
+(cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -)
 
 umount $MNTPOINT
 losetup -d $LODEV
