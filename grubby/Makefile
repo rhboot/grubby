@@ -4,7 +4,8 @@ ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
 ARCH := $(patsubst ppc%,ppc,$(ARCH))
 
-CFLAGS = -Wall -Werror -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
+CFLAGS = -Wall -Werror -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\" \
+	-D_FORTIFY_SOURCE=2
 LDFLAGS = -g
 
 LOADLIBES = -lpopt
