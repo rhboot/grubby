@@ -52,6 +52,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri Dec  5 2003 Jeremy Katz <katzj@redhat.com> 3.2.6.2-1
+- fix typo
+
 * Thu Nov  6 2003 Jeremy Katz <katzj@redhat.com> 3.2.6.1-1
 - support for ata_piix
 

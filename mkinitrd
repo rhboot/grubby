@@ -19,7 +19,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.2.6.1
+VERSION=3.2.6.2
 
 compress=1
 target=""
@@ -56,7 +56,7 @@ findmodule() {
     fi
 
     if [ "$modName" = "ata_piix" ]; then
-	findModule libata
+	findmodule libata
 	modName="ata_piix"
     fi
 
