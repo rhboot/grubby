@@ -15,6 +15,7 @@ test:	all
 install:    all
 	mkdir -p $(BUILDROOT)/sbin
 	install -m 755 -s grubby $(BUILDROOT)/sbin
+	install -m 755 new-kernel-pkg $(BUILDROOT)/sbin
 
 clean:
 	rm -f grubby
