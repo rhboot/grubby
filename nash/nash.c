@@ -165,11 +165,11 @@ static char * getKernelCmdLine(void) {
 	return NULL;
     }
 
-    buf = malloc(1024);
+    buf = malloc(256);
     if (!buf)
         return buf;
 
-    i = read(fd, buf, 1024);
+    i = read(fd, buf, 256);
     if (i < 0) {
 	printf("getKernelCmdLine: failed to read /proc/cmdline: %d\n", errno);
 	close(fd);

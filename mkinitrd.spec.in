@@ -60,6 +60,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Aug 25 2004 Jeremy Katz <katzj@redhat.com> - 4.1.6-1
+- nash: fix another off by one (#130987)
+- nash: hack to fix ppc booting (#130928)
+
 * Tue Aug 25 2004 Karsten Hopp <karsten@redhat.com> - 4.1.5-1
 - fix zfcp handling
 
