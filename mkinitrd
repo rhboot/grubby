@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.24
+VERSION=3.9.90
 
 compress=1
 target=""
@@ -36,6 +36,7 @@ MODULES=""
 img_vers=""
 builtins=""
 pivot=1
+initramfs=""
 modulefile=/etc/modules.conf
 rc=0
 
@@ -283,8 +284,14 @@ if [ $UID != 0 ]; then
 fi
 
 kernelmajor=`echo $kernel | cut -d . -f 1,2`
-if [ "$kernelmajor" == "2.6" ]; then
+
+if [ "$kernelmajor" == "2.4" ]; then
+    if [ -n "$verbose" ]; then echo "Creating old-style initrd"; fi
+else
+    if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
     modulefile=/etc/modprobe.conf
+    initramfs=1
+    pivot=""
 fi
 
 # find a temporary directory which doesn't use tmpfs
@@ -484,40 +491,46 @@ fi
 
 MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
 IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
-MNTPOINT=`mktemp -d ${TMPDIR}/initrd.mnt.XXXXXX`
-RCFILE=$MNTIMAGE/linuxrc
+if [ -z "$initramfs" ]; then
+    MNTPOINT=`mktemp -d ${TMPDIR}/initrd.mnt.XXXXXX`
+    RCFILE=$MNTIMAGE/linuxrc
+else
+    RCFILE=$MNTIMAGE/init
+fi
 
-if [ -z "$MNTIMAGE" -o -z "$IMAGE" -o -z "$MNTPOINT" ]; then
+if [ -z "$MNTIMAGE" -o -z "$IMAGE" ]; then
     echo "Error creating temporaries.  Try again" >&2
     exit 1
 fi
 
-dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null || exit 1
+if [ -z "$initramfs" ]; then
+  dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null || exit 1
 
-LODEV=$(echo findlodev | /sbin/nash --quiet)
+  LODEV=$(echo findlodev | /sbin/nash --quiet)
 
-if [ -z "$LODEV" ]; then
+  if [ -z "$LODEV" ]; then
     rm -rf $MNTIMAGE $MNTPOINT $IMAGE
     echo "All of your loopback devices are in use." >&2
     exit 1
-fi
+  fi
 
-losetup ${LODEV} $IMAGE || exit 1
+  losetup ${LODEV} $IMAGE || exit 1
 
-# We have to "echo y |" so that it doesn't complain about $IMAGE not
-# being a block device
-echo y | mke2fs $LODEV $IMAGESIZE >/dev/null 2>/dev/null
-tune2fs -i0 $LODEV >/dev/null
+  # We have to "echo y |" so that it doesn't complain about $IMAGE not
+  # being a block device
+  echo y | mke2fs $LODEV $IMAGESIZE >/dev/null 2>/dev/null
+  tune2fs -i0 $LODEV >/dev/null
 
-if [ -n "$verbose" ]; then
-    echo "Using loopback device $LODEV"
-fi
+  if [ -n "$verbose" ]; then
+      echo "Using loopback device $LODEV"
+  fi
 
-mkdir -p $MNTPOINT
-mount -t ext2 $LODEV $MNTPOINT || {
+  mkdir -p $MNTPOINT
+  mount -t ext2 $LODEV $MNTPOINT || {
 	echo "Can't get a loopback device"
 	exit 1
-}
+  }
+fi
 
 mkdir -p $MNTIMAGE
 mkdir -p $MNTIMAGE/lib
@@ -531,7 +544,7 @@ mkdir -p $MNTIMAGE/sysroot
 ln -s bin $MNTIMAGE/sbin
 
 # We don't need this directory, so let's save space
-rm -rf $MNTPOINT/lost+found
+rmdir $MNTPOINT/lost+found >/dev/null 2>&1
 
 inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
@@ -651,7 +664,13 @@ fi
 
 echo "umount /sys" >> $RCFILE
 
-if [ -n "$pivot" ]; then
+if [ -n "$initramfs" ]; then
+    echo "echo Mounting root filesystem" >> $RCFILE
+    echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+    echo "echo Switching to new root" >> $RCFILE
+    echo "switchroot /sysroot" >> $RCFILE
+else 
+  if [ -n "$pivot" ]; then
     echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
 
     echo "echo Mounting root filesystem" >> $RCFILE
@@ -659,22 +678,28 @@ if [ -n "$pivot" ]; then
 
     echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
     echo "umount /initrd/proc" >> $RCFILE
-else
+  else
     echo "umount /proc" >> $RCFILE
+  fi
 fi
 
 chmod +x $RCFILE
 
-(cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -) || exit 1
+if [ -z "$initramfs" ]; then
+  (cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -) || exit 1
 
-umount $MNTPOINT
-losetup -d $LODEV
+  umount $MNTPOINT
+  losetup -d $LODEV
+else
+  (cd $MNTIMAGE; find . | cpio --quiet -c -o) > $IMAGE || exit 1
+fi
 
 if [ -n "$compress" ]; then
     gzip -9 < $IMAGE > $target || rc=1
 else
     cp -a $IMAGE $target || rc=1
 fi
-rm -rf $MNTIMAGE $MNTPOINT $IMAGE
+rm -rf $MNTIMAGE $IMAGE
+if [ -n "$MNTPOINT" ]; then rm -rf $MNTPOINT ; fi
 
 exit $rc

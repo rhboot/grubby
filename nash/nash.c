@@ -72,6 +72,10 @@
 #define MS_REMOUNT      32
 #endif
 
+#ifndef MS_MOVE
+#define MS_MOVE 8192
+#endif
+
 extern dev_t name_to_dev_t(char *name);
 
 #define MAX(a, b) ((a) > (b) ? a : b)
@@ -143,6 +147,46 @@ char * getArg(char * cmd, char * end, char ** arg) {
     while (isspace(*cmd)) cmd++;
 
     return cmd;
+}
+
+/* get the start of a kernel arg "arg".  returns everything after it
+ * (useful for things like getting the args to init=).  so if you only
+ * want one arg, you need to terminate it at the n */
+static char * getKernelArg(char * arg) {
+    int fd, i;
+    char buf[1024];
+    char * start;
+
+    fd = open("/proc/cmdline", O_RDONLY, 0);
+    if (fd < 0) {
+	printf("getKernelArg: failed to open /proc/cmdline: %d\n", errno);
+	return NULL;
+    }
+
+    i = read(fd, buf, sizeof(buf));
+    if (i < 0) {
+	printf("getKernelArg: failed to read /proc/cmdline: %d\n", errno);
+	close(fd);
+	return NULL;
+    }
+
+    close(fd);
+    buf[i - 1] = '\0';
+
+    start = buf;
+    while (*start) {
+	if (isspace(*start)) {
+	    start++;
+	    continue;
+	}
+	if (strncmp(start, arg, strlen(arg)) == 0) {
+            return start + strlen(arg);
+        }
+	while (*++start && !isspace(*start))
+	    ;
+    }
+
+    return NULL;
 }
 
 int mountCommand(char * cmd, char * end) {
@@ -549,6 +593,78 @@ int pivotrootCommand(char * cmd, char * end) {
     return 0;
 }
 
+#define MAX_INIT_ARGS 32
+/* 2.6 magic not-pivot-root but kind of similar stuff.
+ * This is based on code from klibc/utils/run_init.c
+ */
+int switchrootCommand(char * cmd, char * end) {
+    char * new;
+    char * initprogs[] = { "/sbin/init", "/etc/init", 
+                           "/bin/init", "/bin/sh", NULL };
+    char * init;
+    char * initargs[MAX_INIT_ARGS];
+    int fd;
+
+    if (!(cmd = getArg(cmd, end, &new))) {
+	printf("switchroot: new root mount point expected\n");
+	return 1;
+    }
+
+    if (chdir(new)) {
+        printf("switchroot: chdir(%s) failed: %d\n", new, errno);
+        return 1;
+    }
+
+    if ((fd = open("/dev/console", O_RDWR)) < 0) {
+        printf("ERROR opening /dev/console!!!!: %d\n", errno);
+    } 
+
+    if (dup2(fd, 0) != 0) printf("error dup2'ing fd of %d to 0\n", fd);
+    if (dup2(fd, 1) != 1) printf("error dup2'ing fd of %d to 1\n", fd);
+    if (dup2(fd, 2) != 2) printf("error dup2'ing fd of %d to 2\n", fd);
+    if (fd > 2)
+        close(fd);
+
+    init = getKernelArg("init=");
+
+    if (mount(".", "/", NULL, MS_MOVE, NULL)) {
+        printf("switchroot: mount failed: %d\n", errno);
+        return 1;
+    }
+
+    if (chroot(".") || chdir("/")) {
+        printf("switchroot: chroot() failed: %d\n", errno);
+        return 1;
+    }
+
+    if (init == NULL) {
+        int i;
+        for (i = 0; initprogs[i] != NULL; i++) {
+            if (!access(initprogs[i], X_OK)) {
+                init = initprogs[i];
+                break;
+            }
+        }
+    }
+
+    if (init != NULL) {
+        char * chptr, * start;
+        int i;
+
+        start = chptr = init;
+        for (i = 0; (i < MAX_INIT_ARGS) && (*start != '\0'); i++) {
+            while (*chptr && !isspace(*chptr)) chptr++;
+            if (*chptr != '\0') *(chptr++) = '\0';
+            initargs[i] = start;
+            start = chptr;
+        }
+    }
+
+    execv(initargs[0], initargs);
+    printf("exec of init failed!!!: %d\n", errno);
+    return 1;
+}
+
 int isEchoQuiet(int fd) {
     if (!reallyquiet) return 0;
     if (fd != 1) return 0;
@@ -617,7 +733,7 @@ int umountCommand(char * cmd, char * end) {
 
 int mkrootdevCommand(char * cmd, char * end) {
     char * path;
-    char * start, *root, * chptr;
+    char *root, * chptr;
     unsigned int devNum = 0;
     int fd;
     int i;
@@ -634,39 +750,9 @@ int mkrootdevCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    fd = open("/proc/cmdline", O_RDONLY, 0);
-    if (fd < 0) {
-	printf("mkrootdev: failed to open /proc/cmdline: %d\n", errno);
-	return 1;
-    }
-
-    i = read(fd, buf, sizeof(buf));
-    if (i < 0) {
-	printf("mkrootdev: failed to read /proc/cmdline: %d\n", errno);
-	close(fd);
-	return 1;
-    }
-
-    close(fd);
-    buf[i - 1] = '\0';
-
-    start = buf;
-    root = NULL;
-    while (*start) {
-	if (isspace(*start)) {
-	    start++;
-	    continue;
-	}
-	if (strncmp(start, "init=", 5) == 0)
-	    break;
-	if (strncmp(start, "root=", 5) == 0)
-	    root = start;
-	while (*++start && !isspace(*start))
-	    ;
-    }
+    root = getKernelArg("root=");
 
     if (root) {
-	root += 5;
 	chptr = root;
 	while (*chptr && !isspace(*chptr)) chptr++;
 	*chptr = '\0';
@@ -1227,6 +1313,8 @@ int runStartup(int fd) {
 	    rc = raidautorunCommand(chptr, end);
 	else if (!strncmp(start, "pivot_root", MAX(10, chptr - start)))
 	    rc = pivotrootCommand(chptr, end);
+        else if (!strncmp(start, "switchroot", MAX(10, chptr - start)))
+            rc = switchrootCommand(chptr, end);
 	else if (!strncmp(start, "mkrootdev", MAX(9, chptr - start)))
 	    rc = mkrootdevCommand(chptr, end);
 	else if (!strncmp(start, "umount", MAX(6, chptr - start)))
