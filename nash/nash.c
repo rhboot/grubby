@@ -324,6 +324,7 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 
 	    if (!pathEnd) pathEnd = pathStart + strlen(pathStart);
 
+	    strncpy(fullPath, pathStart, pathEnd - pathStart);
 	    fullPath[pathEnd - pathStart] = '/';
 	    strcpy(fullPath + (pathEnd - pathStart + 1), bin); 
 
@@ -594,7 +595,7 @@ int mkrootdevCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    fd = open("/tmp/cmdline", O_RDONLY, 0);
+    fd = open("/proc/cmdline", O_RDONLY, 0);
     if (fd < 0) {
 	printf("mkrootdev: failed to open /proc/cmdline: %d\n", errno);
 	return 1;
