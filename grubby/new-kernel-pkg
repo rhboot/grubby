@@ -100,6 +100,11 @@ remove() {
 mkinitrd() {
     [ -n "$verbose" ] && echo "creating initrd $initrdfile using $version"
     /sbin/mkinitrd --ifneeded -f $initrdfile $version
+    rc=$?
+    if [ $rc != 0 ]; then
+	echo "mkinitrd failed" >2
+	exit 1
+    fi
 }
 
 rminitrd() {
