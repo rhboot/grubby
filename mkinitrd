@@ -99,6 +99,7 @@ findmodule() {
     fi
 
     if [ "$modName" = "ext3" ]; then
+	findmodule $skiperrors mbcache
 	findmodule $skiperrors jbd
 	modName="ext3"
     fi
