@@ -52,6 +52,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Thu Mar 21 2002 Jeremy Katz <katzj@redhat.com>
+- fix nash to create directories for devices like cciss and ida
+
 * Tue Feb  5 2002 Bill Nottingham <notting@redhat.com>
 - run mkinitrd with -f in new-kernel-pkg
 - don't run lilo in /sbin/installkernel
