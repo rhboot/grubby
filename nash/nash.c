@@ -17,8 +17,9 @@
  *
  */
 
-/* We support losetup, mount, insmod, raidautorun, and echo commands. Comments 
-   and blank lines work as well. */
+/* We internalize losetup, mount, raidautorun, and echo commands. Other
+   commands are run from the filesystem. Comments and blank lines work as 
+   well, argument parsing is screwy. */
 
 #if USE_MINILIBC
 #include "minilibc.h"
@@ -78,8 +79,10 @@
 
 int testing = 0;
 
+#define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
+
 char * env[] = {
-    "PATH=/usr/bin:/bin:/sbin:/usr/sbin:/mnt/sysimage/usr/bin:",
+    "PATH=" PATH,
     NULL
 };
 
@@ -161,14 +164,40 @@ void mountCommand(char * cmd, char * end) {
     }
 }
 
-void insmodCommand(char * cmd, char * end) {
+void otherCommand(char * bin, char * cmd, char * end) {
     char * args[32];
     char ** nextArg;
     int pid;
     int status;
+    char fullPath[255];
+    const static char * sysPath = PATH;
+    const char * pathStart;
+    const char * pathEnd;
 
     nextArg = args;
-    *nextArg = "/sbin/insmod";
+
+    if (!strchr(bin, '/')) {
+	pathStart = sysPath;
+	while (*pathStart) {
+	    pathEnd = strchr(pathStart, ':');
+
+	    if (!pathEnd) pathEnd = pathStart + strlen(pathStart);
+
+	    strncpy(fullPath, pathStart, pathEnd - pathStart);
+	    fullPath[pathEnd - pathStart] = '/';
+	    strcpy(fullPath + (pathEnd - pathStart + 1), bin); 
+
+	    pathStart = pathEnd;
+	    if (*pathStart) pathStart++;
+
+	    if (!access(fullPath, X_OK)) {
+		bin = fullPath;
+		break;
+	    }
+	}
+    }
+
+    *nextArg = bin;
 
     while (cmd && cmd < end) {
 	nextArg++;
@@ -179,7 +208,7 @@ void insmodCommand(char * cmd, char * end) {
     *nextArg = NULL;
 
     if (testing) {
-	printf("insmod ");
+	printf("%s ", bin);
 	nextArg = args + 1;
 	while (*nextArg)
 	    printf(" '%s'", *nextArg++);
@@ -187,14 +216,14 @@ void insmodCommand(char * cmd, char * end) {
     } else {
 	if (!(pid = fork())) {
 	    /* child */
-	    execve("/sbin/insmod", args, env);
-	    printf("ERROR: failed in exec /sbin/insmod\n");
+	    execve(args[0], args, env);
+	    printf("ERROR: failed in exec of %s\n", args[0]);
 	    exit(1);
 	}
 
 	wait4(-1, &status, 0, NULL);
 	if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-	    printf("ERROR: insmod exited abnormally!\n");
+	    printf("ERROR: %s exited abnormally!\n", args[0]);
 	}
     }
 }
@@ -369,11 +398,9 @@ int runStartup(int fd) {
 	    echoCommand(chptr, end);
 	else if (!strncmp(start, "raidautorun", MAX(11, chptr - start)))
 	    raidautorunCommand(chptr, end);
-	else if (!strncmp(start, "insmod", MAX(6, chptr - start)))
-	    insmodCommand(chptr, end);
 	else {
 	    *chptr = '\0';
-	    printf("Unknown command %s\n", start);
+	    otherCommand(start, chptr, end);
 	}
 
 	start = end + 1;
@@ -385,6 +412,16 @@ int runStartup(int fd) {
 int main(int argc, char **argv) {
     int fd = 0;
     char ** nextArg = argv + 1;
+    char * name;
+
+    name = strchr(argv[0], '/');
+    if (!name) 
+	name = argv[0];
+    else
+	name++;
+
+    if (!strcmp(name, "modprobe"))
+	exit(0);
 
     if (argc > 1 && !strcmp(*nextArg, "--force")) {
 	printf("(forcing normal run)\n");

@@ -12,16 +12,21 @@ image. Arguments to commands may be enclosed in either single or double
 quotes to allow spaces to be included in the arguments. Spaces outside of
 quotations always delineate arguments, and so backslash escaping is supported.
 
-Currently, \fBnash\fR supports the following commands.
+Additionally, if nash is invoked as \fBmodprobe\fR, it will immediately
+exit with a return code of zero. This is to allow initrd's to prevent some
+extraneous kernel error messages during startup.
+
+There are two types of commands, built in and external. External commands
+are run from the filesystem via execve(). If commands names are given without
+a path, nash will search it's builtin PATH, which is /usr/bin, /bin,
+/sbin, /usr/sbin.
+
+Currently, \fBnash\fR supports the following built in commands.
 
 .TP
 \fBecho [item]* [> \fIfilename\fR]\fR
 Echos the text strings given to a file, with a space in between each
 item. The output may be optionally redirected to a file.
-
-.TP
-\fBinsmod [\fIoptions\fR]*
-Runs \fB/sbin/insmod\fR with the arguments given.
 
 .TP
 \fBlosetup \fI/dev/loopdev\fR \fIfile\fR
