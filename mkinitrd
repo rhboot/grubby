@@ -17,7 +17,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=%VERSIONTAG%
+VERSION=2.6
 
 compress=1
 target=""
@@ -209,6 +209,15 @@ if [ -z "$noscsi" ]; then
 	    findmodule $n
 	done
     fi
+fi
+
+# If we have ide devices and module ide, do the right thing
+ide=/proc/ide/ide*
+if [ -n "$ide" ]; then
+    findmodule -ide-mod
+    findmodule -ide-probe-mod
+    findmodule -ide-disk
+    findmodule -ide-cd
 fi
 
 if [ -z "$noraid" ]; then

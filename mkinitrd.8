@@ -10,11 +10,12 @@ mkinitrd \- creates initial ramdisk images for preloading modules
 .SH DESCRIPTION
 \fBmkinitrd\fR creates filesystem images which are suitable for use
 as Linux initial ramdisk (initrd) images. Such images are often
-used for preloading the block device modules (such as SCSI or RAID)
+used for preloading the block device modules (such as IDE, SCSI or RAID)
 which are needed to access the root filesystem. \fBmkinitrd\fR
-automatically loads all \fIscsi_hostadapter\fR entries in
-\fI/etc/modules.conf\fR, which makes it simple to build and use kernels
-using moduler SCSI devices.
+automatically loads IDE modules, all \fIscsi_hostadapter\fR entries in
+\fI/etc/modules.conf\fR, and raid modules if the system's root partition
+is on raid, which makes it simple to build and use kernels using modular
+device drivers.
 
 Any module options specified in \fI/etc/modules.conf\fR are passed
 to the modules as they are loaded by the initial ramdisk.
