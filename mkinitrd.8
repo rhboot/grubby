@@ -1,9 +1,11 @@
-.TH MKINITRD 8 "Wed Nov 13 1996"
+.TH MKINITRD 8 "Sat Aug 29 1996"
 .UC 4
 .SH NAME
 mkinitrd \- creates initial ramdisk images for preloading modules
 .SH SYNOPSIS
-\fBmkinitrd\fR [-fv] [--with=module] image kernel-version
+\fBmkinitrd\fR [-fv] [--with=\fImodule\fR] [--preload=\fImodule\fR] 
+         [--omit-scsi-modules] [--version] \fIimage\fR
+         \fIkernel-version\fR
 .SH DESCRIPTION
 \fBmkinitrd\fR creates filesystem images which are suitable for use
 as Linux initial ramdisk (initrd) images. Such images are often
@@ -27,9 +29,11 @@ Only builds the image if their are modules that need to be loaded at boot
 time.
 
 .TP
-\fB-\-needs-scsi-modules
-Loads the 'scsi_mod' and 'sd_mod' modules before the hardware-specific
-SCSI modules, but after the \fB-\-preload\fR modules.
+\fB-\-omit-scsi-modules
+Do not load 'scsi_mod' and 'sd_mod' modules, even if they are present. By
+default, these modules are loaded before hardware-specific SCSI modules,
+but after the \fB-\-preload\fR modules. If the modules are not present
+for the specified kernel, they are ingnored.
 
 .TP
 \fB-\-preload=\fR\fImodule\fR

@@ -9,6 +9,7 @@
 #	Miguel de Icaza <miguel@nuclecu.unam.mx>
 #	Christian 'Dr. Disk' Hechelmann <drdisk@ds9.au.s.shuttle.de>
 #	Michael K. Johnson <johnsonm@redhat.com>
+#	Pierre Habraken <Pierre.Habraken@ujf-grenoble.fr>
 
 PATH=/sbin:$PATH
 export PATH
@@ -22,10 +23,11 @@ verbose=""
 MODULES=""
 img_vers=""
 IMAGESIZE=1500
+PRESCSIMODS="scsi_mod sd_mod"
 
 usage () {
     echo "usage: `basename $0` [--version] [-v] [-f] [--ifneeded] [--preload <module>]" >&2
-    echo "       [--needs-scsi-modules] [--with <module>] [--image-version] <initrd-image>" >&2
+    echo "       [--omit-scsi-modules] [--with <module>] [--image-version] <initrd-image>" >&2
     echo "       <kernel>" >&2
     echo "       (ex: `basename $0` /boot/initrd 2.0.3)" >&2
     exit 1
@@ -93,8 +95,8 @@ while [ $# -gt 0 ]; do
 	    fi		    
 	    PREMODS="$PREMODS $modname"
 	    ;;
-	--needs-scsi-modules)
-	    PRESCSIMODS="scsi_mod sd_mod"
+	--no-scsi-modules)
+	    PRESCSIMODS=""
 	    ;;
 	--image-version)
 	    img_vers=yes

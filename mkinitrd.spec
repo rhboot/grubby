@@ -1,8 +1,8 @@
 Summary: Makes an initial ramdisk
 Name: mkinitrd
-%define version 1.8
+%define version 1.9
 Version: %{version}
-Release: 3
+Release: 1
 Copyright: GPL
 Group: Utilities/System
 Source: mkinitrd-%{version}.tar.gz
@@ -34,6 +34,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+
+* Sat Aug 29 1998 Erik Troan <ewt@redhat.com>
+- replaced --needs-scsi-mods (which is now the default) with
+  --omit-scsi-mods
+
 * Fri Aug  7 1998 Jeff Johnson <jbj@redhat.com>
 - correct obscure regex/shell interaction (hardwires tabs on line 232)
 
