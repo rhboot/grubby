@@ -108,6 +108,7 @@ while [ $# -gt 0 ]; do
 	    ;;
 	--omit-scsi-modules)
 	    PRESCSIMODS=""
+	    noscsi=1;
 	    ;;
 	--image-version)
 	    img_vers=yes
@@ -147,15 +148,21 @@ fi
 for n in $PREMODS; do
 	findmodule "" $n
 done
-for n in $PRESCSIMODS; do
-	findmodule scsi $n
-done
 
-if [ -f /etc/conf.modules ]; then
-    scsimodules=`grep scsi_hostadapter /etc/conf.modules | grep -v '^[ 	]*#' | sort -u | awk '{ print $3 }'`
-    for n in $scsimodules; do
-	findmodule scsi $n
+if [ -z "$noscsi" ]; then
+    for n in $PRESCSIMODS; do
+	    findmodule scsi $n
     done
+
+
+    if [ -f /etc/conf.modules ]; then
+	scsimodules=`grep scsi_hostadapter /etc/conf.modules | grep -v '^[ 	]*#' | sort -u | awk '{ print $3 }'`
+	for n in $scsimodules; do
+    # for now allow scsi modules to come from anywhere.  There are some
+    # RAID controllers with drivers in block/
+	    findmodule "" $n
+	done
+    fi
 fi
 
 for n in $basicmodules; do 

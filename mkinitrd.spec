@@ -1,8 +1,8 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 1.9
+%define version 2.0
 Version: %{version}
-Release: 4
+Release: 1
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
@@ -42,6 +42,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Sat Mar 27 1999 Matt Wilson <msw@redhat.com>
+- --omit-scsi-modules now omits all scsi modules
+- updated documentation
+- mkinitrd now grabs scsi_hostadapter modules from anywhere -
+  some RAID controller modules live in block/
+
 * Thu Feb 25 1999 Matt Wilson <msw@redhat.com>
 - updated description
 
