@@ -2,6 +2,8 @@
 
 # mkinitrd
 #
+# Copyright 2005 Red Hat, Inc.
+#
 # Written by Erik Troan <ewt@redhat.com>
 #
 # Contributors:
@@ -20,12 +22,13 @@
 #       Preston Brown <pbrown@redhat.com>
 #	Bill Nottingham <notting@redhat.com>
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
+#	Peter Jones <pjones@redht.com>
 
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.1.3
+VERSION=4.2.1.4
 
 compress=1
 allowmissing=""
