@@ -67,9 +67,6 @@ struct singleEntry {
 #define MAIN_DEFAULT	    (1 << 0)
 #define DEFAULT_SAVED       -2
 
-#define KERNEL_PATH "/boot/vmlinuz-"
-#define INITRD_PATH "/boot/initrd-"
-
 struct keywordTypes {
     char * key;
     enum lineType_e type;
@@ -851,7 +848,11 @@ char * findBootPrefix(void) {
     struct stat sb, sb2;
 
     stat("/", &sb);
+#ifdef __ia64__
+    stat("/boot/efi", &sb2);
+#else
     stat("/boot", &sb2);
+#endif
 
     if (sb.st_dev == sb2.st_dev)
 	return strdup("");
