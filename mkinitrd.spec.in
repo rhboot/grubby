@@ -53,7 +53,8 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Thu Aug 30 2001 Erik Troan <ewt@redhat.com>
-- fixed bug w/ invalid default
+- fixed bug handling invalid default
+- in some cases we would set the default to point at a removed image
 
 * Wed Aug 29 2001 Erik Troan <ewt@redhat.com>
 - minor grubby fixes
@@ -62,7 +63,6 @@ rm -rf $RPM_BUILD_ROOT
 - let new-kernel-pkg be able to do more (initrds, modules.*)
 - include grubby only on x86
 
->>>>>>> 1.32
 * Mon Aug 27 2001 Jeremy Katz <katzj@redhat.com>
 - more grubby fixups for having a /boot
 - added new-kernel-pkg
