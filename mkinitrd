@@ -351,7 +351,7 @@ if [ -z "$noraid" ]; then
 fi
 
 # check to see if we need to set up a loopback filesystem
-rootdev=$(awk '{ if ($2 == "/") { print $1; }}' $fstab)
+rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
 if echo $rootdev | cut -d/ -f3 | grep loop >/dev/null; then
     key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
     if ! grep "$key" $fstab > /dev/null; then
