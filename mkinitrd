@@ -46,6 +46,12 @@ findmodule() {
     fi
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
+# ignore the absence of the scsi modules
+	for i in $PRESCSIMODS; do
+	    if [ "$n" = "$2" ]; then
+		return;
+	    fi
+	done;
 	echo "No module $2 found for kernel $kernel" >&2
 	exit 1
     fi
@@ -100,7 +106,7 @@ while [ $# -gt 0 ]; do
 	    fi		    
 	    PREMODS="$PREMODS $modname"
 	    ;;
-	--no-scsi-modules)
+	--omit-scsi-modules)
 	    PRESCSIMODS=""
 	    ;;
 	--image-version)

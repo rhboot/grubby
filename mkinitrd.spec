@@ -2,7 +2,7 @@ Summary: Makes an initial ramdisk
 Name: mkinitrd
 %define version 1.9
 Version: %{version}
-Release: 2
+Release: 3
 Copyright: GPL
 Group: Utilities/System
 Source: mkinitrd-%{version}.tar.gz
@@ -37,6 +37,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Mon Jan 11 1999 Matt Wilson <msw@redhat.com>
+- Ignore the absence of scsi modules, include them if they are there, but
+  don't complain if they are not.
+- changed --no-scsi-modules to --omit-scsi-modules (as it should have been)
+
 * Thu Nov  5 1998 Jeff Johnson <jbj@redhat.com>
 - import from ultrapenguin 1.1.
 
