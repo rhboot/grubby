@@ -390,6 +390,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     struct singleLine * line;
     char * tmpOutName;
     int needs = MAIN_DEFAULT;
+    struct stat sb;
 
     if (!strcmp(outName, "-")) {
 	out = stdout;
@@ -402,6 +403,15 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 	    fprintf(stderr, _("grubby: error creating %s: %s"), tmpOutName, 
 		    strerror(errno));
 	    return 1;
+	}
+
+	if (!stat(outName, &sb)) {
+	    if (chmod(tmpOutName, sb.st_mode)) {
+		fprintf(stderr, _("grubby: error setting perms on %s: %s\n"),
+		        tmpOutName, strerror(errno));
+		fclose(out);
+		unlink(tmpOutName);
+	    }
 	}
     }
 
