@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "linux_fs.h"
 #include "mount_by_label.h"
 
@@ -215,7 +216,7 @@ get_spec_by_x(int n, const char *t, int * majorPtr, int * minorPtr) {
 	return NULL;
 }
 
-static u_char
+static unsigned char
 fromhex(char c) {
 	if (isdigit(c))
 		return (c - '0');
@@ -227,7 +228,7 @@ fromhex(char c) {
 
 char *
 get_spec_by_uuid(const char *s, int * major, int * minor) {
-	u_char uuid[16];
+	unsigned char uuid[16];
 	int i;
 
 	if (strlen(s) != 36 ||
