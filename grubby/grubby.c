@@ -1199,19 +1199,16 @@ int checkForGrub(struct grubConfig * config) {
     for (line = config->theLines; line; line = line->next)
 	if (line->type == LT_BOOT) break;
 
-    if (!line) { 
-	fprintf(stderr, 
-		_("grubby: no boot line found in grub configuration\n"));
-	return 1;
-    }
+    /* assume grub is not installed -- not an error condition */
+    if (!line)
+	return 0;
 
     if (line->numElements != 2) return 1;
 
     fd = open("/boot/grub/stage1", O_RDONLY);
-    if (fd < 0) {
+    if (fd < 0)
 	/* this doesn't exist if grub hasn't been installed */
 	return 0;
-    }
 
     if (read(fd, boot, 512) != 512) {
 	fprintf(stderr, _("grubby: unable to read %s: %s\n"),
