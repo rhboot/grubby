@@ -316,7 +316,9 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
     indent = NULL;
 
     while (line && line->type != LT_TITLE) {
-	indent = line->indent;
+	/* skip comments */
+	if (line->numElements)
+	    indent = line->indent;
 
 	if (line->type == LT_KERNEL && line->numElements > 2) {
 	    fprintf(out, "%s%s%s%s%s", line->indent,
