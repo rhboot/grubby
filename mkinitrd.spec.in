@@ -46,6 +46,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Fri Feb 23 2001 Erik Troan <ewt@redhat.com>
+- let nash be invoked as modprobe to avoid a modprobe failure to exec
+- nash will try to run arbitrary commands now (removing insmod as a special 
+  case)
+
 * Mon Feb 12 2001 Matt Wilson <msw@redhat.com>
 - add findutils to Requires line (#27269)
 
