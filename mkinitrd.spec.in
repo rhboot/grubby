@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Sep 22 2003 Jeremy Katz <katzj@redhat.com> 3.5.12-1
+- argument checking and usage for /sbin/installkernel  (#103109)
+
 * Wed Sep  3 2003 Jeremy Katz <katzj@redhat.com> 3.5.11-1
 - really only do grub configs on grub arches
 - some usb mkinitrd fixes
