@@ -55,6 +55,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Sep  2 2002 Jeremy Katz <katzj@redhat.com>
+- nash: create directories if needed in mkdevices command (#73090)
+- grubby: handle lilo case of non-linux default (#72202)
+
 * Sat Aug 31 2002 Jeremy Katz <katzj@redhat.com>
 - grubby: fix for case like 'append = " hdc=ide-scsi "' (#68802)
 
