@@ -242,6 +242,14 @@ if [ -n "$ide" ]; then
     findmodule -ide-disk
 fi
 
+# If we have dasd devices, include the necessary modules (S/390)
+dasd=/proc/dasd/dev*
+if [ -n "$dasd" ]; then
+    findmodule -dasd_mod
+    findmodule -dasd_eckd_mod
+    findmodule -dasd_fba_mod
+fi
+
 if [ -z "$noraid" ]; then
     # load appropriate raid devices if necessary, this means that the
     # /etc/raidtab *must* be up to date for raided root to work.
