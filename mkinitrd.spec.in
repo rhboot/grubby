@@ -60,8 +60,15 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Sun Jan  4 2004 Jeremy Katz <katzj@redhat.com> 3.5.17-1
+- mkinitrd: handle multiple spaces in modules.conf (from Lubomir Bulej)
+- nash: rebuild against new dietlibc fixing problems with root=LABEL= (#112623)
+- mkinitrd: determine kernel version and adjust modulefile appropriately 
+  so that we look at /etc/modprobe.conf for 2.6 kernels
+- mkinitrd: first pass at getting lvm working on 2.4 -> 2.6 upgrade
+
 * Wed Dec 24 2003 Jeremy Katz <katzj@redhat.com> 
-- quiet strip by default
+- mkinitrd: quiet strip by default
 
 * Mon Dec 22 2003 Jeremy Katz <katzj@redhat.com> 3.5.16.1-1
 - make stripping less aggressive
