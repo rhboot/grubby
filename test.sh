@@ -269,4 +269,27 @@ echo "ELILO long titles..."
 eliloTest lilo.7 longtitle/e7.1 --add-kernel=/boot/new-kernel.img \
     --title="linux-longtitle-fix" --copy-default --boot-filesystem=/boot 
 
+echo "GRUB add multiboot..."
+grubTest grub.1 multiboot/g1.1 --add-multiboot=/boot/xen.gz \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
+    --mbargs="dom0_mem=130000"
+grubTest grub.1 multiboot/g1.2 --add-multiboot=/boot/xen.gz \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
+    --mbargs="dom0_mem=130000" --copy-default
+grubTest grub.10 multiboot/g10.1 --add-multiboot=/boot/xen.gz \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
+    --mbargs="dom0_mem=130000"
+grubTest grub.10 multiboot/g10.2 --add-multiboot=/boot/xen.gz \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
+    --mbargs="dom0_mem=130000" --copy-default
+grubTest grub.10 multiboot/g10.3 --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo --copy-default
+grubTest grub.10 multiboot/g10.4 --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo
+
+
 exit $RESULT
