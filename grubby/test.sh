@@ -141,6 +141,16 @@ liloTest lilo.3 updargs/l3.2 --update-kernel=ALL \
 
 echo "LILO add kernel..."
 liloTest lilo.4 add/l4.1 --add-kernel=/boot/new-kernel.img --title="title" \
-    --copy-default
+    --copy-default --boot-filesystem=/boot
+
+echo "GRUB add kernel..."
+grubTest grub.1 add/g1.1 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/
+grubTest grub.1 add/g1.2 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot
+grubTest grub.1 add/g1.3 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --copy-default
+grubTest grub.1 add/g1.4 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default
 
 exit $RESULT
