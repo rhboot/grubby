@@ -276,3 +276,25 @@ char *
 get_spec_by_volume_label(const char *s, int * major, int * minor) {
 	return get_spec_by_x(VOL, s, major, minor);
 }
+
+int display_uuid_cache(void) {
+	struct uuidCache_s * u;
+	int i;
+
+	uuidcache_init();
+
+	u = uuidCache;
+	while (u) {
+	    printf("%s %s ", u->device, u->label);
+	    for (i = 0; i < sizeof(u->uuid); i++) {
+		if (i == 4 || i == 6 || i == 8 || i == 10)
+		    printf("-");
+		printf("%x", u->uuid[i] & 0xff);
+	    }
+	    printf("\n");
+	    u = u->next;
+	}
+
+	return 0;
+}
+

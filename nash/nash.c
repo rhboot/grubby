@@ -898,6 +898,8 @@ int runStartup(int fd) {
 	    rc = findCommand(chptr, end);
 	else if (!strncmp(start, "findlodev", MAX(7, chptr - start)))
 	    rc = findlodevCommand(chptr, end);
+	else if (!strncmp(start, "showlabels", MAX(10, chptr-start)))
+	    rc = display_uuid_cache();
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);
@@ -913,6 +915,7 @@ int main(int argc, char **argv) {
     int fd = 0;
     char * name;
     int rc;
+    int force = 0;
 
     name = strrchr(argv[0], '/');
     if (!name) 
@@ -928,7 +931,7 @@ int main(int argc, char **argv) {
 
     while (argc && **argv == '-') {
 	if (!strcmp(*argv, "--force")) {
-	    if (!quiet) printf("(forcing normal run)\n");
+	    force = 1;
 	    argv++, argc--;
 	    testing = 0;
 	} else if (!strcmp(*argv, "--quiet")) {
@@ -939,6 +942,9 @@ int main(int argc, char **argv) {
 	    return 1;
 	}
     }
+
+    if (force && !quiet)
+	printf("(forcing normal run)\n");
 
     if (testing && !quiet)
 	printf("(running in test mode).\n");
