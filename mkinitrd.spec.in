@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu May  6 2004 Jeremy Katz <katzj@redhat.com> - 3.5.22-1
+- bump initrd size (#122325)
+
 * Wed Apr 14 2004 Jeremy Katz <katzj@redhat.com> - 3.5.21-1
 - new-kernel-package: add patch from Ryan Tilder to allow setting new 
   kernel as default (#117605)

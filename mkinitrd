@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.21
+VERSION=3.5.22
 
 compress=1
 target=""
@@ -39,11 +39,7 @@ pivot=1
 modulefile=/etc/modules.conf
 rc=0
 
-if [ `uname -m` = "i386" ]; then
-  IMAGESIZE=4000
-else
-  IMAGESIZE=8000
-fi
+IMAGESIZE=8000
 PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
 
