@@ -378,6 +378,7 @@ elif ! echo $rootdev | cut -c1-6 |grep "LABEL=" >/dev/null ; then
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
+rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
 
 # in case the root filesystem is modular
 findmodule -${rootfs}
@@ -530,7 +531,7 @@ fi
 echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
 
 echo "echo Mounting root filesystem" >> $RCFILE
-echo "mount --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
 echo "umount /proc" >> $RCFILE
 echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
