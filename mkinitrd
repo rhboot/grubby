@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.5.6
+VERSION=3.5.7
 
 compress=1
 target=""
@@ -120,15 +120,20 @@ findmodule() {
 	done
     fi
 
-    fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o.gz -type f | /sbin/nash --quiet)`
+    for modExt in o.gz o ko ; do
+	if [ -d /lib/modules/$kernel/updates ]; then
+	    fmPath=`(cd /lib/modules/$kernel/updates; echo find . -name $modName.$modExt -type f | /sbin/nash --quiet) | /bin/awk {'print $1; exit;'}`
+	fi
+	
+	if [ -f /lib/modules/$kernel/updates/$fmPath ]; then
+	    break
+	fi
 
-    if [ ! -f /lib/modules/$kernel/$fmPath ]; then
-        fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o -type f | /sbin/nash --quiet)`
-    fi
-
-    if [ ! -f /lib/modules/$kernel/$fmPath ]; then
-        fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.ko -type f | /sbin/nash --quiet)`
-    fi
+	fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.$modExt -type f | /sbin/nash --quiet) | /bin/awk {'print $1; exit;'}`
+	if [ -f /lib/modules/$kernel/$fmPath ]; then
+	    break
+	fi
+    done
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
 	if [ -n "$skiperrors" ]; then
@@ -142,7 +147,7 @@ findmodule() {
 	    fi
 	done;
     
-	echo "No module $modName found for kernel $kernel" >&2
+	echo "No module $modName found for kernel $kernel, aborting." >&2
 	exit 1
     fi
 
