@@ -24,7 +24,7 @@
 PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.5.1
+VERSION=3.5.2
 
 compress=1
 target=""
@@ -540,9 +540,7 @@ for MODULE in $MODULES; do
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
     fullmodule=`echo $MODULE | sed "s|.*/||"`
 
-    if [ ! `egrep -q "^options[ \t]*$module" $modulefile` ]; then
-	options=$(/sbin/modprobe -c -C $modulefile |grep "options $module")
-    fi
+    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`    
 
     if [ -n "$verbose" ]; then
 	if [ -n "$options" ]; then

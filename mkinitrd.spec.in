@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -60,6 +60,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Jun 11 2003 Jeremy Katz <katzj@redhat.com> 3.5.2-1
+- mkinitrd: revert use of modprobe -c.  it breaks in the installer when we 
+  don't have a modules.dep for the BOOT kernel
+
 * Wed Jun 11 2003 Jeremy Katz <katzj@redhat.com> 3.5.1-1
 - nash: fix syscall bits with gcc 3.3 on s390
 - new-kernel-pkg: do depmod before mkinitrd (#97218)
