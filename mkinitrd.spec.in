@@ -52,6 +52,12 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed Jan 16 2002 Erik Troan <ewt@redhat.com>
+- look for a non /tmpfs directory
+- added support for xfs
+- use with raid md.o if it exists
+- fixed bug in echo
+
 * Fri Jan 11 2002 Erik Troan <ewt@redhat.com>
 - added support for mounting root filesystem by label
 - switched to dietlibc from minilibc

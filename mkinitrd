@@ -21,7 +21,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.3
+VERSION=3.3.1
 
 compress=1
 target=""
@@ -51,9 +51,15 @@ usage () {
 
 findmodule() {
     skiperrors=""
+
+    if [ $1 == "--skiperrors" ]; then
+	skiperrors=--skiperrors
+	shift
+    fi
+
     modName=$1
     if [ $(echo $modName | cut -b1) = "-" ]; then
-	skiperrors=1
+	skiperrors=--skiperrors
 	modName=$(echo $modName | cut -b2-)
     fi
 
@@ -76,12 +82,14 @@ findmodule() {
     fi
 
     if [ "$modName" = "ext3" ]; then
-	if [ -n "$skiperrors" ]; then
-		findmodule -jbd
-	else
-		findmodule jbd
-	fi
+	findmodule $skiperrors jbd
 	modName="ext3"
+    fi
+
+    if [ "$modName" = "xfs" ]; then
+	findmodule $skiperrors pagebuf
+	findmodule $skiperrors xfs_support
+	modName="xfs"
     fi
 
     fmPath=`(cd /lib/modules/$kernel; find -type f -name $modName.o)`
@@ -217,6 +225,28 @@ if [ $(id -u) != 0 ]; then
     exit 1
 fi
 
+# find a temporary directory which doesn't use tmpfs
+TMPDIR=""
+for t in /tmp /var/tmp /root ${PWD}; do
+    if [ ! -d $t ]; then continue; fi
+    if ! echo access -w $t | /sbin/nash --quiet; then continue; fi
+
+    fs=$(df -T $t | tail -1 | awk '{printf $2}')
+    if [ "$fs" != "tmpfs" ]; then 
+	TMPDIR=$t
+	break
+    fi
+done
+
+if [ -z "$TMPDIR" ]; then
+    echo "no temporary directory could be found" >2
+    exit 1
+fi
+
+if [ $TMPDIR = "/root" -o $TMPDIR = "${PWD}" ]; then 
+    echo "WARNING: using $TMPDIR for temporary files" >2
+fi
+
 for n in $PREMODS; do
 	findmodule $n
 done
@@ -273,10 +303,12 @@ if [ -z "$noraid" ]; then
 			  awk '{print $2}' | LC_ALL=C sort -u) ; do
 	    case $number in
 	    [014])
+		findmodule -md
 		findmodule raid$number
 		startraid=1
 		;;
 	    5)
+		findmodule -md
 		findmodule -xor
 		findmodule raid$number
 		startraid=1
@@ -332,9 +364,10 @@ if [ -n "$verbose" ]; then
     echo "Using modules: $MODULES"
 fi
 
-MNTIMAGE=`mktemp -d /tmp/initrd.XXXXXX`
-IMAGE=`mktemp /tmp/initrd.img.XXXXXX`
-MNTPOINT=`mktemp -d /tmp/initrd.mnt.XXXXXX`
+
+MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
+IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
+MNTPOINT=`mktemp -d ${TMPDIR}/initrd.mnt.XXXXXX`
 RCFILE=$MNTIMAGE/linuxrc
 
 if [ -z "$MNTIMAGE" -o -z "$IMAGE" -o -z "$MNTPOINT" ]; then
