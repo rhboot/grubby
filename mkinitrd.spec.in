@@ -62,6 +62,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Feb 11 2003 Jeremy Katz <katzj@redhat.com> 3.4.41-1
+- nash: add readlink
+- use readlink for rootdev to handle symlinks to root devs (#83391)
+
 * Tue Feb  4 2003 Jeremy Katz <katzj@redhat.com> 3.4.40-1
 - fix i2o module ordering (#83447)
 - ifarch'd build requires of dietlibc now that the build system has a way to
