@@ -25,3 +25,10 @@ image=/boot/vmlinuz-2.4.18-4smp
 	root=/dev/hda2
 	read-only
 	initrd=/boot/initrd-2.4.18-4smp.img
+
+image=/boot/vmlinuz-2.4.18-4smp
+	label=linux
+	root=/dev/hda2
+	read-only
+	append = " single hda=ide-scsi "
+	initrd=/boot/initrd-2.4.18-4smp.img
