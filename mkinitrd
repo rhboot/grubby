@@ -420,7 +420,6 @@ mount -t ext2 $LODEV $MNTPOINT || {
 mkdir -p $MNTIMAGE
 mkdir -p $MNTIMAGE/lib
 mkdir -p $MNTIMAGE/bin
-mkdir -p $MNTIMAGE/sbin
 mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
 mkdir -p $MNTIMAGE/loopfs
