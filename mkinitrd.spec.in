@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Wed Jan 24 2001 Matt Wilson <msw@redhat.com>
+- code in RAID_AUTORUN ioctl fallback
+
 * Tue Jan 23 2001 Erik Troan <ewt@redhat.com>
 - switched to using nash from sash
 
