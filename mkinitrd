@@ -86,6 +86,11 @@ findmodule() {
 	modName="i2o_block"
     fi
 
+    if [ "$modName" = "mptscsih" ]; then
+        findmodule mptbase
+	modName="mptscsih"
+    fi
+
     if [ "$modName" = "pluto" ]; then
 	findmodule fc4
 	findmodule soc
