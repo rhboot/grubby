@@ -400,7 +400,7 @@ int runStartup(int fd) {
 	    raidautorunCommand(chptr, end);
 	else {
 	    *chptr = '\0';
-	    otherCommand(start, chptr, end);
+	    otherCommand(start, chptr + 1, end);
 	}
 
 	start = end + 1;
