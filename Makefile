@@ -39,11 +39,11 @@ clean:
 	for n in $(SUBDIRS); do make -C $$n clean; done
 
 archive:
-	# cvs tag -F $(CVSTAG) .
+	cvs tag -F $(CVSTAG) .
 	@rm -rf /tmp/mkinitrd-$(VERSION)
-	cd /tmp; cvs -Q -d $(CVSROOT) export -r$(CVSTAG) mkinitrd || :
-	cd /tmp/mkinitrd; sed "s/VERSIONSUBST/$(VERSION)/" < mkinitrd.spec.in > mkinitrd.spec
-	mv /tmp/mkinitrd /tmp/mkinitrd-$(VERSION)
-	dir=$$PWD; cd /tmp; tar -cv --bzip2 -f $$dir/mkinitrd-$(VERSION).tar.bz2 mkinitrd-$(VERSION)
-	rm -rf /tmp/mkinitrd-$(VERSION)
+	@cd /tmp; cvs -Q -d $(CVSROOT) export -r$(CVSTAG) mkinitrd || :
+	@cd /tmp/mkinitrd; sed "s/VERSIONSUBST/$(VERSION)/" < mkinitrd.spec.in > mkinitrd.spec
+	@mv /tmp/mkinitrd /tmp/mkinitrd-$(VERSION)
+	@dir=$$PWD; cd /tmp; tar -cv --bzip2 -f $$dir/mkinitrd-$(VERSION).tar.bz2 mkinitrd-$(VERSION)
+	@rm -rf /tmp/mkinitrd-$(VERSION)
 	@echo "The archive is in mkinitrd-$(VERSION).tar.bz2"
