@@ -373,8 +373,7 @@ if [ -z "$nolvm" ]; then
 fi
 
 # If we have dasd devices, include the necessary modules (S/390)
-dasd=/proc/dasd/dev*
-if [ -n "$dasd" ]; then
+if [ -d /proc/dasd ]; then
     findmodule -dasd_mod
     findmodule -dasd_eckd_mod
     findmodule -dasd_fba_mod
@@ -440,6 +439,10 @@ rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
 
 # in case the root filesystem is modular
 findmodule -${rootfs}
+
+if [ -n "$root_lvm" ]; then
+    findmodule -lvm-mod
+fi
 
 for n in $basicmodules; do 
     findmodule $n
