@@ -60,8 +60,8 @@ is displayed on stdout.  Both could be installed (on different devices), and
 grubby will print out the names of both bootloaders, one per line. The probe
 for \fBgrub\fR requires a commented out boot directive \fBgrub.conf\fR
 identical to the standard directive in the lilo configuration file. If this
-is not present \fBgrubby\fR will return with an error (note that \fBanaconda\fR
-places this directive in \fBgrub.conf\fR files it creates).
+is not present \fBgrubby\fR will assume grub is not installed (note 
+that \fBanaconda\fR places this directive in \fBgrub.conf\fR files it creates).
 This option is only available on ia32 platforms. 
 
 
