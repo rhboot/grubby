@@ -7,7 +7,7 @@ ARCH := $(patsubst sparc%,sparc,$(ARCH))
 SUBDIRS = nash
 
 
-ifeq ($ARCH), i386)
+ifeq ($(ARCH), i386)
 SUBDIRS += grubby
 endif
 
