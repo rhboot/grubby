@@ -1,5 +1,4 @@
-.TH GRUBBY 8 "Thu Jun 21 2002"
-.UC 4
+.TH GRUBBY 8 "Tue Jan 18 2005"
 .SH NAME
 grubby \- command line tool for configuring grub, lilo, and elilo
 
@@ -7,18 +6,21 @@ grubby \- command line tool for configuring grub, lilo, and elilo
 \fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR] 
        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
        [--bootloader-probe] [--config-file \fIpath\fR] 
-       [--copy-default] [--default-kernel] [--grub] 
+       [--copy-default] [--default-kernel] 
+       [--grub] [--lilo] [--yaboot] [--silo] [--zipl]
        [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
-       [--lilo] [--make-default] [-o path] 
-       [--remove-kernel=\fIkernel-path\fR] 
-       [--set-default=\fIkernel-path\fR] [--title=entry-title] 
+       [--make-default] [-o path] [--version]
+       [--remove-kernel=\fIkernel-path\fR] [--remove-args=\fIargs\fR]
+       [--set-default=\fIkernel-path\fR] [--title=entry-title]
+       [--add-multiboot=\fImultiboot-path\fR] [--mbargs=\fIargs\fR]
+       [--remove-multiboot=\fImultiboot-path\fR] [--remove-mbargs=\fIargs\fR]
 
 .SH DESCRIPTION
 \fBgrubby\fR is a command line tool for updating and displaying information
 about the configuration files for the \fBgrub\fR, \fBlilo\fR, \fBelilo\fR 
-(ia64), and \fByaboot\fR (powerpc) boot loaders. It is primarily designed to 
-be used from scripts which install new kernels and need to find information 
-about the current boot environment.
+(ia64), \fByaboot\fR (powerpc) and \fBzipl\fR (s390) boot loaders. It
+is primarily designed to be used from scripts which install new
+kernels and need to find information about the current boot environment.
 
 On Intel x86 platforms, \fBgrub\fR is the default bootloader and the
 configuration file is in \fB/boot/grub/grub.conf\fR. On Intel ia64 platforms, 
@@ -160,6 +162,38 @@ Display the version of \fBgrubby\fR being run and then exit immediately.
 \fB-\-yaboot\fR
 Use an \fByaboot\fR style configuration file.
 
+.TP
+\fB-\-zipl\fR
+Use an \fBzipl\fR style configuration file.
+
+.SH MULTIBOOT OPTIONS
+The Multiboot Specification provides a genreic interface for boot
+loaders and operating systems.  It is supported by the GRUB bootloader.
+
+.TP
+\fB-\-add-multiboot\fR=\fImultiboot-path\fR
+Add a new boot entry for the multiboot kernel located at
+\fImultiboot-path\fR.  Note that this is generally accompanied with a
+\fI--add-kernel\fR option.
+
+.TP
+\fB-\-remove-multiboot\fR=\fImultiboot-path\fR
+Removes all boot entries which match \fImultiboot-path\fR. 
+
+.TP
+\fB-\-mbargs\fR=\fImultiboot-args\fR
+When a new multiboot kernel is added, this specifies the command line 
+arguments which should be passed to that kernel by default 
+When \fB-\-update-kernel\fR is used, this specifies new arguments to add
+to the argument list. Multiple, space separated arguments may be used. If
+an argument already exists the new value replaces the old values. 
+
+.TP
+\fB-\-remove-mbargs\fR=\fImultiboot-args\fR
+The arguments specified by \fImultiboot-args\fR are removed from the 
+kernels specified by \fB-\-update-kernel\fR. 
+
+
 .SH "BUGS"
 The command line syntax is more then a little baroque. This probably
 won't be fixed as \fBgrubby\fR is only intended to be called from shell
@@ -171,7 +205,8 @@ scripts which can get it right.
 .BR yaboot (8),
 .BR mkinitrd (8)
 
-.SH AUTHOR
+.SH AUTHORS
 .nf
 Erik Troan <ewt@redhat.com>
+Jeremy Katz <katzj@redhat.com>
 .fi
