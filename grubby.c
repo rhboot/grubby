@@ -933,6 +933,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
     struct singleLine * line;
     int i;
     char * chptr;
+    char * rootspec = NULL;
     enum lineType_e checkType = LT_KERNEL;
 
     if (isdigit(*kernel)) {
@@ -1011,9 +1012,14 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	    line = entry->lines;
 	    while (line && line->type != checkType) line=line->next;
 
-	    if (line && line->numElements >= 2 && !entry->skip &&
-	        !strcmp(line->elements[1].item, kernel + strlen(prefix)))
-		break;
+
+	    if (line && line->numElements >= 2 && !entry->skip) {
+                rootspec = getRootSpecifier(line->elements[1].item);
+	        if (!strcmp(line->elements[1].item  + 
+                            ((rootspec != NULL) ? strlen(rootspec) : 0),
+                            kernel + strlen(prefix)))
+                    break;
+            }
 
 	    i++;
 	}
