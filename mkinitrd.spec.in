@@ -60,6 +60,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Jan 13 2004 Jeremy Katz <katzj@redhat.com> 
+- mkinitrd: add patch from Alex Kiernan for modules with multiple 
+  deps in 2.6 (#113306)
+
 * Thu Jan  8 2004 Jeremy Katz <katzj@redhat.com> 3.5.18-1
 - new-kernel-pkg: add a --kernel-arguments option (#113125)
 

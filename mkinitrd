@@ -68,8 +68,8 @@ moduledep() {
                 function modname(filename) { match(filename, /\/([^\/]+)\.k?o/, ret); return ret[1] } \
                 function show() { if (orig == searched) { print dep; orig=""; rc=0; exit } } \
                 /^\/lib/ { show(); \
-                           orig=modname($1); \
-                           if ($2) { dep=modname($2) } else { dep="" } } \
+                           orig=modname($1); dep=""; \
+                           if ($2) { for (i = 2; i <= NF; i++) { dep=sprintf("%s %s", dep, modname($i)); } } } \
                 /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
                 END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
     [ -n "$verbose" ] && echo -e "\t$deps"
