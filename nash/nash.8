@@ -33,6 +33,11 @@ Binds \fIfile\fR to the loopback device \fI/dev/loopdev\fR. See
 Mounts a filesystem. It does not support NFS, and it must be used in
 \fBexactly\fR the form given above.
 
+.TP
+\fBraidautorun \fImddevice\fR
+Runs raid autodetection on all raid-typed partitions. \fImddevice\fR must
+be a raid device (any will do).
+
 .SH OPTIONS
 .TP
 \fB-\-force\fR

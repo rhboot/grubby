@@ -17,7 +17,7 @@
  *
  */
 
-/* We support losetup, mount, insmod, and echo commands. Comments 
+/* We support losetup, mount, insmod, raidautorun, and echo commands. Comments 
    and blank lines work as well. */
 
 #if USE_MINILIBC
@@ -63,6 +63,8 @@
 #endif
 
 #include <linux/cdrom.h>
+#define MD_MAJOR 9
+#include <linux/raid/md_u.h>
 
 #define MS_REMOUNT      32
 
@@ -248,6 +250,33 @@ void losetupCommand(char * cmd, char * end) {
     }
 }
 
+void raidautorunCommand(char * cmd, char * end) {
+    char * device;
+    int fd;
+
+    if (!(cmd = getArg(cmd, end, &device))) {
+	printf("raidautorun: raid device expected as first argument\n");
+	return;
+    }
+
+    if (cmd < end) {
+	printf("raidautorun: unexpected arguments\n");
+	return;
+    }
+
+    fd = open(device, O_RDWR, 0);
+    if (fd < 0) {
+	printf("raidautorun: failed to open %s: %d\n", device, errno);
+	return;
+    }
+
+    if (ioctl(fd, RAID_AUTORUN, 0)) {
+	printf("raidautorun: RAID_AUTORUN faileds: %d\n", errno);
+    }
+
+    close(fd);
+}
+
 void echoCommand(char * cmd, char * end) {
     char * args[256];
     char ** nextArg = args;
@@ -332,6 +361,8 @@ int runStartup(int fd) {
 	    losetupCommand(chptr, end);
 	else if (!strncmp(start, "echo", MAX(4, chptr - start)))
 	    echoCommand(chptr, end);
+	else if (!strncmp(start, "raidautorun", MAX(11, chptr - start)))
+	    raidautorunCommand(chptr, end);
 	else if (!strncmp(start, "insmod", MAX(6, chptr - start)))
 	    insmodCommand(chptr, end);
 	else {
