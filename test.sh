@@ -218,6 +218,9 @@ yabootTest yaboot.1 add/y1.1 --copy-default --add-kernel=/boot/new-kernel  \
     --title=newtitle
 yabootTest yaboot.1 add/y1.2 --add-kernel=/boot/new-kernel --title=newtitle
 
+echo "YABOOT empty label..."
+yabootTest yaboot.3 add/y3.1 --add-kernel=/boot/new-kernel --title=newtitle
+
 echo "Z/IPL add kernel..."
 ziplTest zipl.1 add/z1.1 --add-kernel=/boot/new-kernel.img --title test
 ziplTest zipl.1 add/z1.2 --add-kernel=/boot/new-kernel.img --title test --copy-default
