@@ -47,7 +47,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Mon Feb 12 2001 Matt Wilson <msw@redhat.com>
-- add findutils to Requires line #(27269)
+- add findutils to Requires line (#27269)
 
 * Thu Feb  8 2001 Matt Wilson <msw@redhat.com>
 - added checks to load the modules i2o_block needs
