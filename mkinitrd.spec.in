@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Aug 25 2004 Karsten Hopp <karsten@redhat.com> - 4.1.5-1
+- fix zfcp handling
+
 * Tue Aug 24 2004 Jeremy Katz <katzj@redhat.com> - 4.1.4-1
 - nash: create raid device if needed (think udev) before calling
   the raidautorun ioctl (#130561)
