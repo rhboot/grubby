@@ -45,6 +45,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/mkinitrd
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 %attr(755,root,root) /sbin/nash
+%attr(755,root,root) /sbin/loadinitrd
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 %config %attr(755,root,root) /sbin/installkernel
 %attr(755,root,root) /sbin/new-kernel-pkg
@@ -55,6 +56,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri Jun 14 2002 Erik Troan <ewt@redhat.com>
+- added loadinitrd
+
 * Thu Jun 13 2002 Jeremy Katz <katzj@redhat.com>
 - don't run lilo twice on kernel removal in new-kernel-pkg
 - don't run grubby to add/remove kernels from new-kernel-pkg if 
