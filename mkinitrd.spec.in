@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -54,6 +54,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Tue May 28 2002 Bill Nottingham <notting@redhat.com>
+- fix umounting of /initrd when pivoting
+
 * Tue May 28 2002 Erik Troan <ewt@redhat.com>
 - marked /sbin/installkernel as %config (53006)
 - run make test during build
