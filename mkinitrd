@@ -266,18 +266,13 @@ if [ -n "$verbose" ]; then
     echo "Using modules: $MODULES"
 fi
 
-MNTIMAGE=/tmp/initrd.$$
-IMAGE=/tmp/initrd.img-$$
-MNTPOINT=/tmp/initrd.mnt-$$
+MNTIMAGE=`mktemp -d /tmp/initrd.XXXXXX`
+IMAGE=`mktemp /tmp/initrd.img.XXXXXX`
+MNTPOINT=`mktemp -d /tmp/initrd.mnt.XXXXXX`
 RCFILE=$MNTIMAGE/linuxrc
 
-if [ -f $MNTIMAGE ]; then
-    echo "$MNTIMAGE already exists.  Remove it and try again" >&2
-    exit 1
-fi
-
-if [ -f $IMAGE ]; then
-    echo "$IMAGE already exists. Remove it and try again" >&2
+if [ -z "$MNTIMAGE" -o -z "$IMAGE" -o -z "$MNTPOINT" ]; then
+    echo "Error creating temporaries.  Try again" >&2
     exit 1
 fi
 
@@ -385,4 +380,3 @@ else
     cp -a $IMAGE $target
 fi
 rm -rf $MNTIMAGE $MNTPOINT $IMAGE
-

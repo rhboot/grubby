@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.5
+%define version 2.6
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -8,7 +8,7 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
 ExclusiveArch: i386 sparc sparc64 ia64 alpha
 ExclusiveOs: Linux
-Requires: sash >= 3.4 e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static /sbin/losetup
+Requires: sash >= 3.4, e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mkinitrd
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
+* Wed Aug 30 2000 Nalin Dahyabhai <nalin@redhat.com>
+- use mktemp to create temporary files and directories
+
 * Sat Aug 05 2000 Erik Troan <ewt@redhat.com>
 - changes from Keith Owens for 2.4
 
