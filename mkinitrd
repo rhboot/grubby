@@ -15,11 +15,13 @@
 #	Keith Owens <kaos@ocs.com.au>
 #	Bernhard Rosenkraenzer <bero@redhat.com>
 #	Matt Wilson <msw@redhat.com>
+#       Trond Eivind Glomsrød <teg@redhat.com>
+#       Jeremy Katz <katzj@redhat.com>
 
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.2.6
+VERSION=3.2.7
 
 compress=1
 target=""
@@ -240,6 +242,12 @@ if [ -n "$ide" ]; then
     findmodule -ide-mod
     findmodule -ide-probe-mod
     findmodule -ide-disk
+fi
+
+# If we use LVM, include lvm-mod
+lvm=/proc/lvm//VGs/*
+if [ -n "$lvm" ]; then
+    findmodule -lvm-mod
 fi
 
 # If we have dasd devices, include the necessary modules (S/390)
