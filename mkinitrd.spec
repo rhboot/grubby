@@ -1,8 +1,8 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.4.1
+%define version 2.4.2
 Version: %{version}
-Release: 3
+Release: 1
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
