@@ -544,6 +544,9 @@ if [ -n "$startraid" ]; then
     echo "raidautorun /dev/md0" >> $RCFILE
 fi
 
+echo "echo Making block devices" >> $RCFILE
+echo "mkdevices /dev" >> $RCFILE
+
 if [ -n "$loopDev" ]; then
     mkdir /initrd
     cp -a $loopDev $MNTIMAGE/dev

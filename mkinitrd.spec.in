@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Jul 24 2002 Erik Troan <ewt@redhat.com>
+- added and used mkdevices command (68959)
+
 * Wed Jul 17 2002 Erik Troan <ewt@redhat.com>
 - do proper probing to check root=LABEL
 - --bootloader-probe didn't support /etc/sysconfig/grub
