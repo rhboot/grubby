@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Sep  8 2004 Jeremy Katz <katzj@redhat.com> - 4.1.10-1
+- mkinitrd: mount tmpfs with the right permissions
+
 * Tue Aug 31 2004 Jeremy Katz <katzj@redhat.com> - 4.1.9-1
 - mkinitrd: use tmpfs instead of ramfs for udev stuff
 
