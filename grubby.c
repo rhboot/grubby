@@ -187,7 +187,7 @@ struct configFileInfo yabootConfigType = {
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
-    0,					    /* needsBootPrefix */
+    1,					    /* needsBootPrefix */
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
     0,                                      /* titleBracketed */
@@ -199,7 +199,7 @@ struct configFileInfo siloConfigType = {
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
-    0,					    /* needsBootPrefix */
+    1,					    /* needsBootPrefix */
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
     0,                                      /* titleBracketed */
@@ -707,6 +707,9 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
 	    int len = 256;
 	    int rc;
 
+	    /* most likely the symlink is relative, so change our
+	       directory to / */
+	    chdir("/");
 	    do {
 		buf = alloca(len + 1);
 		rc = readlink(outName, buf, len);
@@ -714,20 +717,20 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
 	    } while (rc == len);
 	    
 	    if (rc < 0) {
-		fprintf(stderr, _("grubby: error readlink link %s: %s"), 
+		fprintf(stderr, _("grubby: error readlink link %s: %s\n"), 
 			outName, strerror(errno));
 		return 1;
 	    }
 
 	    outName = buf;
-	    outName[len] = '\0';
+	    outName[rc] = '\0';
 	}
 
 	tmpOutName = alloca(strlen(outName) + 2);
 	sprintf(tmpOutName, "%s-", outName);
 	out = fopen(tmpOutName, "w");
 	if (!out) {
-	    fprintf(stderr, _("grubby: error creating %s: %s"), tmpOutName, 
+	    fprintf(stderr, _("grubby: error creating %s: %s\n"), tmpOutName, 
 		    strerror(errno));
 	    return 1;
 	}
