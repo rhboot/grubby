@@ -21,12 +21,6 @@
    commands are run from the filesystem. Comments and blank lines work as 
    well, argument parsing is screwy. */
 
-#if USE_MINILIBC
-#include "minilibc.h"
-#ifndef SOCK_STREAM
-# define SOCK_STREAM 1
-#endif 
-#else
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -36,7 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include <sys/klog.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -48,6 +41,10 @@
 #include <sys/ioctl.h>
 #include <sys/reboot.h>
 #include <termios.h>
+
+#include <asm/unistd.h>
+
+static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
 
 /* Need to tell loop.h what the actual dev_t type is. */
 #undef dev_t
@@ -61,7 +58,6 @@
 #define dev_t dev_t
 
 #define syslog klogctl
-#endif
 
 #include <linux/cdrom.h>
 #define MD_MAJOR 9
