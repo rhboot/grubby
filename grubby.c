@@ -149,7 +149,7 @@ struct keywordTypes siloKeywords[] = {
 };
 
 struct keywordTypes ziplKeywords[] = {
-    { "target",     LT_ROOT,        '=' },
+    { "target",     LT_BOOTROOT,    '=' },
     { "image",      LT_KERNEL,      '=' },
     { "ramdisk",    LT_INITRD,      '=' },
     { "parameters", LT_KERNELARGS,  '=' },
@@ -815,9 +815,9 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	line = entry->lines;
 	while (line && line->type != LT_ROOT) line = line->next;
 
-	if (line && line->numElements >= 2) 
+	if (line && line->numElements >= 2) {
 	    dev = line->elements[1].item;
-	else {
+	} else {
 	    /* didn't succeed in finding a LT_ROOT, let's try LT_KERNELARGS */
 	    line = entry->lines;
 
@@ -828,8 +828,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
 	    for (i = 1; i < line->numElements; i++) 
 	        if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
-
-	    if (i < line->numElements) 
+	    if (i < line->numElements)
 	        dev = line->elements[i].item + 5;
 	    else
 		/* it failed too...  can't find root= */
@@ -854,7 +853,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     }
     stat("/", &sb2);
 
-    if (sb.st_rdev != sb2.st_dev) return 0; 
+    if (sb.st_rdev != sb2.st_dev) return 0;
 
     return 1;
 }
