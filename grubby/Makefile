@@ -14,6 +14,14 @@ test:	all
 		    ./grubby --remove-kernel 1234 -c $$n -o - | diff -u - $$n; \
 		fi \
 	done
+	@echo "Permission preservation..."
+	@cp test/grub.1 grub-test
+	@chmod 0614 grub-test 
+	@./grubby ./grubby --add-kernel bar --title title -c grub-test 
+	@if [ $$(ls -l grub-test | awk '{print $$1}') != '-rw---xr--' ]; then \
+	    echo "  failed"; \
+	fi
+	@rm -f grub-test
 
 install:    all
 	mkdir -p $(BUILDROOT)/sbin
