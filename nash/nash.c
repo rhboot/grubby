@@ -128,8 +128,10 @@ int mountCommand(char * cmd, char * end) {
     char * fsType;
     char * device;
     char * mntPoint;
+    char * deviceDir;
     int readOnly = 0;
     int mustRemove = 0;
+    int mustRemoveDir = 0;
     int rc;
 
     cmd = getArg(cmd, end, &fsType);
@@ -171,12 +173,28 @@ int mountCommand(char * cmd, char * end) {
     if (!strncmp("LABEL=", device, 6)) {
 	int major, minor;
 	char * devName;
+	char * ptr;
+	int i;
 
 	devName = get_spec_by_volume_label(device + 6, &major, &minor);
 
 	if (devName) {
 	    device = devName;
 	    if (access(device, F_OK)) {
+	        ptr = device + 5;
+		i = 0;
+		while (*ptr)
+		    if (*ptr++ == '/')
+			i++;
+		if (i > 2) {
+		    deviceDir = alloca(strlen(device) + 1);
+		    strcpy(deviceDir, device);
+		    ptr = deviceDir + (strlen(device) - 1);
+		    while (*ptr != '/')
+			*ptr-- = '\0';
+		    mkdir(deviceDir, 0644);
+		    mustRemoveDir = 1;
+		}
 		if (mknod(device, S_IFBLK | 0600, makedev(major, minor))) {
 		    printf("mount: cannot create device %s (%d,%d)\n",
 			   device, major, minor);
@@ -199,6 +217,8 @@ int mountCommand(char * cmd, char * end) {
 
     if (mustRemove)
 	unlink(device);
+    if (mustRemoveDir)
+	unlink(deviceDir);
 
     return rc;
 }
