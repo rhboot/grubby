@@ -1,6 +1,7 @@
+%define foo %(awk -F= '/^VERSION=/ { print $2 }' mkinitrd)
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-Version: 3.0
+Version: %{foo}
 Release: 1
 Copyright: GPL
 Group: System Environment/Base
