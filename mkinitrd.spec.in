@@ -55,8 +55,13 @@ rm -rf $RPM_BUILD_ROOT
 * Fri Jan 11 2002 Erik Troan <ewt@redhat.com>
 - added support for mounting root filesystem by label
 - switched to dietlibc from minilibc
-- fix so --preload= works
-- added info on --image-version and --nocompress
+- fix so --preload= works [33675,57560,44377]
+- added info on --image-version and --nocompress to man page [57560]
+- set fileystem check interval to 0 in case the system clock
+  is borked [51454]
+- give a proper error when run by a user other then root [27218,53159]
+- grubby statically linked against popt [55305]
+- cleaned up verbose output a bit [21791]
 
 * Tue Dec 18 2001 Trond Eivind Glomsrød <teg@redhat.com>
 - Add LVM module when LVM is used
