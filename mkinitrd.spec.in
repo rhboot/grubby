@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Fri Aug 30 2002 Bill Nottingham <notting@redhat.com>
+- fix firewire stuff (#72916)
+
 * Fri Aug 23 2002 Bill Nottingham <notting@redhat.com>
 - fix mpt fusion stuff
 
