@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.4.13
+VERSION=3.4.14
 
 compress=1
 target=""
@@ -46,7 +46,7 @@ PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
 
 usage () {
-    echo "usage: `basename $0` [--version] [-v] [-f] [--ifneeded] [--preload <module>]" >&2
+    echo "usage: `basename $0` [--version] [-v] [-f] [--preload <module>]" >&2
     echo "       [--omit-scsi-modules] [--omit-raid-modules] [--omit-lvm-modules]" >&2
     echo "       [--with=<module>] [--image-version] [--fstab=<fstab>] [--nocompress]" >&2
     echo "       [--builtin=<module>] [--nopivot] <initrd-image> <kernel-version>" >&2
@@ -200,7 +200,7 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--ifneeded)
-	    ifneeded=1
+	    # legacy
 	    ;;
 
 	-f)
@@ -429,13 +429,6 @@ findmodule -${rootfs}
 for n in $basicmodules; do 
     findmodule $n
 done
-
-if [ -n "$ifneeded" -a -z "$MODULES" ]; then
-    if [ -n "$verbose" ]; then
-	echo "No modules are needed -- not building initrd image."
-    fi
-    exit 0
-fi
 
 if [ -n "$verbose" ]; then
     echo "Using modules: $MODULES"

@@ -3,7 +3,7 @@
 .SH NAME
 mkinitrd \- creates initial ramdisk images for preloading modules
 .SH SYNOPSIS
-\fBmkinitrd\fR [--version] [-v] [-f] [--ifneeded] 
+\fBmkinitrd\fR [--version] [-v] [-f] 
          [--preload=\fImodule\fR] [--omit-scsi-modules] 
          [--omit-raid-modules] [--omit-lvm-modules] 
          [--with=\fImodule\fR] [--image-version]
@@ -58,11 +58,6 @@ Allows \fBmkinitrd\fR to overwrite an existing image file.
 \fB-\-fstab=\fR\fIfstab\fR
 Use \fIfstab\fR to automatically determine what type of filesystem the
 root device is on. Normally, \fB/etc/fstab\fR is used.
-
-.TP
-\fB-\-ifneeded
-Only builds the image if there are modules that need to be loaded at boot
-time.
 
 .UP
 \fB-\-image-version
