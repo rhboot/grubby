@@ -2,7 +2,7 @@ Summary: Makes an initial ramdisk
 Name: mkinitrd
 %define version 1.8
 Version: %{version}
-Release: 2
+Release: 3
 Copyright: GPL
 Group: Utilities/System
 Source: mkinitrd-%{version}.tar.gz
