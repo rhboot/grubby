@@ -53,6 +53,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed May 22 2002 Erik Troan <ewt@redhat.com>
+- added --nopivot (53679)
+
 * Tue May 21 2002 Erik Troan <ewt@redhat.com>
 - cleaned up usage message
 - added --omit-lvm-modules to man page

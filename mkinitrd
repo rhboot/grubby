@@ -33,6 +33,7 @@ verbose=""
 MODULES=""
 img_vers=""
 builtins=""
+pivot=1
 modulefile=/etc/modules.conf
 rc=0
 
@@ -48,7 +49,7 @@ usage () {
     echo "usage: `basename $0` [--version] [-v] [-f] [--ifneeded] [--preload <module>]" >&2
     echo "       [--omit-scsi-modules] [--omit-raid-modules] [--omit-lvm-modules]" >&2
     echo "       [--with=<module>] [--image-version] [--fstab=<fstab>] [--nocompress]" >&2
-    echo "       [--builtin=<module>] <initrd-image> <kernel-version>" >&2
+    echo "       [--builtin=<module>] [--nopivot] <initrd-image> <kernel-version>" >&2
     echo "" >&2
     echo "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)" >&2
     exit 1
@@ -187,6 +188,10 @@ while [ $# -gt 0 ]; do
 
 	--nocompress)
 	    compress=""
+	    ;;
+
+	--nopivot)
+	    pivot=""
 	    ;;
 
 	--ifneeded)
@@ -533,13 +538,15 @@ if [ -n "$startraid" ]; then
     echo "raidautorun /dev/md0" >> $RCFILE
 fi
 
-echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
+if [ -n "$pivot" ]; then
+    echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
 
-echo "echo Mounting root filesystem" >> $RCFILE
-echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+    echo "echo Mounting root filesystem" >> $RCFILE
+    echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
-echo "umount /proc" >> $RCFILE
-echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
+    echo "umount /proc" >> $RCFILE
+    echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
+fi
 
 chmod +x $RCFILE
 

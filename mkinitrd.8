@@ -8,8 +8,8 @@ mkinitrd \- creates initial ramdisk images for preloading modules
          [--omit-raid-modules] [--omit-lvm-modules] 
          [--with=\fImodule\fR] [--image-version]
          [--fstab=\fIfstab\fR] [--nocompress]
-	 [--builtin=\fImodule\fR] \fIimage\fR 
-         \fIkernel-version\fR
+         [--builtin=\fImodule\fR] [--nopivot]
+         \fIimage\fR \fIkernel-version\fR
 
 .SH DESCRIPTION
 \fBmkinitrd\fR creates filesystem images which are suitable for use
@@ -67,6 +67,13 @@ is created.
 \fB-\-nocompress
 Normally the created initrd image is compressed with \fBgzip\fR. If this
 option is specified, the compression is skipped.
+
+\fB-\-nopivot
+Do not use the \fBpivot_root\fR system call as part of the initrd. This
+lets \fBmkinitrd\fR build proper images for Linux 2.2 kernels at the expense
+of some features. In particular, some filesystems (such as ext3) will not
+work properly and filesystem options will not be used to mount root. This
+option is not recommended, and will be removed in future versions.
 
 .TP
 \fB-\-omit-lvm-modules 
