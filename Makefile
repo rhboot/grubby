@@ -1,6 +1,7 @@
 VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' mkinitrd)
 RELEASE=$(shell awk '/^Release:/ { print $$2 }' mkinitrd.spec.in)
 CVSTAG = r$(subst .,-,$(VERSION)-$(RELEASE))
+CVSROOT=$(shell cat CVS/Root)
 
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
