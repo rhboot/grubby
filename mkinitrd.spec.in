@@ -56,6 +56,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Apr 18 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-1
+- new-kernel-pkg: on iSeries, we don't have a boot loader, just make the 
+  kernel + initrd combo file (/boot/vmlinux-version.img)
+
 * Mon Apr 07 2003 Karsten Hopp <karsten@redhat.com> 3.4.48-1
 - Fix segfault on mainframe
 
