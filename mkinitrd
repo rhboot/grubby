@@ -18,6 +18,7 @@
 #       Trond Eivind Glomsrød <teg@redhat.com>
 #       Jeremy Katz <katzj@redhat.com>
 #       Preston Brown <pbrown@redhat.com>
+#	Bill Nottingham <notting@redhat.com>
 
 
 PATH=/sbin:/usr/sbin:$PATH
@@ -132,6 +133,10 @@ findmodule() {
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
         fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o -type f | /sbin/nash --quiet)`
+    fi
+
+    if [ ! -f /lib/modules/$kernel/$fmPath ]; then
+        fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.ko -type f | /sbin/nash --quiet)`
     fi
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
