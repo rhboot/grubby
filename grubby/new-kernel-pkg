@@ -72,7 +72,7 @@ remove() {
 
 mkinitrd() {
     [ -n "$verbose" ] && echo "creating initrd $initrdfile using $version"
-    /sbin/mkinitrd --ifneeded $initrdfile $version
+    /sbin/mkinitrd --ifneeded -f $initrdfile $version
 }
 
 rminitrd() {
