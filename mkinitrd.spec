@@ -2,14 +2,14 @@ Summary: Makes an initial ramdisk
 Name: mkinitrd
 %define version 1.9
 Version: %{version}
-Release: 1
+Release: 2
 Copyright: GPL
 Group: Utilities/System
 Source: mkinitrd-%{version}.tar.gz
-ExclusiveArch: i386 sparc
+ExclusiveArch: i386 sparc sparc64
 ExclusiveOs: Linux
 Requires: /bin/ash.static losetup e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static
-BuildRoot: /var/tmp/mkinitrd-root
+BuildRoot: /var/tmp/%{name}-root
 
 %description
 Generic kernels can be built without drivers for any SCSI adapters which
@@ -20,20 +20,29 @@ loader (such as lilo) and is available to the kernel as soon as it is loaded.
 That image is resonsible for loading the proper SCSI adapter and allowing
 the kernel to mount the root filesystem. This program creates such a ramdisk
 image using information found in /etc/conf.modules.
+
 %prep
 %setup -q
 
 %install
+rm -rf $RPM_BUILD_ROOT
 make BUILDROOT=$RPM_BUILD_ROOT install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
+%defattr(-,root,root)
 %attr(755,root,root) /sbin/mkinitrd
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Thu Nov  5 1998 Jeff Johnson <jbj@redhat.com>
+- import from ultrapenguin 1.1.
+
+* Tue Oct 20 1998 Jakub Jelinek <jj@ultra.linux.cz>
+- fix for combined sparc/sparc64 insmod, also pluto module is really
+  fc4:soc:pluto and we don't look at deps, so special case it.
 
 * Sat Aug 29 1998 Erik Troan <ewt@redhat.com>
 - replaced --needs-scsi-mods (which is now the default) with

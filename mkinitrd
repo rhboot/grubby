@@ -10,6 +10,7 @@
 #	Christian 'Dr. Disk' Hechelmann <drdisk@ds9.au.s.shuttle.de>
 #	Michael K. Johnson <johnsonm@redhat.com>
 #	Pierre Habraken <Pierre.Habraken@ujf-grenoble.fr>
+#	Jakub Jelinek <jj@ultra.linux.cz>
 
 PATH=/sbin:$PATH
 export PATH
@@ -34,6 +35,10 @@ usage () {
 }
 
 findmodule() {
+    if [ "$2" = "pluto" ]; then
+	findmodule "" fc4
+	findmodule "" soc
+    fi
     if [ -n "$1" ]; then
 	fmPath="$1"/"$2".o
     else
@@ -215,7 +220,11 @@ mkdir -p $MNTIMAGE/dev
 rm -rf $MNTPOINT/lost+found
 
 inst /bin/ash.static "$MNTIMAGE/bin/sh"
-inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
+if [ `uname -m` = "sparc64" ]; then
+	inst /sbin/insmod64.static "$MNTIMAGE/bin/insmod"
+else
+	inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
+fi
 
 for MODULE in $MODULES; do
     cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
