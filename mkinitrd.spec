@@ -2,13 +2,13 @@ Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 %define version 2.4.1
 Version: %{version}
-Release: 1
+Release: 2
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
 ExclusiveArch: i386 sparc sparc64
 ExclusiveOs: Linux
-Requires: sash >= 3.4 e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static
+Requires: sash >= 3.4 e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static /sbin/losetup
 BuildRoot: /var/tmp/%{name}-root
 
 %description
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8.gz
 
 %changelog
+* Tue Feb 29 2000 Matt Wilson <msw@redhat.com>
+- add requirement for /sbin/losetup
+
 * Mon Feb  7 2000 Matt Wilson <msw@redhat.com>
 - gzip manpage
 
