@@ -11,8 +11,10 @@ test:	all
 
 install:    all
 	mkdir -p $(BUILDROOT)/sbin
+	mkdir -p $(BUILDROOT)/usr/share/man/man8
 	install -m 755 -s grubby $(BUILDROOT)/sbin
 	install -m 755 new-kernel-pkg $(BUILDROOT)/sbin
+	install -m 644 grubby.8 $(BUILDROOT)/usr/share/man/man8
 
 clean:
 	rm -f grubby
