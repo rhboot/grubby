@@ -6,7 +6,7 @@
 # run of depmod/removal of depmod generated files
 # addition/removal of kernel images from grub/lilo configuration (via grubby)
 #
-# Copyright (C) 2002, 2003 Red Hat, Inc.
+# Copyright (C) 2002-2004 Red Hat, Inc.
 # 
 
 PATH=/sbin:/bin:$PATH
@@ -70,12 +70,13 @@ initrd=""
 initrdfile=""
 moddep=""
 verbose=""
+makedefault=""
 
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
     echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
     echo "       [--kernel-args=<args>] [--banner=<banner>]" >&2
-    echo "       <--install | --remove> <kernel-version>" >&2
+    echo "       [--make-default] <--install | --remove> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
 }
@@ -131,9 +132,9 @@ install() {
 	    title="Red Hat Linux ($version)"
 	fi
 	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD    \
-		     --copy-default --title "$title"		    \
-		     --args="root=$rootdevice $kernargs"			    \
-		     --remove-kernel="TITLE=$title"
+		     --copy-default $makedefault --title "$title"	    \
+		     --args="root=$rootdevice $kernargs"	    \
+		     --remove-kernel="TITLE=$title"                 
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
@@ -142,7 +143,7 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $liloConfig"
 
 	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD    \
-		     --copy-default --title $version		    \
+		     --copy-default $makedefault --title $version	    \
 		     --args="root=$rootdevice $kernargs"			    \
 		     --remove-kernel="TITLE=$version"		    \
 		     --$liloFlag
@@ -265,6 +266,10 @@ while [ $# -gt 0 ]; do
 	    moddep="remove"
 	    ;;
 
+	--make-default)
+	    makedefault="--make-default"
+	    ;;
+
 	-v)
 	    verbose=-v
 	    ;;
@@ -289,6 +294,10 @@ if [ "$mode" != "--install" -a "$mode" != "--remove" ] ; then
 fi
 
 if [ -z "$version" ]; then
+    usage
+fi
+
+if [ "$mode" != "--install" -a "$makedefault" ]; then
     usage
 fi
 
