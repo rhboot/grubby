@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.5.5
+VERSION=3.5.6
 
 compress=1
 target=""
@@ -541,10 +541,10 @@ echo "" >> $RCFILE
 
 for MODULE in $MODULES; do
     text=""
-    module=`echo $MODULE | sed "s|.*/||" | sed "s/.k?o$//"`
+    module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
     fullmodule=`echo $MODULE | sed "s|.*/||"`
 
-    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`    
+    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
     if [ -n "$verbose" ]; then
 	if [ -n "$options" ]; then
