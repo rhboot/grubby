@@ -28,6 +28,8 @@ if [ $ARCH = 'ia64' ]; then
 elif [ $ARCH = 'ppc64' -o $ARCH = 'ppc32' ]; then
     liloConfig=/etc/yaboot.conf
     bootPrefix=/boot
+    lilo=/usr/sbin/ybin
+    runLilo=1
 else
     liloConfig=/etc/lilo.conf
     bootPrefix=/boot
