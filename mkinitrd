@@ -328,7 +328,7 @@ mkdir -p $MNTIMAGE/bin
 mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
 mkdir -p $MNTIMAGE/loopfs
-ln -s bin $(MNTIMAGE)/sbin
+ln -s bin $MNTIMAGE/sbin
 
 # We don't need this directory, so let's save space
 rm -rf $MNTPOINT/lost+found
@@ -351,8 +351,6 @@ for i in 1 2 3 4; do
 done
 
 echo "#!/bin/nash" > $RCFILE
-echo "" >> $RCFILE
-echo "aliasall" >> $RCFILE
 echo "" >> $RCFILE
 
 for MODULE in $MODULES; do
