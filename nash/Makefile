@@ -1,4 +1,4 @@
-CFLAGS=-Wall -DVERSION=\"$(VERSION)\" -g 
+CFLAGS=-Wall -Werror -DVERSION=\"$(VERSION)\" -g 
 VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
 
 ARCH := $(patsubst i%86,i386,$(shell uname -m))

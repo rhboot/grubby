@@ -5,8 +5,9 @@
  * dietlibc to keep things small.
  *
  * Erik Troan (ewt@redhat.com)
+ * Jeremy Katz (katzj@redhat.com)
  *
- * Copyright 2002 Red Hat Software 
+ * Copyright 2002-2004 Red Hat Software 
  *
  * This software may be freely redistributed under the terms of the GNU
  * public license.
@@ -154,10 +155,16 @@ char * getArg(char * cmd, char * end, char ** arg) {
     return cmd;
 }
 
+#ifdef __powerpc__
+#define CMDLINESIZE 256
+#else
+#define CMDLINESIZE 1024
+#endif
+
 /* get the contents of the kernel command line from /proc/cmdline */
 static char * getKernelCmdLine(void) {
     int fd, i;
-    char buf[512];
+    char * buf;
 
     fd = open("/proc/cmdline", O_RDONLY, 0);
     if (fd < 0) {
@@ -165,7 +172,11 @@ static char * getKernelCmdLine(void) {
 	return NULL;
     }
 
-    i = read(fd, buf, 511);
+    buf = malloc(CMDLINESIZE);
+    if (!buf)
+        return buf;
+
+    i = read(fd, buf, CMDLINESIZE);
     if (i < 0) {
 	printf("getKernelCmdLine: failed to read /proc/cmdline: %d\n", errno);
 	close(fd);
@@ -177,7 +188,7 @@ static char * getKernelCmdLine(void) {
         buf[0] = '\0';
     else
         buf[i - 1] = '\0';
-    return strdup(buf);
+    return buf;
 }
 
 /* get the start of a kernel arg "arg".  returns everything after it
@@ -200,7 +211,6 @@ static char * getKernelArg(char * arg) {
 	    ;
     }
 
-    free(cmdline);
     return NULL;
 }
 
@@ -504,7 +514,6 @@ static int lsdir(char *thedir, char * prefix) {
             pfx = malloc(strlen(prefix) + 3);
             sprintf(pfx, "%s  ", prefix);
             printf("/\n");
-            //            lsdir(fn, pfx);
         } else if (S_ISCHR(sb.st_mode)) {
             printf(" c %d %d\n", major(sb.st_rdev), minor(sb.st_rdev));
         } else if (S_ISBLK(sb.st_mode)) {
@@ -674,6 +683,10 @@ int raidautorunCommand(char * cmd, char * end) {
     return 0;
 }
 
+#ifdef USE_DIET
+extern int pivot_root(char *, char *);
+#endif
+
 static int my_pivot_root(char * one, char * two) {
 #ifdef USE_DIET
     return pivot_root(one, two);
@@ -780,7 +793,7 @@ int switchrootCommand(char * cmd, char * end) {
         for (; (i < MAX_INIT_ARGS) && (*start != '\0'); i++) {
             while (*chptr && !isspace(*chptr)) chptr++;
             if (*chptr != '\0') *(chptr++) = '\0';
-            (char *)initargs[i] = strdup(start);
+            initargs[i] = strdup(start);
             start = chptr;
         }
     }
@@ -838,6 +851,7 @@ int echoCommand(char * cmd, char * end) {
 	num -= 2;
     }
     string = (char *)malloc(length * sizeof(char));
+    *string = '\0';
     for (i = 0; i < num;i ++) {
 	if (i) strcat(string, " ");
         strncat(string, args[i], strlen(args[i]));
