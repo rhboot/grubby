@@ -315,7 +315,7 @@ mkdir -p $MNTIMAGE/loopfs
 # We don't need this directory, so let's save space
 rm -rf $MNTPOINT/lost+found
 
-inst /bin/ash.static "$MNTIMAGE/bin/sh"
+inst /sbin/sash "$MNTIMAGE/bin/sh"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 
 if [ -n "$loopDev" ]; then
