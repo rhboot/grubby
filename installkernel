@@ -4,6 +4,11 @@
 # /sbin/installkernel  - written by tyson@rwii.com
 #
 
+usage() {
+    echo "Usage: `basename $0` <kernel_version> <bootimage> <mapfile>" >&2
+    exit 1
+}
+
 cfgLoader=
 
 if [ -z "$INSTALL_PATH" -o "$INSTALL_PATH" == "/boot" ]; then
@@ -19,6 +24,10 @@ if [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
     KERNEL_NAME=vmlinux
 else
     KERNEL_NAME=vmlinuz
+fi
+
+if [ -z "$KERNEL_VERSION" -o -z "$BOOTIMAGE" -o -z "$MAPFILE" ]; then
+    usage
 fi
 
 if [ -f $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION ]; then 
