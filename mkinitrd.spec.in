@@ -60,6 +60,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Aug 10 2004 Jeremy Katz <katzj@redhat.com>  4.0.3-1
+- grubby: more (hd0,0) support (#125156)
+- mkinitrd.8: update manpage (#129585)
+- nash: fix some warnings
+
 * Wed Aug  4 2004 Jeremy Katz <katzj@redhat.com> 4.0.2-1
 - nash: support bind mounting
 - grubby: support the (hd0,0)/path syntax for kernels and initrds in
