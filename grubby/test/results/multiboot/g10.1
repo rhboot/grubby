@@ -1,0 +1,14 @@
+default=1
+title foo
+        kernel /xen.gz dom0_mem=130000
+        module /vmlinuz-2.6.10-1.1088_FC4
+        module /initrd-2.6.10-1.1088_FC4.img
+title xen
+	root (hd0,1)
+	kernel /xen.gz
+	module /vmlinuz-2.6.10-1.1076_FC4 ro root=/dev/hda3 rhgb quiet acpi=off
+	module /initrd-2.6.10-1.1076_FC4
+title Fedora Core (2.6.10-1.1076_FC4)
+        root (hd0,1)
+        kernel /vmlinuz-2.6.10-1.1076_FC4 ro root=/dev/hda3 rhgb quiet acpi=off
+        initrd /initrd-2.6.10-1.1076_FC4.img
