@@ -62,6 +62,8 @@ struct grubConfig {
 #define KERNEL_IMAGE	    (1 << 0)
 #define KERNEL_INITRD	    (1 << 2)
 
+#define MAIN_DEFAULT	    (1 << 0)
+
 #define KERNEL_PATH "/boot/vmlinuz-"
 #define INITRD_PATH "/boot/initrd-"
 
@@ -359,6 +361,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     FILE * out;
     struct singleLine * line;
     char * tmpOutName;
+    int needs = MAIN_DEFAULT;
 
     if (!strcmp(outName, "-")) {
 	out = stdout;
@@ -377,6 +380,13 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     line = cfg->lines;
     while (line) {
 	if (!line->skip) {
+	    if (line->type ==LT_TITLE && needs){
+		if ((needs & MAIN_DEFAULT) && cfg->defaultImage != -1)
+		    fprintf(out, "%sdefault=%d\n", cfg->primaryIndent,
+			    cfg->defaultImage);
+		needs = 0;
+	    }
+
 	    if (line->type == LT_TITLE && nki) {
 		writeNewKernel(out, cfg, nki, prefix);
 		nki = NULL;
@@ -386,6 +396,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 		    fprintf(out, "%s%s%s%d\n", line->indent,
 			    line->elements[0].item,
 			    line->elements[0].indent, cfg->defaultImage);
+		    needs &= ~MAIN_DEFAULT;
 		}
 	    } else {
 		lineWrite(out, line);
@@ -686,7 +697,7 @@ int main(int argc, const char ** argv) {
 
     if (displayDefault && (newKernelVersion || newKernelPath ||
 			   oldKernelPath)) {
-	fprintf(stderr, _("grubby: --display-default may not be used "
+	fprintf(stderr, _("grubby: --default-kernel may not be used "
 			"when adding or removing kernels\n"));
 	return 1;
     }
