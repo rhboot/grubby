@@ -21,7 +21,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.3.6
+VERSION=3.3.7
 
 compress=1
 target=""
@@ -242,12 +242,12 @@ for t in /tmp /var/tmp /root ${PWD}; do
 done
 
 if [ -z "$TMPDIR" ]; then
-    echo "no temporary directory could be found" >2
+    echo "no temporary directory could be found" >&2
     exit 1
 fi
 
 if [ $TMPDIR = "/root" -o $TMPDIR = "${PWD}" ]; then 
-    echo "WARNING: using $TMPDIR for temporary files" >2
+    echo "WARNING: using $TMPDIR for temporary files" >&2
 fi
 
 for n in $PREMODS; do

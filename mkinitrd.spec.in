@@ -53,6 +53,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Thu Apr  4 2002 Jeremy Katz <katzj@redhat.com>
+- fix redirection bug (#62623)
+
 * Thu Mar 28 2002 Jeremy Katz <katzj@redhat.com>
 - prereq dev package so that we always have the dev package before we get run
 
