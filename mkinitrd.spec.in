@@ -1,13 +1,13 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 3
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveArch: i386 sparc sparc64 ia64 alpha ppc
 ExclusiveOs: Linux
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Tue Jan 30 2001 Erik Troan <ewt@redhat.com>
+- added dependency on mktemp
+
 * Thu Jan 25 2001 Erik Troan <ewt@redhat.com>
 - we need to insert xor.o before raid5.o
 
