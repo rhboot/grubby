@@ -62,6 +62,9 @@ struct grubConfig {
 #define KERNEL_IMAGE	    (1 << 0)
 #define KERNEL_INITRD	    (1 << 2)
 
+#define KERNEL_PATH "/boot/vmlinuz-"
+#define INITRD_PATH "/boot/initrd-"
+
 static char * strndup(char * from, int len) {
     char * to;
 
@@ -586,6 +589,7 @@ int main(int argc, const char ** argv) {
     char * newKernelArgs = NULL;
     char * newKernelInitrd = NULL;
     char * newKernelTitle = NULL;
+    char * newKernelVersion = NULL;
     char * bootPrefix;
     struct grubConfig * config;
     struct newKernelInfo newKernel;
@@ -616,6 +620,9 @@ int main(int argc, const char ** argv) {
 	    _("kernel-path") },
 	{ "title", 0, POPT_ARG_STRING, &newKernelTitle, 0,
 	    _("title to use for the new kernel entry"), _("entry-title") },
+	{ "new-default", 0, POPT_ARG_STRING, &newKernelVersion, 0,
+	  _("use the default boot entry as a template for the new entry "
+	    "being added and make the new entry the default"), _("version") },
 	{ "version", 'v', 0, NULL, 'v',
 	    _("print the version of this program and exit"), NULL },
 	POPT_AUTOHELP
@@ -639,6 +646,44 @@ int main(int argc, const char ** argv) {
 		poptBadOption(optCon, POPT_BADOPTION_NOALIAS),
 		poptStrerror(arg));
 	return 1;
+    }
+
+    if (newKernelVersion) {
+        /* check to ensure they have a /boot/grub.conf, otherwise 
+	 * exit quietly */
+        if (access(grubConfig, R_OK)) {
+	    exit(0);
+	}
+
+        /* we have a new kernel version; construct what the kernel and
+	 * initrd paths are if they weren't specified */
+        if (!newKernelPath) {
+	    newKernelPath = alloca(strlen(KERNEL_PATH) + 
+				   strlen(newKernelVersion) + 1);
+	    sprintf(newKernelPath, "%s%s", KERNEL_PATH, newKernelVersion);
+	}
+
+	if (!newKernelInitrd) {
+	    newKernelInitrd = alloca(strlen(INITRD_PATH) +
+				     strlen(newKernelVersion) + 
+				     strlen(".img") + 1);
+	    sprintf(newKernelInitrd, "%s%s%s", INITRD_PATH, 
+		    newKernelVersion, ".img");
+
+	    /* if they're explicitly specifying an initrd, they should
+	     * know what they're doing, but new-default has to be smarter */
+	    if (access(newKernelInitrd, R_OK)) newKernelInitrd = NULL;
+	}
+
+	if (!newKernelTitle) {
+	  newKernelTitle = alloca(strlen("Red Hat Linux ()") + 
+				  strlen(newKernelVersion) + 1);
+	  sprintf(newKernelTitle, "%s%s%s", "Red Hat Linux (", 
+		  newKernelVersion, ")");
+	}
+
+	copyDefault = 1;
+	makeDefault = 1;
     }
 
     if (newKernelPath && !newKernelTitle) {
