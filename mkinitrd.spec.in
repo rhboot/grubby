@@ -59,6 +59,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Fri Nov 22 2002 Jeremy Katz <katzj@redhat.com>
+- mkinitrd: more gzipped module fixes
+
 * Thu Nov 21 2002 Jeremy Katz <katzj@redhat.com>
 - mkinitrd: add support for finding gzipped modules
 - mkinitrd: don't be noisy if we don't have lvm-mod loaded
