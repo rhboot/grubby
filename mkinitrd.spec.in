@@ -52,6 +52,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed Sep  5 2001 Jeremy Katz <katzj@redhat.com>
+- grubby shouldn't blow away default=saved lines (#52981)
+
 * Fri Aug 31 2001 Jeremy Katz <katzj@redhat.com>
 - fix new-kernel-pkg --mkinitrd for ia64
 
