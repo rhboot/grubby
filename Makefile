@@ -14,7 +14,7 @@ install:
 archive:
 	cvs tag -F $(CVSTAG) .
 	@rm -rf /tmp/mkinitrd-$(VERSION)
-	@cd /tmp; cvs export -r$(CVSTAG) -d /tmp/mkinitrd-$(VERSION) mkinitrd
+	@cd /tmp; cvs -d $(CVSROOT) export -r$(CVSTAG) -d /tmp/mkinitrd-$(VERSION) mkinitrd || :
 	@dir=$$PWD; cd /tmp; tar cvzf $$dir/mkinitrd-$(VERSION).tar.gz mkinitrd-$(VERSION)
 	@rm -rf /tmp/mkinitrd-$(VERSION)
 	@echo "The archive is in mkinitrd-$(VERSION).tar.gz"
