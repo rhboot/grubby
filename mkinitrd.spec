@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.6
+%define version 2.7
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
+* Fri Dec 08 2000 Erik Troan <ewt@redhat.com>
+- added modular ide support
+
 * Wed Aug 30 2000 Nalin Dahyabhai <nalin@redhat.com>
 - use mktemp to create temporary files and directories
 
