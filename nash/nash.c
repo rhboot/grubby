@@ -85,6 +85,27 @@ char * env[] = {
     NULL
 };
 
+int smartmknod(char * device, mode_t mode, dev_t dev) {
+    char buf[256];
+    char * end;
+
+    strcpy(buf, device);
+
+    end = buf;
+    while (*end) {
+	if (*end == '/') {
+	    *end = '\0';
+	    if (access(buf, F_OK) && errno == ENOENT) 
+		mkdir(buf, 0700);
+	    *end = '/';
+	}
+
+	end++;
+    }
+
+    return mknod(device, mode, dev);
+}
+
 char * getArg(char * cmd, char * end, char ** arg) {
     char quote = '\0';
 
@@ -266,7 +287,7 @@ int mountCommand(char * cmd, char * end) {
 		      mustRemoveDir = 1;
 		    }
 		}
-		if (mknod(device, S_IFBLK | 0600, makedev(major, minor))) {
+		if (smartmknod(device, S_IFBLK | 0600, makedev(major, minor))) {
 		    printf("mount: cannot create device %s (%d,%d)\n",
 			   device, major, minor);
 		    return 1;
@@ -625,7 +646,7 @@ int mkrootdevCommand(char * cmd, char * end) {
 
     if (!strncmp(start, "LABEL=", 6)) {
 	if (get_spec_by_volume_label(start + 6, &major, &minor)) {
-	    if (mknod(path, S_IFBLK | 0600, makedev(major, minor))) {
+	    if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
 		printf("mount: cannot create device %s (%d,%d)\n",
 		       path, major, minor);
 		return 1;
@@ -661,7 +682,7 @@ int mkrootdevCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    if (mknod(path, S_IFBLK | 0700, devNum)) {
+    if (smartmknod(path, S_IFBLK | 0700, devNum)) {
 	printf("mkrootdev: mknod failed: %d\n", errno);
 	return 1;
     }
@@ -843,6 +864,52 @@ int findlodevCommand(char * cmd, char * end) {
     return 0;
 }
 
+int mknodCommand(char * cmd, char * end) {
+    char * path, * type;
+    char * majorStr, * minorStr;
+    int major;
+    int minor;
+    char * chptr;
+    mode_t mode;
+
+    cmd = getArg(cmd, end, &path);
+    cmd = getArg(cmd, end, &type);
+    cmd = getArg(cmd, end, &majorStr);
+    cmd = getArg(cmd, end, &minorStr);
+    if (!minorStr) {
+	printf("mknod: usage mknod <path> [c|b] <major> <minor>\n");
+	return 1;
+    }
+
+    if (!strcmp(type, "b")) {
+	mode = S_IFBLK;
+    } else if (!strcmp(type, "c")) {
+	mode = S_IFCHR;
+    } else {
+	printf("mknod: invalid type\n");
+	return 1;
+    }
+
+    major = strtol(majorStr, &chptr, 10);
+    if (*chptr) {
+	printf("invalid major number\n");
+	return 1;
+    }
+
+    minor = strtol(minorStr, &chptr, 10);
+    if (*chptr) {
+	printf("invalid minor number\n");
+	return 1;
+    }
+
+    if (smartmknod(path, mode | 0600, makedev(major, minor))) {
+	printf("mknod: failed to create %s: %d\n", path, errno);
+	return 1;
+    }
+
+    return 0;
+}
+
 int mkdevicesCommand(char * cmd, char * end) {
     int fd;
     char buf[32768];
@@ -931,7 +998,7 @@ int mkdevicesCommand(char * cmd, char * end) {
 				printf("mkdir: cannot create directory %s: %d\n", deviceDir, errno);
 			    }
 			}
-			if (mknod(devName, S_IFBLK | 0600, 
+			if (smartmknod(devName, S_IFBLK | 0600, 
 				  makedev(major, minor))) {
 			    printf("failed to create %s\n", devName);
 			}
@@ -1028,6 +1095,8 @@ int runStartup(int fd) {
 	    rc = mkdevicesCommand(chptr, end);
 	else if (!strncmp(start, "sleep", MAX(5, chptr-start)))
 	    rc = sleepCommand(chptr, end);
+	else if (!strncmp(start, "mknod", MAX(5, chptr-start)))
+	    rc = mknodCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);

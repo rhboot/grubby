@@ -64,6 +64,12 @@ will not complain if the directory exists. Note this is a subset of the
 standard \fBmkdir\fR \fI-p\fR behavior.
 
 .TP
+\fBmknod\fR \fIpath\fR \fI[c|b]\fR \fImajor\fR \fIminor\fR 
+Creates a device inode for \fIpath\fR. This is identical to \fBmkdev\fR(1)
+which the exceptions that it will not create named pipes and if the directories
+in \fIpath\fR do not exist they will be automatically created.
+
+.TP
 \fBmkrootdev \fIpath\fR
 Makes \fIpath\fR a block inode for the device which should be mounted
 as root. To determine this device nash uses 
