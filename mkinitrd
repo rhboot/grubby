@@ -20,7 +20,7 @@
 #       Preston Brown <pbrown@redhat.com>
 
 
-PATH=/sbin:$PATH
+PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
 VERSION=3.4.33
