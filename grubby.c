@@ -667,6 +667,9 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
 	    while (line && line->type != LT_KERNELARGS) line = line->next;
 
+            /* failed to find one */
+            if (!line) return 0;
+
 	    for (i = 1; i < line->numElements; i++) 
 	        if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
 
@@ -687,7 +690,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     }
 
     if (*dev == '/') {
-	if (stat(dev, &sb))
+	if (stat(dev, &sb)) 
 	    return 0;
     } else {
 	sb.st_rdev = strtol(dev, &end, 16);
@@ -695,7 +698,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     }
     stat("/", &sb2);
 
-    if (sb.st_rdev != sb2.st_dev) return 0;
+    if (sb.st_rdev != sb2.st_dev) return 0; 
 
     return 1;
 }
