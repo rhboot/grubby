@@ -1,14 +1,14 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 0.ia64.3
+Release: 0.ia64.4
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 ExclusiveArch: ia64
 Prereq: dev
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 Requires: filesystem >= 2.1.0
 BuildRoot: %{_tmppath}/%{name}-root
 
@@ -56,6 +56,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Nov 25 2003 Jeremy Katz <katzj@redhat.com> 3.4.24-0.ia64.4
+- don't require lvm
+
 * Sat Nov  8 2003 Jeremy Katz <katzj@redhat.com> 3.4.24-0.ia64.3
 - bump imagesize (#108919)
 
