@@ -53,6 +53,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Sun May 26 2002 Erik Troan <ewt@redhat.com>
+- marked /sbin/installkernel as %config (53006)
+
 * Wed May 22 2002 Erik Troan <ewt@redhat.com>
 - added --nopivot (53679)
 - honor INSTALL_PATH in installkernel (32833)
