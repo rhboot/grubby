@@ -59,6 +59,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Dec 03 2002 Florian La Roche <Florian.LaRoche@redhat.de>
+- /sbin/new-kernel-pkg: fix a test to have correct ""
+
 * Fri Nov 22 2002 Jeremy Katz <katzj@redhat.com>
 - mkinitrd: more gzipped module fixes
 

@@ -60,7 +60,7 @@ install() {
     # been configured. if not, get the root device from mount
     rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
     short=$(echo $rootdevice | cut -d= -f1)
-    if [ $short == "LABEL" ]; then
+    if [ "$short" == "LABEL" ]; then
 	label=$(echo $rootdevice | cut -d= -f2)
 	device=$(echo "showlabels" | /sbin/nash  --force --quiet | 
 			awk '$2 == "'$label'" {print $1}')
