@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Aug 31 2004 Jeremy Katz <katzj@redhat.com> - 4.1.9-1
+- mkinitrd: use tmpfs instead of ramfs for udev stuff
+
 * Fri Aug 27 2004 Jeremy Katz <katzj@redhat.com> - 4.1.8-1
 - nash: and the hack to fix ppc broke other arches, conditionalize it (#130928)
 

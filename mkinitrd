@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.1.8
+VERSION=4.1.9
 
 compress=1
 allowmissing=""
@@ -49,7 +49,7 @@ if [ -f /etc/udev/udev.conf ]; then
     . /etc/udev/udev.conf
     [ "$USE_UDEV" = "yes" -a "$UDEV_INITRD" = "yes" -a -x /sbin/udevstart ] || USE_UDEV=
     # use ramfs if keep_dev is set
-    [ "$UDEV_KEEP_DEV" = "yes" ] && UDEV_RAMFS="yes"
+    [ "$UDEV_KEEP_DEV" = "yes" ] && UDEV_TMPFS="yes"
 fi
 
 usage () {
@@ -315,7 +315,7 @@ else
 fi
 
 # if we're not using udev, don't set any of the other bits
-[ -z "$USE_UDEV" ] && UDEV_RAMFS= && UDEV_KEEP_DEV=
+[ -z "$USE_UDEV" ] && UDEV_TMPFS= && UDEV_KEEP_DEV=
 
 # find a temporary directory which doesn't use tmpfs
 TMPDIR=""
@@ -633,10 +633,10 @@ if [ "$kernelmajor" != "2.4" ]; then
 fi
 
 if [ -n "$USE_UDEV" ]; then
-    if [ -n "$UDEV_RAMFS" ]; then
+    if [ -n "$UDEV_TMPFS" ]; then
 	cat >> $RCFILE <<EOF
 echo Creating /dev
-mount -t ramfs none /dev
+mount -t tmpfs none /dev
 mknod /dev/console c 5 1
 mknod /dev/null c 1 3
 mknod /dev/zero c 1 5
@@ -732,7 +732,7 @@ if [ -n "$initramfs" ]; then
     echo "echo Mounting root filesystem" >> $RCFILE
     echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
-    [  -n "$UDEV_KEEP_DEV" ] && echo "mount -t ramfs --bind /dev /sysroot/dev" >> $RCFILE
+    [  -n "$UDEV_KEEP_DEV" ] && echo "mount -t tmpfs --bind /dev /sysroot/dev" >> $RCFILE
 
     echo "echo Switching to new root" >> $RCFILE
     echo "switchroot /sysroot" >> $RCFILE
@@ -743,7 +743,7 @@ else
     echo "echo Mounting root filesystem" >> $RCFILE
     echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
-    [ -n "$UDEV_KEEP_DEV" ] && echo "mount -t ramfs --bind /dev /sysroot/dev" >> $RCFILE
+    [ -n "$UDEV_KEEP_DEV" ] && echo "mount -t tmpfs --bind /dev /sysroot/dev" >> $RCFILE
 
     echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
     echo "umount /initrd/proc" >> $RCFILE
@@ -752,7 +752,7 @@ else
   fi
 fi
 
-[ -n "$UDEV_RAMFS" ] && echo "umount /initrd/dev" >> $RCFILE
+[ -n "$UDEV_TMPFS" ] && echo "umount /initrd/dev" >> $RCFILE
 chmod +x $RCFILE
 
 if [ -z "$initramfs" ]; then
