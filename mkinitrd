@@ -95,6 +95,7 @@ findmodule() {
     fi
 
     if [ "$modName" = "ppa" ]; then
+	findmodule parport
 	findmodule parport_pc
 	modName="ppa"
     fi

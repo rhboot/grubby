@@ -53,6 +53,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri Apr  5 2002 Jeremy Katz <katzj@redhat.com>
+- include pbrown's changes to load parport_pc when needing ppa.o (#35360)
+
 * Thu Apr  4 2002 Jeremy Katz <katzj@redhat.com>
 - fix redirection bug (#62623)
 - create proper link of /sbin->/bin in initrd (#62199)
