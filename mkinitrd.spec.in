@@ -11,9 +11,6 @@ Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.st
 Requires: filesystem >= 2.1.0, cpio
 Conflicts: udev < 0:032
 BuildRequires: popt
-%ifarch i386
-BuildRequires: dietlibc
-%endif
 %ifarch ppc
 Requires: ppc64-utils >= 0.3-1
 %endif
@@ -61,6 +58,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Nov 22 2004 Jeremy Katz <katzj@redhat.com> - 4.1.19-1
+- remove use of dietlibc for nash
+
 * Wed Nov  3 2004 Jeremy Katz <katzj@redhat.com>
 - handle machines with lots of disks in /proc/partitions (#137816)
 
