@@ -196,7 +196,7 @@ remove() {
 
 mkinitrd() {
     [ -n "$verbose" ] && echo "creating initrd $initrdfile using $version"
-    /sbin/mkinitrd -f $initrdfile $version
+    /sbin/mkinitrd --allow-missing -f $initrdfile $version
     rc=$?
     if [ $rc != 0 ]; then
 	echo "mkinitrd failed" >&2

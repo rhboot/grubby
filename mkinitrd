@@ -28,6 +28,7 @@ export PATH
 VERSION=3.9.90
 
 compress=1
+allowmissing=""
 target=""
 kernel=""
 force=""
@@ -144,6 +145,11 @@ findmodule() {
 		return;
 	    fi
 	done;
+
+	if [ -n "$allowmissing" ]; then
+	    echo "WARNING: No module $modName found for kernel $kernel, continuing anyway" >&2
+	    return
+	fi
     
 	echo "No module $modName found for kernel $kernel, aborting." >&2
 	exit 1
@@ -245,6 +251,9 @@ while [ $# -gt 0 ]; do
 	    ;;
 	--image-version)
 	    img_vers=yes
+	    ;;
+	--allow-missing)
+	    allowmissing=yes
 	    ;;
 	*)
 	    if [ -z "$target" ]; then
