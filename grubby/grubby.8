@@ -5,12 +5,12 @@ grubby \- command line tool for configuring grub, lilo, and elilo
 
 .SH SYNOPSIS
 \fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR] 
-        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
-        [--bootloader-probe] [-c \fIpath\fR] [--copy-default] 
-        [--default-kernel] [--grub] [--info=\fIkernel-path\fR]
-        [--initrd=\fIinitrd-path\fR] [--lilo] [--make-default] 
-        [-o path] [--remove-kernel=\fIkernel-path\fR] 
-        [--set-default=\fIkernel-path\fR] [--title=entry-title] 
+       [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
+       [--bootloader-probe] [-c \fIpath\fR] [--copy-default] 
+       [--default-kernel] [--grub] [--info=\fIkernel-path\fR]
+       [--initrd=\fIinitrd-path\fR] [--lilo] [--make-default] 
+       [-o path] [--remove-kernel=\fIkernel-path\fR] 
+       [--set-default=\fIkernel-path\fR] [--title=entry-title] 
 
 .SH DESCRIPTION
 \fBgrubby\fR is a command line tool for updating and displaying information
@@ -87,7 +87,8 @@ is the default on ia32 platforms.
 .TP
 \fB-\-info\fR=\fIkernel-path\fR
 Display information on the first boot entry found for the kernel at
-\fIkernel-path\fR.
+\fIkernel-path\fR. If \fIkernel-path\fR is \fBDEFAULT\fR, then information
+on the default kernel is displayed. 
 
 .TP
 \fB-\-initrd\fR=\fIinitrd-path\fR
