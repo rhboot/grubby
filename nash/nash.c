@@ -729,6 +729,21 @@ int accessCommand(char * cmd, char * end) {
     return 0;
 }
 
+int sleepCommand(char * cmd, char * end) {
+    char *delaystr;
+    int delay;
+
+    if (!(cmd = getArg(cmd, end, &delaystr))) {
+	printf("sleep: delay expected\n");
+	return 1;
+    }
+
+    delay = atoi(delaystr);
+    sleep(delay);
+
+    return 0;
+}
+
 int doFind(char * dirName, char * name) {
     struct stat sb;
     DIR * dir;
@@ -992,6 +1007,8 @@ int runStartup(int fd) {
 	    rc = display_uuid_cache();
 	else if (!strncmp(start, "mkdevices", MAX(9, chptr-start)))
 	    rc = mkdevicesCommand(chptr, end);
+	else if (!strncmp(start, "sleep", MAX(5, chptr-start)))
+	    rc = sleepCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);

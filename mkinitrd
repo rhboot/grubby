@@ -309,13 +309,14 @@ if [ -z "$nousb" ]; then
 fi
 
 if [ -n "$needusb" ]; then
-    drivers=$(awk '/^alias usb-controller / { print $3}' < /etc/modules.conf)
+    drivers=$(awk '/^alias usb-controller[0-9]* / { print $3}' < /etc/modules.conf)
     if [ -n "$drivers" ]; then
 	findmodule usbcore
 	for driver in $drivers; do
 	    findmodule $driver
 	done
 	findmodule scsi_mod
+	findmodule sd_mod
 	findmodule usb-storage
     fi
 fi
@@ -536,6 +537,12 @@ for MODULE in $MODULES; do
     fi
     echo "echo \"Loading $module module\"" >> $RCFILE
     echo "insmod /lib/$module.o $options" >> $RCFILE
+
+    # Hack - we need a delay after loading usb-storage to give things
+    #        time to settle down before we start looking a block devices
+    if [ "$module" = "usb-storage" ]; then
+	echo "sleep 5" >> $RCFILE
+    fi
 done
 
 echo "echo Mounting /proc filesystem" >> $RCFILE
