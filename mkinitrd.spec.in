@@ -55,6 +55,14 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Jul 10 2002 Erik Troan <ewt@redhat.com>
+- --ifneeded is obsolete; we always need initrds
+- grubby lets you specify multiple indexes for --info
+- grubby lets you select kernels by title
+- added showlabels to nash
+- new-kernel-pkg sets the root device from /etc/fstab rather then inheriting it
+- new-kernel-pkg removes all entries w/ a duplicate label (67459)
+
 * Mon Jul 08 2002 Erik Troan <ewt@redhat.com>
 - usb root device code could fail, causing no initrd to be made
 
