@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.3
+%define version 2.3.1
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Tue Sep 28 1999 Bill Nottingham <notting@redhat.com>
+- sparc fixup from jakub
+
 * Wed Sep 22 1999 Michael K. Johnson <johnsonm@redhat.com>
 - fix cleanup (blush!)
 

@@ -42,6 +42,10 @@ findmodule() {
 	findmodule "" fc4
 	findmodule "" soc
     fi
+    if [ "$2" = "fcal" ]; then
+	findmodule "" fc4
+	findmodule "" socal
+    fi
     if [ -n "$1" ]; then
 	fmPath="$1"/"$2".o
     else
@@ -261,11 +265,7 @@ mkdir -p $MNTIMAGE/dev
 rm -rf $MNTPOINT/lost+found
 
 inst /bin/ash.static "$MNTIMAGE/bin/sh"
-if [ `uname -m` = "sparc64" ]; then
-	inst /sbin/insmod64.static "$MNTIMAGE/bin/insmod"
-else
-	inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
-fi
+inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 
 for MODULE in $MODULES; do
     cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
