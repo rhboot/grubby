@@ -942,24 +942,36 @@ int displayInfo(struct grubConfig * config, char * kernel,
     struct singleLine * line;
     char * root = NULL;
 
-    while ((entry = findEntryByIndex(config, i))) {
-	/* entries can't be removed in this mode; don't need to check
-	   entry->skip */
-
-	line = entry->lines;
-	while (line && line->type != LT_KERNEL) line=line->next;
-
-	if (!line || line->numElements < 2) {
-	    return 1;
+    if (!strcmp(kernel, "DEFAULT")) {
+	entry = findEntryByIndex(config, config->defaultImage);
+	if (entry) {
+	    line = entry->lines;
+	    while (line && line->type != LT_KERNEL) line=line->next;
+	    if (!line) entry = NULL;
 	}
+    } else {
+	while ((entry = findEntryByIndex(config, i))) {
+	    /* entries can't be removed in this mode; don't need to check
+	       entry->skip */
 
-	if (!strcmp(line->elements[1].item, kernel + strlen(prefix)))
-	    break;
+	    line = entry->lines;
+	    while (line && line->type != LT_KERNEL) line=line->next;
 
-	i++;
+	    if (!line || line->numElements < 2) {
+		return 1;
+	    }
+
+	    if (!strcmp(line->elements[1].item, kernel + strlen(prefix)))
+		break;
+
+	    i++;
+	}
     }
 
-    if (!entry) return 1;
+    if (!entry) {
+	fprintf(stderr, _("grubby: kernel not found\n"));
+	return 1;
+    }
 
     if (line->numElements >= 3) {
 	printf("args=\"");
@@ -1005,7 +1017,7 @@ int displayInfo(struct grubConfig * config, char * kernel,
 
     if (!root) {
 	line = entry->lines;
-	while (line && line->type != LT_ROOT) line=line->next;
+	while (line && line->type != LT_ROOT) line = line->next;
 
 	if (line && line->numElements >= 2)
 	    root=line->elements[1].item;
@@ -1022,13 +1034,19 @@ int displayInfo(struct grubConfig * config, char * kernel,
     }
 
     line = entry->lines;
-    while (line && line->type != LT_INITRD) line=line->next;
+    while (line && line->type != LT_INITRD) line = line->next;
 
     if (line && line->numElements >= 2) {
 	printf("initrd=%s", prefix);
 	for (i = 1; i < line->numElements; i++)
 	    printf("%s%s", line->elements[i].item, line->elements[i].indent);
 	printf("\n");
+    }
+
+    line = config->theLines;
+    while (line && line->type != LT_BOOT) line = line->next;
+    if (line && line->numElements >= 1) {
+	printf("boot=%s\n", line->elements[1].item);
     }
 
     return 0;
