@@ -289,7 +289,7 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
     else
 	line = NULL;
 
-    indent = line ? nki->template->indent : indent = cfg->primaryIndent;
+    indent = line ? nki->template->indent : cfg->primaryIndent;
     fprintf(out, "%stitle %s\n", indent, nki->title);
 
     if (line) line = line->next;
