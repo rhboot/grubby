@@ -29,7 +29,9 @@ configuration file is \fB/boot/grub/grub.conf\fR.
 When a kernel path is specified for the \fB-\-info\fR, 
 \fB-\-remove-kernel\fR, or \fB-\-update-kernel\fR,
 \fBDEFAULT\fR selects the default kernel entry and
-\fBALL\fR selects all of the kernel entries.
+\fBALL\fR selects all of the kernel entries. If a number is used for
+the kernel path the entry specified by the number is selected. All of the
+valid indexes are display when \fB-\-info=ALL\fR is used.
 
 .SH OPTIONS
 .TP

@@ -811,7 +811,25 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
     struct singleEntry * entry = NULL;
     struct singleLine * line;
     int i;
+    char * chptr;
+    int indexVar;
 
+    indexVar = strtol(kernel, &chptr, 10);
+    if (!*chptr) {
+	if (*index && *index > indexVar) return NULL;
+
+	entry = findEntryByIndex(config, indexVar);
+
+	line = entry->lines;
+	while (line && line->type != LT_KERNEL)
+	    line = line->next;
+
+	if (!line) return NULL;
+
+	if (*index) *index = indexVar;
+	return entry;
+    }
+    
     if (!strcmp(kernel, "DEFAULT")) {
 	if (index && *index > config->defaultImage) {
 	    entry = NULL;
