@@ -60,6 +60,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Dec  5 2003 Jeremy Katz <katzj@redhat.com> 3.5.15-1
+- mkinitrd: add support for lvm2 (note: will not currently handle being
+  on a running 2.4 kernel and installing 2.6 with lvm rootfs)
+
 * Wed Dec  3 2003 Jeremy Katz <katzj@redhat.com> 
 - nash: add mkdmnod for creating the device-mapper control node
 

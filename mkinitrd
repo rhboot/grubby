@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.14
+VERSION=3.5.15
 
 compress=1
 target=""
@@ -378,6 +378,13 @@ if [ -z "$nolvm" ]; then
 	    findmodule -lvm-mod
         fi
     fi
+
+    if [ -x /sbin/dmsetup ]; then
+	dmout=$(/sbin/dmsetup ls)
+	if [ "$dmout" != "No devices found" ]; then
+	    findmodule -dm-mod
+	fi
+    fi
 fi
 
 # If we have dasd devices, include the necessary modules (S/390)
@@ -440,6 +447,7 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
     rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
     major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
     [ "$major" != "58" ] || root_lvm=1
+    if echo $rootdev |grep -q /dev/mapper 2>/dev/null ; then root_lvm2=1 ; fi
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
@@ -450,6 +458,9 @@ findmodule -${rootfs}
 
 if [ -n "$root_lvm" ]; then
     findmodule -lvm-mod
+fi
+if [ -n "$root_lvm2" ]; then
+    find_module -dm-mod
 fi
 
 for n in $basicmodules; do 
@@ -543,6 +554,10 @@ if [ -n "$root_lvm" ]; then
     mknod $MNTIMAGE/dev/lvm b 109 0
 fi
 
+if [ -n "$root_lvm2" ]; then
+    inst /sbin/lvm.static "$MNTIMAGE/bin/lvm"
+fi
+
 echo "#!/bin/nash" > $RCFILE
 echo "" >> $RCFILE
 
@@ -595,6 +610,15 @@ elif [ -n "$root_lvm" ]; then
     echo "vgscan" >> $RCFILE
     echo "echo Activating logical volumes" >> $RCFILE
     echo "vgchange -ay" >> $RCFILE
+elif [ -n "$root_lvm2" ]; then
+    echo "echo Making device-mapper control node" >> $RCFILE
+    echo "mkdmnod" >> $RCFILE
+    echo "echo Scanning logical volumes" >> $RCFILE
+    echo "lvm vgscan" >> $RCFILE
+    echo "echo Activating logical volumes" >> $RCFILE
+    echo "lvm vgchange -ay" >> $RCFILE
+    echo "echo Making device nodes" >> $RCFILE
+    echo "lvm vgmknodes" >> $RCFILE
 else
     echo "echo Creating root device" >> $RCFILE
     echo "mkrootdev /dev/root" >> $RCFILE
