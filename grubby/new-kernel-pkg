@@ -276,19 +276,15 @@ while [ $# -gt 0 ]; do
 	    if echo $1 |grep '=' >/dev/null; then
 		mbkernel=`echo $1 | sed's/^--multiboot=//'`
 	    else
-		# don't you love bash arg parsing?
-		if `echo $2 |grep -q -- "--"`; then
-		    mbkernel=$2
-		    shift
-		else
-		    mbkernel="/boot/xen.gz"
-		fi
+		# can't really support having an optional second arg here
+		# sorry!
+		mbkernel="/boot/xen.gz"
 	    fi
 	    ;;
 
 	--mbargs*)
 	    if echo $1 |grep '=' >/dev/null; then
-		mbargs=`echo $1 | sed's/^--mbargs=//'`
+		mbargs=`echo $1 | sed 's/^--mbargs=//'`
 	    else
 		mbargs=$2
 		shift
