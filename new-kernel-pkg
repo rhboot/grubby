@@ -56,13 +56,13 @@ install() {
 
     # get the root filesystem to use; if it's on a label make sure it's
     # been configured. if not, get the root device from mount
-    rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' $fstab)
+    rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
     short=$(echo $rootdevice | cut -d= -f1)
     if [ $short == "LABEL" ]; then
 	label=$(echo $rootdevice | cut -d= -f2)
-	rootdevice=$(echo "showlabels" | /sbin/nash  --force --quiet | 
-			awk '$2 == "'$label'" {print $1}'
-	if [ -z "$rootdevice" ]; then
+	device=$(echo "showlabels" | /sbin/nash  --force --quiet | 
+			awk '$2 == "'$label'" {print $1}')
+	if [ -z "$device" ]; then
 	    rootdevice=$(mount | awk '$3 == "/" { print $1 }')
 	fi
     fi
