@@ -48,7 +48,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Wed Feb 28 2001 Matt Wilson <msw@redhat.com>
 - changed the Requires on mktemp from >= 1.5 to >= 1.5-5 (which included
-  -d support)
+  -d support) (#30127)
 
 * Fri Feb 23 2001 Erik Troan <ewt@redhat.com>
 - let nash be invoked as modprobe to avoid a modprobe failure to exec
