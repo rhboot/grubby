@@ -159,15 +159,15 @@ static char * getKernelCmdLine(void) {
     int fd, i;
     char * buf;
 
-    buf = malloc(1024);
-    if (!buf)
-        return buf;
-
     fd = open("/proc/cmdline", O_RDONLY, 0);
     if (fd < 0) {
 	printf("getKernelCmdLine: failed to open /proc/cmdline: %d\n", errno);
 	return NULL;
     }
+
+    buf = malloc(1024);
+    if (!buf)
+        return buf;
 
     i = read(fd, buf, 1024);
     if (i < 0) {
@@ -216,7 +216,7 @@ int mountCommand(char * cmd, char * end) {
     char * options = NULL;
     int mustRemove = 0;
     int mustRemoveDir = 0;
-    int rc;
+    int rc = 0;
     int flags = MS_MGC_VAL;
     char * newOpts;
 
@@ -702,8 +702,8 @@ int pivotrootCommand(char * cmd, char * end) {
  */
 int switchrootCommand(char * cmd, char * end) {
     char * new;
-    char * initprogs[] = { "/sbin/init", "/etc/init", 
-                           "/bin/init", "/bin/sh", NULL };
+    const char * initprogs[] = { "/sbin/init", "/etc/init", 
+                                 "/bin/init", "/bin/sh", NULL };
     char * init, * cmdline = NULL;
     char ** initargs;
     int fd, i = 0;
@@ -746,7 +746,7 @@ int switchrootCommand(char * cmd, char * end) {
         int j;
         for (j = 0; initprogs[j] != NULL; j++) {
             if (!access(initprogs[j], X_OK)) {
-                init = initprogs[j];
+                init = strdup(initprogs[j]);
                 break;
             }
         }
@@ -757,6 +757,7 @@ int switchrootCommand(char * cmd, char * end) {
         initargs[i++] = strdup(init);
     } else {
         cmdline = init;
+        initargs[0] = NULL;
     }
 
     if (cmdline != NULL) {
@@ -771,8 +772,10 @@ int switchrootCommand(char * cmd, char * end) {
         }
     }
 
+    initargs[i + 1] = NULL;
+
     if (access(initargs[0], X_OK)) {
-        printf("WARNING: can't access %s\n", initargs[i]);
+        printf("WARNING: can't access %s\n", initargs[0]);
     }
     execv(initargs[0], initargs);
     printf("exec of init (%s) failed!!!: %d\n", initargs[0], errno);
@@ -860,7 +863,7 @@ int umountCommand(char * cmd, char * end) {
 int mkrootdevCommand(char * cmd, char * end) {
     char * path;
     char *root, * chptr;
-    unsigned int devNum = 0;
+    int devNum = 0;
     int fd;
     int i;
     char buf[1024];
