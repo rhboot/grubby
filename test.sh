@@ -45,6 +45,10 @@ yabootTest() {
     oneTest --yaboot "$@"
 }
 
+ziplTest() {
+    oneTest --zipl "$@"
+}
+
 echo "Parse/write comparison..."
 for n in $(cd test; echo grub.[0-9]*); do
     grubTest $n ../$n --remove-kernel 1234
@@ -111,6 +115,10 @@ liloTest lilo.1 default/l1.3 --add-kernel /boot/kernel --title label \
 liloTest lilo.1 default/l1.4 --add-kernel /boot/kernel --title label \
     --copy-default --make-default
 
+echo "Z/IPL default directive..."
+ziplTest zipl.1 default/z1.1 --add-kernel /boot/new-kernel --title test
+ziplTest zipl.1 default/z1.2 --add-kernel /boot/new-kernel --title test --make-default
+
 echo "GRUB fallback directive..."
 grubTest grub.5 fallback/g5.1 --remove-kernel=/boot/vmlinuz-2.4.7-ac3 \
     --boot-filesystem=/
@@ -136,6 +144,10 @@ echo "YABOOT remove kernel..."
 yabootTest yaboot.1 remove/y1.1 --remove-kernel=DEFAULT
 yabootTest yaboot.1 remove/y1.2 --remove-kernel=/boot/vmlinuz-2.5.50-eepro
 yabootTest yaboot.2 remove/y2.1 --remove-kernel=/boot/vmlinux-2.5.50
+
+echo "Z/IPL remove kernel..."
+ziplTest zipl.1 remove/z1.1 --remove-kernel=/boot/vmlinuz-2.4.9-38
+ziplTest zipl.1 remove/z1.2 --remove-kernel=DEFAULT
 
 echo "GRUB update kernel argument handling..."
 grubTest grub.1 updargs/g1.1 --update-kernel=DEFAULT --args="root=/dev/hda1"
@@ -205,6 +217,10 @@ echo "YABOOT add kernel..."
 yabootTest yaboot.1 add/y1.1 --copy-default --add-kernel=/boot/new-kernel  \
     --title=newtitle
 yabootTest yaboot.1 add/y1.2 --add-kernel=/boot/new-kernel --title=newtitle
+
+echo "Z/IPL add kernel..."
+ziplTest zipl.1 add/z1.1 --add-kernel=/boot/new-kernel.img --title test
+ziplTest zipl.1 add/z1.2 --add-kernel=/boot/new-kernel.img --title test --copy-default
 
 echo "LILO long titles..."
 liloTest lilo.1 longtitle/l1.1 --add-kernel=/boot/new-kernel.img \

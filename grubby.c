@@ -82,6 +82,7 @@ struct configFileInfo {
     int needsBootPrefix;
     int argsInQuotes;
     int maxTitleLength;
+    int titleBracketed;
 };
 
 struct keywordTypes grubKeywords[] = {
@@ -91,7 +92,7 @@ struct keywordTypes grubKeywords[] = {
     { "fallback",   LT_FALLBACK,    ' ' },
     { "kernel",	    LT_KERNEL,	    ' ' },
     { "initrd",	    LT_INITRD,	    ' ' },
-    { NULL,	    0 },
+    { NULL,	    0, 0 },
 };
 
 struct configFileInfo grubConfigType = {
@@ -103,6 +104,7 @@ struct configFileInfo grubConfigType = {
     1,					    /* needsBootPrefix */
     0,					    /* argsInQuotes */
     0,					    /* maxTitleLength */
+    0,                                      /* titleBracketed */
 };
 
 struct keywordTypes yabootKeywords[] = {
@@ -118,7 +120,7 @@ struct keywordTypes yabootKeywords[] = {
     { "append",	    LT_KERNELARGS,  '=' },
     { "boot",	    LT_BOOT,	    '=' },
     { "lba",	    LT_LBA,	    ' ' },
-    { NULL,	    0 },
+    { NULL,	    0, 0 },
 };
 
 struct keywordTypes liloKeywords[] = {
@@ -131,7 +133,7 @@ struct keywordTypes liloKeywords[] = {
     { "append",	    LT_KERNELARGS,  '=' },
     { "boot",	    LT_BOOT,	    '=' },
     { "lba",	    LT_LBA,	    ' ' },
-    { NULL,	    0 },
+    { NULL,	    0, 0 },
 };
 
 struct keywordTypes siloKeywords[] = {
@@ -143,7 +145,16 @@ struct keywordTypes siloKeywords[] = {
     { "initrd",	    LT_INITRD,	    '=' },
     { "append",	    LT_KERNELARGS,  '=' },
     { "boot",	    LT_BOOT,	    '=' },
-    { NULL,	    0 },
+    { NULL,	    0, 0 },
+};
+
+struct keywordTypes ziplKeywords[] = {
+    { "target",     LT_ROOT,        '=' },
+    { "image",      LT_KERNEL,      '=' },
+    { "ramdisk",    LT_INITRD,      '=' },
+    { "parameters", LT_KERNELARGS,  '=' },
+    { "default",    LT_DEFAULT,     '=' },
+    { NULL,         0, 0 },
 };
 
 struct configFileInfo eliloConfigType = {
@@ -155,6 +166,7 @@ struct configFileInfo eliloConfigType = {
     1,			
     1,					    /* argsInQuotes */
     0,					    /* maxTitleLength */
+    0,                                      /* titleBracketed */
 };
 
 struct configFileInfo liloConfigType = {
@@ -166,6 +178,7 @@ struct configFileInfo liloConfigType = {
     0,					    /* needsBootPrefix */
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
+    0,                                      /* titleBracketed */
 };
 
 struct configFileInfo yabootConfigType = {
@@ -177,17 +190,31 @@ struct configFileInfo yabootConfigType = {
     0,					    /* needsBootPrefix */
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
+    0,                                      /* titleBracketed */
 };
 
 struct configFileInfo siloConfigType = {
     "/etc/silo.conf",			    /* defaultConfig */
-    liloKeywords,			    /* keywords */
+    siloKeywords,			    /* keywords */
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
     0,					    /* needsBootPrefix */
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
+    0,                                      /* titleBracketed */
+};
+
+struct configFileInfo ziplConfigType = {
+    "/etc/zipl.conf",			    /* defaultConfig */
+    ziplKeywords,			    /* keywords */
+    0,					    /* defaultIsIndex */
+    0,					    /* defaultSupportSaved */
+    LT_TITLE,				    /* entrySeparator */
+    0,					    /* needsBootPrefix */
+    1,					    /* argsInQuotes */
+    15,					    /* maxTitleLength */
+    1,                                      /* titleBracketed */
 };
 
 struct grubConfig {
@@ -214,7 +241,7 @@ static void lineFree(struct singleLine * line);
 static int lineWrite(FILE * out, struct singleLine * line,
 		     struct configFileInfo * cfi);
 static int getNextLine(char ** bufPtr, struct singleLine * line,
-		       struct keywordTypes * keywords);
+		       struct configFileInfo * cfi);
 
 static char * strndup(char * from, int len) {
     char * to;
@@ -224,6 +251,42 @@ static char * strndup(char * from, int len) {
     to[len] = '\0';
 
     return to;
+}
+
+static int isBracketedTitle(struct singleLine * line) {
+    if ((*line->elements[0].item == '[') && (line->numElements == 1)) {
+        int len = strlen(line->elements[0].item);
+        if (*(line->elements[0].item + len - 1) == ']') {
+            /* FIXME: this is a hack... */
+            if (strcmp(line->elements[0].item, "[defaultboot]")) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+/* figure out if this is a entry separator */
+static int isEntrySeparator(struct singleLine * line,
+                            struct configFileInfo * cfi) {
+    if (line->type == cfi->entrySeparator)
+        return 1;
+    if (line->type == LT_OTHER)
+        return 1;
+    if (cfi->titleBracketed && isBracketedTitle(line)) {
+        return 1;
+    }
+    return 0;
+}
+
+/* extract the title from within brackets (for zipl) */
+static char * extractTitle(struct singleLine * line) {
+    /* bracketed title... let's extract it (leaks a byte) */
+    char * title;
+    title = strdup(line->elements[0].item);
+    title++;
+    *(title + strlen(title) - 1) = '\0';
+    return title;
 }
 
 static int readFile(int fd, char ** bufPtr) {
@@ -298,12 +361,13 @@ static int lineWrite(FILE * out, struct singleLine * line,
 
 /* we've guaranteed that the buffer ends w/ \n\0 */
 static int getNextLine(char ** bufPtr, struct singleLine * line,
-		       struct keywordTypes * keywords) {
+                       struct configFileInfo * cfi) {
     char * end;
     char * start = *bufPtr;
     char * chptr;
     int elementsAlloced = 0;
     struct lineElement * element;
+    struct keywordTypes * keywords = cfi->keywords;
     int first = 1;
     int i;
 
@@ -366,6 +430,12 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 	    line->type = keywords[i].type;
 	} else {
 	    line->type = LT_UNKNOWN;
+            
+            /* zipl does [title] instead of something reasonable like all
+             * the other boot loaders.  kind of ugly */
+            if (cfi->titleBracketed && isBracketedTitle(line)) {
+                line->type = LT_TITLE;
+            }
 
 	    /* this is awkward, but we need to be able to handle keywords
 	       that begin with a # (specifically for #boot in grub.conf),
@@ -443,7 +513,7 @@ static struct grubConfig * readConfig(const char * inName,
 	line = malloc(sizeof(*line));
 	lineInit(line);
 
-	if (getNextLine(&head, line, cfi->keywords)) {
+	if (getNextLine(&head, line, cfi)) {
 	    free(line);
 	    /* XXX memory leak of everything in cfg */
 	    return NULL;
@@ -457,7 +527,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    cfg->secondaryIndent = strdup(line->indent);
 	}
 
-	if ((line->type == cfi->entrySeparator) || (line->type == LT_OTHER)) {
+	if (isEntrySeparator(line, cfi)) {
 	    sawEntry = 1;
 	    if (!entry) {
 		cfg->entries = malloc(sizeof(*entry));
@@ -553,9 +623,13 @@ static struct grubConfig * readConfig(const char * inName,
 		for (line = entry->lines; line; line = line->next)
 		    if (line->type == LT_TITLE) break;
 
-		if (line && !strcmp(defaultLine->elements[1].item,
-				    line->elements[1].item)) break;
-
+                if (!cfi->titleBracketed) {
+                    if (line && !strcmp(defaultLine->elements[1].item,
+                                        line->elements[1].item)) break;
+                } else if (line) {
+                    if (!strcmp(defaultLine->elements[1].item, 
+                                extractTitle(line))) break;
+                }
 		i++;
 	    }
 
@@ -602,6 +676,11 @@ static void writeDefault(FILE * out, char * indent,
 	    if (line && line->numElements >= 2)
 		fprintf(out, "%sdefault%s%s\n", indent, separator, 
 			line->elements[1].item);
+            else if (line && (line->numElements == 1) && 
+                     cfg->cfi->titleBracketed) {
+		fprintf(out, "%sdefault%s%s\n", indent, separator, 
+                        extractTitle(line));
+            }
 	}
     }
 }
@@ -1231,7 +1310,8 @@ struct singleLine *  addLine(struct singleEntry * entry,
 
     for (i = 0; cfi->keywords[i].key; i++)
 	if (cfi->keywords[i].type == type) break;
-    if (!cfi->keywords[i].key) abort();
+    if (type != LT_TITLE || !cfi->titleBracketed) 
+        if (!cfi->keywords[i].key) abort();
 
     /* The last non-empty line gives us the indention to us and the line
        to insert after. Note that comments are considered empty lines, which
@@ -1266,17 +1346,27 @@ struct singleLine *  addLine(struct singleEntry * entry,
 	line->next = NULL;
     }
 
-    line->type = type;
-    line->numElements = val ? 2 : 1;
-    line->elements = malloc(sizeof(*line->elements) * line->numElements);
-    line->elements[0].item = strdup(cfi->keywords[i].key);
-    line->elements[0].indent = malloc(2);
-    line->elements[0].indent[0] = cfi->keywords[i].nextChar;
-    line->elements[0].indent[1] = '\0';
-    
-    if (val) {
-	line->elements[1].item = val;
-	line->elements[1].indent = strdup("");
+    if (type != LT_TITLE || !cfi->titleBracketed) {
+        line->type = type;
+        line->numElements = val ? 2 : 1;
+        line->elements = malloc(sizeof(*line->elements) * line->numElements);
+        line->elements[0].item = strdup(cfi->keywords[i].key);
+        line->elements[0].indent = malloc(2);
+        line->elements[0].indent[0] = cfi->keywords[i].nextChar;
+        line->elements[0].indent[1] = '\0';
+        
+        if (val) {
+            line->elements[1].item = val;
+            line->elements[1].indent = strdup("");
+        }
+    } else {
+        /* we're doing the title of a bracketed title (zipl) */
+        line->type = type;
+        line->numElements = 1;
+        line->elements = malloc(sizeof(*line->elements) * line->numElements);
+
+        line->elements[0].item = malloc(strlen(val) + 3);
+        sprintf(line->elements[0].item, "[%s]", val);
     }
 
     return line;
@@ -1783,12 +1873,26 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		newLine->elements[1].item = strdup(newKernelTitle);
 		newLine->elements[1].indent = strdup("");
 		newLine->numElements = 2;
-	    }
+	    } else if (tmplLine->type == LT_TITLE && 
+                       config->cfi->titleBracketed && 
+                       tmplLine->numElements == 1) {
+                needs &= ~KERNEL_TITLE;
+                free(newLine->elements[0].item);
+                free(newLine->elements[0].indent);
+                newLine->elements = malloc(sizeof(*newLine->elements) * 
+                                           newLine->numElements);
+
+                newLine->elements[0].item = malloc(strlen(newKernelTitle) + 3);
+                sprintf(newLine->elements[0].item, "[%s]", newKernelTitle);
+                newLine->elements[0].indent = strdup("");
+                newLine->numElements = 1;
+            }
 	}
     } else {
-	for (i = 0; config->cfi->keywords[i].key; i++)
+	for (i = 0; config->cfi->keywords[i].key; i++) {
 	    if ((config->cfi->keywords[i].type == config->cfi->entrySeparator) || (config->cfi->keywords[i].type == LT_OTHER)) 
 		break;
+        }
 
 	switch (config->cfi->keywords[i].type) {
 	    case LT_KERNEL:  needs &= ~KERNEL_KERNEL, 
@@ -1796,7 +1900,16 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 			     type = LT_KERNEL; break;
 	    case LT_TITLE:   needs &= ~KERNEL_TITLE, chptr = newKernelTitle;
 			     type = LT_TITLE; break;
-	    default:	    abort();
+	    default:	    
+                /* zipl strikes again */
+                if (config->cfi->titleBracketed) {
+                    needs &= ~KERNEL_TITLE;
+                    chptr = newKernelTitle;
+                    type = LT_TITLE;
+                    break;
+                } else {
+                    abort();
+                }
 	}
 
 	newLine = addLine(new, config->cfi, type, config->primaryIndent, chptr);
@@ -1826,7 +1939,7 @@ int main(int argc, const char ** argv) {
     int flags = 0;
     int badImageOkay = 0;
     int configureLilo = 0, configureELilo = 0, configureGrub = 0;
-    int configureYaboot = 0, configureSilo = 0;
+    int configureYaboot = 0, configureSilo = 0, configureZipl = 0;
     int bootloaderProbe = 0;
     char * updateKernelPath = NULL;
     char * newKernelPath = NULL;
@@ -1907,6 +2020,8 @@ int main(int argc, const char ** argv) {
 	    _("print the version of this program and exit"), NULL },
 	{ "yaboot", 0, POPT_ARG_NONE, &configureYaboot, 0,
 	    _("configure yaboot bootloader") },
+	{ "zipl", 0, POPT_ARG_NONE, &configureZipl, 0,
+	    _("configure zipl bootloader") },
 	POPT_AUTOHELP
 	{ 0, 0, 0, 0, 0 }
     };
@@ -1936,7 +2051,7 @@ int main(int argc, const char ** argv) {
     }
 
     if ((configureLilo + configureGrub + configureELilo + 
-		configureYaboot + configureSilo) > 1) {
+		configureYaboot + configureSilo + configureZipl) > 1) {
 	fprintf(stderr, _("grubby: cannot specify multiple bootloaders\n"));
 	return 1;
     } else if (bootloaderProbe && grubConfig) {
@@ -1953,6 +2068,8 @@ int main(int argc, const char ** argv) {
 	cfi = &yabootConfigType;
     } else if (configureSilo) {
         cfi = &siloConfigType;
+    } else if (configureZipl) {
+        cfi = &ziplConfigType;
     }
 
     if (!cfi) {
@@ -1962,6 +2079,10 @@ int main(int argc, const char ** argv) {
 	cfi = &yabootConfigType;
       #elif __sparc__
         cfi = &siloConfigType;
+      #elif __s390__
+        cfi = &ziplConfigType;
+      #elif __s390x__
+        cfi = &ziplConfigtype;
       #else
 	cfi = &grubConfigType;
       #endif
