@@ -121,7 +121,7 @@ struct keywordTypes liloKeywords[] = {
 
 struct configFileInfo liloConfigType = {
 #ifdef __ia64__
-    "/boot/efi/elilo.conf",		    /* defaultConfig */
+    "/boot/efi/redhat/elilo.conf",		    /* defaultConfig */
 #else
     "/etc/lilo.conf",			    /* defaultConfig */
 #endif
