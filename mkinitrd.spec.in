@@ -52,6 +52,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri Aug 31 2001 Jeremy Katz <katzj@redhat.com>
+- fix new-kernel-pkg --mkinitrd for ia64
+
 * Thu Aug 30 2001 Erik Troan <ewt@redhat.com>
 - fixed bug handling invalid default (MF #52889)
 - in some cases we would set the default to point at a removed image
