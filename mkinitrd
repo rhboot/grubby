@@ -56,6 +56,24 @@ usage () {
     exit 1
 }
 
+moduledep() {
+    if [ ! -f "/lib/modules/$kernel/modules.dep" ]; then
+	echo "No dep file found for kernel $kernel" >&2
+	exit 1
+    fi
+
+    [ -n "$verbose" ] && echo "Looking for deps of module $1.o"
+    deps=$(awk 'BEGIN { searched=ARGV[2]; ARGV[2]=""; rc=1 } \
+                function modname(filename) { match(filename, /\/([^\/]+)\.o/, ret); return ret[1] } \
+                function show() { if (orig == searched) { print dep; orig=""; rc=0; exit } } \
+                /^\/lib/ { show(); \
+                           orig=modname($1); \
+                           if ($2) { dep=modname($2) } else { dep="" } } \
+                /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
+                END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
+    [ -n "$verbose" -a -n "$deps" ] && echo -e "\t$deps"
+}
+
 findmodule() {
     skiperrors=""
 
@@ -64,7 +82,7 @@ findmodule() {
 	shift
     fi
 
-    modName=$1
+    local modName=$1
 
     if [ "$modName" = "off" -o "$modName" = "null" ]; then
 	return
@@ -81,54 +99,26 @@ findmodule() {
 	return
     fi
 
+    # special cases
     if [ "$modName" = "i2o_block" ]; then
 	findmodule i2o_core
 	findmodule i2o_pci
 	modName="i2o_block"
-    fi
-
-    if [ "$modName" = "mptscsih" ]; then
-        findmodule mptbase
-	modName="mptscsih"
-    fi
-
-    if [ "$modName" = "pluto" ]; then
-	findmodule fc4
-	findmodule soc
-	modName="pluto"
-    fi
-
-    if [ "$modName" = "fcal" ]; then
-	findmodule fc4
-	findmodule socal
-	modName="fcal"
-    fi
-
-    if [ "$modName" = "ext3" ]; then
-	findmodule $skiperrors mbcache
-	findmodule $skiperrors jbd
-	modName="ext3"
-    fi
-
-    if [ "$modName" = "xfs" ]; then
-	findmodule $skiperrors pagebuf
-	findmodule $skiperrors xfs_support
-	findmodule $skiperrors xfs_dmapi
-	modName="xfs"
-    fi
-
-    if [ "$modName" = "ppa" ]; then
+    elif [ "$modName" = "ppa" ]; then
 	findmodule parport
 	findmodule parport_pc
 	modName="ppa"
-    fi
-
-    if [ "$modName" = "sbp2" ]; then
+    elif [ "$modName" = "sbp2" ]; then
 	findmodule ieee1394
 	findmodule ohci1394
 	modName="sbp2"
+    else
+	moduledep $modName
+	for i in $deps; do
+	    findmodule $i
+	done
     fi
-    
+
     fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o.gz -type f | /sbin/nash --quiet)`
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
@@ -336,7 +326,6 @@ fi
 if [ -n "$needusb" ]; then
     drivers=$(awk '/^alias usb-controller[0-9]* / { print $3}' < /etc/modules.conf)
     if [ -n "$drivers" ]; then
-	findmodule usbcore
 	for driver in $drivers; do
 	    findmodule $driver
 	done
@@ -371,8 +360,6 @@ fi
 # If we have ide devices and module ide, do the right thing
 ide=/proc/ide/ide*
 if [ -n "$ide" ]; then
-    findmodule -ide-mod
-    findmodule -ide-probe-mod
     findmodule -ide-disk
 fi
 
@@ -402,15 +389,10 @@ if [ -z "$noraid" -a -f /proc/mdstat ]; then
 		    /proc/mdstat | sort -u); do
 	case $level in
 	linear)
-	    findmodule -md
 	    findmodule linear
 	    startraid=1
 	    ;;
 	raid[0145])
-	    findmodule -md
-	    if [ $level == raid5 ]; then
-		findmodule -xor
-	    fi
 	    findmodule $level
 	    startraid=1
 	    ;;
