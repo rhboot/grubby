@@ -2,6 +2,7 @@ VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
 
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
+ARCH := $(patsubst ppc%,ppc,$(ARCH))
 
 CFLAGS = -Wall -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
 LDFLAGS = -g
@@ -22,6 +23,10 @@ TARGETS += grubby
 endif
 
 ifeq ($(ARCH), ia64)
+TARGETS += grubby
+endif
+
+ifeq ($(ARCH), ppc)
 TARGETS += grubby
 endif
 
