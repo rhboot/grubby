@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.1
+%define version 2.2
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -17,14 +17,14 @@ images.  These ramdisk images are often used to preload the block
 device modules (SCSI or RAID) needed to access the root filesystem.
 
 In other words, generic kernels can be built without drivers for any
-SCSI adapters which load the SCSI driver as a module.  Since the kernel
-needs to read those modules, but in this case it isn't able to address
-the SCSI adapter, an initial ramdisk is used.  The initial ramdisk is
-loaded by the operating system loader (normally LILO) and is available
-to the kernel as soon as the ramdisk is loaded.  The ramdisk image
-loads the proper SCSI adapter and allows the kernel to mount the root
-filesystem.  The mkinitrd program creates such a ramdisk using
-information found in the /etc/conf.modules file.
+SCSI adapters which load the SCSI driver as a module.  Since the
+kernel needs to read those modules, but in this case it isn't able to
+address the SCSI adapter, an initial ramdisk is used.  The initial
+ramdisk is loaded by the operating system loader (normally LILO) and
+is available to the kernel as soon as the ramdisk is loaded.  The
+ramdisk image loads the proper SCSI adapter and allows the kernel to
+mount the root filesystem.  The mkinitrd program creates such a
+ramdisk using information found in the /etc/conf.modules file.
 
 %prep
 %setup -q
@@ -42,6 +42,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Tue Sep 21 1999 Michael K. Johnson <johnsonm@redhat.com>
+- now works when /usr is not mounted (do not rely on /usr/bin/install)
+- slight cleanups, better usage message
+
 * Thu Jul 29 1999 Michael K. Johnson <johnsonm@redhat.com>
 - Now automatically includes necessary raid modules
 - --omit-raid-modules now omits raid modules
