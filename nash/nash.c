@@ -98,7 +98,7 @@ int smartmknod(char * device, mode_t mode, dev_t dev) {
 	if (*end == '/') {
 	    *end = '\0';
 	    if (access(buf, F_OK) && errno == ENOENT) 
-		mkdir(buf, 0700);
+		mkdir(buf, 0755);
 	    *end = '/';
 	}
 
@@ -1084,6 +1084,58 @@ int mkdevicesCommand(char * cmd, char * end) {
     return 0;
 }
 
+static int getDevNumFromProc(char * file, char * device) {
+    char buf[32768], line[4096];
+    char * start, *end;
+    int num;
+    int fd;
+
+    if ((fd = open(file, O_RDONLY)) == -1) {
+        printf("can't open file %s: %d\n", file, errno);
+        return -1;
+    }
+
+    num = read(fd, buf, sizeof(buf));
+    if (num < 1) {
+        close(fd);
+        printf("failed to read %s: %d\n", file, errno);
+        return -1;
+    }
+    buf[num] = '\0';
+    close(fd);
+
+    start = buf;
+    end = strchr(start, '\n');
+    while (start && end) {
+        *end++ = '\0';
+        if ((sscanf(start, "%d %s", &num, &line)) == 2) {
+            if (!strncmp(device, line, strlen(device)))
+                return num;
+        }
+        start = end;
+        end = strchr(start, '\n');
+    }
+    return -1;
+}
+
+int mkDMNodCommand(char * cmd, char * end) {
+    int major = getDevNumFromProc("/proc/devices", "misc");
+    int minor = getDevNumFromProc("/proc/misc", "device-mapper");
+
+    if ((major == -1) || (minor == -1)) {
+        printf("Unable to find device-mapper major/minor\n");
+        return 1;
+    }
+
+    if (smartmknod("/dev/mapper/control", S_IFCHR | 0600, 
+                   makedev(major, minor))) {
+        printf("failed to create /dev/mapper/control\n");
+        return 1;
+    }
+    
+    return 0;
+}
+
 int runStartup(int fd) {
     char contents[32768];
     int i;
@@ -1162,6 +1214,8 @@ int runStartup(int fd) {
 	    rc = sleepCommand(chptr, end);
 	else if (!strncmp(start, "mknod", MAX(5, chptr-start)))
 	    rc = mknodCommand(chptr, end);
+        else if (!strncmp(start, "mkdmnod", MAX(7, chptr-start)))
+            rc = mkDMNodCommand(chptr, end);
         else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
             rc = readlinkCommand(chptr, end);
 	else {
