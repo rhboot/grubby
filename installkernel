@@ -17,13 +17,29 @@ MAPFILE=$3
 
 if [ -f $INSTALL_PATH/vmlinuz-$KERNEL_VERSION ]; then 
       mv $INSTALL_PATH/vmlinuz-$KERNEL_VERSION \
-              $INSTALL_PATH/vmlinuz.old;
+              $INSTALL_PATH/vmlinuz-$KERNEL_VERSION.old;
 fi
+
+if [ ! -L $INSTALL_PATH/vmlinuz ]; then
+    if [ -e $INSTALLPATH/vmlinuz ]; then 
+	mv $INSTALL_PATH/vmlinuz $INSTALL_PATH/vmlinuz.old
+    fi
+    mv $INSTALL_PATH/vmlinuz $INSTALL_PATH/vmlinuz.old
+fi
+
+ln -sf vmlinuz-$KERNEL_VERSION $INSTALL_PATH/vmlinuz
 
 if [ -f $INSTALL_PATH/System.map-$KERNEL_VERSION ]; then 
       mv $INSTALL_PATH/System.map-$KERNEL_VERSION \
-              $INSTALL_PATH/System.map.old; 
+              $INSTALL_PATH/System.map-$KERNEL_VERSION.old; 
 fi
+
+if [ ! -L $INSTALL_PATH/System.map ]; then
+    if [ -e $INSTALLPATH/System.map ]; then 
+	mv $INSTALL_PATH/System.map $INSTALL_PATH/System.map.old
+    fi
+fi
+ln -sf System.map-$KERNEL_VERSION $INSTALL_PATH/System.map
 
 cat $BOOTIMAGE > $INSTALL_PATH/vmlinuz-$KERNEL_VERSION
 cp $MAPFILE $INSTALL_PATH/System.map-$KERNEL_VERSION
