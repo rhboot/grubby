@@ -6,7 +6,7 @@ Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 Requires: filesystem >= 2.1.0
 BuildRoot: %{_tmppath}/%{name}-root
 
@@ -52,6 +52,10 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri Mar 22 2002 Jeremy Katz <katzj@redhat.com>
+- duh, that won't work.  fix it
+- don't require lvm tools right now
+
 * Thu Mar 21 2002 Jeremy Katz <katzj@redhat.com>
 - fix nash to create directories for devices like cciss and ida
 
