@@ -80,6 +80,7 @@ struct keywordTypes {
 } ;
 
 struct configFileInfo {
+    char * defaultConfig;
     struct keywordTypes * keywords;
     int defaultIsIndex;
     int defaultSupportSaved;
@@ -98,6 +99,11 @@ struct keywordTypes grubKeywords[] = {
 };
 
 struct configFileInfo grubConfigType = {
+#ifdef __ia64__
+    "/boot/efi/elilo.conf",		    /* defaultConfig */
+#else
+    "/etc/lilo.conf",			    /* defaultConfig */
+#endif
     grubKeywords,			    /* keywords */
     1,					    /* defaultIsIndex */
     1,					    /* defaultSupportSaved */
@@ -116,6 +122,7 @@ struct keywordTypes liloKeywords[] = {
 };
 
 struct configFileInfo liloConfigType = {
+    "/boot/grub/grub.conf",		    /* defaultConfig */
     liloKeywords,			    /* keywords */
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
@@ -954,6 +961,10 @@ int main(int argc, const char ** argv) {
 	{ 0, 0, 0, 0, 0 }
     };
 
+#ifdef __ia64__
+    configureLilo = 1;
+#endif
+
     optCon = poptGetContext("grubby", argc, argv, options, 0);
     poptReadDefaultConfig(optCon, 1);
 
@@ -973,12 +984,11 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
-    if (configureLilo) {
-	if (!grubConfig) grubConfig = "/etc/lilo.conf";
+    if (configureLilo)
 	cfi = &liloConfigType;
-    } else {
-	if (!grubConfig) grubConfig = "/boot/grub/grub.conf";
-    }
+
+    if (!grubConfig) 
+	grubConfig = cfi->defaultConfig;
 
     if (displayDefault && (newKernelVersion || newKernelPath ||
 			   oldKernelPath)) {
