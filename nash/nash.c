@@ -1,5 +1,5 @@
 /*
- * linuxrc.c
+ * nash.c
  * 
  * Simple code to load modules, mount root, and get things going. It's designed
  * not to be linked against libc, which keeps it small.
@@ -66,7 +66,13 @@
 #define MD_MAJOR 9
 #include <linux/raid/md_u.h>
 
+#ifndef RAID_AUTORUN
+#define RAID_AUTORUN           _IO (MD_MAJOR, 0x14)
+#endif
+
+#ifndef MS_REMOUNT
 #define MS_REMOUNT      32
+#endif
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 
