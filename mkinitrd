@@ -59,7 +59,10 @@ findmodule() {
 	exit 1
     fi
 
-    MODULES="$MODULES $fmPath"
+    # only need to add each module once
+    if ! grep $fmPath $MODULES >/dev/null 2>&1 ; then
+	MODULES="$MODULES $fmPath"
+    fi
 }
 
 inst() {
@@ -176,7 +179,8 @@ fi
 if [ -z "$noraid" ]; then
     # load appropriate raid devices if necessary
     if grep '^/dev/md' /etc/fstab | grep -v noauto >/dev/null 2>&1 ; then
-	for number in $(grep '^[ 	]*raid-level' /etc/raidtab | awk '{print $2}') ; do
+	for number in $(grep '^[ 	]*raid-level' /etc/raidtab |
+			  awk '{print $2}' | sort -u) ; do
 	    case $number in
 	    [0145])
 		findmodule "" raid$number
