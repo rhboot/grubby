@@ -139,4 +139,8 @@ liloTest lilo.3 updargs/l3.1 --update-kernel=/boot/vmlinuz-2.4.18-4 \
 liloTest lilo.3 updargs/l3.2 --update-kernel=ALL \
     --remove-args="single" --args "root=/dev/hda2"
 
+echo "LILO add kernel..."
+liloTest lilo.4 add/l4.1 --add-kernel=/boot/new-kernel.img --title="title" \
+    --copy-default
+
 exit $RESULT
