@@ -386,14 +386,14 @@ static int lineWrite(FILE * out, struct singleLine * line,
 		     struct configFileInfo * cfi) {
     int i;
 
-    if (fprintf(out, line->indent) == -1) return -1;
+    if (fprintf(out, "%s", line->indent) == -1) return -1;
 
     for (i = 0; i < line->numElements; i++) {
 	if (i == 1 && line->type == LT_KERNELARGS && cfi->argsInQuotes)
 	    if (fputc('"', out) == EOF) return -1;
 
-	if (fprintf(out, line->elements[i].item) == -1) return -1;
-	if (fprintf(out, line->elements[i].indent) == -1) return -1;
+	if (fprintf(out, "%s", line->elements[i].item) == -1) return -1;
+	if (fprintf(out, "%s", line->elements[i].indent) == -1) return -1;
     }
 
     if (line->type == LT_KERNELARGS && cfi->argsInQuotes)
