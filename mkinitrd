@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.4.5
+VERSION=3.4.6
 
 compress=1
 target=""
@@ -514,6 +514,11 @@ done
 echo "echo Mounting /proc filesystem" >> $RCFILE
 echo "mount -t proc /proc /proc" >> $RCFILE
 
+if [ -n "$startraid" ]; then
+    cp -a /dev/md0 $MNTIMAGE/dev
+    echo "raidautorun /dev/md0" >> $RCFILE
+fi
+
 if [ -n "$loopDev" ]; then
     mkdir /initrd
     cp -a $loopDev $MNTIMAGE/dev
@@ -531,11 +536,6 @@ else
     echo "echo Creating root device" >> $RCFILE
     echo "mkrootdev /dev/root" >> $RCFILE
     rootdev=/dev/root
-fi
-
-if [ -n "$startraid" ]; then
-    cp -a /dev/md0 $MNTIMAGE/dev
-    echo "raidautorun /dev/md0" >> $RCFILE
 fi
 
 if [ -n "$pivot" ]; then
