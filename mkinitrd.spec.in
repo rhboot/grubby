@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 5
+Release: 6
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Thu Feb  8 2001 Matt Wilson <msw@redhat.com>
+- added checks to load the modules i2o_block needs
+
 * Wed Feb  7 2001 Bill Nottingham <notting@redhat.com>
 - fix utterly broken build
 
