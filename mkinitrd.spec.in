@@ -32,6 +32,7 @@ ramdisk using information found in the /etc/conf.modules file.
 %build
 make
 make test
+if [ $? != 0 ]; then exit 1; fi
 
 %install
 rm -rf $RPM_BUILD_ROOT
