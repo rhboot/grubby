@@ -1538,7 +1538,8 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 			    tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_INITRD;
 		free(newLine->elements[1].item);
-		newLine->elements[1].item = strdup(newKernelInitrd);
+		newLine->elements[1].item = strdup(newKernelInitrd + 
+						    strlen(prefix));
 	    } else if (tmplLine->type == LT_TITLE && 
 			    tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_TITLE;
@@ -1579,7 +1580,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 			  newKernelTitle);
     if (needs & KERNEL_INITRD && newKernelInitrd)
 	newLine = addLine(new, config->cfi, LT_INITRD, config->secondaryIndent, 
-			  newKernelArgs);
+			  newKernelInitrd + strlen(prefix));
 
     if (updateImage(config, "0", prefix, newKernelArgs, NULL)) return 1;
 
