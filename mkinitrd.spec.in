@@ -59,6 +59,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Thu Nov 21 2002 Jeremy Katz <katzj@redhat.com>
+- mkinitrd: add support for finding gzipped modules
+- mkinitrd: don't be noisy if we don't have lvm-mod loaded
+
 * Wed Nov  6 2002 Jeremy Katz <katzj@redhat.com>
 - grubby: don't bail when looking for root in appends of lilo-style configs
 - include grubby on x86_64
