@@ -527,7 +527,11 @@ inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
-    cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
+    if [ -x /usr/bin/strip ]; then
+	/usr/bin/strip -v /lib/modules/$kernel/$MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
+    else
+	cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
+    fi
 done
 
 # mknod'ing the devices instead of copying them works both with and

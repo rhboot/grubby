@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Dec  9 2003 Jeremy Katz <katzj@redhat.com> 
+- strip modules if /usr/bin/strip exists (#111756)
+
 * Fri Dec  5 2003 Jeremy Katz <katzj@redhat.com> 3.5.15-2
 - require lvm2 so that it gets installed early enough
 
