@@ -1,11 +1,10 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.8
-Version: %{version}
+Version: 2.9
 Release: 1
 Copyright: GPL
 Group: System Environment/Base
-Source: mkinitrd-%{version}.tar.gz
+Source: mkinitrd-%{version}.tar.bz2
 ExclusiveArch: i386 sparc sparc64 ia64 alpha ppc
 ExclusiveOs: Linux
 Requires: sash >= 3.4, e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mkinitrd
@@ -42,6 +41,13 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
+* Thu Jan 11 2001 Bernhard Rosenkraenzer <bero@redhat.com>
+- Enlarge initrds, needed for systems with both IDE and SCSI
+  (Bug #23846)
+- Version 2.[6789] probably shouldn't identify itself as 2.6
+  with --version. ;)
+- bzip2 source
+
 * Wed Dec 20 2000 Erik Troan <ewt@redhat.com>
 - let the kernel autoload ide-cd
 

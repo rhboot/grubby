@@ -13,11 +13,12 @@
 #	Jakub Jelinek <jj@ultra.linux.cz>
 #	Carlo Arenas Belon (carenas@chasqui.lared.net.pe>
 #	Keith Owens <kaos@ocs.com.au>
+#	Bernhard Rosenkraenzer <bero@redhat.com>
 
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=2.6
+VERSION=2.9
 
 compress=1
 target=""
@@ -29,9 +30,9 @@ img_vers=""
 modulefile=/etc/modules.conf
 
 if [ `uname -m` = "ia64" ]; then
-  IMAGESIZE=3000
+  IMAGESIZE=4000
 else
-  IMAGESIZE=1500
+  IMAGESIZE=3000
 fi
 PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
