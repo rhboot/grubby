@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Aug 27 2004 Jeremy Katz <katzj@redhat.com> - 4.1.8-1
+- nash: and the hack to fix ppc broke other arches, conditionalize it (#130928)
+
 * Wed Aug 25 2004 Jeremy Katz <katzj@redhat.com> - 4.1.6-1
 - nash: fix another off by one (#130987)
 - nash: hack to fix ppc booting (#130928)

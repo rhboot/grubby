@@ -154,6 +154,12 @@ char * getArg(char * cmd, char * end, char ** arg) {
     return cmd;
 }
 
+#ifdef __powerpc__
+#define CMDLINESIZE 256
+#else
+#define CMDLINESIZE 1024
+#endif
+
 /* get the contents of the kernel command line from /proc/cmdline */
 static char * getKernelCmdLine(void) {
     int fd, i;
@@ -165,11 +171,11 @@ static char * getKernelCmdLine(void) {
 	return NULL;
     }
 
-    buf = malloc(256);
+    buf = malloc(CMDLINESIZE);
     if (!buf)
         return buf;
 
-    i = read(fd, buf, 256);
+    i = read(fd, buf, CMDLINESIZE);
     if (i < 0) {
 	printf("getKernelCmdLine: failed to read /proc/cmdline: %d\n", errno);
 	close(fd);
