@@ -62,6 +62,8 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Mon Feb  9 2004 Jeremy Katz <katzj@redhat.com> - 3.5.13.1-1
 - nash/mkinitrd: add quiet mode bits
+- new-kernel-pkg: add --kernel-arguments option (#113125)
+- new-kernel-pkg: add --banner option (#114809)
 
 * Tue Sep 23 2003 Jeremy Katz <katzj@redhat.com> 3.5.13-1
 - fix getting modules from /lib/modules/$(uname -r)/updates
