@@ -1,0 +1,126 @@
+.TH GRUBBY 8 "Thu Jun 6 2002"
+.UC 4
+.SH NAME
+grubby \- command line tool for configuring grub, lilo, and elilo
+
+.SH SYNOPSIS
+\fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR] 
+        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
+        [-c \fIpath\fR] [--copy-default] [--default-kernel]
+        [--grub] [--info=\fIkernel-path\fR]
+        [--initrd=\fIinitrd-path\fR] [--lilo] 
+        [--lilo-installed] [--make-default] [-o path] 
+        [--remove-kernel=\fIkernel-path\fR] 
+        [--set-default=\fIkernel-path\fR] 
+        [--title=entry-title] [--usage]
+
+.SH DESCRIPTION
+\fBgrubby\fR is a command line tool for updating and displaying information
+about the configuration files for the \fBgrub\fR, \fBlilo\fR, and \fBelilo\fR 
+(ia64) boot loaders. It is primarily designed to be used from scripts
+which install new kernels and need to find information about the current
+boot environment.
+
+On Intel x86 platforms, \fBgrub\fR is the default bootloader and the
+configuration file is in \fB/boot/grub/grub.conf\fR. On
+Intel ia64 platforms, \fBlilo\fR mode is used (elilo is almost entirely
+configuration compatible with lilo) and the default location for the
+configuration file is \fB/boot/grub/grub.conf\fR.
+
+.SH OPTIONS
+.TP
+\fB-\-add-kernel\fR=\fIkernel-path\fR
+Add a new boot entry for the kernel located at \fIkernel-path\fR.
+
+.TP
+\fB-\-args\fR=\fIkernel-args\fR
+When a new kernel is added, this specifies the command line arguments
+which should be passed to the kernel by default.
+
+.TP
+\fB-\-bad-image-okay\fR
+When \fBgrubby\fR is looking for a entry to use for something (such
+as a template or a default boot entry) it uses sanity checks, such as
+ensuring that the kernel exists in the filesystem, to make sure
+entries that obviously won't work aren't selected. This option overrides
+that behavior, and is designed primarily for testing.
+
+.TP
+\fB-\-boot-filesystem\fR=\fIbootfs\fR
+The \fBgrub\fR boot loader expects file paths listed in it's configuration
+path to be relative to the top of the filesystem they are on, rather then
+relative to the current root filesystem. By default \fBgrubby\fR searches
+the list of currently mounted filesystems to determine this. If this option
+is given \fBgrubby\fR acts as if the specified filesystem was the filesystem
+containing the kernel (this option is designed primarily for testing).
+
+.TP
+\fB-c\fR \fIpath\fR
+Use \fIpath\fR as the configuration file rather then the default.
+
+.TP
+\fB-\-copy-default\fR
+\fBgrubby\fR will copy as much information (such as kernel arguments and
+root device) as possible from the current default kernel. The kernel path
+and initrd path will never be copied.
+
+.TP
+\fB-\-default-kernel\fR
+Display the full path to the current default kernel and exit.
+
+.TP
+\fB-\-grub\fR
+Use a \fBgrub\fR style configuration file instead of \fBlilo\fR style. This
+is the default on ia32 platforms.
+
+.TP
+\fB-\-info\fR=\fIkernel-path\fR
+Display information on the first boot entry found for the kernel at
+\fIkernel-path\fR.
+
+.TP
+\fB-\-initrd\fR=\fIinitrd-path\fR
+Use \fIinitrd-path\fR as the path to an initial ram disk for a new kernel
+being added.
+
+.TP
+\fB-\-lilo\fR
+Use a \fBlilo\fR style configuration file instead of \fBgrub\fR style. This
+is the default on ia64 platforms. On ia32 platforms this option changes the
+default configuration file path to \fB/etc/lilo.conf\fR.
+
+.TP
+\fB-\-lilo-installed\fR
+\fBgrubby\fR will check to see if \fBlilo\fR is currently installed on the 
+boot device configured in the configuration file. If so, a return code of
+2 is returned. If an error occurs a message is displayed and 1 is returned.
+If \fBlilo\fR does not seem to be installed, a 0 is returned.
+This option is only available on ia32 platforms. 
+
+.TP
+\fB-\-make-default\fR
+Make the new kernel entry being added the default entry.
+
+.TP
+\fB-\-remove-kernel\fR=\fIkernel-path\fR
+Removes all boot entries associated with the specified kernel.
+
+.TP
+\fB-\-set-default\fR=\fIkernel-path\fR
+The first entry which boots the specified kernel is made the default
+boot entry.
+
+.TP
+\fB-\-title\fR=\fIentry-path\fR
+When a new kernel entry is added \fIentry-path\fR is used as the title
+(\fBlilo\fR label) for the entry.
+
+.SH "SEE ALSO"
+.BR grub (8),
+.BR lilo (8),
+.BR mkinitrd (8)
+
+.SH AUTHOR
+.nf
+Erik Troan <ewt@redhat.com>
+.fi
