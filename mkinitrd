@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.3.9
+VERSION=3.3.10
 
 compress=1
 target=""
@@ -183,8 +183,6 @@ while [ $# -gt 0 ]; do
 		shift
 	    fi		    
 	    PREMODS="$PREMODS $modname"
-	    echo PRE $PREMODS
-	    exit 0
 	    ;;
 	--omit-scsi-modules)
 	    PRESCSIMODS=""

@@ -53,6 +53,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed Apr 17 2002 Erik Troan <ewt@redhat.com>
+- preload works again
+
 * Wed Apr 10 2002 Jeremy Katz <katzj@redhat.com>
 - revert to not mounting by label
 
