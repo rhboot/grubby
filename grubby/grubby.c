@@ -243,6 +243,7 @@ static int lineWrite(FILE * out, struct singleLine * line,
 		     struct configFileInfo * cfi);
 static int getNextLine(char ** bufPtr, struct singleLine * line,
 		       struct configFileInfo * cfi);
+static char * getRootSpecifier(char * str);
 
 static char * strndup(char * from, int len) {
     char * to;
@@ -852,6 +853,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     struct stat sb, sb2;
     char * dev;
     char * end;
+    char * rootspec;
 
     line = entry->lines;
     while (line && line->type != LT_KERNEL) line = line->next;
@@ -864,7 +866,10 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
     fullName = alloca(strlen(bootPrefix) + 
 		      strlen(line->elements[1].item) + 1);
-    sprintf(fullName, "%s%s", bootPrefix, line->elements[1].item);
+    rootspec = getRootSpecifier(line->elements[1].item);
+    sprintf(fullName, "%s%s", bootPrefix, 
+            line->elements[1].item + ((rootspec != NULL) ? 
+                                      strlen(rootspec) : 0));
     if (access(fullName, R_OK)) return 0;
 
     for (i = 2; i < line->numElements; i++) 
@@ -2286,6 +2291,7 @@ int main(int argc, const char ** argv) {
     if (displayDefault) {
 	struct singleLine * line;
 	struct singleEntry * entry;
+        char * rootspec;
 
 	if (config->defaultImage == -1) return 0;
 	entry = findEntryByIndex(config, config->defaultImage);
@@ -2296,7 +2302,9 @@ int main(int argc, const char ** argv) {
 	while (line && line->type != LT_KERNEL) line = line->next;
 	if (!line) return 0;
 
-	printf("%s%s\n", bootPrefix, line->elements[1].item);
+        rootspec = getRootSpecifier(line->elements[1].item);
+        printf("%s%s\n", bootPrefix, line->elements[1].item + 
+               ((rootspec != NULL) ? strlen(rootspec) : 0));
 
 	return 0;
     } else if (kernelInfo)
