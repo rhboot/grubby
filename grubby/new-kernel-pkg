@@ -95,10 +95,12 @@ install() {
     if [ -d /proc/iSeries ]; then
 	[ -n "$verbose" ] && echo "On an iSeries, just making img file"
 	if [ -z $initrdfile  ]; then
-	    [ -n "$verbose" ] && echo "No initrd, just hardlinking kernel"
-	    ln $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version
+	    [ -n "$verbose" ] && echo "No initrd, just adding system map"
+	    /sbin/addSystemMap $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version
 	else
-	    /sbin/addRamDisk $initrdfile $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version 2>/dev/null
+	    /sbin/addSystemMap $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/vmlinux.sm-$version
+	    /sbin/addRamDisk $initrdfile $bootPrefix/System.map-$version $bootPrefix/vmlinux.sm-$version $bootPrefix/vmlinitrd-$version 2>/dev/null
+	    rm $bootPrefix/vmlinux.sm-$version
 	fi
 	return
     fi

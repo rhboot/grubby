@@ -14,7 +14,7 @@ BuildRequires: popt
 BuildRequires: dietlibc
 %endif
 %ifarch ppc
-Requires: ppc64-utils
+Requires: ppc64-utils >= 0.3-1
 %endif
 BuildRoot: %{_tmppath}/%{name}-root
 
@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue May 20 2003 Matt Wilson <msw@redhat.com> 3.4.52-1
+- use addSystemMap to build the image for iSeries (#91187)
+
 * Fri May 16 2003 Jeremy Katz <katzj@redhat.com> 3.4.51-1
 - grubby: error out gracefully if we run out of space (#85424)
 - mkinitrd: copy parent dirs for pvs (#88962)
