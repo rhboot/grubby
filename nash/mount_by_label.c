@@ -165,10 +165,33 @@ uuidcache_init(void) {
 		for(s = ptname; *s; s++);
 
 		if (isdigit(s[-1])) {
+			char * ptr;
+			char * deviceDir;
 			int mustRemove = 0;
+			int mustRemoveDir = 0;
+			int i;
+			extern int errno;
 
 			sprintf(device, "%s/%s", DEVLABELDIR, ptname);
 			if (access(device, F_OK)) {
+			    ptr = device;
+			    i = 0;
+			    while (*ptr)
+				if (*ptr++ == '/')
+				    i++;
+			    if (i > 2) {
+				deviceDir = alloca(strlen(device) + 1);
+				strcpy(deviceDir, device);
+				ptr = deviceDir + (strlen(device) - 1);
+				while (*ptr != '/')
+				    *ptr-- = '\0';
+				if (mkdir(deviceDir, 0644)) {
+				    printf("mkdir: cannot create directory %s: %d\n", deviceDir, errno);
+				} else {
+				    mustRemoveDir = 1;
+				}
+			    }
+
 			    mknod(device, S_IFBLK | 0600, makedev(ma, mi));
 			    mustRemove = 1;
 			}
@@ -177,6 +200,7 @@ uuidcache_init(void) {
 						   label, uuid);
 
 			if (mustRemove) unlink(device);
+			if (mustRemoveDir) rmdir(deviceDir);
 		}
 	    }
 	}
