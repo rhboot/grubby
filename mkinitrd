@@ -103,7 +103,7 @@ findmodule() {
     # special cases
     if [ "$modName" = "i2o_block" ]; then
 	findmodule i2o_core
-	findmodule i2o_pci
+	findmodule -i2o_pci
 	modName="i2o_block"
     elif [ "$modName" = "ppa" ]; then
 	findmodule parport
