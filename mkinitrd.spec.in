@@ -59,6 +59,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Sat Feb 01 2003 Florian La Roche <Florian.LaRoche@redhat.de>
+- change one test from a number to a string test that could otherwise
+  fail in not properly setup chroot environments
+
 * Fri Jan 31 2003 <ewt@redhat.com>
 - added support for yaboot
 - test script runs tests for all platforms
