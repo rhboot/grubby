@@ -21,6 +21,8 @@ STATIC=-static
 endif
 endif
 
+mandir=usr/share/man
+
 nash: nash.o $(MINILIBC)
 	$(CC) $(STATIC) -g $(LDFLAGS) -o $@ nash.o $(MINILIBC)
 
@@ -29,6 +31,6 @@ clean:
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
-	mkdir -p $(BUILDROOT)/usr/share/man/man8
+	mkdir -p $(BUILDROOT)/$(mandir)/man8
 	install -m 755 -s nash $(BUILDROOT)/sbin
-	install -m 644 nash.8 $(BUILDROOT)/usr/share/man/man8
+	install -m 644 nash.8 $(BUILDROOT)/$(mandir)/man8
