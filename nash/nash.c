@@ -72,7 +72,9 @@
 #define MS_REMOUNT      32
 #endif
 
-extern dev_t name_to_dev_t(char *name);
+#ifdef USE_DIET
+static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
+#endif
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 
@@ -89,14 +91,14 @@ int smartmknod(char * device, mode_t mode, dev_t dev) {
     char buf[256];
     char * end;
 
-    strncpy(buf, device, 256);
+    strcpy(buf, device);
 
     end = buf;
     while (*end) {
 	if (*end == '/') {
 	    *end = '\0';
 	    if (access(buf, F_OK) && errno == ENOENT) 
-		mkdir(buf, 0755);
+		mkdir(buf, 0700);
 	    *end = '/';
 	}
 
@@ -617,7 +619,7 @@ int umountCommand(char * cmd, char * end) {
 
 int mkrootdevCommand(char * cmd, char * end) {
     char * path;
-    char * start, *root, * chptr;
+    char * start, * chptr;
     unsigned int devNum = 0;
     int fd;
     int i;
@@ -651,29 +653,19 @@ int mkrootdevCommand(char * cmd, char * end) {
     buf[i - 1] = '\0';
 
     start = buf;
-    root = NULL;
-    while (*start) {
-	if (isspace(*start)) {
-	    start++;
-	    continue;
-	}
-	if (strncmp(start, "init=", 5) == 0)
-	    break;
-	if (strncmp(start, "root=", 5) == 0)
-	    root = start;
-	while (*++start && !isspace(*start))
-	    ;
+    while (*start && isspace(*start)) start++;
+    while (*start && strncmp(start, "root=", 5)) {
+	while (*start && !isspace(*start)) start++;
+	while (*start && isspace(*start)) start++;
     }
 
-    if (root) {
-	root += 5;
-	chptr = root;
-	while (*chptr && !isspace(*chptr)) chptr++;
-	*chptr = '\0';
-    }
+    start += 5;
+    chptr = start;
+    while (*chptr && !isspace(*chptr)) chptr++;
+    *chptr = '\0';
 
-    if (root && !strncmp(root, "LABEL=", 6)) {
-	if (get_spec_by_volume_label(root + 6, &major, &minor)) {
+    if (!strncmp(start, "LABEL=", 6)) {
+	if (get_spec_by_volume_label(start + 6, &major, &minor)) {
 	    if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
 		printf("mount: cannot create device %s (%d,%d)\n",
 		       path, major, minor);
@@ -683,7 +675,7 @@ int mkrootdevCommand(char * cmd, char * end) {
 	    return 0;
 	}
 
-	printf("mkrootdev: label %s not found\n", root + 6);
+	printf("mkrootdev: label %s not found\n", start + 6);
 
 	return 1;
     }
@@ -709,9 +701,6 @@ int mkrootdevCommand(char * cmd, char * end) {
 	printf("mkrootdev: bad device %s\n", buf);
 	return 1;
     }
-
-    if (!devNum && root)
-	devNum = name_to_dev_t(root);
 
     if (smartmknod(path, S_IFBLK | 0700, devNum)) {
 	printf("mkrootdev: mknod failed: %d\n", errno);
@@ -1101,58 +1090,6 @@ int mkdevicesCommand(char * cmd, char * end) {
     return 0;
 }
 
-static int getDevNumFromProc(char * file, char * device) {
-    char buf[32768], line[4096];
-    char * start, *end;
-    int num;
-    int fd;
-
-    if ((fd = open(file, O_RDONLY)) == -1) {
-        printf("can't open file %s: %d\n", file, errno);
-        return -1;
-    }
-
-    num = read(fd, buf, sizeof(buf));
-    if (num < 1) {
-        close(fd);
-        printf("failed to read %s: %d\n", file, errno);
-        return -1;
-    }
-    buf[num] = '\0';
-    close(fd);
-
-    start = buf;
-    end = strchr(start, '\n');
-    while (start && end) {
-        *end++ = '\0';
-        if ((sscanf(start, "%d %s", &num, line)) == 2) {
-            if (!strncmp(device, line, strlen(device)))
-                return num;
-        }
-        start = end;
-        end = strchr(start, '\n');
-    }
-    return -1;
-}
-
-int mkDMNodCommand(char * cmd, char * end) {
-    int major = getDevNumFromProc("/proc/devices", "misc");
-    int minor = getDevNumFromProc("/proc/misc", "device-mapper");
-
-    if ((major == -1) || (minor == -1)) {
-        printf("Unable to find device-mapper major/minor\n");
-        return 1;
-    }
-
-    if (smartmknod("/dev/mapper/control", S_IFCHR | 0600, 
-                   makedev(major, minor))) {
-        printf("failed to create /dev/mapper/control\n");
-        return 1;
-    }
-    
-    return 0;
-}
-
 int setQuietCommand(char * cmd, char * end) {
     int fd, rc;
 
@@ -1249,8 +1186,6 @@ int runStartup(int fd) {
 	    rc = sleepCommand(chptr, end);
 	else if (!strncmp(start, "mknod", MAX(5, chptr-start)))
 	    rc = mknodCommand(chptr, end);
-        else if (!strncmp(start, "mkdmnod", MAX(7, chptr-start)))
-            rc = mkDMNodCommand(chptr, end);
         else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
             rc = readlinkCommand(chptr, end);
         else if (!strncmp(start, "setquiet", MAX(8, chptr-start)))

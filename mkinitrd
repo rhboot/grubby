@@ -22,10 +22,10 @@
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
 
 
-PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
+PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.5.19
+VERSION=3.5.13
 
 compress=1
 target=""
@@ -68,8 +68,8 @@ moduledep() {
                 function modname(filename) { match(filename, /\/([^\/]+)\.k?o/, ret); return ret[1] } \
                 function show() { if (orig == searched) { print dep; orig=""; rc=0; exit } } \
                 /^\/lib/ { show(); \
-                           orig=modname($1); dep=""; \
-                           if ($2) { for (i = 2; i <= NF; i++) { dep=sprintf("%s %s", dep, modname($i)); } } } \
+                           orig=modname($1); \
+                           if ($2) { dep=modname($2) } else { dep="" } } \
                 /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
                 END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
     [ -n "$verbose" ] && echo -e "\t$deps"
@@ -281,14 +281,9 @@ if [ ! -d /lib/modules/$kernel ]; then
     exit 1
 fi
 
-if [ $UID != 0 ]; then
+if [ $(id -u) != 0 ]; then
     echo "mkinitrd must be run as root"
     exit 1
-fi
-
-kernelmajor=`echo $kernel | cut -d . -f 1,2`
-if [ "$kernelmajor" == "2.6" ]; then
-    modulefile=/etc/modprobe.conf
 fi
 
 # find a temporary directory which doesn't use tmpfs
@@ -297,7 +292,7 @@ for t in /tmp /var/tmp /root ${PWD}; do
     if [ ! -d $t ]; then continue; fi
     if ! echo access -w $t | /sbin/nash --quiet; then continue; fi
 
-    fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
+    fs=$(df -T $t 2>/dev/null | tail -1 | awk '{printf $2}')
     if [ "$fs" != "tmpfs" ]; then 
 	TMPDIR=$t
 	break
@@ -337,7 +332,7 @@ if [ -n "$withusb" ]; then
 fi
 
 if [ -n "$needusb" ]; then
-    drivers=$(awk '/^alias[[:space:]]+usb-controller[0-9]* / { print $3}' < $modulefile)
+    drivers=$(awk '/^alias usb-controller[0-9]* / { print $3}' < /etc/modules.conf)
     if [ -n "$drivers" ]; then
 	for driver in $drivers; do
 	    findmodule $driver
@@ -354,7 +349,7 @@ if [ -z "$noscsi" ]; then
     fi
 
     if [ -f $modulefile ]; then
-	scsimodules=`grep "alias[[:space:]]\+scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
+	scsimodules=`grep "alias[[:space:]]scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
 
 	if [ -n "$scsimodules" ]; then
 	    for n in $PRESCSIMODS; do
@@ -380,19 +375,8 @@ fi
 if [ -z "$nolvm" ]; then
     if [ -f /proc/lvm/global  ]; then
         if  grep -q '^VG:' /proc/lvm/global ; then
-	    if [ "$kernelmajor" == "2.4" ]; then
-		findmodule -lvm-mod
-	    else
-		findmodule -dm-mod
-	    fi
+	    findmodule -lvm-mod
         fi
-    fi
-
-    if [ -x /sbin/dmsetup -a -e /dev/mapper/control ]; then
-	dmout=$(/sbin/dmsetup ls 2>/dev/null)
-	if [ "$dmout" != "No devices found" -a "$dmout" != "" ]; then
-	    findmodule -dm-mod
-	fi
     fi
 fi
 
@@ -456,7 +440,6 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
     rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
     major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
     [ "$major" != "58" ] || root_lvm=1
-    if echo $rootdev |grep -q /dev/mapper 2>/dev/null ; then root_lvm=1 ; fi
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
@@ -466,11 +449,7 @@ rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
 findmodule -${rootfs}
 
 if [ -n "$root_lvm" ]; then
-    if [ "$kernelmajor" == "2.4" ]; then    
-	findmodule -lvm-mod
-    else
-	findmodule -dm-mod
-    fi
+    findmodule -lvm-mod
 fi
 
 for n in $basicmodules; do 
@@ -497,7 +476,7 @@ dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null || exit 1
 LODEV=$(echo findlodev | /sbin/nash --quiet)
 
 if [ -z "$LODEV" ]; then
-    rm -rf $MNTIMAGE $MNTPOINT $IMAGE
+    rm -rf $MNTPOINT $IMAGE
     echo "All of your loopback devices are in use." >&2
     exit 1
 fi
@@ -526,7 +505,6 @@ mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
 mkdir -p $MNTIMAGE/loopfs
 mkdir -p $MNTIMAGE/proc
-mkdir -p $MNTIMAGE/sys
 mkdir -p $MNTIMAGE/sysroot
 ln -s bin $MNTIMAGE/sbin
 
@@ -538,11 +516,7 @@ inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
-    if [ -x /usr/bin/strip ]; then
-	/usr/bin/strip -g $verbose /lib/modules/$kernel/$MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
-    else
-	cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
-    fi
+    cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
 done
 
 # mknod'ing the devices instead of copying them works both with and
@@ -556,7 +530,7 @@ for i in 1 2 3 4; do
 done
 
 # FIXME -- this won't work if you're using devfs
-if [ -n "$root_lvm" -a "$kernelmajor" == "2.4" ]; then
+if [ -n "$root_lvm" ]; then
     pvs=$(/sbin/pvscan | grep " PV " | /bin/awk {'print $5;'} |sed 's/"//g')
     for pv in $pvs; do
 	cp $verbose --parents -a $pv $MNTIMAGE/
@@ -569,22 +543,12 @@ if [ -n "$root_lvm" -a "$kernelmajor" == "2.4" ]; then
     mknod $MNTIMAGE/dev/lvm b 109 0
 fi
 
-if [ -n "$root_lvm" -a "$kernelmajor" == "2.6" ]; then
-    inst /sbin/lvm.static "$MNTIMAGE/bin/lvm"
-    if [ -f /etc/lvm/lvm.conf ]; then
-	cp $verbose --parents /etc/lvm/lvm.conf $MNTIMAGE/
-    fi
-fi
-
 echo "#!/bin/nash" > $RCFILE
 echo "" >> $RCFILE
 
 echo "mount -t proc /proc /proc" >> $RCFILE
 echo "setquiet" >> $RCFILE
 echo "echo Mounted /proc filesystem" >> $RCFILE
-
-echo "echo Mounting sysfs" >> $RCFILE
-echo "mount -t sysfs none /sys" >> $RCFILE
 
 for MODULE in $MODULES; do
     text=""
@@ -628,28 +592,15 @@ if [ -n "$loopDev" ]; then
     echo "echo Setting up loopback device $rootdev" >> $RCFILE
     echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
 elif [ -n "$root_lvm" ]; then
-  if [ "$kernelmajor" == "2.4" ]; then
     echo "echo Scanning logical volumes" >> $RCFILE
     echo "vgscan" >> $RCFILE
     echo "echo Activating logical volumes" >> $RCFILE
     echo "vgchange -ay" >> $RCFILE
-  else
-    echo "echo Making device-mapper control node" >> $RCFILE
-    echo "mkdmnod" >> $RCFILE
-    echo "echo Scanning logical volumes" >> $RCFILE
-    echo "lvm vgscan" >> $RCFILE
-    echo "echo Activating logical volumes" >> $RCFILE
-    echo "lvm vgchange -ay" >> $RCFILE
-    echo "echo Making device nodes" >> $RCFILE
-    echo "lvm vgmknodes" >> $RCFILE
-  fi
 else
     echo "echo Creating root device" >> $RCFILE
     echo "mkrootdev /dev/root" >> $RCFILE
     rootdev=/dev/root
 fi
-
-echo "umount /sys" >> $RCFILE
 
 if [ -n "$pivot" ]; then
     echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE

@@ -7,7 +7,7 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 Prereq: dev
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm, lvm2
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm
 Requires: filesystem >= 2.1.0
 BuildRequires: popt
 %ifarch i386
@@ -60,58 +60,8 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Mon Feb  9 2004 Jeremy Katz <katzj@redhat.com> - 3.5.19-1
-- nash/mkinitrd: quiet mode for nash and necessary mkinitrd changes 
-  to work with it
-- mkinitrd: add lxo's patch for copying lvm.conf (#112099)
-- new-kernel-pkg: allow specifying the banner used in the boot loader config
-  on the command line (#114809)
-
-* Tue Jan 13 2004 Jeremy Katz <katzj@redhat.com> 
-- mkinitrd: add patch from Alex Kiernan for modules with multiple 
-  deps in 2.6 (#113306)
-
-* Thu Jan  8 2004 Jeremy Katz <katzj@redhat.com> 3.5.18-1
-- new-kernel-pkg: add a --kernel-arguments option (#113125)
-
-* Tue Jan  6 2004 Jeremy Katz <katzj@redhat.com> 
-- fix ybin path (#112939)
-
-* Sun Jan  4 2004 Jeremy Katz <katzj@redhat.com> 3.5.17-1
-- mkinitrd: handle multiple spaces in modules.conf (from Lubomir Bulej)
-- nash: rebuild against new dietlibc fixing problems with root=LABEL= (#112623)
-- mkinitrd: determine kernel version and adjust modulefile appropriately 
-  so that we look at /etc/modprobe.conf for 2.6 kernels
-- mkinitrd: first pass at getting lvm working on 2.4 -> 2.6 upgrade
-
-* Wed Dec 24 2003 Jeremy Katz <katzj@redhat.com> 
-- mkinitrd: quiet strip by default
-
-* Mon Dec 22 2003 Jeremy Katz <katzj@redhat.com> 3.5.16.1-1
-- make stripping less aggressive
-
-* Mon Dec 22 2003 Jeremy Katz <katzj@redhat.com> 3.5.16-1
-- fixing handling of non-lvm case when /dev/mapper/control isn't present
-- add patch from Al Viro to get root dev in numeric form by grokking sysfs
-
-* Tue Dec  9 2003 Jeremy Katz <katzj@redhat.com> 
-- strip modules if /usr/bin/strip exists (#111756)
-
-* Fri Dec  5 2003 Jeremy Katz <katzj@redhat.com> 3.5.15-2
-- require lvm2 so that it gets installed early enough
-
-* Fri Dec  5 2003 Jeremy Katz <katzj@redhat.com> 3.5.15-1
-- mkinitrd: add support for lvm2 (note: will not currently handle being
-  on a running 2.4 kernel and installing 2.6 with lvm rootfs)
-
-* Wed Dec  3 2003 Jeremy Katz <katzj@redhat.com> 
-- nash: add mkdmnod for creating the device-mapper control node
-
-* Thu Oct  2 2003 Jeremy Katz <katzj@redhat.com> 3.5.14-1
-- fix dependency on /usr/bin/tail and /usr/bin/id
-
-* Tue Sep 30 2003 Florian La Roche <Florian.LaRoche@redhat.de>
-- remove one more mktemp dir for "all loopback devices in use" case
+* Mon Feb  9 2004 Jeremy Katz <katzj@redhat.com> - 3.5.13.1-1
+- nash/mkinitrd: add quiet mode bits
 
 * Tue Sep 23 2003 Jeremy Katz <katzj@redhat.com> 3.5.13-1
 - fix getting modules from /lib/modules/$(uname -r)/updates
