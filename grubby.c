@@ -1526,6 +1526,7 @@ int updateImage(struct grubConfig * cfg, const char * image,
 	if (poptParseArgvString(removeArgs, NULL, &oldArgs)) {
 	    fprintf(stderr, 
 		    _("grubby: error separating arguments '%s'\n"), removeArgs);
+            free(newArgs);
 	    return 1;
 	}
     }
