@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.13
+VERSION=3.5.14
 
 compress=1
 target=""
@@ -281,7 +281,7 @@ if [ ! -d /lib/modules/$kernel ]; then
     exit 1
 fi
 
-if [ $(id -u) != 0 ]; then
+if [ $UID != 0 ]; then
     echo "mkinitrd must be run as root"
     exit 1
 fi
@@ -292,7 +292,7 @@ for t in /tmp /var/tmp /root ${PWD}; do
     if [ ! -d $t ]; then continue; fi
     if ! echo access -w $t | /sbin/nash --quiet; then continue; fi
 
-    fs=$(df -T $t 2>/dev/null | tail -1 | awk '{printf $2}')
+    fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
     if [ "$fs" != "tmpfs" ]; then 
 	TMPDIR=$t
 	break

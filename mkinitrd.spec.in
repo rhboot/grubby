@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Oct  2 2003 Jeremy Katz <katzj@redhat.com> 3.5.14-1
+- fix dependency on /usr/bin/tail and /usr/bin/id
+
 * Tue Sep 30 2003 Florian La Roche <Florian.LaRoche@redhat.de>
 - remove one more mktemp dir for "all loopback devices in use" case
 
