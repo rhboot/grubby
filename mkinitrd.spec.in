@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Wed May 22 2002 Erik Troan <ewt@redhat.com>
 - added --nopivot (53679)
+- honor INSTALL_PATH in installkernel (32833)
+- installkernel versions old kernels as well (52756)
+- lilo support added to grubby
 
 * Tue May 21 2002 Erik Troan <ewt@redhat.com>
 - cleaned up usage message
