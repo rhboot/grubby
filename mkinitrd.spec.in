@@ -62,6 +62,11 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Sun Mar 23 2003 Jeremy Katz <katzj@redhat.com> 3.4.45-1
+- grubby: add silo support (sparc)
+- grubby: add zipl support (s390{,x})
+- add grubby test cases for zipl support
+
 * Wed Mar 19 2003 Jeremy Katz <katzj@redhat.com> 3.4.44.1-1
 - fix dasd option reading
 
