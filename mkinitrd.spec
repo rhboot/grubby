@@ -27,6 +27,7 @@ image using information found in /etc/conf.modules.
 
 - added 'make archive' rule to Makefile
 - rewrote install procedure for more robust version handling
+- be smarter about grabbing options from /etc/conf.modules
 
 * Mon Oct 20 1997 Erik Troan <ewt@redhat.com>
 
