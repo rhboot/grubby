@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.4.30
+VERSION=3.4.31
 
 compress=1
 target=""
@@ -368,8 +368,10 @@ fi
 
 # If we use LVM, include lvm-mod
 if [ -z "$nolvm" ]; then
-    if  grep -q '^VG:' /proc/lvm/global ; then
-	findmodule -lvm-mod
+    if [ -f /proc/lvm/global  ]; then
+        if  grep -q '^VG:' /proc/lvm/global ; then
+	    findmodule -lvm-mod
+        fi
     fi
 fi
 
