@@ -1,10 +1,10 @@
-Summary: Makes an initial ramdisk
+Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 %define version 1.9
 Version: %{version}
 Release: 4
 Copyright: GPL
-Group: Utilities/System
+Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
 ExclusiveArch: i386 sparc sparc64
 ExclusiveOs: Linux
@@ -12,14 +12,19 @@ Requires: /bin/ash.static losetup e2fsprogs /bin/sh fileutils grep mount gzip ta
 BuildRoot: /var/tmp/%{name}-root
 
 %description
-Generic kernels can be built without drivers for any SCSI adapters which
-load the SCSI driver as a module. To solve the problem of allowing the
-kernel to read the module without being able to address the SCSI adapter,
-an initial ramdisk is used. That ramdisk is loaded by the operating system
-loader (such as lilo) and is available to the kernel as soon as it is loaded.
-That image is resonsible for loading the proper SCSI adapter and allowing
-the kernel to mount the root filesystem. This program creates such a ramdisk
-image using information found in /etc/conf.modules.
+Mkinitrd creates filesystem images for use as initial ramdisk (initrd)
+images.  These ramdisk images are often used to preload the block
+device modules (SCSI or RAID) needed to access the root filesystem.
+
+In other words, generic kernels can be built without drivers for any
+SCSI adapters which load the SCSI driver as a module.  Since the kernel
+needs to read those modules, but in this case it isn't able to address
+the SCSI adapter, an initial ramdisk is used.  The initial ramdisk is
+loaded by the operating system loader (normally LILO) and is available
+to the kernel as soon as the ramdisk is loaded.  The ramdisk image
+loads the proper SCSI adapter and allows the kernel to mount the root
+filesystem.  The mkinitrd program creates such a ramdisk using
+information found in the /etc/conf.modules file.
 
 %prep
 %setup -q
@@ -37,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Thu Feb 25 1999 Matt Wilson <msw@redhat.com>
+- updated description
+
 * Mon Jan 11 1999 Matt Wilson <msw@redhat.com>
 - Ignore the absence of scsi modules, include them if they are there, but
   don't complain if they are not.
