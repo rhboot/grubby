@@ -54,6 +54,10 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri May 31 2002 Erik Troan <ewt@redhat.com>
+- added --grub option so grub tests could run on ia64
+- added some basic tests of lilo default directive handling
+
 * Wed May 29 2002 Jeremy Katz <katzj@redhat.com>
 - require lvm
 
