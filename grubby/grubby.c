@@ -46,7 +46,7 @@ struct singleLine {
     int numElements;
     struct lineElement * elements;
     enum { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
-	   LT_UNKNOWN, LT_ROOT } type;
+	   LT_UNKNOWN, LT_ROOT, LT_FALLBACK } type;
     struct singleLine * next;
     int skip;
 };
@@ -57,8 +57,11 @@ struct grubConfig {
     char * secondaryIndent;
     int defaultImage;		    /* -1 if none specified -- this value is
 				     * written out, overriding original */
+    int fallbackImage;		    /* just like defaultImage */
     int flags;
 };
+
+#define GRUBBY_BADIMAGE_OKAY	(1 << 0)
 
 #define GRUB_CONFIG_NO_DEFAULT	    (1 << 0)	/* don't write out default=0 */
 
@@ -204,6 +207,8 @@ static int getNextLine(char ** bufPtr, struct singleLine * line) {
 	line->type = LT_ROOT;
     else if (!strcmp(line->elements[0].item, "default"))
 	line->type = LT_DEFAULT;
+    else if (!strcmp(line->elements[0].item, "fallback"))
+	line->type = LT_FALLBACK;
     else if (!strcmp(line->elements[0].item, "kernel"))
 	line->type = LT_KERNEL;
     else if (!strcmp(line->elements[0].item, "initrd"))
@@ -276,6 +281,9 @@ static struct grubConfig * readConfig(const char * inName) {
 	        cfg->defaultImage = strtol(line->elements[1].item, &end, 10);
 	        if (*end) cfg->defaultImage = -1;
 	    }
+	} else if (line->type == LT_FALLBACK && line->numElements == 2) {
+	    cfg->fallbackImage = strtol(line->elements[1].item, &end, 10);
+	    if (*end) cfg->fallbackImage = -1;
 	}
     }
 
@@ -416,6 +424,11 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 		writeDefault(out, "default", line->indent, 
 		    line->elements[0].indent, cfg->defaultImage, cfg->flags);
 		needs &= ~MAIN_DEFAULT;
+	    } else if (line->type == LT_FALLBACK) {
+		if (cfg->fallbackImage > -1)
+		    fprintf(out, "%s%s%s%d\n", line->indent, 
+			    line->elements[0].item, line->elements[0].indent,
+			    cfg->fallbackImage);
 	    } else {
 		lineWrite(out, line);
 	    }
@@ -436,7 +449,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 }
 
 int suitableImage(struct singleLine * line, const char * bootPrefix,
-		  int skipRemoved) {
+		  int skipRemoved, int flags) {
     char * fullName;
     int i;
     struct stat sb, sb2;
@@ -451,6 +464,8 @@ int suitableImage(struct singleLine * line, const char * bootPrefix,
     if (skipRemoved && line->skip) return 0;
     if (line->type == LT_TITLE) return 0;
     if (line->numElements < 2) return 0;
+
+    if (flags & GRUBBY_BADIMAGE_OKAY) return 1;
 
     fullName = alloca(strlen(bootPrefix) + 
 		      strlen(line->elements[1].item) + 1);
@@ -498,13 +513,13 @@ struct singleLine * findTitleByIndex(struct grubConfig * cfg, int index) {
  * if that doesn't work just take the first. If we can't find one,
  * bail. */
 struct singleLine * findTemplate(struct grubConfig * cfg, const char * prefix,
-				 int * indexPtr, int skipRemoved) {
+				 int * indexPtr, int skipRemoved, int flags) {
     struct singleLine * line;
     int index;
 
     if (cfg->defaultImage > -1) {
 	line = findTitleByIndex(cfg, cfg->defaultImage);
-	if (line && suitableImage(line, prefix, skipRemoved)) {
+	if (line && suitableImage(line, prefix, skipRemoved, flags)) {
 	    if (indexPtr) *indexPtr = cfg->defaultImage;
 	    return line;
 	}
@@ -518,7 +533,7 @@ struct singleLine * findTemplate(struct grubConfig * cfg, const char * prefix,
 	    line = line->next;
 	if (!line) break;
 
-	if (suitableImage(line, prefix, skipRemoved)) {
+	if (suitableImage(line, prefix, skipRemoved, flags)) {
 	    if (indexPtr) *indexPtr = index;
 	    return line;
 	}
@@ -574,7 +589,7 @@ void markRemovedImage(struct grubConfig * cfg, const char * image,
 
 void setDefaultImage(struct grubConfig * config, int hasNew, 
 		     const char * defaultKernelPath, int newIsDefault,
-		     const char * prefix) {
+		     const char * prefix, int flags) {
     struct singleLine * line, * line2;
     struct singleLine * newDefault;
     int i;
@@ -639,9 +654,33 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 	/* Either we just erased the default (or the default line was bad
 	 * to begin with) and didn't put a new one in. We'll use the first
 	 * valid image. */
-	newDefault = findTemplate(config, prefix, &config->defaultImage, 1);
+	newDefault = findTemplate(config, prefix, &config->defaultImage, 1,
+				  flags);
 	if (!newDefault)
 	    config->defaultImage = -1;
+    }
+}
+
+void setFallbackImage(struct grubConfig * config, int hasNew) {
+    struct singleLine * line, * line2;
+
+    if (config->fallbackImage == -1) return;
+
+    line = findTitleByIndex(config, config->fallbackImage);
+    if (!line || line->skip) {
+	config->fallbackImage = -1;
+	return;
+    }
+
+    if (hasNew)
+	config->fallbackImage++;
+    
+    /* see if we erased something before this */
+    line2 = config->lines;
+    while (line2 != line) {
+	if (line2->type == LT_TITLE && line2->skip)
+	    config->fallbackImage--;
+	line2 = line2->next;
     }
 }
 
@@ -650,13 +689,15 @@ int main(int argc, const char ** argv) {
     char * grubConfig = "/boot/grub/grub.conf";
     char * outputFile = NULL;
     int arg;
+    int flags = 0;
+    int badImageOkay = 0;
     char * newKernelPath = NULL;
     char * oldKernelPath = NULL;
     char * newKernelArgs = NULL;
     char * newKernelInitrd = NULL;
     char * newKernelTitle = NULL;
     char * newKernelVersion = NULL;
-    char * bootPrefix;
+    char * bootPrefix = NULL;
     char * defaultKernel = NULL;
     struct grubConfig * config;
     struct newKernelInfo newKernel;
@@ -667,6 +708,12 @@ int main(int argc, const char ** argv) {
 	{ "add-kernel", 0, POPT_ARG_STRING, &newKernelPath, 0,
 	    _("add an entry for the specified kernel"), _("kernel-path") },
 	{ "args", 0, POPT_ARG_STRING, &newKernelArgs, 0, _("default arguments for the new kernel"), _("args") },
+	{ "bad-image-okay", 0, 0, &badImageOkay, 0,
+	    _("don't sanity check images in boot entries (for testing only)"), 
+	    NULL },
+	{ "boot-filesystem", 0, POPT_ARG_STRING, &bootPrefix, 0,
+	    _("filestystem which contains /boot directory (for testing only)"),
+	    _("bootfs") },
 	{ "config-file", 'c', POPT_ARG_STRING, &grubConfig, 0,
 	    _("path to grub config file to update (\"-\" for stdin)"), 
 	    _("path") },
@@ -760,8 +807,16 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
-    bootPrefix = findBootPrefix();
-    if (!bootPrefix) return 1;
+    flags |= badImageOkay ? GRUBBY_BADIMAGE_OKAY : 0;
+
+    if (!bootPrefix) {
+	bootPrefix = findBootPrefix();
+	if (!bootPrefix) return 1;
+    } else {
+	/* this shouldn't end with a / */
+	if (bootPrefix[strlen(bootPrefix) - 1] == '/')
+	    bootPrefix[strlen(bootPrefix) - 1] = '\0';
+    }
 
     config = readConfig(grubConfig);
     if (!config) return 1;
@@ -772,7 +827,7 @@ int main(int argc, const char ** argv) {
 	if (config->defaultImage == -1) return 0;
 	image = findTitleByIndex(config, config->defaultImage);
 	if (!image) return 0;
-	if (!suitableImage(image, bootPrefix, 0)) return 0;
+	if (!suitableImage(image, bootPrefix, 0, flags)) return 0;
 
 	while (image->type != LT_KERNEL) image = image->next;
 	printf("%s%s\n", bootPrefix, image->elements[1].item);
@@ -781,13 +836,14 @@ int main(int argc, const char ** argv) {
     }
 
     if (copyDefault) {
-	template = findTemplate(config, bootPrefix, NULL, 0);
+	template = findTemplate(config, bootPrefix, NULL, 0, flags);
 	if (!template) return 1;
     }
 
     markRemovedImage(config, oldKernelPath, bootPrefix);
     setDefaultImage(config, newKernelPath != NULL, defaultKernel, makeDefault, 
-		    bootPrefix);
+		    bootPrefix, flags);
+    setFallbackImage(config, newKernelPath != NULL);
 
     newKernel.title = newKernelTitle;
     newKernel.image = newKernelPath;
