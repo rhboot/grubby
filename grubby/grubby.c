@@ -653,18 +653,20 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	else {
 	    /* didn't succeed in finding a LT_ROOT, let's try LT_KERNELARGS */
 	    line = entry->lines;
+
 	    while (line && line->type != LT_KERNELARGS) line = line->next;
+
 	    for (i = 1; i < line->numElements; i++) 
 	        if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
+
 	    if (i < line->numElements) 
 	        dev = line->elements[i].item + 5;
-	    /* it failed too...  can't find root= */
 	    else
+		/* it failed too...  can't find root= */
 	        return 0;
 	}
     }
 
-    /* XXX should compare this against the label for this root device */
     if (!strncmp(dev, "LABEL=", 6)) {
 	dev += 6;
 	

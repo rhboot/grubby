@@ -309,10 +309,12 @@ if [ -z "$nousb" ]; then
 fi
 
 if [ -n "$needusb" ]; then
-    driver=$(lsmod | awk '/^usb-[ou]hci / { print $1 }')
-    if [ -n "$driver" ]; then
+    drivers=$(awk '/^alias usb-controller / { print $3}' < /etc/modules.conf)
+    if [ -n "$drivers" ]; then
 	findmodule usbcore
-	findmodule $driver
+	for driver in $drivers; do
+	    findmodule $driver
+	done
 	findmodule scsi_mod
 	findmodule usb-storage
     fi
