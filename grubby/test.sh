@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ `uname -m` = "ia64" ]; then
+    echo "no elilo.confs to run tests with yet"
+    exit 0
+fi
+
 RESULT=0
 
 oneTest () {
