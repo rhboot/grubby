@@ -335,7 +335,7 @@ fi
 
 # set this as the default if we have the package and it matches
 if [ "$mode" == "--install" -a "$UPDATEDEFAULT" == "yes" -a -n "$package" -a -n "$DEFAULTKERNEL" -a "$package" == "$DEFAULTKERNEL" ]; then
-    makedefault="yes"
+    makedefault="--make-default"
     [ -n "$verbose" ] && echo "making it the default based on config"
 fi
 
