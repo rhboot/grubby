@@ -99,11 +99,7 @@ struct keywordTypes grubKeywords[] = {
 };
 
 struct configFileInfo grubConfigType = {
-#ifdef __ia64__
-    "/boot/efi/elilo.conf",		    /* defaultConfig */
-#else
-    "/etc/lilo.conf",			    /* defaultConfig */
-#endif
+    "/boot/grub/grub.conf",		    /* defaultConfig */
     grubKeywords,			    /* keywords */
     1,					    /* defaultIsIndex */
     1,					    /* defaultSupportSaved */
@@ -122,7 +118,11 @@ struct keywordTypes liloKeywords[] = {
 };
 
 struct configFileInfo liloConfigType = {
-    "/boot/grub/grub.conf",		    /* defaultConfig */
+#ifdef __ia64__
+    "/boot/efi/elilo.conf",		    /* defaultConfig */
+#else
+    "/etc/lilo.conf",			    /* defaultConfig */
+#endif
     liloKeywords,			    /* keywords */
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
