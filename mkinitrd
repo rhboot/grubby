@@ -622,7 +622,7 @@ fi
 
 chmod +x $RCFILE
 
-(cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -)
+(cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -) || exit 1
 
 umount $MNTPOINT
 losetup -d $LODEV
