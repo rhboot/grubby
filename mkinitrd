@@ -34,6 +34,7 @@ MODULES=""
 img_vers=""
 builtins=""
 modulefile=/etc/modules.conf
+rc=0
 
 if [ `uname -m` = "ia64" ]; then
   IMAGESIZE=4000
@@ -409,10 +410,9 @@ if [ -z "$MNTIMAGE" -o -z "$IMAGE" -o -z "$MNTPOINT" ]; then
     exit 1
 fi
 
-dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null
+dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null || exit 1
 
 LODEV=$(echo findlodev $modName.o | /sbin/nash --quiet)
-echo loop: $LODEV
 
 if [ -z "$LODEV" ]; then
     rm -rf $MNTPOINT $IMAGE
@@ -420,7 +420,7 @@ if [ -z "$LODEV" ]; then
     exit 1
 fi
 
-losetup ${LODEV} $IMAGE
+losetup ${LODEV} $IMAGE || exit 1
 
 # We have to "echo y |" so that it doesn't complain about $IMAGE not
 # being a block device
@@ -544,8 +544,10 @@ umount $MNTPOINT
 losetup -d $LODEV
 
 if [ -n "$compress" ]; then
-    gzip -9 < $IMAGE > $target
+    gzip -9 < $IMAGE > $target || rc=1
 else
-    cp -a $IMAGE $target
+    cp -a $IMAGE $target || rc=1
 fi
 rm -rf $MNTIMAGE $MNTPOINT $IMAGE
+
+exit $rc
