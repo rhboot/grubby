@@ -1,4 +1,4 @@
-VERSION=$(shell awk '/define version/ { print $$3 }' mkinitrd.spec)
+VERSION=$(shell awk '/Version:/ { print $$2 }' mkinitrd.spec)
 CVSTAG = r$(subst .,-,$(VERSION))
 
 mandir=usr/share/man
