@@ -28,7 +28,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.7
+VERSION=4.2.8
 
 compress=1
 allowmissing=""

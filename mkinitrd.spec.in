@@ -58,6 +58,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Apr  5 2005 Peter Jones <pjones@redhat.com> - 4.2.8-1
+- Don't consolidate duplicates in "--args" (#147222)
+
 * Wed Mar 30 2005 Peter Jones <pjones@redhat.com> - 4.2.7-1
 - unmount what filesystems we can from the initramfs
 - close appropriate files before spawning init
