@@ -116,6 +116,7 @@ struct keywordTypes yabootKeywords[] = {
     { "bsd",	    LT_OTHER,	    '=' },
     { "macos",	    LT_OTHER,	    '=' },
     { "macosx",	    LT_OTHER,	    '=' },
+    { "magicboot",  LT_OTHER,	    '=' },
     { "darwin",	    LT_OTHER,	    '=' },
     { "initrd",	    LT_INITRD,	    '=' },
     { "append",	    LT_KERNELARGS,  '=' },
