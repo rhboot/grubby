@@ -62,6 +62,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Wed Apr 30 2003 Elliot Lee <sopwith@redhat.com>
 - BuildRequires: popt
+- Change grubby Makefile to static-link popt a bit more cleanly
 
 * Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49.1-1
 - use Arjan's suggestion of vmlinitrd for the kernel + initrd combo file
