@@ -1,13 +1,15 @@
 VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' mkinitrd)
 CVSTAG = r$(subst .,-,$(VERSION))
 
+SUBDIRS = nash grubby
+
 mandir=usr/share/man
 
 all:
-	(cd nash; make)
+	for n in $(SUBDIRS); do make -C $$n; done
 
 install:
-	(cd nash; make install BUILDROOT=$(BUILDROOT))
+	for n in $(SUBDIRS); do make -C $$n install BUILDROOT=$(BUILDROOT); done
 	for i in sbin $(mandir)/man8; do \
 		if [ ! -d $(BUILDROOT)/$$i ]; then \
 			mkdir -p $(BUILDROOT)/$$i; \
@@ -16,6 +18,9 @@ install:
 	sed 's/%VERSIONTAG%/$(VERSION)/' < mkinitrd > $(BUILDROOT)/sbin/mkinitrd
 	chmod 755 $(BUILDROOT)/sbin/mkinitrd
 	install -m644 mkinitrd.8 $(BUILDROOT)/$(mandir)/man8/mkinitrd.8
+
+clean:
+	for n in $(SUBDIRS); do make -C $$n clean; done
 
 archive:
 	cvs tag -F $(CVSTAG) .
