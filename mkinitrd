@@ -22,7 +22,7 @@
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
 
 
-PATH=/sbin:/usr/sbin:$PATH
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
 VERSION=3.5.13
