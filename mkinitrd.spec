@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.3.2
+%define version 2.4
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -8,7 +8,7 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
 ExclusiveArch: i386 sparc sparc64
 ExclusiveOs: Linux
-Requires: /bin/ash.static losetup e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static
+Requires: /bin/sash losetup e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static
 BuildRoot: /var/tmp/%{name}-root
 
 %description

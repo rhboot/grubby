@@ -18,6 +18,7 @@ export PATH
 
 VERSION=%VERSIONTAG%
 
+compress=1
 target=""
 kernel=""
 force=""
@@ -27,39 +28,52 @@ img_vers=""
 modulefile=/etc/conf.modules
 IMAGESIZE=1500
 PRESCSIMODS="scsi_mod sd_mod"
+fstab="/etc/fstab"
 
 usage () {
     echo "usage: `basename $0` [--version] [-v] [-f] [--ifneeded] [--preload <module>]" >&2
     echo "       [--omit-scsi-modules] [--omit-raid-modules] [--with=<module>]" >&2
-    echo "       [--image-version] <initrd-image>" >&2
-    echo "       <kernel>" >&2
+    echo "       [--image-version] [--fstab=<fstab>] [--nocompress] <initrd-image>" >&2
+    echo "       <kernel-version>" >&2
     echo "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)" >&2
     exit 1
 }
 
 findmodule() {
-    if [ "$2" = "pluto" ]; then
+    skiperrors=""
+    modName=$2
+    if [ $(echo $modName | cut -b1) = "-" ]; then
+	skiperrors=1
+	modName=$(echo $modName | cut -b2-)
+    fi
+
+    if [ "$modName" = "pluto" ]; then
 	findmodule "" fc4
 	findmodule "" soc
     fi
-    if [ "$2" = "fcal" ]; then
+    if [ "$modName" = "fcal" ]; then
 	findmodule "" fc4
 	findmodule "" socal
     fi
     if [ -n "$1" ]; then
-	fmPath="$1"/"$2".o
+	fmPath="$1"/"$modName".o
     else
-	fmPath=`(cd /lib/modules/$kernel; echo */$2.o)`
+	fmPath=`(cd /lib/modules/$kernel; echo */$modName.o)`
     fi
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
-# ignore the absence of the scsi modules
-	for i in $PRESCSIMODS; do
-	    if [ "$n" = "$2" ]; then
+	if [ -n "$skiperrors" ]; then
+	    return
+	fi
+
+        # ignore the absence of the scsi modules
+	for n in $PRESCSIMODS; do
+	    if [ "$n" = "$modName" ]; then
 		return;
 	    fi
 	done;
-	echo "No module $2 found for kernel $kernel" >&2
+    
+	echo "No module $modName found for kernel $kernel" >&2
 	exit 1
     fi
 
@@ -80,6 +94,15 @@ inst() {
 
 while [ $# -gt 0 ]; do
     case $1 in
+	--fstab*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	fstab=`echo $1 | sed 's/^--with=//'`
+	    else
+		fstab=$2
+		shift
+	    fi		    
+	    ;;
+
 	--with*)
 	    if echo $1 | grep '=' >/dev/null ; then
 	    	modname=`echo $1 | sed 's/^--with=//'`
@@ -98,6 +121,10 @@ while [ $# -gt 0 ]; do
 
 	-v)
 	    verbose=-v
+	    ;;
+
+	--nocompress)
+	    compress=""
 	    ;;
 
 	--ifneeded)
@@ -182,7 +209,7 @@ fi
 
 if [ -z "$noraid" ]; then
     # load appropriate raid devices if necessary
-    if grep '^/dev/md' /etc/fstab | grep -v noauto >/dev/null 2>&1 ; then
+    if grep '^/dev/md' $fstab | grep -v noauto >/dev/null 2>&1 ; then
 	for number in $(grep '^[ 	]*raid-level' /etc/raidtab |
 			  awk '{print $2}' | LC_ALL=C sort -u) ; do
 	    case $number in
@@ -195,6 +222,29 @@ if [ -z "$noraid" ]; then
 	    esac
 	done
     fi
+fi
+
+# check to see if we need to set up a loopback filesystem
+rootdev=$(awk '{ if ($2 == "/") { print $1; }}' $fstab)
+if echo $rootdev | cut -d/ -f3 | grep loop >/dev/null; then
+    key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
+    if ! grep "$key" $fstab > /dev/null; then
+	echo "The root filesystem is on a $rootdev, but there is no magic entry in $fstab" 1>&2
+	echo "for this device. Consult the mkinitrd man page for more information" 2>&2
+	exit 1
+    fi
+
+    line=$(grep "$key" $fstab)
+    loopDev=$(echo $line | awk '{print $3}')
+    loopFs=$(echo $line | awk '{print $4}')
+    loopFile=$(echo $line | awk '{print $5}')
+
+    basicmodules="$basicmodules -loop"
+    if [ "$loopFs" = "vfat" -o "$loopFs" = "msdos" ]; then
+	basicmodules="$basicmodules -fat"
+    fi
+    basicmodules="$basicmodules -${loopFs}"
+	
 fi
 
 for n in $basicmodules; do 
@@ -260,12 +310,17 @@ mkdir -p $MNTIMAGE/lib
 mkdir -p $MNTIMAGE/bin
 mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
+mkdir -p $MNTIMAGE/loopfs
 
 # We don't need this directory, so let's save space
 rm -rf $MNTPOINT/lost+found
 
-inst /bin/ash.static "$MNTIMAGE/bin/sh"
+inst /sbin/sash "$MNTIMAGE/bin/sh"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
+
+if [ -n "$loopDev" ]; then
+    inst /sbin/losetup "$MNTIMAGE/bin/losetup"
+fi
 
 for MODULE in $MODULES; do
     cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
@@ -290,6 +345,18 @@ for MODULE in $MODULES; do
     echo "insmod /lib/$module.o $options" >> $RCFILE
 done
 
+if [ -n "$loopDev" ]; then
+    if [ ! -d /initrd ]; then
+	mkdir /initrd
+    fi
+
+    cp -a $rootdev $MNTIMAGE/dev
+    echo "echo Mounting device containing loopback root filesystem" >> $RCFILE
+    echo "mount -t $loopFs $loopDev /loopfs" >> $RCFILE
+    echo "echo Setting up loopback device $rootdev" >> $RCFILE
+    echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
+fi
+
 chmod +x $RCFILE
 
 (cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -)
@@ -297,6 +364,10 @@ chmod +x $RCFILE
 umount $MNTPOINT
 losetup -d $LODEV
 
-gzip -9 < $IMAGE > $target
+if [ -n "$compress" ]; then
+    gzip -9 < $IMAGE > $target
+else
+    cp -a $IMAGE $target
+fi
 rm -rf $MNTIMAGE $MNTPOINT $IMAGE
 

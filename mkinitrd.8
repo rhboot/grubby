@@ -4,7 +4,8 @@
 mkinitrd \- creates initial ramdisk images for preloading modules
 .SH SYNOPSIS
 \fBmkinitrd\fR [-fv] [--with=\fImodule\fR] [--preload=\fImodule\fR] 
-         [--omit-scsi-modules] [--omit-raid-modules] [--version] \fIimage\fR
+         [--omit-scsi-modules] [--omit-raid-modules] 
+         [--version] [--fstab=\fIfstab\fR] \fIimage\fR 
          \fIkernel-version\fR
 .SH DESCRIPTION
 \fBmkinitrd\fR creates filesystem images which are suitable for use
@@ -18,10 +19,28 @@ using moduler SCSI devices.
 Any module options specified in \fI/etc/conf.modules\fR are passed
 to the modules as they are loaded by the initial ramdisk.
 
+If the root device is on a loop device (such as /dev/loop0), \fBmkinitrd\fR
+will attempt to build an initrd which sets up the loopback file properly.
+To do this, the fstab must contain a comment of the form:
+
+    # LOOP0: /dev/hda1 vfat /linux/rootfs
+
+LOOP0 must be the name of the loop device which needs to be configured, in
+all capital lettes. The parameters after the color are the device which 
+contains the filesystem with the loopback image on it, the filesystem which
+is on the device, and the full path to the loopback image. If the filesystem
+is modular, initrd will automatically add the filesystem's modules to the
+initrd image.
+
 .SH OPTIONS
 .TP
 \fB-f\fR
 Allows \fBmkinitrd\fR to overwrite an existing image file.
+
+.TP
+\fB-\-fstab=\fR\fIfstab\fR
+Use \fIfstab\fR to automatically determine what type of filesystem the
+root device is on. Normally, \fB/etc/fstab\fR is used.
 
 .TP
 \fB-\-ifneeded
@@ -71,6 +90,7 @@ script useless on systems without block loopback support available.
 Specified SCSI modules to be loaded and module options to be used.
 .PD
 .SH "SEE ALSO"
+.BR fstab (5),
 .BR insmod (1),
 .BR kerneld (8),
 .BR lilo (8)
