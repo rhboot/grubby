@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Apr 30 2003 Jeremy Katz <katzj@redhat.com> 3.4.50-1
+- fix typo in new-kernel-pkg for iSeries
+
 * Wed Apr 30 2003 Elliot Lee <sopwith@redhat.com>
 - BuildRequires: popt
 - Change grubby Makefile to static-link popt a bit more cleanly

@@ -98,7 +98,7 @@ install() {
 	    [ -n "$verbose" ] && echo "No initrd, just hardlinking kernel"
 	    ln $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version
 	else
-	    /sbin/addRamDisk $INITRD $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version 2>/dev/null
+	    /sbin/addRamDisk $initrdfile $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version 2>/dev/null
 	fi
 	return
     fi
