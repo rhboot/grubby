@@ -58,6 +58,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Mar 17 2005 Peter Jones <pjones@redhat.com> - 4.2.4-1
+- don't do vgmknodes at all for lvm
+
 * Tue Mar 15 2005 Peter Jones <pjones@redhat.com> - 4.2.3-1
 - use --ignorelockingfailure with lvm commands in the initrd, and only
   activate the volume / is on.  (#151172)
