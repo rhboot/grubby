@@ -895,6 +895,106 @@ void setFallbackImage(struct grubConfig * config, int hasNew) {
     }
 }
 
+int displayInfo(struct grubConfig * config, char * kernel,
+		const char * prefix) {
+    int i = 0;
+    struct singleEntry * entry;
+    struct singleLine * line;
+    char * root = NULL;
+
+    while ((entry = findEntryByIndex(config, i))) {
+	/* entries can't be removed in this mode; don't need to check
+	   entry->skip */
+
+	line = entry->lines;
+	while (line && line->type != LT_KERNEL) line=line->next;
+
+	if (!line || line->numElements < 2) {
+	    return 1;
+	}
+
+	if (!strcmp(line->elements[1].item, kernel + strlen(prefix)))
+	    break;
+
+	i++;
+    }
+
+    if (!entry) return 1;
+
+    if (line->numElements >= 3) {
+	printf("args=\"");
+	i = 2;
+	while (i < line->numElements) {
+	    if (!strncmp(line->elements[i].item, "root=", 5)) {
+		root = line->elements[i].item + 5;
+	    } else {
+		printf("%s%s", line->elements[i].item, 
+			       line->elements[i].indent);
+	    }
+
+	    i++;
+	}
+	printf("\"\n");
+    } else {
+	line = entry->lines;
+	while (line && line->type != LT_KERNELARGS) line=line->next;
+	
+	if (line) {
+	    char * s;
+
+	    printf("args=\"");
+	    i = 1;
+	    while (i < line->numElements) {
+		if (!strncmp(line->elements[i].item, "root=", 5)) {
+		    root = line->elements[i].item + 5;
+		} else {
+		    s = line->elements[i].item;
+		    if (*s == '"') s++;
+
+		    printf("%s%s", s, line->elements[i].indent);
+		}
+
+		i++;
+	    }
+
+	    s = line->elements[i - 1].indent;
+	    if (s[strlen(s) - 1] != '"') printf("\"");
+	    printf("\n");
+	}
+    }
+
+    if (!root) {
+	line = entry->lines;
+	while (line && line->type != LT_ROOT) line=line->next;
+
+	if (line && line->numElements >= 2)
+	    root=line->elements[1].item;
+    }
+
+    if (root) {
+	char * s = alloca(strlen(root) + 1);
+	
+	strcpy(s, root);
+	if (s[strlen(s) - 1] == '"')
+	    s[strlen(s) - 1] = '\0';
+	/* make sure the root doesn't have a trailing " */
+	printf("root=%s\n", s);
+    }
+
+    line = entry->lines;
+    while (line && line->type != LT_INITRD) line=line->next;
+
+    if (line && line->numElements >= 2) {
+	printf("initrd=%s", prefix);
+	for (i = 1; i < line->numElements; i++)
+	    printf("%s%s", line->elements[i].item, line->elements[i].indent);
+	printf("\n");
+    }
+
+    return 0;
+    
+}
+
 int main(int argc, const char ** argv) {
     poptContext optCon;
     char * grubConfig = NULL;
@@ -912,6 +1012,7 @@ int main(int argc, const char ** argv) {
     char * newKernelVersion = NULL;
     char * bootPrefix = NULL;
     char * defaultKernel = NULL;
+    char * kernelInfo = NULL;
 #ifdef __ia64__
     struct configFileInfo * cfi = &liloConfigType;
 #else
@@ -945,6 +1046,8 @@ int main(int argc, const char ** argv) {
 	    _("display the path of the default kernel") },
 	{ "grub", 0, POPT_ARG_NONE, &configureGrub, 0,
 	    _("configure grub instead of lilo") },
+	{ "info", 0, POPT_ARG_STRING, &kernelInfo, 0,
+	    _("display boot information for specified kernel") },
 	{ "initrd", 0, POPT_ARG_STRING, &newKernelInitrd, 0,
 	    _("initrd image for the new kernel"), _("args") },
 	{ "lilo", 0, POPT_ARG_NONE, &configureLilo, 0,
@@ -999,10 +1102,10 @@ int main(int argc, const char ** argv) {
     if (!grubConfig) 
 	grubConfig = cfi->defaultConfig;
 
-    if (displayDefault && (newKernelVersion || newKernelPath ||
+    if ((displayDefault || kernelInfo) && (newKernelVersion || newKernelPath ||
 			   oldKernelPath)) {
-	fprintf(stderr, _("grubby: --default-kernel may not be used "
-			"when adding or removing kernels\n"));
+	fprintf(stderr, _("grubby: --default-kernel and --info may not "
+			  "be used when adding or removing kernels\n"));
 	return 1;
     }
 
@@ -1036,7 +1139,8 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
-    if (!oldKernelPath && !newKernelPath && !displayDefault && !defaultKernel) {
+    if (!oldKernelPath && !newKernelPath && !displayDefault && !defaultKernel
+	&& !kernelInfo) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -1075,7 +1179,10 @@ int main(int argc, const char ** argv) {
 	printf("%s%s\n", bootPrefix, line->elements[1].item);
 
 	return 0;
-    }
+    } 
+    
+    if (kernelInfo)
+	return displayInfo(config, kernelInfo, bootPrefix);
 
     if (copyDefault) {
 	template = findTemplate(config, bootPrefix, NULL, 0, flags);
