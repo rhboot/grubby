@@ -4,20 +4,7 @@ CVSTAG = r$(subst .,-,$(VERSION))
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
 
-SUBDIRS = nash
-
-
-ifeq ($(ARCH), i386)
-SUBDIRS += grubby
-endif
-
-ifeq ($(ARCH), x86_64)
-SUBDIRS += grubby
-endif
-
-ifeq ($(ARCH), ia64)
-SUBDIRS += grubby
-endif
+SUBDIRS = nash grubby
 
 #ifeq ($(ARCH),sparc)
 #SUBDIRS += loadinitrd
