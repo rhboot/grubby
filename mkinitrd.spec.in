@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -52,6 +52,12 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Tue Jan 29 2002 Jeremy Katz <katzj@redhat.com>
+- fix probing for LVM usage to require a volume group to exist before adding
+  the module
+- --omit-lvm-modules will omit LVM modules
+- add support for root device being LVM
+
 * Wed Jan 16 2002 Erik Troan <ewt@redhat.com>
 - look for a non /tmpfs directory
 - added support for xfs
