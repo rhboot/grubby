@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.4.4
+VERSION=3.4.5
 
 compress=1
 target=""
