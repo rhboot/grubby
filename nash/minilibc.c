@@ -184,6 +184,7 @@ void printf(char * fmt, ...) {
     va_list args;
     char * strarg;
     int numarg;
+    char ch;
 
     strcpy(buf, fmt);
     va_start(args, fmt);
@@ -201,6 +202,11 @@ void printf(char * fmt, ...) {
 		printstr(strarg);
 		break;
 
+	      case 'c':
+		ch = va_arg(args, int);
+		write(1, &ch, 1);
+		break;
+
 	      case 'd':
 		numarg = va_arg(args, int);
 		printint(numarg);
@@ -213,4 +219,35 @@ void printf(char * fmt, ...) {
 	    start = NULL;
 	}
     }
+}
+
+int atoi(const char * str) {
+    const char * chptr;
+    int allowHex = 0;
+    int val = 0;
+    
+    if (str[0] == '0' && str[1] == 'x') {
+	allowHex = 1;
+	str += 2;
+    }
+
+    for (chptr = str; *chptr; chptr++) {
+	if (allowHex)
+	    val *= 16;
+	else
+	    val *= 10;
+
+	if (*chptr >= '0' && *chptr <= '9')
+	    val += *chptr - '0';
+	else if (allowHex && *chptr >= 'a' && *chptr <= 'f')
+	    val += *chptr - 'a' + 10;
+	else if (allowHex && *chptr >= 'A' && *chptr <= 'A')
+	    val += *chptr - 'A' + 10;
+	else {
+	    printf("mkblockdev: unknown digit %c\n", *chptr);
+	    return -1;
+	}
+    }
+
+    return val;
 }
