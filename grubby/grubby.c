@@ -626,8 +626,9 @@ static struct grubConfig * readConfig(const char * inName,
 		    if (line->type == LT_TITLE) break;
 
                 if (!cfi->titleBracketed) {
-                    if (line && !strcmp(defaultLine->elements[1].item,
-                                        line->elements[1].item)) break;
+                    if (line && (line->numElements >= 2) && 
+                        !strcmp(defaultLine->elements[1].item,
+                                line->elements[1].item)) break;
                 } else if (line) {
                     if (!strcmp(defaultLine->elements[1].item, 
                                 extractTitle(line))) break;
