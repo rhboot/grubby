@@ -291,6 +291,39 @@ for n in $PREMODS; do
 	findmodule $n
 done
 
+needusb=""
+usbHosts=""
+if [ -z "$nousb" ]; then
+    # If / or /boot is on a USB device include the driver. With root by
+    # label we could still get some odd behaviors
+    for fs in / /boot ; do
+	esc=$(echo $fs | sed 's,/,\\/,g')
+	dev=$(mount | awk "/ on ${esc} / { print \$1 }" | sed 's/[0-9]*$//' | cut -d/ -f3)
+	if [ "$(echo $dev | cut -c1-2)" = sd ]; then
+	    if [ -z "$usbHosts" -a /proc/scsi/usb-storage-0 ]; then
+		usbHosts=$(find /proc/scsi/usb-sto* -type f | 
+			   xargs -n 1 basename)
+	    fi
+
+	    host=$(kudzu --probe -b scsi |
+	      gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) print $2; }') 
+	    if echo " $usbHosts " | grep " $host " > /dev/null; then
+		needusb=1
+	    fi
+	fi
+    done
+fi
+
+if [ -n "$needusb" ]; then
+    driver=$(lsmod | awk '/^usb-[ou]hci / { print $1 }')
+    if [ -n "$driver" ]; then
+	findmodule usbcore
+	findmodule $driver
+	findmodule scsi_mod
+	findmodule usb-storage
+    fi
+fi
+
 if [ -z "$noscsi" ]; then
     if [ ! -f $modulefile ]; then
         modulefile=/etc/conf.modules
