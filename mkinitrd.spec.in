@@ -9,7 +9,7 @@ ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 Requires: filesystem >= 2.1.0
-BuiltRequires: dietlibc
+BuildRequires: dietlibc
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description

@@ -3,10 +3,14 @@
 .SH NAME
 mkinitrd \- creates initial ramdisk images for preloading modules
 .SH SYNOPSIS
-\fBmkinitrd\fR [-fv] [--with=\fImodule\fR] [--preload=\fImodule\fR] 
-         [--omit-scsi-modules] [--omit-raid-modules] [--image-version]
-         [--nocompress] [--version] [--fstab=\fIfstab\fR] \fIimage\fR 
+\fBmkinitrd\fR [--version] [-v] [-f] [--ifneeded] 
+         [--preload=\fImodule\fR] [--omit-scsi-modules] 
+         [--omit-raid-modules] [--omit-lvm-modules] 
+         [--with=\fImodule\fR] [--image-version]
+         [--fstab=\fIfstab\fR] [--nocompress]
+	 [--builtin=\fImodule\fR] \fIimage\fR 
          \fIkernel-version\fR
+
 .SH DESCRIPTION
 \fBmkinitrd\fR creates filesystem images which are suitable for use
 as Linux initial ramdisk (initrd) images. Such images are often
@@ -35,6 +39,12 @@ initrd image.
 
 .SH OPTIONS
 .TP
+\fB-\-builtin=\fR\fImodule\fR
+Act as if \fImodule\fR is built into the kernel being used. \fBmkinitrd\fR
+will not look for this module, and will not emit an error if it does not
+exist. This option may be used multiple times.
+
+.TP
 \fB-f\fR
 Allows \fBmkinitrd\fR to overwrite an existing image file.
 
@@ -59,13 +69,17 @@ Normally the created initrd image is compressed with \fBgzip\fR. If this
 option is specified, the compression is skipped.
 
 .TP
-\fB-\-omit-scsi-modules 
-Do not load any scsi modules, including 'scsi_mod' and 'sd_mod'
-modules, even if they are present.
+\fB-\-omit-lvm-modules 
+Do not load any lvm modules, even if /etc/fstab expects them.
 
 .TP
 \fB-\-omit-raid-modules 
 Do not load any raid modules, even if /etc/fstab and /etc/raidtab expect them.
+
+.TP
+\fB-\-omit-scsi-modules 
+Do not load any scsi modules, including 'scsi_mod' and 'sd_mod'
+modules, even if they are present.
 
 .TP
 \fB-\-preload=\fR\fImodule\fR
