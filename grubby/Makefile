@@ -9,7 +9,7 @@ LDFLAGS = -g
 ifneq (x86_64, $(ARCH))
 LOADLIBES = /usr/lib/libpopt.a
 else
-LOADLIBS = /usr/lib64/libpopt.a
+LOADLIBES = /usr/lib64/libpopt.a
 endif
 
 all:	grubby
