@@ -387,7 +387,7 @@ echo "" >> $RCFILE
 for MODULE in $MODULES; do
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
 
-    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile`
+    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
     if [ -n "$verbose" ]; then
         echo "Loading module $module with options $options"
