@@ -55,7 +55,7 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Thu Jun 06 2002 Erik Troan <ewt@redhat.com>
+* Tue Jun 11 2002 Erik Troan <ewt@redhat.com>
 - added --bootloader-probe to grubby
 - wrote a man page for grubby
 - include grubby on ia64
