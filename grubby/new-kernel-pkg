@@ -281,16 +281,16 @@ if [ -z "$initrdfile" ]; then
 fi
 [ -n "$verbose" ] && echo "initrdfile is $initrdfile"
 
-if [ "$initrd" == "make" ]; then
-    mkinitrd
-elif [ "$initrd" == "remove" ]; then
-    rminitrd
-fi
-
 if [ "$moddep" == "make" ]; then
     doDepmod
 elif [ "$moddep" == "remove" ]; then
     doRmmoddep
+fi
+
+if [ "$initrd" == "make" ]; then
+    mkinitrd
+elif [ "$initrd" == "remove" ]; then
+    rminitrd
 fi
 
 if [ ! -x $grubby ] ; then
