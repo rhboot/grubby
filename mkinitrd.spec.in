@@ -45,10 +45,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 %attr(755,root,root) /sbin/grubby
+%attr(755,root,root) /sbin/installkernel
 
 %changelog
 * Sun Aug 26 2001 Erik Troan <ewt@redhat.com>
 - added grubby
+- added installkernel
 
 * Fri Aug  3 2001 Matt Wilson <msw@redhat.com>
 - make consoles with the correct minor numbers

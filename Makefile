@@ -16,6 +16,7 @@ install:
 		fi; \
 	done
 	sed 's/%VERSIONTAG%/$(VERSION)/' < mkinitrd > $(BUILDROOT)/sbin/mkinitrd
+	install -m755 installkernel $(BUILDROOT)/sbin/installkernel
 	chmod 755 $(BUILDROOT)/sbin/mkinitrd
 	install -m644 mkinitrd.8 $(BUILDROOT)/$(mandir)/man8/mkinitrd.8
 
