@@ -241,7 +241,7 @@ int mountCommand(char * cmd, char * end) {
 }
 
 int otherCommand(char * bin, char * cmd, char * end, int doFork) {
-    char * args[32];
+    char * args[128];
     char ** nextArg;
     int pid;
     int status;
@@ -249,6 +249,8 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
     const static char * sysPath = PATH;
     const char * pathStart;
     const char * pathEnd;
+    char * stdoutFile = NULL;
+    int stdoutFd = 0;
 
     nextArg = args;
 
@@ -283,19 +285,36 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
     if (cmd) nextArg++;
     *nextArg = NULL;
 
+    /* if the next-to-last arg is a >, redirect the output properly */
+    if (((nextArg - args) >= 2) && !strcmp(*(nextArg - 2), ">")) {
+	stdoutFile = *(nextArg - 1);
+	*(nextArg - 2) = NULL;
+
+	stdoutFd = open(stdoutFile, O_CREAT | O_RDWR | O_TRUNC, 0600);
+	if (stdoutFd < 0) {
+	    printf("nash: failed to open %s: %d\n", stdoutFile, errno);
+	    return 1;
+	}
+    }
+
     if (testing) {
 	printf("%s ", bin);
 	nextArg = args + 1;
 	while (*nextArg)
 	    printf(" '%s'", *nextArg++);
+	if (stdoutFile)
+	    printf(" (> %s)", stdoutFile);
 	printf("\n");
     } else {
 	if (!doFork || !(pid = fork())) {
 	    /* child */
+	    dup2(stdoutFd, 1);
 	    execve(args[0], args, env);
 	    printf("ERROR: failed in exec of %s\n", args[0]);
 	    return 1;
 	}
+
+	close(stdoutFd);
 
 	wait4(-1, &status, 0, NULL);
 	if (!WIFEXITED(status) || WEXITSTATUS(status)) {
