@@ -102,7 +102,7 @@ uuidcache_init(void) {
 	int ma, mi, sz;
 	static char ptname[100];
 	FILE *procpt;
-	char uuid[16], *label;
+	char uuid[16], *label = NULL;
 	char device[110];
 	int firstPass;
 	int handleOnFirst;
