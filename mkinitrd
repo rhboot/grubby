@@ -379,7 +379,7 @@ if [ -z "$nolvm" ]; then
         fi
     fi
 
-    if [ -x /sbin/dmsetup ]; then
+    if [ -x /sbin/dmsetup -a -f /dev/mapper/control ]; then
 	dmout=$(/sbin/dmsetup ls)
 	if [ "$dmout" != "No devices found" ]; then
 	    findmodule -dm-mod
