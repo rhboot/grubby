@@ -540,14 +540,46 @@ void markRemovedImage(struct grubConfig * cfg, const char * image,
     }
 }
 
-void setDefaultImage(struct grubConfig * config, int hasNew, int newIsDefault,
+void setDefaultImage(struct grubConfig * config, int hasNew, 
+		     const char * defaultKernelPath, int newIsDefault,
 		     const char * prefix) {
     struct singleLine * line, * line2;
     struct singleLine * newDefault;
+    int i;
 
     if (newIsDefault) {
 	config->defaultImage = 0;
 	return;
+    } else if (defaultKernelPath) {
+	line = config->lines;
+	i = 0;
+	while (line) {
+	    while (line && line->type != LT_TITLE) line = line->next;
+	    if (!line) {
+		config->defaultImage = -1;
+		return;
+	    }
+
+	    if (line->skip) {
+		while (line && line->type != LT_TITLE) line = line->next;
+		continue;
+	    }
+
+	    while (line && line->type != LT_KERNEL) line=line->next;
+	    if (!line || line->numElements < 2) {
+		config->defaultImage = -1;
+		return;
+	    }
+
+	    if (!strcmp(line->elements[1].item, defaultKernelPath + 
+						strlen(prefix))) {
+		config->defaultImage = i;
+		return;
+	    }
+
+	    line = line->next;
+	    i++;
+	}
     }
 
     /* try and keep the same default */
@@ -591,10 +623,12 @@ int main(int argc, const char ** argv) {
     char * newKernelTitle = NULL;
     char * newKernelVersion = NULL;
     char * bootPrefix;
+    char * defaultKernel = NULL;
     struct grubConfig * config;
     struct newKernelInfo newKernel;
     struct singleLine * template = NULL;
     int copyDefault = 0, makeDefault = 0;
+    int displayDefault = 0;
     struct poptOption options[] = {
 	{ "add-kernel", 0, POPT_ARG_STRING, &newKernelPath, 0,
 	    _("add an entry for the specified kernel"), _("kernel-path") },
@@ -608,6 +642,8 @@ int main(int argc, const char ** argv) {
 	      "the kernel referenced by the default image does not exist, "
 	      "the first linux entry whose kernel does exist is used as the "
 	      "template"), NULL },
+	{ "default-kernel", 0, 0, &displayDefault, 0,
+	    _("display the path of the default kernel") },
 	{ "initrd", 0, POPT_ARG_STRING, &newKernelInitrd, 0,
 	    _("initrd image for the new kernel"), _("args") },
 	{ "make-default", 0, 0, &makeDefault, 0,
@@ -618,6 +654,9 @@ int main(int argc, const char ** argv) {
 	{ "remove-kernel", 0, POPT_ARG_STRING, &oldKernelPath, 0,
 	    _("remove all entries for the specified kernel"), 
 	    _("kernel-path") },
+	{ "set-default", 0, POPT_ARG_STRING, &defaultKernel, 0,
+	    _("make the first entry referencing the specified kernel "
+	      "the default") },
 	{ "title", 0, POPT_ARG_STRING, &newKernelTitle, 0,
 	    _("title to use for the new kernel entry"), _("entry-title") },
 	{ "new-default", 0, POPT_ARG_STRING, &newKernelVersion, 0,
@@ -645,6 +684,13 @@ int main(int argc, const char ** argv) {
 	fprintf(stderr, _("grubby: bad argument %s: %s\n"),
 		poptBadOption(optCon, POPT_BADOPTION_NOALIAS),
 		poptStrerror(arg));
+	return 1;
+    }
+
+    if (displayDefault && (newKernelVersion || newKernelPath ||
+			   oldKernelPath)) {
+	fprintf(stderr, _("grubby: --display-default may not be used "
+			"when adding or removing kernels\n"));
 	return 1;
     }
 
@@ -696,13 +742,27 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
+    if (makeDefault && defaultKernel) {
+	fprintf(stderr, _("grubby: --make-default and --default-kernel "
+			  "may not be used together\n"));
+	return 1;
+    } else if (defaultKernel && oldKernelPath &&
+		!strcmp(defaultKernel, oldKernelPath)) {
+	fprintf(stderr, _("grubby: cannot make removed kernel the default\n"));
+	return 1;
+    } else if (defaultKernel && newKernelPath &&
+		!strcmp(defaultKernel, newKernelPath)) {
+	makeDefault = 1;
+	defaultKernel = NULL;
+    }
+
     if (!strcmp(grubConfig, "-") && !outputFile) {
 	fprintf(stderr, _("grubby: output file must be specified if stdin "
 			"is used\n"));
 	return 1;
     }
 
-    if (!oldKernelPath && !newKernelPath) {
+    if (!oldKernelPath && !newKernelPath && !displayDefault && !defaultKernel) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -713,13 +773,28 @@ int main(int argc, const char ** argv) {
     config = readConfig(grubConfig);
     if (!config) return 1;
 
+    if (displayDefault) {
+	struct singleLine * image;
+
+	if (config->defaultImage == -1) return 0;
+	image = findTitleByIndex(config, config->defaultImage);
+	if (!image) return 0;
+	if (!suitableImage(image, bootPrefix)) return 0;
+
+	while (image->type != LT_KERNEL) image = image->next;
+	printf("%s%s\n", bootPrefix, image->elements[1].item);
+
+	return 0;
+    }
+
     if (copyDefault) {
 	template = findTemplate(config, bootPrefix, NULL, 0);
 	if (!template) return 1;
     }
 
     markRemovedImage(config, oldKernelPath, bootPrefix);
-    setDefaultImage(config, newKernelPath != NULL, makeDefault, bootPrefix);
+    setDefaultImage(config, newKernelPath != NULL, defaultKernel, makeDefault, 
+		    bootPrefix);
 
     newKernel.title = newKernelTitle;
     newKernel.image = newKernelPath;
