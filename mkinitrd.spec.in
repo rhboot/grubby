@@ -60,6 +60,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue May 18 2004 Jeremy Katz <katzj@redhat.com> - 3.5.23-1
+- add support for RAID6
+
+* Wed May 12 2004 Jeremy Katz <katzj@redhat.com>
+- add support for multipath personality from Tom Callaway (#120379)
+
 * Thu May  6 2004 Jeremy Katz <katzj@redhat.com> - 3.5.22-1
 - bump initrd size (#122325)
 

@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.22
+VERSION=3.5.23
 
 compress=1
 target=""
@@ -411,7 +411,11 @@ if [ -z "$noraid" -a -f /proc/mdstat ]; then
 	    findmodule linear
 	    startraid=1
 	    ;;
-	raid[0145])
+	multipath)
+	    findmodule multipath
+	    startraid=1
+	    ;;
+	raid[01456])
 	    findmodule $level
 	    startraid=1
 	    ;;
