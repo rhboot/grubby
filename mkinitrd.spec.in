@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Fri Mar 23 2001 Matt Wilson <msw@redhat.com>
+- reset the state of findmodule after getting the modules we need
+
 * Wed Feb 28 2001 Matt Wilson <msw@redhat.com>
 - changed the Requires on mktemp from >= 1.5 to >= 1.5-5 (which included
   -d support) (#30127)

@@ -10,15 +10,16 @@
 #	Christian 'Dr. Disk' Hechelmann <drdisk@ds9.au.s.shuttle.de>
 #	Michael K. Johnson <johnsonm@redhat.com>
 #	Pierre Habraken <Pierre.Habraken@ujf-grenoble.fr>
-#	Jakub Jelinek <jj@ultra.linux.cz>
+#	Jakub Jelinek <jakub@redhat.com>
 #	Carlo Arenas Belon (carenas@chasqui.lared.net.pe>
 #	Keith Owens <kaos@ocs.com.au>
 #	Bernhard Rosenkraenzer <bero@redhat.com>
+#	Matt Wilson <msw@redhat.com>
 
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.0.9
+VERSION=3.0.10
 
 compress=1
 target=""
@@ -57,15 +58,18 @@ findmodule() {
     if [ "$modName" = "i2o_block" ]; then
 	findmodule i2o_pci
 	findmodule i2o_core
+	modName="i2o_block"
     fi
 
     if [ "$modName" = "pluto" ]; then
 	findmodule fc4
 	findmodule soc
+	modName="pluto"
     fi
     if [ "$modName" = "fcal" ]; then
 	findmodule fc4
 	findmodule socal
+	modName="fcal"
     fi
 
     fmPath=`(cd /lib/modules/$kernel; find -type f -name $modName.o)`
