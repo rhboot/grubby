@@ -177,6 +177,10 @@ while [ $# -gt 0 ]; do
 	    fi		    
 	    ;;
 
+	--with-usb)
+	    withusb=yes
+	    ;;
+
 	--with*)
 	    if echo $1 | grep -q '=' ; then
 	    	modname=`echo $1 | sed 's/^--with=//'`
@@ -243,9 +247,6 @@ while [ $# -gt 0 ]; do
 	    ;;
 	--image-version)
 	    img_vers=yes
-	    ;;
-	--with-usb)
-	    withusb=yes
 	    ;;
 	*)
 	    if [ -z "$target" ]; then
