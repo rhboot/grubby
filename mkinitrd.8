@@ -4,7 +4,7 @@
 mkinitrd \- creates initial ramdisk images for preloading modules
 .SH SYNOPSIS
 \fBmkinitrd\fR [-fv] [--with=\fImodule\fR] [--preload=\fImodule\fR] 
-         [--omit-scsi-modules] [--version] \fIimage\fR
+         [--omit-scsi-modules] [--omit-raid-modules] [--version] \fIimage\fR
          \fIkernel-version\fR
 .SH DESCRIPTION
 \fBmkinitrd\fR creates filesystem images which are suitable for use
@@ -32,6 +32,10 @@ time.
 \fB-\-omit-scsi-modules 
 Do not load any scsi modules, including 'scsi_mod' and 'sd_mod'
 modules, even if they are present.
+
+.TP
+\fB-\-omit-raid-modules 
+Do not load any raid modules, even if /etc/fstab and /etc/raidtab expect them.
 
 .TP
 \fB-\-preload=\fR\fImodule\fR

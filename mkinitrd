@@ -30,9 +30,10 @@ PRESCSIMODS="scsi_mod sd_mod"
 
 usage () {
     echo "usage: `basename $0` [--version] [-v] [-f] [--ifneeded] [--preload <module>]" >&2
-    echo "       [--omit-scsi-modules] [--with=<module>] [--image-version] <initrd-image>" >&2
+    echo "       [--omit-scsi-modules] [--omit-raid-modules] [--with=<module>]" >&2
+    echo "       [--image-version] <initrd-image>" >&2
     echo "       <kernel>" >&2
-    echo "       (ex: `basename $0` /boot/initrd 2.0.3)" >&2
+    echo "       (ex: `basename $0` /boot/initrd-2.2.5-15 2.2.5-15)" >&2
     exit 1
 }
 
@@ -112,6 +113,9 @@ while [ $# -gt 0 ]; do
 	    PRESCSIMODS=""
 	    noscsi=1;
 	    ;;
+	--omit-raid-modules)
+	    noraid=1;
+	    ;;
 	--image-version)
 	    img_vers=yes
 	    ;;
@@ -165,6 +169,22 @@ if [ -z "$noscsi" ]; then
     # for now allow scsi modules to come from anywhere.  There are some
     # RAID controllers with drivers in block/
 	    findmodule "" $n
+	done
+    fi
+fi
+
+if [ -z "$noraid" ]; then
+    # load appropriate raid devices if necessary
+    if grep '^/dev/md' /etc/fstab | grep -v noauto >/dev/null 2>&1 ; then
+	for number in $(grep '^[ 	]*raid-level' /etc/raidtab | awk '{print $2}') ; do
+	    case $number in
+	    [0145])
+		findmodule "" raid$number
+		;;
+	    *)
+		echo "raid level $number (in /etc/raidtab) not recognized" >&2
+		;;
+	    esac
 	done
     fi
 fi
