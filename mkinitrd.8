@@ -25,7 +25,7 @@ Any module options specified in \fI/etc/modules.conf\fR are passed
 to the modules as they are loaded by the initial ramdisk.
 
 If the root device is on a loop device (such as /dev/loop0), \fBmkinitrd\fR
-will attempt to build an initrd which sets up the loopback file properly.
+will build an initrd which sets up the loopback file properly.
 To do this, the fstab must contain a comment of the form:
 
     # LOOP0: /dev/hda1 vfat /linux/rootfs
@@ -36,6 +36,12 @@ contains the filesystem with the loopback image on it, the filesystem which
 is on the device, and the full path to the loopback image. If the filesystem
 is modular, initrd will automatically add the filesystem's modules to the
 initrd image.
+
+The root filesystem used by the kernel is specified in the boot configuration
+file, as always. The traditional \fBroot=/dev/hda1\fR style device 
+specification is allowed. If a label is used, as in \fBroot=LABEL=rootPart\fR
+the initrd will search all available devices for an ext2 or ext3 filesystem
+with the appropriate label, and mount that device as the root filesystem.
 
 .SH OPTIONS
 .TP
