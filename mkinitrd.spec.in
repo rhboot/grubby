@@ -46,6 +46,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Fri Aug  3 2001 Matt Wilson <msw@redhat.com>
+- make consoles with the correct minor numbers
+- applied patch from hjl to fix fstab parsing (#50819)
+
 * Fri Jul 20 2001 Jeremy Katz <katzj@redhat.com>
 - skip errors finding jbd as a module if we're skipping them trying to find
   ext3 so that you can build a kernel with ext3 built-in and still use an
