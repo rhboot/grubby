@@ -35,6 +35,10 @@ elif [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
     lilo=/usr/sbin/ybin
     kernelName=vmlinux
     liloFlag=yaboot
+elif [ $ARCH = 'sparc' -o $ARCH = 'sparc64' ]; then
+    liloConfig=/etc/silo.conf
+    bootPrefix=/boot
+    liloFlag=silo
 else
     liloConfig=/etc/lilo.conf
     bootPrefix=/boot
@@ -244,7 +248,7 @@ fi
 
 if [ ! -x $grubby ] ; then
     [ -n "$verbose" ] && echo "$grubby does not exist"
-    exit
+    exit 0
 fi
 
 

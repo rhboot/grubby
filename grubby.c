@@ -134,6 +134,18 @@ struct keywordTypes liloKeywords[] = {
     { NULL,	    0 },
 };
 
+struct keywordTypes siloKeywords[] = {
+    { "label",	    LT_TITLE,	    '=' },
+    { "root",	    LT_ROOT,	    '=' },
+    { "default",    LT_DEFAULT,	    '=' },
+    { "image",	    LT_KERNEL,	    '=' },
+    { "other",	    LT_OTHER,	    '=' },
+    { "initrd",	    LT_INITRD,	    '=' },
+    { "append",	    LT_KERNELARGS,  '=' },
+    { "boot",	    LT_BOOT,	    '=' },
+    { NULL,	    0 },
+};
+
 struct configFileInfo eliloConfigType = {
     "/boot/efi/EFI/redhat/elilo.conf",	    /* defaultConfig */
     liloKeywords,			    /* keywords */
@@ -159,6 +171,17 @@ struct configFileInfo liloConfigType = {
 struct configFileInfo yabootConfigType = {
     "/etc/yaboot.conf",			    /* defaultConfig */
     yabootKeywords,			    /* keywords */
+    0,					    /* defaultIsIndex */
+    0,					    /* defaultSupportSaved */
+    LT_KERNEL,				    /* entrySeparator */
+    0,					    /* needsBootPrefix */
+    1,					    /* argsInQuotes */
+    15,					    /* maxTitleLength */
+};
+
+struct configFileInfo siloConfigType = {
+    "/etc/silo.conf",			    /* defaultConfig */
+    liloKeywords,			    /* keywords */
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
@@ -1803,7 +1826,7 @@ int main(int argc, const char ** argv) {
     int flags = 0;
     int badImageOkay = 0;
     int configureLilo = 0, configureELilo = 0, configureGrub = 0;
-    int configureYaboot = 0;
+    int configureYaboot = 0, configureSilo = 0;
     int bootloaderProbe = 0;
     char * updateKernelPath = NULL;
     char * newKernelPath = NULL;
@@ -1873,6 +1896,8 @@ int main(int argc, const char ** argv) {
 	{ "set-default", 0, POPT_ARG_STRING, &defaultKernel, 0,
 	    _("make the first entry referencing the specified kernel "
 	      "the default"), _("kernel-path") },
+	{ "silo", 0, POPT_ARG_NONE, &configureSilo, 0,
+	    _("configure silo bootloader") },
 	{ "title", 0, POPT_ARG_STRING, &newKernelTitle, 0,
 	    _("title to use for the new kernel entry"), _("entry-title") },
 	{ "update-kernel", 0, POPT_ARG_STRING, &updateKernelPath, 0,
@@ -1911,7 +1936,7 @@ int main(int argc, const char ** argv) {
     }
 
     if ((configureLilo + configureGrub + configureELilo + 
-		configureYaboot) > 1) {
+		configureYaboot + configureSilo) > 1) {
 	fprintf(stderr, _("grubby: cannot specify multiple bootloaders\n"));
 	return 1;
     } else if (bootloaderProbe && grubConfig) {
@@ -1926,6 +1951,8 @@ int main(int argc, const char ** argv) {
 	cfi = &eliloConfigType;
     } else if (configureYaboot) {
 	cfi = &yabootConfigType;
+    } else if (configureSilo) {
+        cfi = &siloConfigType;
     }
 
     if (!cfi) {
@@ -1933,6 +1960,8 @@ int main(int argc, const char ** argv) {
 	cfi = &eliloConfigType;
       #elif __powerpc__
 	cfi = &yabootConfigType;
+      #elif __sparc__
+        cfi = &siloConfigType;
       #else
 	cfi = &grubConfigType;
       #endif
