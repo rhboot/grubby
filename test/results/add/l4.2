@@ -1,0 +1,17 @@
+prompt
+timeout=50
+boot=/dev/hda
+map=/boot/map
+install=/boot/boot.b
+message=/boot/message
+linear
+
+image=/boot/new-kernel.img
+        label=linux
+        root=/dev/hda1
+        read-only
+
+other=/dev/hda2
+        label=DOS
+        optional
+
