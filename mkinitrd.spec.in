@@ -67,6 +67,8 @@ rm -rf $RPM_BUILD_ROOT
 - try and be better about returning nonzero on error (60203)
 - make modprobe symlink properly to avoid kernel message (62145)
 - support linear raid (12775)
+- support fallback option in grub config (54794)
+- comments in template entries not handled quite right (65198)
 
 * Sat Apr 20 2002 Erik Troan <ewt@redhat.com>
 - grubby does a better job of not adding superfluous default= lines
