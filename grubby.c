@@ -771,7 +771,7 @@ struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
 	index++;
     }
 
-    fprintf(stderr, _("fatal error: unable to find a suitable template\n"));
+    fprintf(stderr, _("grubby fatal error: unable to find a suitable template\n"));
 
     return NULL;
 }
