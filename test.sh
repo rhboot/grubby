@@ -5,6 +5,8 @@ if [ `uname -m` = "ia64" ]; then
     exit 0
 fi
 
+export MALLOC_CHECK_=2
+
 RESULT=0
 
 oneTest () {
