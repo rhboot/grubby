@@ -21,7 +21,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.2.7
+VERSION=3.3
 
 compress=1
 target=""
@@ -416,6 +416,7 @@ for MODULE in $MODULES; do
     echo "insmod /lib/$module.o $options" >> $RCFILE
 done
 
+echo "echo Mounting /proc filesystem" >> $RCFILE
 echo "mount -t proc /proc /proc" >> $RCFILE
 
 if [ -n "$loopDev" ]; then
@@ -426,8 +427,7 @@ if [ -n "$loopDev" ]; then
     echo "mount -t $loopFs $loopDev /loopfs" >> $RCFILE
     echo "echo Setting up loopback device $rootdev" >> $RCFILE
     echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
-else
-    echo "echo Mounting /proc filesystem" >> $RCFILE
+elif [ $(echo $rootdev | cut -c1-6) != LABEL= ]; then
     echo "echo Creating root device" >> $RCFILE
     echo "mkrootdev /dev/root" >> $RCFILE
     rootdev=/dev/root
@@ -439,10 +439,11 @@ if [ -n "$startraid" ]; then
 fi
 
 echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
-echo "umount /proc" >> $RCFILE
 
 echo "echo Mounting root filesystem" >> $RCFILE
 echo "mount --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+
+echo "umount /proc" >> $RCFILE
 echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
 
 chmod +x $RCFILE
