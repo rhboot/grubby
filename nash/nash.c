@@ -631,6 +631,7 @@ int losetupCommand(char * cmd, char * end) {
     return 0;
 }
 
+#define RAID_MAJOR 9
 int raidautorunCommand(char * cmd, char * end) {
     char * device;
     int fd;
@@ -643,6 +644,22 @@ int raidautorunCommand(char * cmd, char * end) {
     if (cmd < end) {
 	printf("raidautorun: unexpected arguments\n");
 	return 1;
+    }
+
+    /* with udev, the raid devices don't exist until they get started.
+     * this won't work so well with raidautorun.  so, let's be smart
+     * and create them ourselves if we need to */
+    if (access(device, R_OK & W_OK)) {
+        int minor;
+        if (sscanf(device, "/dev/md%d", &minor) != 1) {
+            printf("raidautorun: unable to autocreate %s\n", device);
+            return 1;
+        }
+
+        if (smartmknod(device, S_IFBLK | 0600, makedev(RAID_MAJOR, minor))) {
+            printf("raidautorun: unable to autocreate %s\n", device);
+            return 1;
+        }
     }
 
     fd = open(device, O_RDWR, 0);

@@ -60,6 +60,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Aug 24 2004 Jeremy Katz <katzj@redhat.com> - 4.1.4-1
+- nash: create raid device if needed (think udev) before calling
+  the raidautorun ioctl (#130561)
+
 * Tue Aug 24 2004 Jeremy Katz <katzj@redhat.com> - 4.1.3-1
 - nash: make echo behavior consistent with other shells
 - more fixes from Steve Grubb (#129673)
