@@ -61,7 +61,11 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Mon Feb  9 2004 Jeremy Katz <katzj@redhat.com> - 3.5.19-1
-- quiet mode for nash and necessary mkinitrd changes to work with it
+- nash/mkinitrd: quiet mode for nash and necessary mkinitrd changes 
+  to work with it
+- mkinitrd: add lxo's patch for copying lvm.conf (#112099)
+- new-kernel-pkg: allow specifying the banner used in the boot loader config
+  on the command line (#114809)
 
 * Tue Jan 13 2004 Jeremy Katz <katzj@redhat.com> 
 - mkinitrd: add patch from Alex Kiernan for modules with multiple 
