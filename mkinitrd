@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.15
+VERSION=3.5.15.1
 
 compress=1
 target=""
@@ -460,7 +460,7 @@ if [ -n "$root_lvm" ]; then
     findmodule -lvm-mod
 fi
 if [ -n "$root_lvm2" ]; then
-    find_module -dm-mod
+    findmodule -dm-mod
 fi
 
 for n in $basicmodules; do 
