@@ -158,9 +158,9 @@ while [ $# -gt 0 ]; do
 	    initrd="remove"
 	    ;;
 
-	--initrd-file*)
+	--initrdfile*)
 	    if echo $1 | grep '=' >/dev/null ; then
-	    	initrdfile=`echo $1 | sed 's/^--initrd=//'`
+	    	initrdfile=`echo $1 | sed 's/^--initrdfile=//'`
 	    else
 		initrdfile=$2
 		shift
