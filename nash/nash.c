@@ -828,6 +828,94 @@ int findlodevCommand(char * cmd, char * end) {
     return 0;
 }
 
+int mkdevicesCommand(char * cmd, char * end) {
+    int fd;
+    char buf[32768];
+    int i;
+    char * start, * chptr;
+    int major, minor;
+    char old;
+    char devName[128];
+    char * prefix;
+
+    if (!(cmd = getArg(cmd, end, &prefix))) {
+	printf("mkdevices: path expected\n");
+	return 1;
+    }
+
+    if (cmd < end) {
+	printf("mkdevices: unexpected arguments\n");
+	return 1;
+    }
+
+    if ((fd = open("/proc/partitions", O_RDONLY)) < 0) {
+	printf("mkrootdev: failed to open /proc/partitions: %d\n", errno);
+	return 1;
+    }
+
+    i = read(fd, buf, sizeof(buf));
+    if (i < 1) {
+	printf("failed to read /proc/partitions: %d\n", errno);
+	return 1;
+    }
+    buf[i] = '\0';
+
+    start = strchr(buf, '\n');
+    if (start) {
+	start++;
+	start = strchr(buf, '\n');
+    }
+    if (!start) return 1;
+
+    start = start + 1;
+    while (*start) {
+	while (*start && isspace(*start)) start++;
+	major = strtol(start, &chptr, 10);
+
+	if (start != chptr) {
+	    start = chptr;
+	    while (*start && isspace(*start)) start++;
+	    minor = strtol(start, &chptr, 10);
+
+	    if (start != chptr) {
+		start = chptr;
+		while (*start && isspace(*start)) start++;
+		while (*start && !isspace(*start)) start++;
+		while (*start && isspace(*start)) start++;
+
+		if (*start) {
+
+		    chptr = start;
+		    while (!isspace(*chptr)) chptr++;
+		    old = *chptr;
+		    *chptr = '\0';
+
+		    if (testing) {
+			printf("% 3d % 3d %s\n", major, minor, start);
+		    } else {
+			sprintf(devName, "%s/%s", prefix, start);
+			unlink(devName);
+			if (mknod(devName, S_IFBLK | 0600, 
+				  makedev(major, minor))) {
+			    printf("failed to create %s\n", devName);
+			}
+		    }
+
+		    *chptr = old;
+		    start = chptr;
+		}
+
+	    }
+	}
+
+	start = strchr(start, '\n');
+	if (!*start) return 1;
+	start = start + 1;
+    }
+
+    return 0;
+}
+
 int runStartup(int fd) {
     char contents[32768];
     int i;
@@ -900,6 +988,8 @@ int runStartup(int fd) {
 	    rc = findlodevCommand(chptr, end);
 	else if (!strncmp(start, "showlabels", MAX(10, chptr-start)))
 	    rc = display_uuid_cache();
+	else if (!strncmp(start, "mkdevices", MAX(9, chptr-start)))
+	    rc = mkdevicesCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);

@@ -52,6 +52,12 @@ system. If none is available, no output is displayed.
 Binds \fIfile\fR to the loopback device \fI/dev/loopdev\fR. See
 \fBlosetup(8)\fR for information on loopback devices.
 
+.TP
+\fBmkdevices\fR \fIpath\fR
+Creates device files for all of the block devices listed in 
+\fB/proc/partitions\fR in the directory specfied by \fIpath\fR.
+
+.TP
 \fBmkdir\fR \fI[-p]\fR \fIpath\fR
 Creates the directory \fIpath\fR. If \fI-p\fR is specified, this command
 will not complain if the directory exists. Note this is a subset of the
