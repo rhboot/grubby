@@ -769,6 +769,36 @@ int sleepCommand(char * cmd, char * end) {
     return 0;
 }
 
+int readlinkCommand(char * cmd, char * end) {
+    char * path;
+    char * buf;
+    struct stat sb;
+
+    if (!(cmd = getArg(cmd, end, &path))) {
+        printf("readlink: file expected\n");
+        return 1;
+    }
+
+    if (lstat(path, &sb) == -1) {
+        fprintf(stderr, "unable to stat %s: %d\n", path, errno);
+        return 1;
+    }
+
+    if (!S_ISLNK(sb.st_mode)) {
+        printf("%s\n", path);
+        return 0;
+    }
+    
+    buf = alloca(512);
+    if (readlink(path, buf, 512) == -1) {
+	fprintf(stderr, "error readlink %s: %d\n", path, errno);
+	return 1;
+    }
+
+    printf("%s\n", buf);
+    return 0;
+}
+
 int doFind(char * dirName, char * name) {
     struct stat sb;
     DIR * dir;
@@ -1101,6 +1131,8 @@ int runStartup(int fd) {
 	    rc = sleepCommand(chptr, end);
 	else if (!strncmp(start, "mknod", MAX(5, chptr-start)))
 	    rc = mknodCommand(chptr, end);
+        else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
+            rc = readlinkCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);
