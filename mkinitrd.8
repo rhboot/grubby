@@ -27,7 +27,7 @@ To do this, the fstab must contain a comment of the form:
     # LOOP0: /dev/hda1 vfat /linux/rootfs
 
 LOOP0 must be the name of the loop device which needs to be configured, in
-all capital lettes. The parameters after the color are the device which 
+all capital lettes. The parameters after the colon are the device which 
 contains the filesystem with the loopback image on it, the filesystem which
 is on the device, and the full path to the loopback image. If the filesystem
 is modular, initrd will automatically add the filesystem's modules to the
