@@ -58,6 +58,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Mar 22 2005 Peter Jones <pjones@redhat.com> - 4.2.5-1
+- handle mount-by-uuid for root correctly (##148756)
+
 * Thu Mar 17 2005 Peter Jones <pjones@redhat.com> - 4.2.4-1
 - don't do vgmknodes at all for lvm
 
