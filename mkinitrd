@@ -444,7 +444,7 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
 # check if the root fs is on a logical volume
 elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
     major=`ls -l "$rootdev" | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
-    [ "$major" -ne 58 ] || root_lvm=1
+    [ "$major" != "58" ] || root_lvm=1
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
