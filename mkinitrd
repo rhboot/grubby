@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.3.11
+VERSION=3.3.12
 
 compress=1
 target=""
@@ -544,9 +544,10 @@ if [ -n "$pivot" ]; then
     echo "echo Mounting root filesystem" >> $RCFILE
     echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
-    echo "umount /proc" >> $RCFILE
     echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
 fi
+
+echo "umount /proc" >> $RCFILE
 
 chmod +x $RCFILE
 
