@@ -780,6 +780,7 @@ int switchrootCommand(char * cmd, char * end) {
                                  "/bin/init", "/bin/sh", NULL };
     char * init, * cmdline = NULL;
     char ** initargs;
+    const char * umounts[] = { "/dev", "/proc", "/sys", "/", NULL };
     int fd, i = 0;
 
     if (!(cmd = getArg(cmd, end, &new))) {
@@ -805,6 +806,12 @@ int switchrootCommand(char * cmd, char * end) {
     init = getKernelArg("init=");
     if (init == NULL)
         cmdline = getKernelCmdLine();
+
+    for (i=0; umounts[i] != NULL; i++) {
+        if (umount(umounts[i]))
+            printf("ERROR unmounting old %s: %d\n", umounts[i], errno);
+    }
+    i=0;
 
     if (mount(".", "/", NULL, MS_MOVE, NULL)) {
         printf("switchroot: mount failed: %d\n", errno);

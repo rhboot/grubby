@@ -736,10 +736,6 @@ echo "echo Creating root device" >> $RCFILE
 echo "mkrootdev /dev/root" >> $RCFILE
 rootdev=/dev/root
 
-if [ "$kernelmajor" != "2.4" ]; then
-    echo "umount /sys" >> $RCFILE
-fi
-
 if [ -n "$initramfs" ]; then
     echo "echo Mounting root filesystem" >> $RCFILE
     echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
@@ -749,6 +745,10 @@ if [ -n "$initramfs" ]; then
     echo "echo Switching to new root" >> $RCFILE
     echo "switchroot /sysroot" >> $RCFILE
 else 
+  if [ "$kernelmajor" != "2.4" ]; then
+    echo "umount /sys" >> $RCFILE
+  fi
+
   if [ -n "$pivot" ]; then
     echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
 
