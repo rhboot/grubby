@@ -68,7 +68,7 @@ inst() {
         return
     fi 
     [ -n "$verbose" ] && echo "$1 -> $2"
-    install $1 $2
+    cp $1 $2
 }
 
 while [ $# -gt 0 ]; do
