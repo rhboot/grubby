@@ -30,7 +30,7 @@ ramdisk is loaded by the operating system loader (normally LILO) and
 is available to the kernel as soon as the ramdisk is loaded.  The
 ramdisk image loads the proper SCSI adapter and allows the kernel to
 mount the root filesystem.  The mkinitrd program creates such a
-ramdisk using information found in the /etc/conf.modules file.
+ramdisk using information found in the /etc/modules.conf file.
 
 %prep
 %setup -q
@@ -59,6 +59,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-2
+- fix description referencing /etc/conf.modules (#89558)
+
 * Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-2
 - require ppc64-utils on ppc
 
