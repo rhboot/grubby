@@ -31,7 +31,7 @@ ramdisk using information found in the /etc/conf.modules file.
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make BUILDROOT=$RPM_BUILD_ROOT install
+make BUILDROOT=$RPM_BUILD_ROOT mandir=%{_mandir} install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -39,7 +39,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 %attr(755,root,root) /sbin/mkinitrd
-%attr(644,root,root) /usr/share/man/man8/mkinitrd.8*
+%attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
 * Thu Jun  1 2000 Bill Nottingham <notting@redhat.com>

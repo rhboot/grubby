@@ -1,15 +1,17 @@
 VERSION=$(shell awk '/define version/ { print $$3 }' mkinitrd.spec)
 CVSTAG = r$(subst .,-,$(VERSION))
 
+mandir=usr/share/man
+
 install:
-	for i in sbin usr/share/man/man8; do \
+	for i in sbin $(mandir)/man8; do \
 		if [ ! -d $(BUILDROOT)/$$i ]; then \
 			mkdir -p $(BUILDROOT)/$$i; \
 		fi; \
 	done
 	sed 's/%VERSIONTAG%/$(VERSION)/' < mkinitrd > $(BUILDROOT)/sbin/mkinitrd
 	chmod 755 $(BUILDROOT)/sbin/mkinitrd
-	install -m644 mkinitrd.8 $(BUILDROOT)/usr/share/man/man8/mkinitrd.8
+	install -m644 mkinitrd.8 $(BUILDROOT)/$(mandir)/man8/mkinitrd.8
 
 archive:
 	cvs tag -F $(CVSTAG) .
