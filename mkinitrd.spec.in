@@ -2,7 +2,7 @@ Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
 Release: 1
-Copyright: GPL
+License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
@@ -55,6 +55,11 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Thu Sep 26 2002 Nalin Dahyabhai <nalin@redhat.com>
+- fix some syntax errors
+- use grep's -q flag to save a redirect in places where we're not redirecting
+  stderr
+
 * Thu Sep  5 2002 Jeremy Katz <katzj@redhat.com>
 - grubby could segfault by going into its lilo checking if it couldn't find 
   a default to copy (default had no root= and --bad-image-okay wasn't 

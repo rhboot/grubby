@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.4.28
+VERSION=3.4.29
 
 compress=1
 target=""
@@ -65,7 +65,7 @@ findmodule() {
 
     modName=$1
 
-    if [ modName = "off" -o modName = "null" ]; then
+    if [ "$modName" = "off" -o "$modName" = "null" ]; then
 	return
     fi
 
@@ -74,7 +74,7 @@ findmodule() {
 	modName=$(echo $modName | cut -b2-)
     fi
 
-    if [ $(echo $builtins | egrep '(^| )'$modName'( |$)' ) ]; then
+    if echo $builtins | egrep -q '(^| )'$modName'( |$)' ; then
 	[ -n "$verbose" ] && echo "module $modName assumed to be built in"
 	set +x
 	return
@@ -147,7 +147,7 @@ findmodule() {
     fi
 
     # only need to add each module once
-    if echo $MODULES | grep $fmPath >/dev/null 2>&1 ; then : ; else
+    if ! echo $MODULES | grep -q "$fmPath" 2>/dev/null ; then
 	MODULES="$MODULES $fmPath"
     fi
 }
@@ -164,7 +164,7 @@ inst() {
 while [ $# -gt 0 ]; do
     case $1 in
 	--fstab*)
-	    if echo $1 | grep '=' >/dev/null ; then
+	    if echo $1 | grep -q '=' ; then
 	    	fstab=`echo $1 | sed 's/^--fstab=//'`
 	    else
 		fstab=$2
@@ -173,7 +173,7 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--with*)
-	    if echo $1 | grep '=' >/dev/null ; then
+	    if echo $1 | grep -q '=' ; then
 	    	modname=`echo $1 | sed 's/^--with=//'`
 	    else
 		modname=$2
@@ -184,7 +184,7 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--builtin*)
-	    if echo $1 | grep '=' >/dev/null ; then
+	    if echo $1 | grep -q '=' ; then
 	    	modname=`echo $1 | sed 's/^--builtins=//'`
 	    else
 		modname=$2
@@ -218,7 +218,7 @@ while [ $# -gt 0 ]; do
 	    force=1
 	    ;;
 	--preload*)
-	    if echo $1 | grep '=' >/dev/null ; then
+	    if echo $1 | grep -q '=' ; then
 	    	modname=`echo $1 | sed 's/^--preload=//'`
 	    else
 		modname=$2
@@ -364,7 +364,7 @@ fi
 
 # If we use LVM, include lvm-mod
 if [ -z "$nolvm" ]; then
-    if  $(grep '^VG:' /proc/lvm/global  >/dev/null 2>&1) ; then
+    if  grep -q '^VG:' /proc/lvm/global ; then
 	findmodule -lvm-mod
     fi
 fi
@@ -410,7 +410,7 @@ fi
 
 # check to see if we need to set up a loopback filesystem
 rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
-if echo $rootdev | cut -d/ -f3 | grep loop >/dev/null; then
+if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
     if ! grep "$key" $fstab > /dev/null; then
 	echo "The root filesystem is on a $rootdev, but there is no magic entry in $fstab" 1>&2
@@ -429,7 +429,7 @@ if echo $rootdev | cut -d/ -f3 | grep loop >/dev/null; then
     fi
     basicmodules="$basicmodules -${loopFs}"
 # check if the root fs is on a logical volume
-elif ! echo $rootdev | cut -c1-6 |grep "LABEL=" >/dev/null ; then
+elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
     major=`ls -l "$rootdev" | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
     [ "$major" -ne 58 ] || root_lvm=1
 fi
