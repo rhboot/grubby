@@ -13,7 +13,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=1.7
+VERSION=%VERSIONTAG%
 
 target=""
 kernel=""
