@@ -1799,7 +1799,7 @@ int main(int argc, const char ** argv) {
     poptContext optCon;
     char * grubConfig = NULL;
     char * outputFile = NULL;
-    int arg;
+    int arg = 0;
     int flags = 0;
     int badImageOkay = 0;
     int configureLilo = 0, configureELilo = 0, configureGrub = 0;
@@ -1816,8 +1816,8 @@ int main(int argc, const char ** argv) {
     char * defaultKernel = NULL;
     char * removeArgs = NULL;
     char * kernelInfo = NULL;
-    const char * chptr;
-    struct configFileInfo * cfi;
+    const char * chptr = NULL;
+    struct configFileInfo * cfi = NULL;
     struct grubConfig * config;
     struct singleEntry * template = NULL;
     int copyDefault = 0, makeDefault = 0;

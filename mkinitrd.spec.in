@@ -62,6 +62,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Feb 18 2003 Jeremy Katz <katzj@redhat.com> 3.4.42-1
+- grubby: fix segfault from uninitialized variable (#84128)
+
 * Tue Feb 11 2003 Jeremy Katz <katzj@redhat.com> 3.4.41-1
 - nash: add readlink
 - use readlink for rootdev to handle symlinks to root devs (#83391)
