@@ -9,6 +9,7 @@ ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 Requires: filesystem >= 2.1.0
+BuiltRequires: dietlibc
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -53,6 +54,25 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Tue May 21 2002 Erik Troan <ewt@redhat.com>
+- cleaned up usage message
+- added --omit-lvm-modules to man page
+- added --builtin option (65250)
+- added buildrequires: dietlibc (64364)
+- skip comments in fstab (65249)
+- added findlodev to nash, use that to pick block device (63421)
+- support -o option in nash's mount (59185)
+- look for xfs_dmapi (60066)
+- added > support for executed commands (61180)
+- grubby copies permissions from old config file (59227)
+- use options from fstab for root filesystem (56071)
+- try and be better about returning nonzero on error (60203)
+- make modprobe symlink properly to avoid kernel message (62145)
+- support linear raid (12775)
+
+* Sat Apr 20 2002 Erik Troan <ewt@redhat.com>
+- grubby does a better job of not adding superfluous default= lines
+
 * Wed Apr 17 2002 Erik Troan <ewt@redhat.com>
 - preload works again
 
