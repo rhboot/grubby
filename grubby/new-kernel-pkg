@@ -4,15 +4,22 @@
 # tasks are/can be done here:
 # creation/removal of initrd
 # run of depmod/removal of depmod generated files
-# addition/removal of kernel images from grub configuration (via grubby)
+# addition/removal of kernel images from grub/lilo configuration (via grubby)
 #
-# Copyright (C) 2001 Red Hat, Inc.
+# Copyright (C) 2002 Red Hat, Inc.
 # 
 
 PATH=/sbin:/bin:$PATH
 
 grubConfig=/boot/grub/grub.conf
 grubby=/sbin/grubby
+lilo=/sbin/lilo
+
+if [ $(uname -m) == ia64 ]; then
+    liloConfig=/boot/efi/elilo.conf
+else
+    liloConfig=/etc/lilo.conf
+fi
 
 mode=""
 version=""
@@ -30,16 +37,6 @@ usage() {
 }
 
 install() {
-    [ -n "$verbose" ] && echo "adding $version"
-
-    if [ ! -x $grubby ] ; then
-	[ -n "$verbose" ] && echo "$grubby does not exist"
-	return
-    fi
-    if [ ! -f $grubConfig ] ; then
-	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
-	return
-    fi
     # XXX kernel should be able to be specified also (or work right on ia64)
     if [ ! -f /boot/vmlinuz-$version ] ; then
 	[ -n "$verbose" ] && echo "kernel for $version does not exist, not running grubby"
@@ -52,22 +49,45 @@ install() {
 	INITRD="--initrd $initrdfile"
     fi
 
-    /sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD --copy-default --title "Red Hat Linux ($version)"
+    if [ -n "$cfgGrub" ]; then
+	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
+
+	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD \
+		     --copy-default --title "Red Hat Linux ($version)"
+    fi
+
+    if [ -n "$cfgLilo" ]; then
+	[ -n "$verbose" ] && echo "adding $version to $liloConfig"
+
+	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD \
+		     --copy-default --title $version \
+		     --lilo
+
+	if [ -n "$runLilo" ]; then 
+	    [ -n "$verbose" ] && echo "running $lilo"
+	    $lilo > /dev/null
+	fi
+    fi
 
 }
 
 remove() {
-    [ -n "$verbose" ] && echo "removing $version"
-    if [ ! -x $grubby ] ; then
-	[ -n "$verbose" ] && echo "$grubby does not exist"
-	return
-    fi
-    if [ ! -f $grubConfig ] ; then
-	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
-	return
+    if [ -n "$cfgGrub" ]; then
+	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
+	/sbin/grubby --remove-kernel=/boot/vmlinuz-$version
     fi
 
-    /sbin/grubby --remove-kernel=/boot/vmlinuz-$version
+    if [ -n "$cfgLilo" ]; then
+	[ -n "$verbose" ] && echo "removing $version from $liloConfig"
+	/sbin/grubby --remove-kernel=/boot/vmlinuz-$version	    \
+		     --lilo
+	[ -n "$runLilo" ] && $lilo > /dev/null
+
+	if [ -n "$runLilo" ]; then 
+	    [ -n "$verbose" ] && echo "running $lilo"
+	    $lilo > /dev/null
+	fi
+    fi
 }
 
 mkinitrd() {
@@ -166,6 +186,23 @@ if [ "$moddep" == "make" ]; then
     doDepmod
 elif [ "$moddep" == "remove" ]; then
     doRmmoddep
+fi
+
+if [ ! -x $grubby ] ; then
+    [ -n "$verbose" ] && echo "$grubby does not exist"
+    return
+fi
+
+
+cfgGrub=0
+cfgLilo=0
+runLilo=0
+
+[ -f $grubConfig ] && cfgGrub=1;
+[ -f $liloConfig ] && cfgLilo=1;
+
+if [ -n "$cfgLilo" -a $(uname -m) != 'ia64' ]; then
+    runLilo=$($grubby --bootloader-probe | grep lilo)
 fi
 
 if [ "$mode" == "--install" ]; then
