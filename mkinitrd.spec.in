@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Oct 15 2004 Jeremy Katz <katzj@redhat.com> - 4.1.16-1
+- mkinitrd: Sleep briefly to let udev finish creating devices
+
 * Wed Oct 13 2004 Jeremy Katz <katzj@redhat.com> - 4.1.15-1
 - new-kernel-pkg: set new kernels as default (#135161) when
   a) /etc/sysconfig/kernel contains UPDATEDEFAULT=yes
