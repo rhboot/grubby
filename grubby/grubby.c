@@ -1,4 +1,4 @@
-/* Copyright (C) 2001-2005 Red Hat, Inc.
+/* Copyright (C) 2001 Red Hat, Inc.
 
    This program is free software; you can redistribute it and/or
    modify it under the terms of the General Public License as published 
@@ -40,7 +40,7 @@ struct lineElement {
 
 enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
        LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS, LT_BOOT,
-       LT_BOOTROOT, LT_LBA, LT_MBMODULE, LT_OTHER };
+       LT_BOOTROOT, LT_LBA, LT_OTHER };
 
 struct singleLine {
     char * indent;
@@ -53,7 +53,6 @@ struct singleLine {
 struct singleEntry {
     struct singleLine * lines;
     int skip;
-    int multiboot;
     struct singleEntry * next;
 };
 
@@ -65,7 +64,6 @@ struct singleEntry {
 #define KERNEL_INITRD	    (1 << 2)
 #define KERNEL_TITLE	    (1 << 3)
 #define KERNEL_ARGS	    (1 << 4)
-#define KERNEL_MB           (1 << 5)
 
 #define MAIN_DEFAULT	    (1 << 0)
 #define DEFAULT_SAVED       -2
@@ -95,7 +93,6 @@ struct keywordTypes grubKeywords[] = {
     { "fallback",   LT_FALLBACK,    ' ' },
     { "kernel",	    LT_KERNEL,	    ' ' },
     { "initrd",	    LT_INITRD,	    ' ' },
-    { "module",     LT_MBMODULE,    ' ' },
     { NULL,	    0, 0 },
 };
 
@@ -119,7 +116,6 @@ struct keywordTypes yabootKeywords[] = {
     { "bsd",	    LT_OTHER,	    '=' },
     { "macos",	    LT_OTHER,	    '=' },
     { "macosx",	    LT_OTHER,	    '=' },
-    { "magicboot",  LT_OTHER,	    '=' },
     { "darwin",	    LT_OTHER,	    '=' },
     { "initrd",	    LT_INITRD,	    '=' },
     { "append",	    LT_KERNELARGS,  '=' },
@@ -168,7 +164,7 @@ struct configFileInfo eliloConfigType = {
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
-    1,			                    /* needsBootPrefix */
+    1,			
     1,					    /* argsInQuotes */
     0,					    /* maxTitleLength */
     0,                                      /* titleBracketed */
@@ -520,7 +516,7 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 static struct grubConfig * readConfig(const char * inName,
 				      struct configFileInfo * cfi) {
     int in;
-    char * incoming = NULL, * head;
+    char * incoming, * head;
     int rc;
     int sawEntry = 0;
     struct grubConfig * cfg;
@@ -552,7 +548,6 @@ static struct grubConfig * readConfig(const char * inName,
     cfg->cfi = cfi;
     cfg->theLines = NULL;
     cfg->entries = NULL;
-    cfg->fallbackImage = 0;
 
     /* copy everything we have */
     while (*head) {
@@ -584,7 +579,6 @@ static struct grubConfig * readConfig(const char * inName,
 	    }
 
 	    entry->skip = 0;
-            entry->multiboot = 0;
 	    entry->lines = NULL;
 	    entry->next = NULL;
 	}
@@ -592,8 +586,6 @@ static struct grubConfig * readConfig(const char * inName,
 	if (line->type == LT_DEFAULT && line->numElements == 2) {
 	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 	    defaultLine = line;
-        } else if (line->type == LT_MBMODULE) {
-            entry->multiboot = 1;
 	} else if (line->type == LT_FALLBACK && line->numElements == 2) {
 	    cfg->fallbackImage = strtol(line->elements[1].item, &end, 10);
 	    if (*end) cfg->fallbackImage = -1;
@@ -756,7 +748,7 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
 
 	    /* most likely the symlink is relative, so change our
 	       directory to / */
-	    rc = chdir("/");
+	    chdir("/");
 	    do {
 		buf = alloca(len + 1);
 		rc = readlink(outName, buf, len);
@@ -902,13 +894,10 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	if (line && line->numElements >= 2) {
 	    dev = line->elements[1].item;
 	} else {
-            int type;
 	    /* didn't succeed in finding a LT_ROOT, let's try LT_KERNELARGS */
 	    line = entry->lines;
 
-            type = ((entry->multiboot) ? LT_MBMODULE : LT_KERNELARGS);
-
-	    while (line && line->type != type) line = line->next;
+	    while (line && line->type != LT_KERNELARGS) line = line->next;
 
             /* failed to find one */
             if (!line) return 0;
@@ -917,10 +906,9 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	        if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
 	    if (i < line->numElements)
 	        dev = line->elements[i].item + 5;
-	    else {
+	    else
 		/* it failed too...  can't find root= */
 	        return 0;
-            }
 	}
     }
 
@@ -978,7 +966,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	
 	i = 0;
 	if (index) {
-	    while (indexVars[i] < *index) i++;
+	    while (i < *index) i++;
 	    if (indexVars[i] == -1) return NULL;
 	}
 
@@ -1042,18 +1030,6 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
                             kernel + strlen(prefix)))
                     break;
             }
-            
-            /* have to check multiboot lines too */
-            if (entry->multiboot) {
-                while (line && line->type != LT_MBMODULE) line = line->next;
-                if (line && line->numElements >= 2 && !entry->skip) {
-                    rootspec = getRootSpecifier(line->elements[1].item);
-                    if (!strcmp(line->elements[1].item  + 
-                                ((rootspec != NULL) ? strlen(rootspec) : 0),
-                                kernel + strlen(prefix)))
-                        break;
-                }
-            }
 
 	    i++;
 	}
@@ -1095,7 +1071,7 @@ struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index) {
  * bail. */
 struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
 				 int * indexPtr, int skipRemoved, int flags) {
-    struct singleEntry * entry, * entry2;
+    struct singleEntry * entry;
     int index;
 
     if (cfg->defaultImage > -1) {
@@ -1109,13 +1085,7 @@ struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
     index = 0;
     while ((entry = findEntryByIndex(cfg, index))) {
 	if (suitableImage(entry, prefix, skipRemoved, flags)) {
-            int j;
-            for (j = 0; j < index; j++) {
-                entry2 = findEntryByIndex(cfg, j);
-                if (entry2->skip) index--;
-            }
 	    if (indexPtr) *indexPtr = index;
-
 	    return entry;
 	}
 
@@ -1178,6 +1148,7 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 
     /* defaultImage now points to what we'd like to use, but before any order 
        changes */
+
     if (config->defaultImage == DEFAULT_SAVED) 
       /* default is set to saved, we don't want to change it */
       return;
@@ -1189,6 +1160,7 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 
     if (entry && !entry->skip) {
 	/* we can preserve the default */
+
 	if (hasNew)
 	    config->defaultImage++;
 	
@@ -1520,19 +1492,20 @@ int argMatch(const char * one, const char * two) {
     return strcmp(first, second);
 }
 
-int updateActualImage(struct grubConfig * cfg, const char * image,
-                      const char * prefix, const char * addArgs,
-                      const char * removeArgs, int multibootArgs) {
+int updateImage(struct grubConfig * cfg, const char * image,
+	        const char * prefix, const char * addArgs,
+		const char * removeArgs) {
     struct singleEntry * entry;
     struct singleLine * line, * rootLine;
     int index = 0;
-    int i, j;
+    int i, j, k;
     const char ** newArgs, ** oldArgs;
     const char ** arg;
     const char * chptr;
     int useKernelArgs = 0;
     int useRoot = 0;
     int firstElement;
+    int *usedElements, *usedArgs;
 
     if (!image) return 0;
 
@@ -1571,6 +1544,11 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
     if (cfg->cfi->keywords[i].key)
 	useRoot = 1;
 
+    k = 0;
+    for (arg = newArgs; *arg; arg++)
+        k++;
+    usedArgs = calloc(k, sizeof(int));
+
     while ((entry = findEntryByPath(cfg, image, prefix, &index))) {
 	index++;
 
@@ -1579,25 +1557,33 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 	if (!line) continue;
 	firstElement = 2;
 
-        if (entry->multiboot && !multibootArgs) {
-            /* first mb module line is the real kernel */
-            while (line && line->type != LT_MBMODULE) line = line->next;
-            firstElement = 2;
-        } else if (useKernelArgs) {
+	if (useKernelArgs) {
 	    while (line && line->type != LT_KERNELARGS) line = line->next;
 	    firstElement = 1;
 	}
 
+	if (!line) {
+	    /* no append in there, need to add it */
+	    line = addLine(entry, cfg->cfi, LT_KERNELARGS, NULL, NULL);
+	}
+        
+        usedElements = calloc(line->numElements, sizeof(int));
+
+        k = 0;
 	for (arg = newArgs; *arg; arg++) {
-	    if (!line && useKernelArgs) {
-		/* no append in there, need to add it */
-		line = addLine(entry, cfg->cfi, LT_KERNELARGS, NULL, NULL);
-	    }
-
-	    for (i = firstElement; i < line->numElements; i++)
-		if (!argMatch(line->elements[i].item, *arg))
+            if (usedArgs[k]) {
+                k++;
+                continue;
+            }
+	    for (i = firstElement; i < line->numElements; i++) {
+                if (usedElements[i])
+                    continue;
+		if (!argMatch(line->elements[i].item, *arg)) {
+                    usedElements[i]=1;
+                    usedArgs[k]=1;
 		    break;
-
+                }
+            }
 	    chptr = strchr(*arg, '=');
 
 	    if (i < line->numElements) {
@@ -1651,7 +1637,10 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 		    }
 		}
 	    }
+            k++;
 	}
+
+        free(usedElements);
 
 	/* no arguments to remove (i.e. no append line) */
 	if (!line) continue;
@@ -1687,29 +1676,11 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 	}
     }
 
+    free(usedArgs);
     free(newArgs);
     free(oldArgs);
 
     return 0;
-}
-
-int updateImage(struct grubConfig * cfg, const char * image,
-                const char * prefix, const char * addArgs,
-                const char * removeArgs, 
-                const char * addMBArgs, const char * removeMBArgs) {
-    int rc = 0;
-
-    if (!image) return rc;
-
-    /* update the main args first... */
-    if (addArgs || removeArgs)
-        rc = updateActualImage(cfg, image, prefix, addArgs, removeArgs, 0);
-    if (rc) return rc;
-
-    /* and now any multiboot args */
-    if (addMBArgs || removeMBArgs)
-        rc = updateActualImage(cfg, image, prefix, addMBArgs, removeMBArgs, 1);
-    return rc;
 }
 
 int checkDeviceBootloader(const char * device, const unsigned char * boot) {
@@ -1923,10 +1894,9 @@ static char * getRootSpecifier(char * str) {
 int addNewKernel(struct grubConfig * config, struct singleEntry * template, 
 	         const char * prefix,
 		 char * newKernelPath, char * newKernelTitle,
-		 char * newKernelArgs, char * newKernelInitrd,
-                 char * newMBKernel, char * newMBKernelArgs) {
+		 char * newKernelArgs, char * newKernelInitrd) {
     struct singleEntry * new;
-    struct singleLine * newLine = NULL, * tmplLine = NULL, * lastLine = NULL;
+    struct singleLine * newLine = NULL, * tmplLine;
     int needs;
     char * indent = NULL;
     char * rootspec = NULL;
@@ -1956,17 +1926,12 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 
     new = malloc(sizeof(*new));
     new->skip = 0;
-    new->multiboot = 0;
     new->next = config->entries;
     new->lines = NULL;
     config->entries = new;
 
     /* copy/update from the template */
     needs = KERNEL_KERNEL | KERNEL_INITRD | KERNEL_TITLE;
-    if (newMBKernel) {
-        needs |= KERNEL_MB;
-        new->multiboot = 1;
-    }
 
     if (template) {
 	for (tmplLine = template->lines; tmplLine; tmplLine = tmplLine->next) {
@@ -1982,28 +1947,6 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	    /* we don't need an initrd here */
 	    if (tmplLine->type == LT_INITRD && !newKernelInitrd) continue;
 
-            if (tmplLine->type == LT_KERNEL &&
-                !template->multiboot && (needs & KERNEL_MB)) {
-                struct singleLine *l;
-                needs &= ~ KERNEL_MB;
-
-                l = addLine(new, config->cfi, LT_KERNEL, 
-                                  config->secondaryIndent, 
-                                  newMBKernel + strlen(prefix));
-                
-                tmplLine = lastLine;
-                if (!new->lines) {
-                    new->lines = l;
-                } else {
-                    newLine->next = l;
-                    newLine = l;
-                }
-                continue;
-            } else if (tmplLine->type == LT_KERNEL &&
-                       template->multiboot && !new->multiboot) {
-                continue; /* don't need multiboot kernel here */
-            }
-
 	    if (!new->lines) {
 		newLine = malloc(sizeof(*newLine));
 		new->lines = newLine;
@@ -2011,7 +1954,6 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		newLine->next = malloc(sizeof(*newLine));
 		newLine = newLine->next;
 	    }
-
 
 	    newLine->indent = strdup(tmplLine->indent);
 	    newLine->next = NULL;
@@ -2025,40 +1967,8 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 				strdup(tmplLine->elements[i].indent);
 	    }
 
-            lastLine = tmplLine;
 	    if (tmplLine->type == LT_KERNEL && tmplLine->numElements >= 2) {
-                char * repl;
-                if (!template->multiboot) {
-                    needs &= ~KERNEL_KERNEL;
-                    repl = newKernelPath;
-                } else { 
-                    needs &= ~KERNEL_MB;
-                    repl = newMBKernel;
-                }
-                if (new->multiboot && !template->multiboot) {
-                    free(newLine->elements[0].item);
-                    newLine->elements[0].item = strdup("module");
-                    newLine->type = LT_MBMODULE;
-                }
-		free(newLine->elements[1].item);
-                rootspec = getRootSpecifier(tmplLine->elements[1].item);
-                if (rootspec != NULL) {
-                    newLine->elements[1].item = sdupprintf("%s%s",
-                                                           rootspec,
-                                                           repl + 
-                                                           strlen(prefix));
-                } else {
-                    newLine->elements[1].item = strdup(repl + 
-                                                       strlen(prefix));
-                }
-            } else if (tmplLine->type == LT_MBMODULE && 
-                       tmplLine->numElements >= 2 && (needs & KERNEL_KERNEL)) {
-                needs &= ~KERNEL_KERNEL;
-                if (!new->multiboot && template->multiboot) {
-                    free(newLine->elements[0].item);
-                    newLine->elements[0].item = strdup("kernel");
-                    newLine->type = LT_KERNEL;
-                }
+		needs &= ~KERNEL_KERNEL;
 		free(newLine->elements[1].item);
                 rootspec = getRootSpecifier(tmplLine->elements[1].item);
                 if (rootspec != NULL) {
@@ -2073,30 +1983,6 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	    } else if (tmplLine->type == LT_INITRD && 
 			    tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_INITRD;
-		free(newLine->elements[1].item);
-                if (new->multiboot && !template->multiboot) {
-                    free(newLine->elements[0].item);
-                    newLine->elements[0].item = strdup("module");
-                    newLine->type = LT_MBMODULE;
-                }
-                rootspec = getRootSpecifier(tmplLine->elements[1].item);
-                if (rootspec != NULL) {
-                    newLine->elements[1].item = sdupprintf("%s%s",
-                                                           rootspec,
-                                                           newKernelInitrd + 
-                                                           strlen(prefix));
-                } else {
-                    newLine->elements[1].item = strdup(newKernelInitrd + 
-                                                       strlen(prefix));
-                }
-            } else if (tmplLine->type == LT_MBMODULE && 
-                       tmplLine->numElements >= 2 && (needs & KERNEL_INITRD)) {
-		needs &= ~KERNEL_INITRD;
-                if (!new->multiboot && template->multiboot) {
-                    free(newLine->elements[0].item);
-                    newLine->elements[0].item = strdup("initrd");
-                    newLine->type = LT_INITRD;
-                }
 		free(newLine->elements[1].item);
                 rootspec = getRootSpecifier(tmplLine->elements[1].item);
                 if (rootspec != NULL) {
@@ -2161,41 +2047,19 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 
 	newLine = addLine(new, config->cfi, type, config->primaryIndent, chptr);
 	new->lines = newLine;
-    } 
-
-    if (new->multiboot) {
-        if (needs & KERNEL_MB)
-            newLine = addLine(new, config->cfi, LT_KERNEL, 
-                              config->secondaryIndent, 
-                              newMBKernel + strlen(prefix));
-        if (needs & KERNEL_KERNEL)
-            newLine = addLine(new, config->cfi, LT_MBMODULE, 
-                              config->secondaryIndent, 
-                              newKernelPath + strlen(prefix));
-        /* don't need to check for title as it's guaranteed to have been
-         * done as we only do multiboot with grub which uses title as
-         * a separator */
-        if (needs & KERNEL_INITRD && newKernelInitrd)
-            newLine = addLine(new, config->cfi, LT_MBMODULE, 
-                              config->secondaryIndent, 
-                              newKernelInitrd + strlen(prefix));
-    } else {
-        if (needs & KERNEL_KERNEL)
-            newLine = addLine(new, config->cfi, LT_KERNEL, 
-                              config->secondaryIndent, 
-                              newKernelPath + strlen(prefix));
-        if (needs & KERNEL_TITLE)
-            newLine = addLine(new, config->cfi, LT_TITLE, 
-                              config->secondaryIndent, 
-                              newKernelTitle);
-        if (needs & KERNEL_INITRD && newKernelInitrd)
-            newLine = addLine(new, config->cfi, LT_INITRD, 
-                              config->secondaryIndent, 
-                              newKernelInitrd + strlen(prefix));
     }
 
-    if (updateImage(config, "0", prefix, newKernelArgs, NULL, 
-                    newMBKernelArgs, NULL)) return 1;
+    if (needs & KERNEL_KERNEL)
+	newLine = addLine(new, config->cfi, LT_KERNEL, config->secondaryIndent, 
+			  newKernelPath + strlen(prefix));
+    if (needs & KERNEL_TITLE)
+	newLine = addLine(new, config->cfi, LT_TITLE, config->secondaryIndent, 
+			  newKernelTitle);
+    if (needs & KERNEL_INITRD && newKernelInitrd)
+	newLine = addLine(new, config->cfi, LT_INITRD, config->secondaryIndent, 
+			  newKernelInitrd + strlen(prefix));
+
+    if (updateImage(config, "0", prefix, newKernelArgs, NULL)) return 1;
 
     return 0;
 }
@@ -2217,10 +2081,6 @@ int main(int argc, const char ** argv) {
     char * newKernelInitrd = NULL;
     char * newKernelTitle = NULL;
     char * newKernelVersion = NULL;
-    char * newMBKernel = NULL;
-    char * newMBKernelArgs = NULL;
-    char * removeMBKernelArgs = NULL;
-    char * removeMBKernel = NULL;
     char * bootPrefix = NULL;
     char * defaultKernel = NULL;
     char * removeArgs = NULL;
@@ -2234,14 +2094,9 @@ int main(int argc, const char ** argv) {
     struct poptOption options[] = {
 	{ "add-kernel", 0, POPT_ARG_STRING, &newKernelPath, 0,
 	    _("add an entry for the specified kernel"), _("kernel-path") },
-	{ "add-multiboot", 0, POPT_ARG_STRING, &newMBKernel, 0,
-	    _("add an entry for the specified multiboot kernel"), NULL },
 	{ "args", 0, POPT_ARG_STRING, &newKernelArgs, 0, 
 	    _("default arguments for the new kernel or new arguments for "
 	      "kernel being updated"), _("args") },
-	{ "mbargs", 0, POPT_ARG_STRING, &newMBKernelArgs, 0, 
-	    _("default arguments for the new multiboot kernel or "
-              "new arguments for multiboot kernel being updated"), NULL },
 	{ "bad-image-okay", 0, 0, &badImageOkay, 0,
 	    _("don't sanity check images in boot entries (for testing only)"), 
 	    NULL },
@@ -2280,14 +2135,10 @@ int main(int argc, const char ** argv) {
 	    _("path to output updated config file (\"-\" for stdout)"), 
 	    _("path") },
 	{ "remove-args", 0, POPT_ARG_STRING, &removeArgs, 0,
-            _("remove kernel arguments"), NULL },
-        { "remove-mbargs", 0, POPT_ARG_STRING, &removeMBKernelArgs, 0,
-	    _("remove multiboot kernel arguments"), NULL },
+	    _("remove kernel arguments"), _("args") },
 	{ "remove-kernel", 0, POPT_ARG_STRING, &removeKernelPath, 0,
 	    _("remove all entries for the specified kernel"), 
 	    _("kernel-path") },
-	{ "remove-multiboot", 0, POPT_ARG_STRING, &removeMBKernel, 0,
-            _("remove all entries for the specified multiboot kernel"), NULL },
 	{ "set-default", 0, POPT_ARG_STRING, &defaultKernel, 0,
 	    _("make the first entry referencing the specified kernel "
 	      "the default"), _("kernel-path") },
@@ -2425,8 +2276,7 @@ int main(int argc, const char ** argv) {
     }
 
     if (!removeKernelPath && !newKernelPath && !displayDefault && !defaultKernel
-	&& !kernelInfo && !bootloaderProbe && !updateKernelPath 
-        && !removeMBKernel) {
+	&& !kernelInfo && !bootloaderProbe && !updateKernelPath) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -2505,16 +2355,13 @@ int main(int argc, const char ** argv) {
     }
 
     markRemovedImage(config, removeKernelPath, bootPrefix);
-    markRemovedImage(config, removeMBKernel, bootPrefix);
     setDefaultImage(config, newKernelPath != NULL, defaultKernel, makeDefault, 
 		    bootPrefix, flags);
     setFallbackImage(config, newKernelPath != NULL);
     if (updateImage(config, updateKernelPath, bootPrefix, newKernelArgs,
-                    removeArgs, newMBKernelArgs, removeMBKernelArgs)) return 1;
+		removeArgs)) return 1;
     if (addNewKernel(config, template, bootPrefix, newKernelPath, 
-                     newKernelTitle, newKernelArgs, newKernelInitrd, 
-                     newMBKernel, newMBKernelArgs)) return 1;
-    
+		newKernelTitle, newKernelArgs, newKernelInitrd)) return 1;
 
     if (numEntries(config) == 0) {
         fprintf(stderr, _("grubby: doing this would leave no kernel entries. "
