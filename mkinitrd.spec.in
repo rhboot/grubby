@@ -59,6 +59,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Mon Jan 20 2003 Bill Nottingham <notting@redhat.com> 3.4.36-1
+- don't error out running awk on /proc/mdstat if /proc/mdstat isn't
+  there
+
 * Tue Jan 14 2003 <ewt@redhat.com>
 - all mkdev() actions will create directories as needed (some code in
   mkdevices is now obsolete; I'll remove it later) (#73317)
