@@ -72,6 +72,10 @@
 #define MS_REMOUNT      32
 #endif
 
+#ifndef MS_BIND
+#define MS_BIND 4096
+#endif
+
 #ifndef MS_MOVE
 #define MS_MOVE 8192
 #endif
@@ -215,6 +219,9 @@ int mountCommand(char * cmd, char * end) {
     while (cmd && *device == '-') {
 	if (!strcmp(device, "--ro")) {
 	    flags |= MS_RDONLY;
+        } else if (!strcmp(device, "--bind")) {
+            flags = MS_BIND;
+            fsType = "none";
 	} else if (!strcmp(device, "-o")) {
 	    cmd = getArg(cmd, end, &options);
 	    if (!cmd) {
