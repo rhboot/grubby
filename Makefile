@@ -8,6 +8,9 @@ mandir=usr/share/man
 all:
 	for n in $(SUBDIRS); do make -C $$n; done
 
+test:	all
+	cd grubby; make test
+
 install:
 	for n in $(SUBDIRS); do make -C $$n install BUILDROOT=$(BUILDROOT); done
 	for i in sbin $(mandir)/man8; do \
