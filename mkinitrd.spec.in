@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Fri Jul 12 2002 Erik Troan <ewt@redhat.com>
+- don't sanity check root=LABEL right now; probing might make sense?
+
 * Wed Jul 10 2002 Erik Troan <ewt@redhat.com>
 - --ifneeded is obsolete; we always need initrds
 - grubby lets you specify multiple indexes for --info
