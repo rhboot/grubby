@@ -476,7 +476,7 @@ dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null || exit 1
 LODEV=$(echo findlodev | /sbin/nash --quiet)
 
 if [ -z "$LODEV" ]; then
-    rm -rf $MNTPOINT $IMAGE
+    rm -rf $MNTIMAGE $MNTPOINT $IMAGE
     echo "All of your loopback devices are in use." >&2
     exit 1
 fi

@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Sep 30 2003 Florian La Roche <Florian.LaRoche@redhat.de>
+- remove one more mktemp dir for "all loopback devices in use" case
+
 * Tue Sep 23 2003 Jeremy Katz <katzj@redhat.com> 3.5.13-1
 - fix getting modules from /lib/modules/$(uname -r)/updates
 
