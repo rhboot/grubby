@@ -74,6 +74,7 @@ verbose=""
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
     echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
+    echo "       [--kernel-args=<args>]" >&2
     echo "       <--install | --remove> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -129,7 +130,7 @@ install() {
 	fi
 	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD    \
 		     --copy-default --title "$title"		    \
-		     --args="root=$rootdevice"			    \
+		     --args="root=$rootdevice $kernargs"			    \
 		     --remove-kernel="TITLE=$title"
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
@@ -140,7 +141,7 @@ install() {
 
 	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD    \
 		     --copy-default --title $version		    \
-		     --args="root=$rootdevice"			    \
+		     --args="root=$rootdevice $kernargs"			    \
 		     --remove-kernel="TITLE=$version"		    \
 		     --$liloFlag
 
@@ -232,6 +233,15 @@ while [ $# -gt 0 ]; do
 	    	initrdfile=`echo $1 | sed 's/^--initrdfile=//'`
 	    else
 		initrdfile=$2
+		shift
+	    fi		    
+	    ;;
+
+	--kernel-args*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	kernargs=`echo $1 | sed 's/^--kernel-args=//'`
+	    else
+		kernargs=$2
 		shift
 	    fi		    
 	    ;;

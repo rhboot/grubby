@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Jan  8 2004 Jeremy Katz <katzj@redhat.com> 3.5.18-1
+- new-kernel-pkg: add a --kernel-arguments option (#113125)
+
 * Sun Jan  4 2004 Jeremy Katz <katzj@redhat.com> 3.5.17-1
 - mkinitrd: handle multiple spaces in modules.conf (from Lubomir Bulej)
 - nash: rebuild against new dietlibc fixing problems with root=LABEL= (#112623)
