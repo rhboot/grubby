@@ -520,7 +520,7 @@ static int my_pivot_root(char * one, char * two) {
 #ifdef USE_DIET
     pivot_root(one, two);
 #else
-    syscall(__NR_pivot_root, new, old);
+    syscall(__NR_pivot_root, one, two);
 #endif
 }
 
