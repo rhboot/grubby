@@ -25,8 +25,12 @@ force=""
 verbose=""
 MODULES=""
 img_vers=""
-modulefile=/etc/conf.modules
-IMAGESIZE=1500
+modulefile=/etc/modules.conf
+if [ `uname -m` = "ia64" ]; then
+  IMAGESIZE=3000
+else
+  IMAGESIZE=1500
+fi
 PRESCSIMODS="scsi_mod sd_mod"
 fstab="/etc/fstab"
 
@@ -195,7 +199,7 @@ if [ -z "$noscsi" ]; then
     done
 
     if [ ! -f $modulefile ]; then
-        modulefile=/etc/modules.conf
+        modulefile=/etc/conf.modules
     fi
     if [ -f $modulefile ]; then
 	scsimodules=`grep scsi_hostadapter $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
