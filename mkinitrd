@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.0.6
+VERSION=4.1.0
 
 compress=1
 allowmissing=""
@@ -44,6 +44,13 @@ rc=0
 IMAGESIZE=8000
 PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
+
+if [ -f /etc/udev/udev.conf ]; then
+    . /etc/udev/udev.conf
+    [ "$USE_UDEV" = "yes" -a "$UDEV_INITRD" = "yes" -a -x /sbin/udevstart ] || USE_UDEV=
+    # use ramfs if keep_dev is set
+    [ "$UDEV_KEEP_DEV" = "yes" ] && UDEV_RAMFS="yes"
+fi
 
 usage () {
     echo "usage: `basename $0` [--version] [-v] [-f] [--preload <module>]" >&2
@@ -252,6 +259,9 @@ while [ $# -gt 0 ]; do
 	--image-version)
 	    img_vers=yes
 	    ;;
+	--noudev)
+	    USE_UDEV=
+	    ;;
 	--allow-missing)
 	    allowmissing=yes
 	    ;;
@@ -296,12 +306,16 @@ kernelmajor=`echo $kernel | cut -d . -f 1,2`
 
 if [ "$kernelmajor" == "2.4" ]; then
     if [ -n "$verbose" ]; then echo "Creating old-style initrd"; fi
+    USE_UDEV=
 else
     if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
     modulefile=/etc/modprobe.conf
     initramfs=1
     pivot=""
 fi
+
+# if we're not using udev, don't set any of the other bits
+[ -z "$USE_UDEV" ] && UDEV_RAMFS= && UDEV_KEEP_DEV=
 
 # find a temporary directory which doesn't use tmpfs
 TMPDIR=""
@@ -559,6 +573,14 @@ inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
+if [ -n "$USE_UDEV" ]; then
+    inst /sbin/udev.static $MNTIMAGE/sbin/udev
+    inst /sbin/udevstart.static $MNTIMAGE/sbin/udevstart
+    mkdir -p $MNTIMAGE/etc/udev
+    inst /etc/udev/udev.conf $MNTIMAGE/etc/udev/udev.conf
+    ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
+fi
+
 for MODULE in $MODULES; do
     if [ -x /usr/bin/strip ]; then
 	/usr/bin/strip -g $verbose /lib/modules/$kernel/$MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
@@ -608,6 +630,25 @@ echo "echo Mounted /proc filesystem" >> $RCFILE
 echo "echo Mounting sysfs" >> $RCFILE
 echo "mount -t sysfs none /sys" >> $RCFILE
 
+if [ -n "$USE_UDEV" ]; then
+    if [ -n "$UDEV_RAMFS" ]; then
+	cat >> $RCFILE <<EOF
+echo Creating /dev
+mount -t ramfs none /dev
+mknod /dev/console c 5 1
+mknod /dev/null c 1 3
+mknod /dev/zero c 1 5
+mkdir /dev/pts
+mkdir /dev/shm
+EOF
+    fi
+    cat >> $RCFILE <<EOF
+echo Starting udev
+/sbin/udevstart
+echo -n "/sbin/hotplug" > /proc/sys/kernel/hotplug
+EOF
+fi
+
 for MODULE in $MODULES; do
     text=""
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
@@ -638,8 +679,10 @@ if [ -n "$startraid" ]; then
     done
 fi
 
-echo "echo Creating block devices" >> $RCFILE
-echo "mkdevices /dev" >> $RCFILE
+if [ -z "$USE_UDEV" ]; then
+    echo "echo Creating block devices" >> $RCFILE
+    echo "mkdevices /dev" >> $RCFILE
+fi
 
 if [ -n "$loopDev" ]; then
     mkdir /initrd
@@ -676,6 +719,9 @@ echo "umount /sys" >> $RCFILE
 if [ -n "$initramfs" ]; then
     echo "echo Mounting root filesystem" >> $RCFILE
     echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+
+    [  -n "$UDEV_KEEP_DEV" ] && echo "mount -t ramfs --bind /dev /sysroot/dev" >> $RCFILE
+
     echo "echo Switching to new root" >> $RCFILE
     echo "switchroot /sysroot" >> $RCFILE
 else 
@@ -685,6 +731,8 @@ else
     echo "echo Mounting root filesystem" >> $RCFILE
     echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
+    [ -n "$UDEV_KEEP_DEV" ] && echo "mount -t ramfs --bind /dev /sysroot/dev" >> $RCFILE
+
     echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
     echo "umount /initrd/proc" >> $RCFILE
   else
@@ -692,6 +740,7 @@ else
   fi
 fi
 
+[ -n "$UDEV_RAMFS" ] && echo "umount /initrd/dev" >> $RCFILE
 chmod +x $RCFILE
 
 if [ -z "$initramfs" ]; then

@@ -483,6 +483,84 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
     return 0;
 }
 
+#ifdef DEBUG
+static int lsdir(char *thedir, char * prefix) {
+    DIR * dir;
+    struct dirent * entry;
+    struct stat sb;
+    char * fn;
+
+    if (!(dir = opendir(thedir))) {
+        printf("error opening %s: %d\n", thedir, errno);
+        return 1;
+    }
+
+    fn = malloc(1024);
+    while ((entry = readdir(dir))) {
+        if (entry->d_name[0] == '.')
+            continue;
+        snprintf(fn, 1024, "%s/%s", thedir, entry->d_name);
+        stat(fn, &sb);
+        printf("%s%s", prefix, fn);
+
+        if (S_ISDIR(sb.st_mode)) {
+            char * pfx;
+            pfx = malloc(strlen(prefix) + 3);
+            sprintf(pfx, "%s  ", prefix);
+            printf("/\n");
+            //            lsdir(fn, pfx);
+        } else if (S_ISCHR(sb.st_mode)) {
+            printf(" c %d %d\n", major(sb.st_rdev), minor(sb.st_rdev));
+        } else if (S_ISBLK(sb.st_mode)) {
+            printf(" b %d %d\n", major(sb.st_rdev), minor(sb.st_rdev));
+        } else if (S_ISLNK(sb.st_mode)) {
+            char * target;
+            target = malloc(1024);
+            readlink(fn, target, 1024);
+            printf("->%s\n", target);
+            free(target);
+        } else {
+            printf("\n");
+        }
+    }    
+    return 0;
+}
+
+int catCommand(char * cmd, char * end) {
+    char * file;
+    char * buf;
+    int fd;
+
+    if (!(cmd = getArg(cmd, end, &file))) {
+	printf("cat: argument expected\n");
+	return 1;
+    }
+
+    if ((fd = open(file, O_RDONLY)) < 0) {
+        printf("cat: error opening %s: %d\n", file, errno);
+        return 1;
+    }
+
+    buf = malloc(1024);
+    while (read(fd, buf, 1024) > 0) {
+        write(1, buf, 1024);
+    }
+    return 0;
+}
+
+int lsCommand(char * cmd, char * end) {
+    char * dir;
+
+    if (!(cmd = getArg(cmd, end, &dir))) {
+	printf("ls: argument expected\n");
+	return 1;
+    }
+
+    lsdir(dir, "");
+    return 0;
+}
+#endif
+
 int execCommand(char * cmd, char * end) {
     char * bin;
 
@@ -693,8 +771,11 @@ int switchrootCommand(char * cmd, char * end) {
         }
     }
 
+    if (access(initargs[0], X_OK)) {
+        printf("WARNING: can't access %s\n", initargs[i]);
+    }
     execv(initargs[0], initargs);
-    printf("exec of init failed!!!: %d\n", errno);
+    printf("exec of init (%s) failed!!!: %d\n", initargs[0], errno);
     return 1;
 }
 
@@ -710,14 +791,20 @@ int echoCommand(char * cmd, char * end) {
     int outFd = 1;
     int num = 0;
     int i;
+    int newline = 1;
 
     if (testing && !quiet) {
 	printf("(echo) ");
 	fflush(stdout);
     }
 
-    while ((cmd = getArg(cmd, end, nextArg)))
-	nextArg++, num++;
+    while ((cmd = getArg(cmd, end, nextArg))) {
+        if (!strncmp("-n", *nextArg, MAX(2, strlen(*nextArg)))) {
+            newline = 0;
+        } else {
+            nextArg++, num++;
+        }
+    }
 
     if ((nextArg - args >= 2) && !strcmp(*(nextArg - 2), ">")) {
 	outFd = open(*(nextArg - 1), O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -736,7 +823,7 @@ int echoCommand(char * cmd, char * end) {
 	if (!isEchoQuiet(outFd)) write(outFd, args[i], strlen(args[i]));
     }
 
-    if (!isEchoQuiet(outFd)) write(outFd, "\n", 1);
+    if (newline && !isEchoQuiet(outFd)) write(outFd, "\n", 1);
 
     if (outFd != 1) close(outFd);
 
@@ -1397,6 +1484,12 @@ int runStartup(int fd) {
             rc = readlinkCommand(chptr, end);
         else if (!strncmp(start, "setquiet", MAX(8, chptr-start)))
             rc = setQuietCommand(chptr, end);
+#ifdef DEBUG
+        else if (!strncmp(start, "cat", MAX(3, chptr-start)))
+            rc = catCommand(chptr, end);
+        else if (!strncmp(start, "ls", MAX(2, chptr-start)))
+            rc = lsCommand(chptr, end);
+#endif
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);
@@ -1422,6 +1515,12 @@ int main(int argc, char **argv) {
 
     if (!strcmp(name, "modprobe"))
 	exit(0);
+    if (!strcmp(name, "hotplug")) {
+        argv[0] = strdup("/sbin/udev");
+        execv(argv[0], argv);
+        printf("ERROR: exec of udev failed!\n");
+        exit(1);
+    }
 
     testing = (getppid() != 0) && (getppid() != 1);
     argv++, argc--;
