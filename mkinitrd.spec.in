@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -59,6 +59,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49.1-1
+- use Arjan's suggestion of vmlinitrd for the kernel + initrd combo file
+
 * Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-2
 - fix description referencing /etc/conf.modules (#89558)
 
