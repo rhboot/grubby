@@ -6,7 +6,7 @@
  *
  * Erik Troan (ewt@redhat.com)
  * Jeremy Katz (katzj@redhat.com)
- * Peter Jones <pjones@redhat.com>
+ * Peter Jones (pjones@redhat.com)
  *
  * Copyright 2002-2005 Red Hat Software 
  *
