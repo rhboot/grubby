@@ -17,6 +17,8 @@
 #	Matt Wilson <msw@redhat.com>
 #       Trond Eivind Glomsrød <teg@redhat.com>
 #       Jeremy Katz <katzj@redhat.com>
+#       Preston Brown <pbrown@redhat.com>
+
 
 PATH=/sbin:$PATH
 export PATH
@@ -90,6 +92,11 @@ findmodule() {
 	findmodule $skiperrors pagebuf
 	findmodule $skiperrors xfs_support
 	modName="xfs"
+    fi
+
+    if [ "$modName" = "ppa" ]; then
+	findmodule parport_pc
+	modName="ppa"
     fi
 
     fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o | /sbin/nash --quiet)`
