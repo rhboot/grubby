@@ -6,13 +6,13 @@ ARCH := $(patsubst sparc%,sparc,$(ARCH))
 
 SUBDIRS = nash grubby 
 
-ifeq ($(ARCH),sparc)
-SUBDIRS += loadinitrd
-endif
+#ifeq ($(ARCH),sparc)
+#SUBDIRS += loadinitrd
+#endif
 
-ifeq ($(ARCH),i386)
-SUBDIRS += loadinitrd
-endif
+#ifeq ($(ARCH),i386)
+#SUBDIRS += loadinitrd
+#endif
 
 mandir=usr/share/man
 

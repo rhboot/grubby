@@ -53,9 +53,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/grubby
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 %endif
-%ifarch i386 i586 i686 athlon sparc sparc64
-%attr(755,root,root) /sbin/loadinitrd
-%endif
 
 
 %changelog
