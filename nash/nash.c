@@ -424,7 +424,7 @@ int echoCommand(char * cmd, char * end) {
 
     for (i = 0; i < num;i ++) {
 	if (i)
-	    write(i, " ", 1);
+	    write(outFd, " ", 1);
 	write(outFd, args[i], strlen(args[i]));
     }
 
