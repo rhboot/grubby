@@ -19,7 +19,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.1.1
+VERSION=3.1.2
 
 compress=1
 target=""
@@ -239,8 +239,9 @@ if [ -n "$ide" ]; then
 fi
 
 if [ -z "$noraid" ]; then
-    # load appropriate raid devices if necessary
-    if grep '^/dev/md' $fstab | grep -v noauto >/dev/null 2>&1 ; then
+    # load appropriate raid devices if necessary, this means that the
+    # /etc/raidtab *must* be up to date for raided root to work.
+    #if grep '^/dev/md' $fstab | grep -v noauto >/dev/null 2>&1 ; then
 	for number in $(grep '^[ 	]*raid-level' /etc/raidtab |
 			  awk '{print $2}' | LC_ALL=C sort -u) ; do
 	    case $number in
@@ -258,7 +259,7 @@ if [ -z "$noraid" ]; then
 		;;
 	    esac
 	done
-    fi
+    #fi
 fi
 
 # check to see if we need to set up a loopback filesystem
