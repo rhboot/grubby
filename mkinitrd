@@ -382,7 +382,7 @@ mknod $MNTIMAGE/dev/null c 1 3
 mknod $MNTIMAGE/dev/ram b 1 1
 mknod $MNTIMAGE/dev/systty c 4 0
 for i in 1 2 3 4; do
-    mknod $MNTIMAGE/dev/tty$i c 4 1
+    mknod $MNTIMAGE/dev/tty$i c 4 $i
 done
 
 echo "#!/bin/nash" > $RCFILE
