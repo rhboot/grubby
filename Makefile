@@ -35,8 +35,8 @@ install:    all
 	mkdir -p $(BUILDROOT)/usr/share/man/man8
 	install -m 755 new-kernel-pkg $(BUILDROOT)/sbin
 	if [ -f grubby ]; then \
-		install -m 755 -s grubby $(BUILDROOT)/sbin \
-		install -m 644 grubby.8 $(BUILDROOT)/usr/share/man/man8 \
+		install -m 755 -s grubby $(BUILDROOT)/sbin ; \
+		install -m 644 grubby.8 $(BUILDROOT)/usr/share/man/man8 ; \
 	fi
 
 grubby:	grubby.o mount_by_label.o
