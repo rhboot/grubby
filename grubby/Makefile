@@ -7,10 +7,10 @@ ARCH := $(patsubst ppc%,ppc,$(ARCH))
 CFLAGS = -Wall -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
 LDFLAGS = -g
 
-ifneq (x86_64, $(ARCH))
-LOADLIBES = /usr/lib/libpopt.a
-else
+ifneq (,$(filter ppc64 x86_64 s390x,$(ARCH)))
 LOADLIBES = /usr/lib64/libpopt.a
+else
+LOADLIBES = /usr/lib/libpopt.a
 endif
 
 all:	grubby
