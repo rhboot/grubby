@@ -1,0 +1,27 @@
+boot=/dev/md1
+map=/boot/map
+install=/boot/boot.b
+prompt
+timeout=50
+linear
+compact
+default=linux
+message=/boot/message
+
+image=/boot/vmlinuz-2.4.9-31smp
+	label=linux
+	initrd=/boot/initrd-2.4.9-31smp.img
+	read-only
+	root=/dev/md3
+
+image=/boot/vmlinuz-2.4.9-21
+	label=linux-up
+	initrd=/boot/initrd-2.4.9-21.img
+	read-only
+	root=/dev/md3
+
+image=/boot/vmlinuz-2.4.7-10
+	label=linux-up-old
+	initrd=/boot/initrd-2.4.7-10.img
+	read-only
+	root=/dev/md3
