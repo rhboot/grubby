@@ -6,8 +6,9 @@
  *
  * Erik Troan (ewt@redhat.com)
  * Jeremy Katz (katzj@redhat.com)
+ * Peter Jones <pjones@redhat.com>
  *
- * Copyright 2002-2004 Red Hat Software 
+ * Copyright 2002-2005 Red Hat Software 
  *
  * This software may be freely redistributed under the terms of the GNU
  * public license.
@@ -79,6 +80,14 @@
 
 #ifndef MS_MOVE
 #define MS_MOVE 8192
+#endif
+
+#ifndef MNT_FORCE
+#define MNT_FORCE 0x1
+#endif
+
+#ifndef MNT_DETACH
+#define MNT_DETACH 0x2
 #endif
 
 extern dev_t name_to_dev_t(char *name);
@@ -780,10 +789,19 @@ int switchrootCommand(char * cmd, char * end) {
                                  "/bin/init", "/bin/sh", NULL };
     char * init, * cmdline = NULL;
     char ** initargs;
-    const char * umounts[] = { "/dev", "/proc", "/sys", "/", NULL };
+    /*  Don't try to unmount the old "/", there's no way to do it. */
+    const char * umounts[] = { "/dev", "/proc", "/sys", NULL };
     int fd, i = 0;
+    int moveDev = 0;
 
-    if (!(cmd = getArg(cmd, end, &new))) {
+    cmd = getArg(cmd, end, &new);
+    if (cmd) {
+        if (!strcmp(new, "--movedev"))
+            moveDev = 1;
+        cmd = getArg(cmd, end, &new);
+    }
+
+    if (!cmd) {
 	printf("switchroot: new root mount point expected\n");
 	return 1;
     }
@@ -793,9 +811,19 @@ int switchrootCommand(char * cmd, char * end) {
         return 1;
     }
 
-    if ((fd = open("/dev/console", O_RDWR)) < 0) {
+    init = getKernelArg("init=");
+    if (init == NULL)
+        cmdline = getKernelCmdLine();
+
+    if (moveDev) {
+        i = 1;
+        mount("/dev", "./dev", NULL, MS_MOVE, NULL);
+    }
+
+    if ((fd = open("./dev/console", O_RDWR)) < 0) {
         printf("ERROR opening /dev/console!!!!: %d\n", errno);
-    } 
+        fd = 0;
+    }
 
     if (dup2(fd, 0) != 0) printf("error dup2'ing fd of %d to 0\n", fd);
     if (dup2(fd, 1) != 1) printf("error dup2'ing fd of %d to 1\n", fd);
@@ -803,25 +831,31 @@ int switchrootCommand(char * cmd, char * end) {
     if (fd > 2)
         close(fd);
 
-    init = getKernelArg("init=");
-    if (init == NULL)
-        cmdline = getKernelCmdLine();
-
-    for (i=0; umounts[i] != NULL; i++) {
-        if (umount(umounts[i]))
+    fd = open("/", O_RDONLY);
+    for (; umounts[i] != NULL; i++) {
+        printf("unmounting old %s\n", umounts[i]);
+        if (umount2(umounts[i], MNT_DETACH)) {
             printf("ERROR unmounting old %s: %d\n", umounts[i], errno);
+            printf("forcing unmount of %s\n", umounts[i]);
+            umount2(umounts[i], MNT_FORCE);
+        }
     }
     i=0;
 
     if (mount(".", "/", NULL, MS_MOVE, NULL)) {
         printf("switchroot: mount failed: %d\n", errno);
+        close(fd);
         return 1;
     }
 
     if (chroot(".") || chdir("/")) {
         printf("switchroot: chroot() failed: %d\n", errno);
+        close(fd);
         return 1;
     }
+
+    /* release the old "/" */
+    close(fd);
 
     if (init == NULL) {
         int j;
@@ -1522,6 +1556,7 @@ int runStartup(int fd) {
 	printf("Failed to read /startup.rc -- file too large.\n");
 	return 1;
     }
+    close(fd);
 
     contents[i] = '\0';
 
@@ -1670,8 +1705,8 @@ int main(int argc, char **argv) {
 	}
     }
 
+    /* runStartup closes fd */
     rc = runStartup(fd);
-    close(fd);
 
     return rc;
 }
