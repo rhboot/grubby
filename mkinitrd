@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.3.10
+VERSION=3.3.11
 
 compress=1
 target=""
@@ -32,6 +32,7 @@ force=""
 verbose=""
 MODULES=""
 img_vers=""
+builtins=""
 modulefile=/etc/modules.conf
 
 if [ `uname -m` = "ia64" ]; then
@@ -44,9 +45,10 @@ fstab="/etc/fstab"
 
 usage () {
     echo "usage: `basename $0` [--version] [-v] [-f] [--ifneeded] [--preload <module>]" >&2
-    echo "       [--omit-scsi-modules] [--omit-raid-modules] [--omit-lvm-modules] [--with=<module>]" >&2
-    echo "       [--image-version] [--fstab=<fstab>] [--nocompress] <initrd-image>" >&2
-    echo "       <kernel-version>" >&2
+    echo "       [--omit-scsi-modules] [--omit-raid-modules] [--omit-lvm-modules]" >&2
+    echo "       [--with=<module>] [--image-version] [--fstab=<fstab>] [--nocompress]" >&2
+    echo "       [--builtin=<module>] <initrd-image> <kernel-version>" >&2
+    echo "" >&2
     echo "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)" >&2
     exit 1
 }
@@ -60,9 +62,16 @@ findmodule() {
     fi
 
     modName=$1
+
     if [ $(echo $modName | cut -b1) = "-" ]; then
 	skiperrors=--skiperrors
 	modName=$(echo $modName | cut -b2-)
+    fi
+
+    if [ $(echo $builtins | egrep '(^| )'$modName'( |$)' ) ]; then
+	[ -n "$verbose" ] && echo "module $modName assumed to be built in"
+	set +x
+	return
     fi
 
     if [ "$modName" = "i2o_block" ]; then
@@ -153,6 +162,16 @@ while [ $# -gt 0 ]; do
 	    fi		    
 
 	    basicmodules="$basicmodules $modname"
+	    ;;
+
+	--builtin*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	modname=`echo $1 | sed 's/^--builtins=//'`
+	    else
+		modname=$2
+		shift
+	    fi		    
+	    builtins="$builtins $modname"
 	    ;;
 
 	--version)
