@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.16
+VERSION=3.5.16.1
 
 compress=1
 target=""
@@ -529,7 +529,7 @@ ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
     if [ -x /usr/bin/strip ]; then
-	/usr/bin/strip -v /lib/modules/$kernel/$MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
+	/usr/bin/strip -g -v /lib/modules/$kernel/$MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
     else
 	cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
     fi
