@@ -159,7 +159,7 @@ while [ $# -gt 0 ]; do
 	-f)
 	    force=1
 	    ;;
-	--preload)
+	--preload*)
 	    if echo $1 | grep '=' >/dev/null ; then
 	    	modname=`echo $1 | sed 's/^--preload=//'`
 	    else
@@ -167,6 +167,8 @@ while [ $# -gt 0 ]; do
 		shift
 	    fi		    
 	    PREMODS="$PREMODS $modname"
+	    echo PRE $PREMODS
+	    exit 0
 	    ;;
 	--omit-scsi-modules)
 	    PRESCSIMODS=""
@@ -358,6 +360,7 @@ LODEV=${LOOPDEV}${devnum}
 # We have to "echo y |" so that it doesn't complain about $IMAGE not
 # being a block device
 echo y | mke2fs $LODEV $IMAGESIZE >/dev/null 2>/dev/null
+tune2fs -i0 $LODEV >/dev/null
 
 if [ -n "$verbose" ]; then
     echo "Using loopback device $LODEV"
