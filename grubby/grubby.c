@@ -32,7 +32,7 @@ struct newKernelInfo {
     char * args;
     char * initrd;
     char * title;
-    struct singleLine * template;
+    struct singleEntry * template;
 };
 
 /* comments get lumped in with indention */
@@ -41,18 +41,26 @@ struct lineElement {
     char * indent;
 };
 
+enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
+       LT_UNKNOWN, LT_ROOT, LT_FALLBACK };
+
 struct singleLine {
     char * indent;
     int numElements;
     struct lineElement * elements;
-    enum { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
-	   LT_UNKNOWN, LT_ROOT, LT_FALLBACK } type;
     struct singleLine * next;
+    enum lineType_e type;
+};
+
+struct singleEntry {
+    struct singleLine * lines;
     int skip;
+    struct singleEntry * next;
 };
 
 struct grubConfig {
-    struct singleLine * lines;
+    struct singleLine * theLines;
+    struct singleEntry * entries;
     char * primaryIndent;
     char * secondaryIndent;
     int defaultImage;		    /* -1 if none specified -- this value is
@@ -73,6 +81,14 @@ struct grubConfig {
 
 #define KERNEL_PATH "/boot/vmlinuz-"
 #define INITRD_PATH "/boot/initrd-"
+
+struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index);
+static char * strndup(char * from, int len);
+static int readFile(int fd, char ** bufPtr);
+static void lineInit(struct singleLine * line);
+static void lineFree(struct singleLine * line);
+static int lineWrite(FILE * out, struct singleLine * line);
+static int getNextLine(char ** bufPtr, struct singleLine * line);
 
 static char * strndup(char * from, int len) {
     char * to;
@@ -116,7 +132,6 @@ static void lineInit(struct singleLine * line) {
     line->elements = NULL;
     line->numElements = 0;
     line->next = NULL;
-    line->skip = 0;
 }
 
 static void lineFree(struct singleLine * line) {
@@ -225,6 +240,7 @@ static struct grubConfig * readConfig(const char * inName) {
     struct grubConfig * cfg;
     struct singleLine * last = NULL, * line;
     char * end;
+    struct singleEntry * entry = NULL;
 
     if (!strcmp(inName, "-")) {
 	in = 0;
@@ -257,12 +273,6 @@ static struct grubConfig * readConfig(const char * inName) {
 	    return NULL;
 	}
 
-	if (last)
-	    last->next = line;
-	else
-	    cfg->lines = line;
-	last = line;
-
 	if (!sawTitle && line->numElements) {
 	    free(cfg->primaryIndent);
 	    cfg->primaryIndent = strdup(line->indent);
@@ -273,6 +283,17 @@ static struct grubConfig * readConfig(const char * inName) {
 
 	if (line->type == LT_TITLE) {
 	    sawTitle = 1;
+	    if (!entry) {
+		cfg->entries = malloc(sizeof(*entry));
+		entry = cfg->entries;
+	    } else {
+		entry->next = malloc(sizeof(*entry));
+		entry = entry->next;
+	    }
+
+	    entry->skip = 0;
+	    entry->lines = NULL;
+	    entry->next = NULL;
 	} else if (line->type == LT_DEFAULT && line->numElements == 2) {
 	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 	    if (strncmp(line->elements[1].item, "saved", 5) == 0) {
@@ -285,6 +306,20 @@ static struct grubConfig * readConfig(const char * inName) {
 	    cfg->fallbackImage = strtol(line->elements[1].item, &end, 10);
 	    if (*end) cfg->fallbackImage = -1;
 	}
+
+	if (sawTitle) {
+	    if (!entry->lines)
+		entry->lines = line;
+	    else
+		last->next = line;
+	} else {
+	    if (!cfg->theLines)
+		cfg->theLines = line;
+	    else
+		last->next = line;
+	}
+
+	last = line;
     }
 
     free(incoming);
@@ -303,11 +338,11 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
     if (!nki) return 0;
 
     if (nki->template)
-	line = nki->template;
+	line = nki->template->lines;
     else
 	line = NULL;
 
-    indent = line ? nki->template->indent : cfg->primaryIndent;
+    indent = line ? nki->template->lines->indent : cfg->primaryIndent;
     fprintf(out, "%stitle %s\n", indent, nki->title);
 
     if (line) line = line->next;
@@ -315,7 +350,7 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 
     indent = NULL;
 
-    while (line && line->type != LT_TITLE) {
+    while (line) {
 	/* skip comments */
 	if (line->numElements)
 	    indent = line->indent;
@@ -390,9 +425,11 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 		       struct newKernelInfo * nki, const char * prefix) {
     FILE * out;
     struct singleLine * line;
+    struct singleEntry * entry;
     char * tmpOutName;
     int needs = MAIN_DEFAULT;
     struct stat sb;
+    int i;
 
     if (!strcmp(outName, "-")) {
 	out = stdout;
@@ -417,36 +454,44 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 	}
     }
 
-    line = cfg->lines;
+    line = cfg->theLines;
     while (line) {
-	if (!line->skip) {
-	    if (line->type ==LT_TITLE && needs){
-		if (needs & MAIN_DEFAULT) {
-		    writeDefault(out, "default", cfg->primaryIndent, 
-				 "=", cfg->defaultImage, cfg->flags);
-		    needs &= ~MAIN_DEFAULT;
-		}
-	    }
-
-	    if (line->type == LT_TITLE && nki) {
-		writeNewKernel(out, cfg, nki, prefix);
-		nki = NULL;
-		lineWrite(out, line);
-	    } else if (line->type == LT_DEFAULT) {
-		writeDefault(out, "default", line->indent, 
-		    line->elements[0].indent, cfg->defaultImage, cfg->flags);
-		needs &= ~MAIN_DEFAULT;
-	    } else if (line->type == LT_FALLBACK) {
-		if (cfg->fallbackImage > -1)
-		    fprintf(out, "%s%s%s%d\n", line->indent, 
-			    line->elements[0].item, line->elements[0].indent,
-			    cfg->fallbackImage);
-	    } else {
-		lineWrite(out, line);
-	    }
+	if (line->type == LT_DEFAULT) {
+	    writeDefault(out, "default", line->indent, 
+		line->elements[0].indent, cfg->defaultImage, cfg->flags);
+	    needs &= ~MAIN_DEFAULT;
+	} else if (line->type == LT_FALLBACK) {
+	    if (cfg->fallbackImage > -1)
+		fprintf(out, "%s%s%s%d\n", line->indent, 
+			line->elements[0].item, line->elements[0].indent,
+			cfg->fallbackImage);
+	} else {
+	    lineWrite(out, line);
 	}
 
 	line = line->next;
+    }
+
+    if (needs & MAIN_DEFAULT) {
+	writeDefault(out, "default", cfg->primaryIndent, 
+		     "=", cfg->defaultImage, cfg->flags);
+	needs &= ~MAIN_DEFAULT;
+    }
+
+    if (nki) {
+	writeNewKernel(out, cfg, nki, prefix);
+	nki = NULL;
+    }
+
+    i = 0;
+    while ((entry = findEntryByIndex(cfg, i++))) {
+	if (entry->skip) continue;
+
+	line = entry->lines;
+	while (line) {
+	    lineWrite(out, line);
+	    line = line->next;
+	}
     }
 
     if (tmpOutName) {
@@ -460,21 +505,23 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     return 0;
 }
 
-int suitableImage(struct singleLine * line, const char * bootPrefix,
+int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 		  int skipRemoved, int flags) {
+    struct singleLine * line;
     char * fullName;
     int i;
     struct stat sb, sb2;
     char * dev;
     char * end;
 
+    line = entry->lines;
+
     do {
 	line = line->next;
-    } while (line && (line->type != LT_TITLE) && (line->type != LT_KERNEL));
+    } while (line && line->type != LT_KERNEL);
 
     if (!line) return 0;
-    if (skipRemoved && line->skip) return 0;
-    if (line->type == LT_TITLE) return 0;
+    if (skipRemoved && entry->skip) return 0;
     if (line->numElements < 2) return 0;
 
     if (flags & GRUBBY_BADIMAGE_OKAY) return 1;
@@ -503,20 +550,16 @@ int suitableImage(struct singleLine * line, const char * bootPrefix,
     return 1;
 }
 
-struct singleLine * findTitleByIndex(struct grubConfig * cfg, int index) {
-    struct singleLine * line;
+struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index) {
+    struct singleEntry * entry;
 
-    line = cfg->lines;
-
-    do {
-	while (line && line->type != LT_TITLE) line = line->next;
-	if (line && !index) break;
-	if (!line) return NULL;
-	line = line->next;
+    entry = cfg->entries;
+    while (index && entry) {
+	entry = entry->next;
 	index--;
-    } while (line);
+    }
 
-    return line;
+    return entry;
 }
 
 /* Find a good template to use for the new kernel. An entry is
@@ -524,34 +567,27 @@ struct singleLine * findTitleByIndex(struct grubConfig * cfg, int index) {
  * is going to be removed). Try and use the default entry, but
  * if that doesn't work just take the first. If we can't find one,
  * bail. */
-struct singleLine * findTemplate(struct grubConfig * cfg, const char * prefix,
+struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
 				 int * indexPtr, int skipRemoved, int flags) {
-    struct singleLine * line;
+    struct singleEntry * entry;
     int index;
 
     if (cfg->defaultImage > -1) {
-	line = findTitleByIndex(cfg, cfg->defaultImage);
-	if (line && suitableImage(line, prefix, skipRemoved, flags)) {
+	entry = findEntryByIndex(cfg, cfg->defaultImage);
+	if (entry && suitableImage(entry, prefix, skipRemoved, flags)) {
 	    if (indexPtr) *indexPtr = cfg->defaultImage;
-	    return line;
+	    return entry;
 	}
     }
 
-    line = cfg->lines;
     index = 0;
-    while (line) {
-	while (line && ((line->type != LT_TITLE) ||
-		        (skipRemoved && line->skip)))
-	    line = line->next;
-	if (!line) break;
-
-	if (suitableImage(line, prefix, skipRemoved, flags)) {
+    while ((entry = findEntryByIndex(cfg, index))) {
+	if (suitableImage(entry, prefix, skipRemoved, flags)) {
 	    if (indexPtr) *indexPtr = index;
-	    return line;
+	    return entry;
 	}
 
 	index++;
-	line = line->next;
     }
 
     fprintf(stderr, _("fatal error: unable to find a suitable template\n"));
@@ -573,58 +609,46 @@ char * findBootPrefix(void) {
 
 void markRemovedImage(struct grubConfig * cfg, const char * image, 
 		      const char * prefix) {
-    struct singleLine * line, * title = NULL;
+    struct singleLine * line;
+    struct singleEntry * entry;
+    int i;
 
     if (!image) return;
 
-    line = cfg->lines;
-    while (line) {
-	if (line->type == LT_TITLE) {
-	    title = line;
+    i = 0;
+    while ((entry = findEntryByIndex(cfg, i++))) {
+	line = entry->lines;
+	while (line && line->type != LT_KERNEL)
 	    line = line->next;
-	} else if (title && line->type == LT_KERNEL && line->numElements >= 2
-		   && !strcmp(line->elements[1].item, image + strlen(prefix))){
-	    title->skip = 1;
-	    title = title->next;
-	    while (title && title->type != LT_TITLE) {
-		title->skip = 1;
-		title = title->next;
-	    }
 
-	    line = title;
-	    title = NULL;
-	} else {
-	    line = line->next;
-	}
+	if (!line || line->numElements < 2) continue;
+
+	if (!strcmp(line->elements[1].item, image + strlen(prefix))) 
+	    entry->skip = 1;
     }
 }
 
 void setDefaultImage(struct grubConfig * config, int hasNew, 
 		     const char * defaultKernelPath, int newIsDefault,
 		     const char * prefix, int flags) {
-    struct singleLine * line, * line2;
-    struct singleLine * newDefault;
-    int i;
+    struct singleLine * line;
+    struct singleEntry * entry, * entry2, * newDefault;
+    int i, j;
 
     if (newIsDefault) {
 	config->defaultImage = 0;
 	return;
     } else if (defaultKernelPath) {
-	line = config->lines;
 	i = 0;
-	while (line) {
-	    while (line && line->type != LT_TITLE) line = line->next;
-	    if (!line) {
-		config->defaultImage = -1;
-		return;
-	    }
-
-	    if (line->skip) {
-		while (line && line->type != LT_TITLE) line = line->next;
+	while ((entry = findEntryByIndex(config, i))) {
+	    if (entry->skip) {
+		i++;
 		continue;
 	    }
 
+	    line = entry->lines;
 	    while (line && line->type != LT_KERNEL) line=line->next;
+
 	    if (!line || line->numElements < 2) {
 		config->defaultImage = -1;
 		return;
@@ -633,30 +657,34 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 	    if (!strcmp(line->elements[1].item, defaultKernelPath + 
 						strlen(prefix))) {
 		config->defaultImage = i;
-		return;
+		break;
 	    }
 
-	    line = line->next;
 	    i++;
 	}
-    }
 
-    /* try and keep the same default */
-    if (config->defaultImage > -1)
-	line = findTitleByIndex(config, config->defaultImage);
-    else
-	line = NULL;
+	if (!line) {
+	    config->defaultImage = -1;
+	    return;
+	}
+    } 
 
-    if (line && !line->skip) {
+    /* defaultImage now points to what we'd like to use, but before any order 
+       changes */
+
+    if (config->defaultImage > -1) 
+	entry = findEntryByIndex(config, config->defaultImage);
+
+    if (entry && !entry->skip) {
+	/* we can preserve the default */
+
 	if (hasNew)
 	    config->defaultImage++;
 	
-	/* see if we erased something before this */
-	line2 = config->lines;
-	while (line2 != line) {
-	    if (line2->type == LT_TITLE && line2->skip)
-		config->defaultImage--;
-	    line2 = line2->next;
+	/* count the number of entries erased before this one */
+	for (j = 0; j < config->defaultImage; j++) {
+	    entry2 = findEntryByIndex(config, j);
+	    if (entry2->skip) config->defaultImage--;
 	}
     } else if (config->defaultImage == DEFAULT_SAVED) {
       /* default is set to saved, we don't want to change it */
@@ -674,12 +702,13 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 }
 
 void setFallbackImage(struct grubConfig * config, int hasNew) {
-    struct singleLine * line, * line2;
+    struct singleEntry * entry, * entry2;
+    int j;
 
     if (config->fallbackImage == -1) return;
 
-    line = findTitleByIndex(config, config->fallbackImage);
-    if (!line || line->skip) {
+    entry = findEntryByIndex(config, config->fallbackImage);
+    if (!entry || entry->skip) {
 	config->fallbackImage = -1;
 	return;
     }
@@ -687,12 +716,10 @@ void setFallbackImage(struct grubConfig * config, int hasNew) {
     if (hasNew)
 	config->fallbackImage++;
     
-    /* see if we erased something before this */
-    line2 = config->lines;
-    while (line2 != line) {
-	if (line2->type == LT_TITLE && line2->skip)
-	    config->fallbackImage--;
-	line2 = line2->next;
+    /* count the number of entries erased before this one */
+    for (j = 0; j < config->fallbackImage; j++) {
+	entry2 = findEntryByIndex(config, j);
+	if (entry2->skip) config->fallbackImage--;
     }
 }
 
@@ -713,7 +740,7 @@ int main(int argc, const char ** argv) {
     char * defaultKernel = NULL;
     struct grubConfig * config;
     struct newKernelInfo newKernel;
-    struct singleLine * template = NULL;
+    struct singleEntry * template = NULL;
     int copyDefault = 0, makeDefault = 0;
     int displayDefault = 0;
     struct poptOption options[] = {
@@ -834,15 +861,19 @@ int main(int argc, const char ** argv) {
     if (!config) return 1;
 
     if (displayDefault) {
-	struct singleLine * image;
+	struct singleLine * line;
+	struct singleEntry * entry;
 
 	if (config->defaultImage == -1) return 0;
-	image = findTitleByIndex(config, config->defaultImage);
-	if (!image) return 0;
-	if (!suitableImage(image, bootPrefix, 0, flags)) return 0;
+	entry = findEntryByIndex(config, config->defaultImage);
+	if (!entry) return 0;
+	if (!suitableImage(entry, bootPrefix, 0, flags)) return 0;
 
-	while (image->type != LT_KERNEL) image = image->next;
-	printf("%s%s\n", bootPrefix, image->elements[1].item);
+	line = entry->lines;
+	while (line && line->type != LT_KERNEL) line = line->next;
+	if (!line) return 0;
+
+	printf("%s%s\n", bootPrefix, line->elements[1].item);
 
 	return 0;
     }
