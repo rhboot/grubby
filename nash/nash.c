@@ -792,6 +792,8 @@ int echoCommand(char * cmd, char * end) {
     int num = 0;
     int i;
     int newline = 1;
+    int length = 0;
+    char *string;
 
     if (testing && !quiet) {
 	printf("(echo) ");
@@ -802,9 +804,11 @@ int echoCommand(char * cmd, char * end) {
         if (!strncmp("-n", *nextArg, MAX(2, strlen(*nextArg)))) {
             newline = 0;
         } else {
+            length += strlen(*nextArg);
             nextArg++, num++;
         }
     }
+    length += num + 1;
 
     if ((nextArg - args >= 2) && !strcmp(*(nextArg - 2), ">")) {
 	outFd = open(*(nextArg - 1), O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -814,18 +818,20 @@ int echoCommand(char * cmd, char * end) {
 	    return 1;
 	}
 
+        newline = 0;
 	num -= 2;
     }
-
+    string = (char *)malloc(length * sizeof(char));
     for (i = 0; i < num;i ++) {
-	if (i)
-	    if (!isEchoQuiet(outFd)) write(outFd, " ", 1);
-	if (!isEchoQuiet(outFd)) write(outFd, args[i], strlen(args[i]));
+	if (i) strcat(string, " ");
+        strncat(string, args[i], strlen(args[i]));
     }
 
-    if (newline && !isEchoQuiet(outFd)) write(outFd, "\n", 1);
+    if (newline) strcat(string, "\n");
+    if (!isEchoQuiet(outFd)) write(outFd, string, strlen(string));
 
     if (outFd != 1) close(outFd);
+    free(string);
 
     return 0;
 }
