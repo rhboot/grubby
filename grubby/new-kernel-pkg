@@ -72,7 +72,11 @@ install() {
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
 
-	title="Red Hat Linux ($version)"
+	if [ -f /etc/redhat-release ]; then
+	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
+	else
+	    title="Red Hat Linux ($version)"
+	fi
 	/sbin/grubby --add-kernel=$bootPrefix/vmlinuz-$version $INITRD    \
 		     --copy-default --title "$title"		    \
 		     --args="root=$rootdevice"			    \

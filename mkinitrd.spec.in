@@ -61,9 +61,11 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Sun Jan 26 2003 <ewt@redhat.com>
 - grubby now shortens lilo titles to ensure they are less then 16 characters
-  long
+  long (76236)
 - mkinitrd would only turn on /dev/md0 if raid was needed; now it enables
-  all raid devices listed in /proc/mdstat
+  all raid devices listed in /proc/mdstat (82209)
+- use product name from /etc/redhat-release to generate label in grub.conf
+  (82352)
 
 * Mon Jan 20 2003 Bill Nottingham <notting@redhat.com> 3.4.36-1
 - don't error out running awk on /proc/mdstat if /proc/mdstat isn't
