@@ -627,8 +627,10 @@ echo "mount -t proc /proc /proc" >> $RCFILE
 echo "setquiet" >> $RCFILE
 echo "echo Mounted /proc filesystem" >> $RCFILE
 
-echo "echo Mounting sysfs" >> $RCFILE
-echo "mount -t sysfs none /sys" >> $RCFILE
+if [ "$kernelmajor" != "2.4" ]; then
+    echo "echo Mounting sysfs" >> $RCFILE
+    echo "mount -t sysfs none /sys" >> $RCFILE
+fi
 
 if [ -n "$USE_UDEV" ]; then
     if [ -n "$UDEV_RAMFS" ]; then
@@ -714,7 +716,9 @@ else
     rootdev=/dev/root
 fi
 
-echo "umount /sys" >> $RCFILE
+if [ "$kernelmajor" != "2.4" ]; then
+    echo "umount /sys" >> $RCFILE
+fi
 
 if [ -n "$initramfs" ]; then
     echo "echo Mounting root filesystem" >> $RCFILE

@@ -62,6 +62,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Thu Aug 19 2004 Jeremy Katz <katzj@redhat.com> - 4.1.1-1
 - don't remove lost+found (#130327)
+- don't try to mount/umount /sys on 2.4 (#130298)
 
 * Tue Aug 17 2004 Jeremy Katz <katzj@redhat.com> - 4.1.0-1
 - mkinitrd: if using udev for the initrd, set things up appropriately 
