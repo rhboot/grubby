@@ -571,6 +571,9 @@ fi
 
 if [ -n "$root_lvm" -a "$kernelmajor" == "2.6" ]; then
     inst /sbin/lvm.static "$MNTIMAGE/bin/lvm"
+    if [ -f /etc/lvm/lvm.conf ]; then
+	cp $verbose --parents /etc/lvm/lvm.conf $MNTIMAGE/
+    fi
 fi
 
 echo "#!/bin/nash" > $RCFILE
