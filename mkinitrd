@@ -131,6 +131,10 @@ findmodule() {
     fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o -type f | /sbin/nash --quiet)`
 
     if [ ! -f /lib/modules/$kernel/$fmPath ]; then
+        fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.o.gz -type f | /sbin/nash --quiet)`
+    fi
+
+    if [ ! -f /lib/modules/$kernel/$fmPath ]; then
 	if [ -n "$skiperrors" ]; then
 	    return
 	fi
