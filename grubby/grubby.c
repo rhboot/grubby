@@ -63,6 +63,7 @@ struct grubConfig {
 #define KERNEL_INITRD	    (1 << 2)
 
 #define MAIN_DEFAULT	    (1 << 0)
+#define DEFAULT_SAVED       -2
 
 #define KERNEL_PATH "/boot/vmlinuz-"
 #define INITRD_PATH "/boot/initrd-"
@@ -264,8 +265,12 @@ static struct grubConfig * readConfig(const char * inName) {
 	if (line->type == LT_TITLE) {
 	    sawTitle = 1;
 	} else if (line->type == LT_DEFAULT && line->numElements == 2) {
+	  if (strncmp(line->elements[1].item, "saved", 5) == 0) {
+	    cfg->defaultImage = DEFAULT_SAVED;
+	  } else {
 	    cfg->defaultImage = strtol(line->elements[1].item, &end, 10);
 	    if (*end) cfg->defaultImage = -1;
+	  }
 	}
     }
 
@@ -381,10 +386,13 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     while (line) {
 	if (!line->skip) {
 	    if (line->type ==LT_TITLE && needs){
-		if ((needs & MAIN_DEFAULT) && cfg->defaultImage != -1)
+		if ((needs & MAIN_DEFAULT) && cfg->defaultImage > -1)
 		    fprintf(out, "%sdefault=%d\n", cfg->primaryIndent,
 			    cfg->defaultImage);
+		else if ((needs & MAIN_DEFAULT) && cfg->defaultImage == DEFAULT_SAVED)
+		    fprintf(out, "%sdefault=saved\n", cfg->primaryIndent);
 		needs = 0;
+
 	    }
 
 	    if (line->type == LT_TITLE && nki) {
@@ -392,11 +400,14 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 		nki = NULL;
 		lineWrite(out, line);
 	    } else if (line->type == LT_DEFAULT) {
-		if (cfg->defaultImage != -1) {
+		if (cfg->defaultImage > -1) {
 		    fprintf(out, "%s%s%s%d\n", line->indent,
 			    line->elements[0].item,
 			    line->elements[0].indent, cfg->defaultImage);
 		    needs &= ~MAIN_DEFAULT;
+		} else if (cfg->defaultImage == DEFAULT_SAVED) {
+		    fprintf(out, "%sdefault%ssaved\n", line->indent,
+			 line->elements[0].indent);
 		}
 	    } else {
 		lineWrite(out, line);
@@ -484,7 +495,7 @@ struct singleLine * findTemplate(struct grubConfig * cfg, const char * prefix,
     struct singleLine * line;
     int index;
 
-    if (cfg->defaultImage != -1) {
+    if (cfg->defaultImage > -1) {
 	line = findTitleByIndex(cfg, cfg->defaultImage);
 	if (line && suitableImage(line, prefix, skipRemoved)) {
 	    if (indexPtr) *indexPtr = cfg->defaultImage;
@@ -597,7 +608,7 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
     }
 
     /* try and keep the same default */
-    if (config->defaultImage != -1)
+    if (config->defaultImage > -1)
 	line = findTitleByIndex(config, config->defaultImage);
     else
 	line = NULL;
@@ -613,6 +624,8 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 		config->defaultImage--;
 	    line2 = line2->next;
 	}
+    } else if (config->defaultImage == DEFAULT_SAVED) {
+      /* default is set to saved, we don't want to change it */
     } else if (hasNew) {
 	config->defaultImage = 0;
     } else {
