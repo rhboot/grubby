@@ -381,7 +381,7 @@ fi
 
 if [ -z "$startraid" ]; then
     cp -a /dev/md0 $MNTIMAGE/dev
-    raidautorun /dev/md0
+    echo "raidautorun /dev/md0" >> $RCFILE
 fi
 
 chmod +x $RCFILE
