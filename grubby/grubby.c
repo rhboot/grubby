@@ -323,6 +323,8 @@ static struct grubConfig * readConfig(const char * inName,
     cfg->secondaryIndent = strdup("\t");
     cfg->flags = GRUB_CONFIG_NO_DEFAULT;
     cfg->cfi = cfi;
+    cfg->theLines = NULL;
+    cfg->entries = NULL;
 
     /* copy everything we have */
     while (*head) {
@@ -372,8 +374,9 @@ static struct grubConfig * readConfig(const char * inName,
 	} else {
 	    if (!cfg->theLines)
 		cfg->theLines = line;
-	    else
+	    else {
 		last->next = line;
+	    }
 	}
 
 	last = line;
