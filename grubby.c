@@ -1395,6 +1395,7 @@ struct singleLine *  addLine(struct singleEntry * entry,
 
         line->elements[0].item = malloc(strlen(val) + 3);
         sprintf(line->elements[0].item, "[%s]", val);
+        line->elements[0].indent = strdup("");
     }
 
     return line;
