@@ -60,7 +60,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Mon Jan 10 2005 Peter Jones <pjones@redhat.com>
+* Mon Jan 10 2005 Peter Jones <pjones@redhat.com> - 3.5.13.2-1
 - handle multipath correctly (#100174)
 
 * Wed Nov  3 2004 Jeremy Katz <katzj@redhat.com>
