@@ -1,13 +1,13 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 6
+Release: 1
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveArch: i386 sparc sparc64 ia64 alpha ppc
 ExclusiveOs: Linux
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5, findutils
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Mon Feb 12 2001 Matt Wilson <msw@redhat.com>
+- add findutils to Requires line #(27269)
+
 * Thu Feb  8 2001 Matt Wilson <msw@redhat.com>
 - added checks to load the modules i2o_block needs
 
