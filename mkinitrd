@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.1.16
+VERSION=4.1.17
 
 compress=1
 allowmissing=""
@@ -688,9 +688,12 @@ for MODULE in $MODULES; do
     fi
 done
 
-# FIXME: this is a hack for the fact that device creation is now 
-# completely and utterly asynchronous.
-sleep 3
+# HACK: module loading + device creation isn't necessarily synchronous...
+# this will make sure that we have all of our devices before trying
+# things like RAID or LVM
+if [ -n "$USE_UDEV" ]; then
+  echo "/sbin/udevstart" >> $RCFILE
+fi
 
 if [ -n "$startraid" ]; then
     for dev in $raiddevices; do
