@@ -100,6 +100,7 @@ findmodule() {
     if [ "$modName" = "xfs" ]; then
 	findmodule $skiperrors pagebuf
 	findmodule $skiperrors xfs_support
+	findmodule $skiperrors xfs_dmapi
 	modName="xfs"
     fi
 
