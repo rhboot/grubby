@@ -60,6 +60,14 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Aug  2 2004 Jeremy Katz <katzj@redhat.com> - 4.0.0-1
+- create an initramfs on 2.6 kernels instead of an initrd
+- use new mount magic instead of pivot_root on 2.6 kernels
+- try to handle the case of modules going away on kernel upgrades a 
+  little bit more nicely (#123994)
+- avoid over-zealous creation of /dev/mapper/control (#127115)
+- improve nash(8) manpage (#127413)
+
 * Fri Jun 18 2004 Jeremy Katz <katzj@redhat.com> - 3.5.24-1
 - fix usb-storage detection with 2.6 (#126309)
 
