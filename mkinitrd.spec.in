@@ -52,6 +52,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Thu Jan 31 2002 Jeremy Katz <katzj@redhat.com>
+- clean up warnings for when /proc isn't mounted
+
 * Tue Jan 29 2002 Jeremy Katz <katzj@redhat.com>
 - fix probing for LVM usage to require a volume group to exist before adding
   the module
