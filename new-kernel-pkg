@@ -91,6 +91,18 @@ install() {
 	INITRD="--initrd $initrdfile"
     fi
 
+    # FIXME: is this a good heuristic to find out if we're on iSeries?
+    if [ -d /proc/iSeries ]; then
+	[ -n "$verbose" ] && echo "On an iSeries, just making img file"
+	if [ -z $initrdfile  ]; then
+	    [ -n "$verbose" ] && echo "No initrd, just hardlinking kernel"
+	    ln $bootPrefix/$kernelName-$version $bootPrefix/vmlinux-$version.img
+	else
+	    /sbin/addRamDisk $INITRD $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/$kernelName-$version.img 2>/dev/null
+	fi
+	return
+    fi
+
     # get the root filesystem to use; if it's on a label make sure it's
     # been configured. if not, get the root device from mount
     rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
@@ -144,6 +156,13 @@ install() {
 }
 
 remove() {
+    # FIXME: is this a good heuristic to find out if we're on iSeries?
+    if [ -d /proc/iSeries ]; then
+	[ -n "$verbose" ] && echo "On an iSeries, remove img file"
+	rm -f $bootPrefix/$kernelName-$version.img 2>/dev/null
+	return
+    fi
+
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
 	/sbin/grubby --remove-kernel=$bootPrefix/$kernelName-$version
