@@ -7,11 +7,7 @@ ARCH := $(patsubst ppc%,ppc,$(ARCH))
 CFLAGS = -Wall -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
 LDFLAGS = -g
 
-ifneq (,$(filter ppc64 x86_64 s390x,$(ARCH)))
-LOADLIBES = /usr/lib64/libpopt.a
-else
-LOADLIBES = /usr/lib/libpopt.a
-endif
+LOADLIBES = -lpopt
 
 all:	grubby
 
@@ -28,6 +24,7 @@ install:    all
 	fi
 
 grubby:	grubby.o mount_by_label.o
+	$(CC) -o $@ $^ -Wl,-Bstatic $(LOADLIBES) -Wl,-Bdynamic $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm -f grubby
