@@ -659,8 +659,6 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	line = entry->lines;
 	while (line && line->type != LT_ROOT) line = line->next;
 
-	if (!line) return 0;
-
 	if (line && line->numElements >= 2) 
 	    dev = line->elements[1].item;
 	else {
