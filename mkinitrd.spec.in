@@ -48,6 +48,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Wed Jul 11 2001 Bill Nottingham <notting@redhat.com>
 - don't print errors if /etc/raidtab doesn't exist
+- or /etc/{modules.conf,conf.modules}, for that matter
 
 * Fri Jul  6 2001 Matt Wilson <msw@redhat.com>
 - don't dig through /etc/fstab to find out if we have a filesystem on
