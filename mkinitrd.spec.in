@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 1
+Release: 2
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -11,6 +11,9 @@ Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.st
 Requires: filesystem >= 2.1.0
 %ifarch i386
 BuildRequires: dietlibc
+%endif
+%ifarch ppc
+Requires: ppc64-utils
 %endif
 BuildRoot: %{_tmppath}/%{name}-root
 
@@ -56,6 +59,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-2
+- require ppc64-utils on ppc
+
 * Fri Apr 18 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-1
 - new-kernel-pkg: on iSeries, we don't have a boot loader, just make the 
   kernel + initrd combo file (/boot/vmlinux-version.img)
