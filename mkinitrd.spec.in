@@ -54,8 +54,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 %endif
 
-
 %changelog
+* Mon Jul 08 2002 Erik Troan <ewt@redhat.com>
+- usb root device code could fail, causing no initrd to be made
+
 * Thu Jun 27 2002 Erik Troan <ewt@redhat.com>
 - grubby didn't add new kernels properly
 
