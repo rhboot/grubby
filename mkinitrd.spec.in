@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Sep 23 2003 Jeremy Katz <katzj@redhat.com> 3.5.13-1
+- fix getting modules from /lib/modules/$(uname -r)/updates
+
 * Mon Sep 22 2003 Jeremy Katz <katzj@redhat.com> 3.5.12-1
 - argument checking and usage for /sbin/installkernel  (#103109)
 
