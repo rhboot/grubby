@@ -1,4 +1,4 @@
-CFLAGS=-O2 -Wall -DVERSION=\"$(VERSION)\"
+CFLAGS=-Wall -DVERSION=\"$(VERSION)\" -g
 VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
 
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
@@ -12,8 +12,8 @@ endif
 
 mandir=usr/share/man
 
-nash: nash.o
-	$(CC) $(STATIC) -g $(LDFLAGS) -o $@ nash.o $(MINILIBC)
+nash: nash.o mount_by_label.o
+	$(CC) $(STATIC) -g $(LDFLAGS) -o $@ nash.o mount_by_label.o
 
 clean:
 	rm -f nash $(MINILIBC) nash.o

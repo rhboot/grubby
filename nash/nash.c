@@ -44,6 +44,8 @@
 
 #include <asm/unistd.h>
 
+#include "mount_by_label.h"
+
 static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
 
 /* Need to tell loop.h what the actual dev_t type is. */
@@ -126,6 +128,7 @@ void mountCommand(char * cmd, char * end) {
     char * device;
     char * mntPoint;
     int readOnly = 0;
+    int mustRemove = 0;
 
     cmd = getArg(cmd, end, &fsType);
     if (!cmd) {
@@ -164,7 +167,22 @@ void mountCommand(char * cmd, char * end) {
     }
 
     if (!strncmp("LABEL=", device, 6)) {
-	device += 6;
+	int major, minor;
+	char * devName;
+
+	devName = get_spec_by_volume_label(device + 6, &major, &minor);
+
+	if (devName) {
+	    device = devName;
+	    if (access(device, F_OK)) {
+		if (mknod(device, S_IFBLK | 0600, makedev(major, minor))) {
+		    printf("mount: cannot create device %s (%d,%d)\n",
+			   device, major, minor);
+		    return;
+		}
+		mustRemove = 1;
+	    }
+	}
     }
 
     if (testing) {
@@ -175,6 +193,9 @@ void mountCommand(char * cmd, char * end) {
 	    printf("mount: error %d mounting %s\n", errno, fsType);
 	}
     }
+
+    if (mustRemove)
+	unlink(device);
 }
 
 void otherCommand(char * bin, char * cmd, char * end, int doFork) {

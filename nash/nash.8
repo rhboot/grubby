@@ -50,7 +50,9 @@ Makes \fIpath\fR a block inode for the device whose device number is
 \fBmount \fI[--ro] -t \fItype\fR \fIdevice\fR \fImntpoint\fR
 Mounts a filesystem. It does not support NFS, and it must be used in
 \fBexactly\fR the form given above. If \fI--ro\fR is given, the filesystem
-is mounted read only.
+is mounted read only. If \fIdevice\fR is of the form \fBLABEL=\fIfoo\fR
+the devices listed in /fB/proc/partitions\fR will be searched, and the
+first device with a volume label of \fIfoo\fR will be mounted.
 
 .TP
 \fBpivot_root \fInewrootpath\fR \fIoldrootpath\fR
@@ -73,7 +75,7 @@ Allows \fBforce\fR really execute the script, even though \fBnash\fR doesn't
 appear to be running from an initrd image.
 
 .SH BUGS
-Probably many. \fBnash\fR is \fbnot a shell\fR, and it shouldn't be though of
+Probably many. \fBnash\fR is \fbnot a shell\fR, and it shouldn't be thought of
 as one. It isn't entirely different from a shell, but that's mostly by
 accident.
 
