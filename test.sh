@@ -141,9 +141,9 @@ grubTest grub.3 remove/g3.1 --boot-filesystem=/ \
     --remove-kernel=DEFAULT
 
 echo "YABOOT remove kernel..."
-yabootTest yaboot.1 remove/y1.1 --remove-kernel=DEFAULT
-yabootTest yaboot.1 remove/y1.2 --remove-kernel=/boot/vmlinuz-2.5.50-eepro
-yabootTest yaboot.2 remove/y2.1 --remove-kernel=/boot/vmlinux-2.5.50
+yabootTest yaboot.1 remove/y1.1 --boot-filesystem=/ --remove-kernel=DEFAULT
+yabootTest yaboot.1 remove/y1.2 --boot-filesystem=/ --remove-kernel=/boot/vmlinuz-2.5.50-eepro
+yabootTest yaboot.2 remove/y2.1 --boot-filesystem=/ --remove-kernel=/boot/vmlinux-2.5.50
 
 echo "Z/IPL remove kernel..."
 ziplTest zipl.1 remove/z1.1 --remove-kernel=/boot/vmlinuz-2.4.9-38
@@ -214,12 +214,12 @@ grubTest grub.2 add/g2.1 --add-kernel=/boot/vmlinuz-2.4.7-2	    \
     --remove-kernel="TITLE=Red Hat Linux (2.4.7-2)" 
 
 echo "YABOOT add kernel..."
-yabootTest yaboot.1 add/y1.1 --copy-default --add-kernel=/boot/new-kernel  \
+yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
     --title=newtitle
-yabootTest yaboot.1 add/y1.2 --add-kernel=/boot/new-kernel --title=newtitle
+yabootTest yaboot.1 add/y1.2 --add-kernel=/boot/new-kernel --boot-filesystem=/ --title=newtitle
 
 echo "YABOOT empty label..."
-yabootTest yaboot.3 add/y3.1 --add-kernel=/boot/new-kernel --title=newtitle
+yabootTest yaboot.3 add/y3.1 --add-kernel=/boot/new-kernel --boot-filesystem=/ --title=newtitle
 
 echo "Z/IPL add kernel..."
 ziplTest zipl.1 add/z1.1 --add-kernel=/boot/new-kernel.img --title test
