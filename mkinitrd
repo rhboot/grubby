@@ -319,7 +319,7 @@ if [ -n "$withusb" ]; then
 	if [ "$(echo $dev | cut -c1-2)" = sd ]; then
           if [ `which kudzu 2>/dev/null` ]; then
 	    host=$(kudzu --probe -b scsi |
-	      gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) print $2; }') 
+	      gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) { print $2; exit; } }')
 	    if [ -d /proc/scsi/usb-storage-${host} ]; then
 		needusb=1
 	    fi
