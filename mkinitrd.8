@@ -13,10 +13,10 @@ as Linux initial ramdisk (initrd) images. Such images are often
 used for preloading the block device modules (such as SCSI or RAID)
 which are needed to access the root filesystem. \fBmkinitrd\fR
 automatically loads all \fIscsi_hostadapter\fR entries in
-\fI/etc/conf.modules\fR, which makes it simple to build and use kernels
+\fI/etc/modules.conf\fR, which makes it simple to build and use kernels
 using moduler SCSI devices.
 
-Any module options specified in \fI/etc/conf.modules\fR are passed
+Any module options specified in \fI/etc/modules.conf\fR are passed
 to the modules as they are loaded by the initial ramdisk.
 
 If the root device is on a loop device (such as /dev/loop0), \fBmkinitrd\fR
@@ -44,7 +44,7 @@ root device is on. Normally, \fB/etc/fstab\fR is used.
 
 .TP
 \fB-\-ifneeded
-Only builds the image if their are modules that need to be loaded at boot
+Only builds the image if there are modules that need to be loaded at boot
 time.
 
 .TP
@@ -59,7 +59,7 @@ Do not load any raid modules, even if /etc/fstab and /etc/raidtab expect them.
 .TP
 \fB-\-preload=\fR\fImodule\fR
 Load the module \fImodule\fR in the initial ramdisk image. The module gets
-loaded before any SCSI modules which are specified in \fI/etc/conf.modules\fR.
+loaded before any SCSI modules which are specified in \fI/etc/modules.conf\fR.
 This option may be used as many times as necessary.
 
 .TP
@@ -75,7 +75,7 @@ Prints the version of \fBmkinitrd\fR that's being used and then exits.
 \fB-\-with=\fR\fImodule\fR
 Load the modules \fImodule\fR in the initial ramdisk image. The module
 gets loaded after any SCSI modules which are specified in 
-\fI/etc/conf.modules\fR. This option may be used as many times as 
+\fI/etc/modules.conf\fR. This option may be used as many times as 
 necessary.
 
 .SH FILES
@@ -86,7 +86,7 @@ A block loopback device is used to create the image, which makes this
 script useless on systems without block loopback support available.
 
 .TP 20
-\fI/etc/conf.modules\fR
+\fI/etc/modules.conf\fR
 Specified SCSI modules to be loaded and module options to be used.
 .PD
 .SH "SEE ALSO"
