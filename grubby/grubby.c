@@ -1753,7 +1753,7 @@ int checkDeviceBootloader(const char * device, const unsigned char * boot) {
     return 2;
 }
 
-int checkLiloOnRaid(char * mdDev, const char * boot) {
+int checkLiloOnRaid(char * mdDev, const unsigned char * boot) {
     int fd;
     char buf[65536];
     char * end;
