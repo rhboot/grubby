@@ -67,6 +67,14 @@ grubTest grub.4 results/default/g4.1 --boot-filesystem=/ --set-default=/boot/vml
 grubTest grub.4 results/default/g4.2 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4.7-ac3 --remove-kernel /boot/vmlinuz-2.4.7-2.5 --add-kernel=/boot/new-kernel --copy-default --title New_Title
 grubTest grub.6 results/default/g6.1 --remove-kernel=/boot/vmlinuz-2.4.7-2.9 --boot-filesystem=/
 
+echo "LILO default directive..."
+liloTest lilo.1 results/default/l1.1 --set-default=/boot/vmlinuz-2.4.18-4
+liloTest lilo.1 results/default/l1.2 --remove-kernel=/boot/vmlinuz-2.4.18-4smp
+liloTest lilo.1 results/default/l1.3 --add-kernel /boot/kernel --title label \
+    --copy-default
+liloTest lilo.1 results/default/l1.4 --add-kernel /boot/kernel --title label \
+    --copy-default --make-default
+
 echo "GRUB fallback directive..."
 grubTest grub.5 results/fallback/g5.1 --remove-kernel=/boot/vmlinuz-2.4.7-ac3 \
     --boot-filesystem=/
