@@ -89,7 +89,7 @@ int smartmknod(char * device, mode_t mode, dev_t dev) {
     char buf[256];
     char * end;
 
-    strcpy(buf, device);
+    strncpy(buf, device, 256);
 
     end = buf;
     while (*end) {
