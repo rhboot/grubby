@@ -11,6 +11,7 @@
 #	Michael K. Johnson <johnsonm@redhat.com>
 #	Pierre Habraken <Pierre.Habraken@ujf-grenoble.fr>
 #	Jakub Jelinek <jj@ultra.linux.cz>
+#	Carlo Arenas Belon (carenas@chasqui.lared.net.pe>
 
 PATH=/sbin:$PATH
 export PATH
@@ -23,6 +24,7 @@ force=""
 verbose=""
 MODULES=""
 img_vers=""
+modulefile=/etc/conf.modules
 IMAGESIZE=1500
 PRESCSIMODS="scsi_mod sd_mod"
 
@@ -154,9 +156,11 @@ if [ -z "$noscsi" ]; then
 	    findmodule scsi $n
     done
 
-
-    if [ -f /etc/conf.modules ]; then
-	scsimodules=`grep scsi_hostadapter /etc/conf.modules | grep -v '^[ 	]*#' | sort -u | awk '{ print $3 }'`
+    if [ ! -f $modulefile ]; then
+        modulefile=/etc/modules.conf
+    fi
+    if [ -f $modulefile ]; then
+	scsimodules=`grep scsi_hostadapter $modulefile | grep -v '^[ 	]*#' | sort -u | awk '{ print $3 }'`
 	for n in $scsimodules; do
     # for now allow scsi modules to come from anywhere.  There are some
     # RAID controllers with drivers in block/
@@ -195,7 +199,7 @@ if [ -f $IMAGE ]; then
     exit 1
 fi
 
-dd if=/dev/zero of=$IMAGE bs=1k count=1500 2> /dev/null
+dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null
 
 for devnum in 0 1 2 3 4 5 6 7 8; do
     if losetup /dev/loop$devnum $IMAGE 2>/dev/null ; then break; fi
@@ -253,7 +257,7 @@ echo "" >> $RCFILE
 for MODULE in $MODULES; do
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
 
-    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" /etc/conf.modules`
+    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile`
 
     if [ -n "$verbose" ]; then
         echo "Loading module $module with options $options"
