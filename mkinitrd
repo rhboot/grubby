@@ -18,7 +18,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.0.1
+VERSION=3.0.2
 
 compress=1
 target=""
@@ -231,6 +231,7 @@ if [ -z "$noraid" ]; then
 	    case $number in
 	    [0145])
 		findmodule raid$number
+		startraid=1
 		;;
 	    *)
 		echo "raid level $number (in /etc/raidtab) not recognized" >&2
@@ -376,6 +377,11 @@ if [ -n "$loopDev" ]; then
     echo "mount -t $loopFs $loopDev /loopfs" >> $RCFILE
     echo "echo Setting up loopback device $rootdev" >> $RCFILE
     echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
+fi
+
+if [ -z "$startraid" ]; then
+    cp -a /dev/md0 $MNTIMAGE/dev
+    raidautorun /dev/md0
 fi
 
 chmod +x $RCFILE
