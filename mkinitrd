@@ -19,6 +19,7 @@
 #       Jeremy Katz <katzj@redhat.com>
 #       Preston Brown <pbrown@redhat.com>
 #	Bill Nottingham <notting@redhat.com>
+#       Guillaume Cottenceau <gc@mandrakesoft.com>
 
 
 PATH=/sbin:/usr/sbin:$PATH
