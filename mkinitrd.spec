@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-%define version 2.2
+%define version 2.3
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Wed Sep 22 1999 Michael K. Johnson <johnsonm@redhat.com>
+- fix cleanup (blush!)
+
 * Tue Sep 21 1999 Michael K. Johnson <johnsonm@redhat.com>
 - now works when /usr is not mounted (do not rely on /usr/bin/install)
 - slight cleanups, better usage message
