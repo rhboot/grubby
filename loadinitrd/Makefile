@@ -22,4 +22,4 @@ clean:
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
-	install -m 755 -s loadinitrd 
+	install -m 755 -s loadinitrd $(BUILDROOT)/sbin/loadinitrd
