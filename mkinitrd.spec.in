@@ -2,20 +2,13 @@ Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
 Release: 1
-License: GPL
+Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm
 Requires: filesystem >= 2.1.0
-BuildRequires: popt
-%ifarch i386
-BuildRequires: dietlibc
-%endif
-%ifarch ppc
-Requires: ppc64-utils >= 0.3-1
-%endif
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -31,7 +24,7 @@ ramdisk is loaded by the operating system loader (normally LILO) and
 is available to the kernel as soon as the ramdisk is loaded.  The
 ramdisk image loads the proper SCSI adapter and allows the kernel to
 mount the root filesystem.  The mkinitrd program creates such a
-ramdisk using information found in the /etc/modules.conf file.
+ramdisk using information found in the /etc/conf.modules file.
 
 %prep
 %setup -q
@@ -56,231 +49,14 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 %config %attr(755,root,root) /sbin/installkernel
 %attr(755,root,root) /sbin/new-kernel-pkg
+%ifarch i386 i586 i686 athlon ia64
 %attr(755,root,root) /sbin/grubby
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
+%endif
 
 %changelog
-* Thu Oct  2 2003 Jeremy Katz <katzj@redhat.com> 3.5.14-1
-- fix dependency on /usr/bin/tail and /usr/bin/id
-
-* Tue Sep 30 2003 Florian La Roche <Florian.LaRoche@redhat.de>
-- remove one more mktemp dir for "all loopback devices in use" case
-
-* Tue Sep 23 2003 Jeremy Katz <katzj@redhat.com> 3.5.13-1
-- fix getting modules from /lib/modules/$(uname -r)/updates
-
-* Mon Sep 22 2003 Jeremy Katz <katzj@redhat.com> 3.5.12-1
-- argument checking and usage for /sbin/installkernel  (#103109)
-
-* Wed Sep  3 2003 Jeremy Katz <katzj@redhat.com> 3.5.11-1
-- really only do grub configs on grub arches
-- some usb mkinitrd fixes
-
-* Fri Aug 29 2003 Jeremy Katz <katzj@redhat.com> 3.5.10-1
-- clean up bogus warning in installkernel
-- only try to do grub configs on arches which support grub (#103261)
-
-* Thu Aug  7 2003 Matt Wilson <msw@redhat.com> 3.5.9-1
-- add \n to error messages in grubby
-- NUL terminate buffer returned from readlink properly
-- symlinks are most likely relative, chdir to / before trying to
-  follow them
-- yaboot needs boot prefix
-- silo needs boot prefix too
-
-* Wed Jul 30 2003 Jeremy Katz <katzj@redhat.com> 
-- grubby: don't segfault on label=\n (reported by dburcaw)
-
-* Thu Jul 24 2003 Jeremy Katz <katzj@redhat.com> 
-- grubby: patch from zaitcev for uninitialized variable that can get 
-  hit in the zipl case
-
-* Mon Jul 21 2003 Jeremy Katz <katzj@redhat.com> 3.5.8-1
-- bump initrd size (#99525)
-
-* Wed Jul  9 2003 Jeremy Katz <katzj@redhat.com> 3.5.7-1
-- pick modules from /lib/modules/$(uname -r)/updates first
-- be less confused by more than one module of a name
-
-* Wed Jun 25 2003 Jeremy Katz <katzj@redhat.com> 3.5.6-1
-- unbreak reading module options from modules.conf again (#97982)
-
-* Fri Jun 20 2003 Bill Nottingham <notting@redhat.com> 3.5.5-1
-- fix modules.dep usage for 2.5/2.6
-
-* Fri Jun 20 2003 Jeremy Katz <katzj@redhat.com> 3.5.4-1
-- handle more bizarre modules.conf constructs (notting)
-
-* Thu Jun 12 2003 Jeremy Katz <katzj@redhat.com> 3.5.3-1
-- mkinitrd: fix copying of pvs (#97314, #97289)
-- mkinitrd: use pvscan instead of lvmdiskscan to find PVs to work 
-  better on other arches
-- mkinitrd: better check for dasd existence
-- mkinitrd: make certain lvm-mod is included if root on lvm
-
-* Wed Jun 11 2003 Jeremy Katz <katzj@redhat.com> 3.5.2-1
-- mkinitrd: revert use of modprobe -c.  it breaks in the installer when we 
-  don't have a modules.dep for the BOOT kernel
-- nash: return pivot_root call correctly (#97753)
-
-* Wed Jun 11 2003 Jeremy Katz <katzj@redhat.com> 3.5.1-1
-- nash: fix syscall bits with gcc 3.3 on s390
-- new-kernel-pkg: do depmod before mkinitrd (#97218)
-
-* Tue Jun 10 2003 Jeremy Katz <katzj@redhat.com> 3.5.0-1
-- mkinitrd: add patch from gc@mandrakesoft.com to determine module 
-  deps from modules.dep (#87873)
-- tweak patch to not break weird cases where module deps aren't all 
-  you need :/
-- grubby: don't remove the last kernel (#60041)
-- mkinitrd: use modprobe -c to find module options (#89794)
-
-* Tue May 20 2003 Matt Wilson <msw@redhat.com> 3.4.52-1
-- use addSystemMap to build the image for iSeries (#91187)
-
-* Fri May 16 2003 Jeremy Katz <katzj@redhat.com> 3.4.51-1
-- grubby: error out gracefully if we run out of space (#85424)
-- mkinitrd: copy parent dirs for pvs (#88962)
-- mkinitrd: exit with an exit status if tar fails (#90123)
-- new-kernel-pkg: only use the first entry for / (#90155)
-- grubby: fix a buffer overflow  (#90444)
-
-* Wed Apr 30 2003 Jeremy Katz <katzj@redhat.com> 3.4.50-1
-- fix typo in new-kernel-pkg for iSeries
-
-* Wed Apr 30 2003 Elliot Lee <sopwith@redhat.com>
-- BuildRequires: popt
-- Change grubby Makefile to static-link popt a bit more cleanly
-
-* Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49.1-1
-- use Arjan's suggestion of vmlinitrd for the kernel + initrd combo file
-
-* Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-2
-- fix description referencing /etc/conf.modules (#89558)
-
-* Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-2
-- require ppc64-utils on ppc
-
-* Fri Apr 18 2003 Jeremy Katz <katzj@redhat.com> 3.4.49-1
-- new-kernel-pkg: on iSeries, we don't have a boot loader, just make the 
-  kernel + initrd combo file (/boot/vmlinux-version.img)
-
-* Mon Apr 07 2003 Karsten Hopp <karsten@redhat.com> 3.4.48-1
-- Fix segfault on mainframe
-
-* Wed Mar 26 2003 Jeremy Katz <katzj@redhat.com> 3.4.47-1
-- mkinitrd: fix using options for loading modules
-- mkinitrd: don't use kernel parameters for dasd at mkinitrd time, 
-  use what's in modules.conf
-
-* Mon Mar 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.46-1
-- new-kernel-pkg: add necessary bits for s390, some logic cleanups
-- grubby: fix root detection for s390{,x}
-
-* Sun Mar 23 2003 Jeremy Katz <katzj@redhat.com> 3.4.45-1
-- grubby: add silo support (sparc)
-- grubby: add zipl support (s390{,x})
-- add grubby test cases for zipl support
-
-* Wed Mar 19 2003 Jeremy Katz <katzj@redhat.com> 3.4.44.1-1
-- fix dasd option reading
-
-* Fri Mar 14 2003 Phil Knirsch <pknirsch@redhat.com> 3.4.44
-- Added automatic dasd= parameters for kernel parameter on s390(x).
-
-* Tue Mar  4 2003 Jeremy Katz <katzj@redhat.com> 3.4.43-1
-- apply ppc patches for new-kernel-pkg and installkernel from Dan 
-  Burcaw <dburcaw@terrasoftsolutions.com>
-- man page tweak (#85471)
-
-* Tue Feb 18 2003 Jeremy Katz <katzj@redhat.com> 3.4.42-1
-- grubby: fix segfault from uninitialized variable (#84128)
-
-* Tue Feb 11 2003 Jeremy Katz <katzj@redhat.com> 3.4.41-1
-- nash: add readlink
-- use readlink for rootdev to handle symlinks to root devs (#83391)
-
-* Tue Feb  4 2003 Jeremy Katz <katzj@redhat.com> 3.4.40-1
-- fix i2o module ordering (#83447)
-- ifarch'd build requires of dietlibc now that the build system has a way to
-  handle these
-
-* Sat Feb 01 2003 Florian La Roche <Florian.LaRoche@redhat.de>
-- change one test from a number to a string test that could otherwise
-  fail in not properly setup chroot environments
-
-* Fri Jan 31 2003 <ewt@redhat.com>
-- added support for yaboot
-- test script runs tests for all platforms
-- separated elilo configuration from lilo mode, allowing elilo specific
-  tests to be run on any platform
-
-* Sun Jan 26 2003 <ewt@redhat.com>
-- grubby now shortens lilo titles to ensure they are less then 16 characters
-  long (76236)
-- mkinitrd would only turn on /dev/md0 if raid was needed; now it enables
-  all raid devices listed in /proc/mdstat (82209)
-- use product name from /etc/redhat-release to generate label in grub.conf
-  (82352)
-
-* Mon Jan 20 2003 Bill Nottingham <notting@redhat.com> 3.4.36-1
-- don't error out running awk on /proc/mdstat if /proc/mdstat isn't
-  there
-
-* Tue Jan 14 2003 <ewt@redhat.com>
-- all mkdev() actions will create directories as needed (some code in
-  mkdevices is now obsolete; I'll remove it later) (#73317)
-- added mkdev command to test the above
-- support diratime/nodiratime mount options (#78738)
-- grubby will follow symlinks when writing new config file (#78713)
-- don't depend on raidtab, use /proc/mdstat instead (#80424) this covers
-  both mkinitrd and grubby
-
-* Sun Jan  5 2003 Jeremy Katz <katzj@redhat.com> 3.4.34-1
-- grubby: fix segfault finding default if default doesn't have a root= (#66000)
-- don't include usb modules by default.  pass --with-usb to get usb modules
-- make sure kudzu exists before trying to exec it
-- handle multiple scsi hosts being present (#77422)
-- add /usr/sbin to default path (#79581)
-- fix using --builtin= (#80448)
-- grubby: preserve the mode on config files (#80776)
-
-* Mon Dec 16 2002 Jeremy Katz <katzj@redhat.com>
-- errno fixes
-
-* Tue Dec 03 2002 Florian La Roche <Florian.LaRoche@redhat.de>
-- /sbin/new-kernel-pkg: fix a test to have correct ""
-
-* Fri Nov 22 2002 Jeremy Katz <katzj@redhat.com>
-- mkinitrd: more gzipped module fixes
-
-* Thu Nov 21 2002 Jeremy Katz <katzj@redhat.com>
-- mkinitrd: add support for finding gzipped modules
-- mkinitrd: don't be noisy if we don't have lvm-mod loaded
-
-* Wed Nov  6 2002 Jeremy Katz <katzj@redhat.com>
-- grubby: don't bail when looking for root in appends of lilo-style configs
-- include grubby on x86_64
-
-* Thu Sep 26 2002 Nalin Dahyabhai <nalin@redhat.com>
-- fix some syntax errors
-- use grep's -q flag to save a redirect in places where we're not redirecting
-  stderr
-
-* Thu Sep  5 2002 Jeremy Katz <katzj@redhat.com>
-- grubby could segfault by going into its lilo checking if it couldn't find 
-  a default to copy (default had no root= and --bad-image-okay wasn't 
-  being used)
-
-* Mon Sep  2 2002 Jeremy Katz <katzj@redhat.com>
-- nash: create directories if needed in mkdevices command (#73090)
-- grubby: handle lilo case of non-linux default (#72202)
-
-* Sat Aug 31 2002 Jeremy Katz <katzj@redhat.com>
-- grubby: fix for case like 'append = " hdc=ide-scsi "' (#68802)
-
-* Fri Aug 30 2002 Bill Nottingham <notting@redhat.com>
-- fix firewire stuff (#72916)
+* Tue Apr 22 2003 Jeremy Katz <katzj@redhat.com> 3.4.24-0.ia64.2
+- backport changes to better handle cciss (#89165, #89166)
 
 * Fri Aug 23 2002 Bill Nottingham <notting@redhat.com>
 - fix mpt fusion stuff

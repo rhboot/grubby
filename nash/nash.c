@@ -47,6 +47,8 @@
 
 #include "mount_by_label.h"
 
+static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
+
 /* Need to tell loop.h what the actual dev_t type is. */
 #undef dev_t
 #if defined(__alpha) || (defined(__sparc__) && defined(__arch64__))
@@ -70,10 +72,6 @@
 
 #ifndef MS_REMOUNT
 #define MS_REMOUNT      32
-#endif
-
-#ifdef USE_DIET
-static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
 #endif
 
 #define MAX(a, b) ((a) > (b) ? a : b)
@@ -241,10 +239,6 @@ int mountCommand(char * cmd, char * end) {
 		flags |= MS_SYNCHRONOUS;
 	    else if (!strcmp(start, "async"))
 		flags &= ~MS_SYNCHRONOUS;
-	    else if (!strcmp(start, "nodiratime"))
-		flags |= MS_NODIRATIME;
-	    else if (!strcmp(start, "diratime"))
-		flags &= ~MS_NODIRATIME;
 	    else if (!strcmp(start, "noatime"))
 		flags |= MS_NOATIME;
 	    else if (!strcmp(start, "atime"))
@@ -516,14 +510,6 @@ int raidautorunCommand(char * cmd, char * end) {
     return 0;
 }
 
-static int my_pivot_root(char * one, char * two) {
-#ifdef USE_DIET
-    return pivot_root(one, two);
-#else
-    return syscall(__NR_pivot_root, one, two);
-#endif
-}
-
 int pivotrootCommand(char * cmd, char * end) {
     char * new;
     char * old;
@@ -543,7 +529,7 @@ int pivotrootCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    if (my_pivot_root(new, old)) {
+    if (pivot_root(new, old)) {
 	printf("pivotroot: pivot_root(%s,%s) failed: %d\n", new, old, errno);
 	return 1;
     }
@@ -776,57 +762,6 @@ int sleepCommand(char * cmd, char * end) {
     delay = atoi(delaystr);
     sleep(delay);
 
-    return 0;
-}
-
-int readlinkCommand(char * cmd, char * end) {
-    char * path;
-    char * buf, * respath, * fullpath;
-    struct stat sb;
-
-    if (!(cmd = getArg(cmd, end, &path))) {
-        printf("readlink: file expected\n");
-        return 1;
-    }
-
-    if (lstat(path, &sb) == -1) {
-        fprintf(stderr, "unable to stat %s: %d\n", path, errno);
-        return 1;
-    }
-
-    if (!S_ISLNK(sb.st_mode)) {
-        printf("%s\n", path);
-        return 0;
-    }
-    
-    buf = malloc(512);
-    if (readlink(path, buf, 512) == -1) {
-	fprintf(stderr, "error readlink %s: %d\n", path, errno);
-	return 1;
-    }
-
-    /* symlink is absolute */
-    if (buf[0] == '/') {
-        printf("%s\n", buf);
-        return 0;
-    } 
-   
-    /* nope, need to handle the relative symlink case too */
-    respath = strrchr(path, '/');
-    if (respath) {
-        *respath = '\0';
-    }
-
-    fullpath = malloc(512);
-    /* and normalize it */
-    snprintf(fullpath, 512, "%s/%s", path, buf);
-    respath = malloc(PATH_MAX);
-    if (!(respath = realpath(fullpath, respath))) {
-        fprintf(stderr, "error realpath %s: %d\n", fullpath, errno);
-        return 1;
-    }
-
-    printf("%s\n", respath);
     return 0;
 }
 
@@ -1162,8 +1097,6 @@ int runStartup(int fd) {
 	    rc = sleepCommand(chptr, end);
 	else if (!strncmp(start, "mknod", MAX(5, chptr-start)))
 	    rc = mknodCommand(chptr, end);
-        else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
-            rc = readlinkCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);
