@@ -978,7 +978,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	
 	i = 0;
 	if (index) {
-	    while (indexVars[i] < *index) i++;
+	    while (i < *index) i++;
 	    if (indexVars[i] == -1) return NULL;
 	}
 
