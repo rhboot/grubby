@@ -11,11 +11,11 @@ ifeq ($ARCH), i386)
 SUBDIRS += grubby
 endif
 
-if ($(ARCH), x86_64)
+ifeq ($(ARCH), x86_64)
 SUBDIRS += grubby
 endif
 
-if ($(ARCH), ia64)
+ifeq ($(ARCH), ia64)
 SUBDIRS += grubby
 endif
 
