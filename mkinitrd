@@ -229,7 +229,12 @@ if [ -z "$noraid" ]; then
 	for number in $(grep '^[ 	]*raid-level' /etc/raidtab |
 			  awk '{print $2}' | LC_ALL=C sort -u) ; do
 	    case $number in
-	    [0145])
+	    [014])
+		findmodule raid$number
+		startraid=1
+		;;
+	    5)
+		findmodule -xor
 		findmodule raid$number
 		startraid=1
 		;;
