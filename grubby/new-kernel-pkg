@@ -300,8 +300,8 @@ if [ ! -x $grubby ] ; then
 fi
 
 
-[ -n $grubConfig ] && [ -f $grubConfig ] && cfgGrub=1;
-[ -f $liloConfig ] && cfgLilo=1;
+[ -n "$grubConfig" ] && [ -f "$grubConfig" ] && cfgGrub=1;
+[ -n "$liloConfig" ] && [ -f "$liloConfig" ] && cfgLilo=1;
 
 # if we have a lilo config on an x86 box, see if the default boot loader
 # is lilo to determine if it should be run
