@@ -1969,7 +1969,7 @@ int main(int argc, const char ** argv) {
 	{ "boot-filesystem", 0, POPT_ARG_STRING, &bootPrefix, 0,
 	    _("filestystem which contains /boot directory (for testing only)"),
 	    _("bootfs") },
-#ifdef __i386__
+#if defined(__i386__) || defined(__x86_64__)
 	{ "bootloader-probe", 0, POPT_ARG_NONE, &bootloaderProbe, 0,
 	    _("check if lilo is installed on lilo.conf boot sector") },
 #endif
