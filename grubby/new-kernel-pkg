@@ -1,60 +1,177 @@
 #!/bin/bash
 #
 # Invoked upon installation or removal of a kernel package, the following
-# tasks are done here:
+# tasks are/can be done here:
+# creation/removal of initrd
+# run of depmod/removal of depmod generated files
 # addition/removal of kernel images from grub configuration (via grubby)
 #
 # Copyright (C) 2001 Red Hat, Inc.
 # 
 
+PATH=/sbin:/bin:$PATH
+
 grubConfig=/boot/grub/grub.conf
 grubby=/sbin/grubby
+
+mode=""
+version=""
+initrd=""
+initrdfile=""
+moddep=""
 verbose=""
 
 usage() {
-    echo "Usage: `basename $0` <--install | --remove> <kernel-version>" >&2
-    echo "       (ex: `basename $0` --install 2.4.7-2)" >&2
+    echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
+    echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
+    echo "       <--install | --remove> <kernel-version>" >&2
+    echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
+    exit 1
 }
 
 install() {
-    VERSION="$1"
+    [ -n "$verbose" ] && echo "adding $version"
+
+    if [ ! -x $grubby ] ; then
+	[ -n "$verbose" ] && echo "$grubby does not exist"
+	return
+    fi
+    if [ ! -f $grubConfig ] ; then
+	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
+	return
+    fi
+    # XXX kernel should be able to be specified also (or work right on ia64)
+    if [ ! -f /boot/vmlinuz-$version ] ; then
+	[ -n "$verbose" ] && echo "kernel for $version does not exist, not running grubby"
+	return
+    fi
+    
     INITRD=""
-    
-    [ -f $grubConfig ] && [ -x $grubby ] || return
-    [ -f /boot/vmlinuz-$VERSION ] || return
-    
-    if [ -f /boot/initrd-$VERSION.img ]; then
-	INITRD="--initrd /boot/initrd-$VERSION.img"
+    if [ -f $initrdfile ]; then
+	[ -n "$verbose" ] && echo "found $initrdfile and using it with grubby"
+	INITRD="--initrd $initrdfile"
     fi
 
-    /sbin/grubby --add-kernel=/boot/vmlinuz-$VERSION $INITRD --copy-default --title "Red Hat Linux ($VERSION)"
+    /sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD --copy-default --title "Red Hat Linux ($version)"
 
 }
 
 remove() {
-    VERSION="$1"
+    [ -n "$verbose" ] && echo "removing $version"
+    if [ ! -x $grubby ] ; then
+	[ -n "$verbose" ] && echo "$grubby does not exist"
+	return
+    fi
+    if [ ! -f $grubConfig ] ; then
+	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
+	return
+    fi
 
-    /sbin/grubby --remove-kernel=/boot/vmlinuz-$VERSION
+    /sbin/grubby --remove-kernel=/boot/vmlinuz-$version
 }
 
-if [ "$#" != "2" ]; then
+mkinitrd() {
+    [ -n "$verbose" ] && echo "creating initrd $initrdfile using $version"
+    /sbin/mkinitrd --ifneeded /boot/initrd-$version.img $version
+}
+
+rminitrd() {
+    [ -n "$verbose" ] && echo "removing initrd $initrdfile"
+    [ -f $initrdfile ] && rm -f $initrdfile
+}
+
+doDepmod() {
+    [ -n "$verbose" ] && echo "running depmod for $version"
+    depmod -ae -F /boot/System.map-$version $version
+}
+
+doRmmoddep() {
+    [ -n "$verbose" ] && echo "removing modules.dep info for $version"
+    [ -d /lib/modules/$version ] && rm -f /lib/modules/$version/modules.*    
+}
+
+
+while [ $# -gt 0 ]; do
+    case $1 in
+	--mkinitrd)
+	    initrd="make"
+	    ;;
+
+	--rminitrd)
+	    initrd="remove"
+	    ;;
+
+	--initrd-file*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	initrdfile=`echo $1 | sed 's/^--initrd=//'`
+	    else
+		initrdfile=$2
+		shift
+	    fi		    
+	    ;;
+
+	--depmod)
+	    moddep="make"
+	    ;;
+
+	--rmmoddep)
+	    moddep="remove"
+	    ;;
+
+	-v)
+	    verbose=-v
+	    ;;
+
+	*)
+	    if [ -z "$mode" ]; then
+		mode=$1
+	    elif [ -z "$version" ]; then
+		version=$1
+	    else
+		usage
+	    fi
+	    ;;
+    esac
+
+    shift
+done
+
+# make sure the mode is valid
+if [ "$mode" != "--install" -a "$mode" != "--remove" ] ; then
     usage
-    exit 1
 fi
 
+if [ -z "$version" ]; then
+    usage
+fi
 
-case "$1" in
-    --install)
-	install $2
-	;;
-    --remove)
-	remove $2
-	;;
-    *)
-	usage
-	;;
-esac
+# set the initrd file based on arch; ia64 is the only currently known oddball
+if [ -z "$initrdfile" ]; then
+    if [ `uname -m` = "ia64" ]; then
+	initrdfile="/boot/efi/initrd-$version.img"
+    else
+	initrdfile="/boot/initrd-$version.img"
+    fi
+
+fi
+[ -n "$verbose" ] && echo "initrdfile is $initrdfile"
+
+if [ "$initrd" == "make" ]; then
+    mkinitrd
+elif [ "$initrd" == "remove" ]; then
+    rminitrd
+fi
+
+if [ "$moddep" == "make" ]; then
+    doDepmod
+elif [ "$moddep" == "remove" ]; then
+    doRmmoddep
+fi
+
+if [ "$mode" == "--install" ]; then
+    install
+elif [ "$mode" == "--remove" ]; then
+    remove
+fi
 
 exit 0
-
-
