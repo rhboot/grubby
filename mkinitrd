@@ -212,6 +212,11 @@ if [ ! -d /lib/modules/$kernel ]; then
     exit 1
 fi
 
+if [ $(id -u) != 0 ]; then
+    echo "mkinitrd must be run as root"
+    exit 1
+fi
+
 for n in $PREMODS; do
 	findmodule $n
 done
