@@ -70,6 +70,8 @@ rm -rf $RPM_BUILD_ROOT
 - grubby --info displays info on all kernels specified, not just the first
 - ext3 need mbcache now (67354)
 - grubby allows config file entry numbers to be used as kernel paths
+- support /etc/sysconfig/grub.conf
+- display lba info from lilo.conf file in --info
 
 * Thu Jun 13 2002 Jeremy Katz <katzj@redhat.com>
 - don't run lilo twice on kernel removal in new-kernel-pkg
