@@ -29,4 +29,6 @@ clean:
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
+	mkdir -p $(BUILDROOT)/usr/share/man/man8
 	install -m 755 -s nash $(BUILDROOT)/sbin
+	install -m 644 -s nash.8 $(BUILDROOT)/usr/share/man/man8

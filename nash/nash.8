@@ -1,0 +1,50 @@
+.TH NASH 8 "Sat Mar 27 1999"
+.UC 4
+.SH NAME
+nash \- script interpretor to interpret linuxrc images
+.SH SYNOPSIS
+\fBnash\fR [--force] \fIscript\fR
+
+.SH DESCRIPTION
+\fBnash\fR is a very simple script interpretor designed to be as small as
+possible. It is primarily designed to run simple linuxrc scripts on an initrd
+image. Arguments to commands may be enclosed in either single or double
+quotes to allow spaces to be included in the arguments. Spaces outside of
+quotations always delineate arguments, and so backslash escaping is supported.
+
+Currently, \fBnash\fR supports the following commands.
+
+.TP
+\fBecho [item]* [> \fIfilename\fR]\fR
+Echos the text strings given to a file, with a space in between each
+item. The output may be optionally redirected to a file.
+
+.TP
+\fBinsmod [\fIoptions\fR]*
+Runs \fB/sbin/insmod\fR with the arguments given.
+
+.TP
+\fBlosetup \fI/dev/loopdev\fR \fIfile\fR
+Binds \fIfile\fR to the loopback device \fI/dev/loopdev\fR. See
+\fBlosetup(8)\fR for information on loopback devices.
+
+.TP
+\fBmount -t \fItype\fR \fIdevice\fR \fImntpoint\fR
+Mounts a filesystem. It does not support NFS, and it must be used in
+\fBexactly\fR the form given above.
+
+.SH OPTIONS
+.TP
+\fB-\-force\fR
+Allows \fBforce\fR really execute the script, even though \fBnash\fR doesn't 
+appear to be running from an initrd image.
+
+.SH BUGS
+Probably many. \fBnash\fR is \fbnot a shell\fR, and it shouldn't be though of
+as one. It isn't entirely different from a shell, but that's mostly by
+accident.
+
+.SH AUTHOR
+.nf
+Erik Troan <ewt@redhat.com>
+.fi
