@@ -1526,13 +1526,14 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
     struct singleEntry * entry;
     struct singleLine * line, * rootLine;
     int index = 0;
-    int i, j;
+    int i, j, k;
     const char ** newArgs, ** oldArgs;
     const char ** arg;
     const char * chptr;
     int useKernelArgs = 0;
     int useRoot = 0;
     int firstElement;
+    int *usedElements, *usedArgs;
 
     if (!image) return 0;
 
@@ -1571,6 +1572,11 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
     if (cfg->cfi->keywords[i].key)
 	useRoot = 1;
 
+    k = 0;
+    for (arg = newArgs; *arg; arg++)
+        k++;
+    usedArgs = calloc(k, sizeof(int));
+
     while ((entry = findEntryByPath(cfg, image, prefix, &index))) {
 	index++;
 
@@ -1588,16 +1594,28 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 	    firstElement = 1;
 	}
 
+	if (!line && useKernelArgs) {
+	    /* no append in there, need to add it */
+	    line = addLine(entry, cfg->cfi, LT_KERNELARGS, NULL, NULL);
+	}
+
+        usedElements = calloc(line->numElements, sizeof(int));
+
+        k = 0;
 	for (arg = newArgs; *arg; arg++) {
-	    if (!line && useKernelArgs) {
-		/* no append in there, need to add it */
-		line = addLine(entry, cfg->cfi, LT_KERNELARGS, NULL, NULL);
-	    }
-
-	    for (i = firstElement; i < line->numElements; i++)
-		if (!argMatch(line->elements[i].item, *arg))
+            if (usedArgs[k]) {
+                k++;
+                continue;
+            }
+	    for (i = firstElement; i < line->numElements; i++) {
+                if (usedElements[i])
+                    continue;
+		if (!argMatch(line->elements[i].item, *arg)) {
+                    usedElements[i]=1;
+                    usedArgs[k]=1;
 		    break;
-
+                }
+            }
 	    chptr = strchr(*arg, '=');
 
 	    if (i < line->numElements) {
@@ -1651,7 +1669,10 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 		    }
 		}
 	    }
+            k++;
 	}
+
+        free(usedElements);
 
 	/* no arguments to remove (i.e. no append line) */
 	if (!line) continue;
@@ -1687,6 +1708,7 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 	}
     }
 
+    free(usedArgs);
     free(newArgs);
     free(oldArgs);
 
