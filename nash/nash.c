@@ -181,7 +181,7 @@ void mountCommand(char * cmd, char * end) {
     }
 }
 
-void otherCommand(char * bin, char * cmd, char * end) {
+void otherCommand(char * bin, char * cmd, char * end, int doFork) {
     char * args[32];
     char ** nextArg;
     int pid;
@@ -231,7 +231,7 @@ void otherCommand(char * bin, char * cmd, char * end) {
 	    printf(" '%s'", *nextArg++);
 	printf("\n");
     } else {
-	if (!(pid = fork())) {
+	if (!doFork || !(pid = fork())) {
 	    /* child */
 	    execve(args[0], args, env);
 	    printf("ERROR: failed in exec of %s\n", args[0]);
@@ -243,6 +243,17 @@ void otherCommand(char * bin, char * cmd, char * end) {
 	    printf("ERROR: %s exited abnormally!\n", args[0]);
 	}
     }
+}
+
+void execCommand(char * cmd, char * end) {
+    char * bin;
+
+    if (!(cmd = getArg(cmd, end, &bin))) {
+	printf("exec: argument expected\n");
+	return;
+    }
+
+    otherCommand(bin, cmd, end, 0);
 }
 
 void losetupCommand(char * cmd, char * end) {
@@ -384,6 +395,8 @@ void echoCommand(char * cmd, char * end) {
     }
 
     write(outFd, "\n", 1);
+
+    if (outFd != 1) close(outFd);
 }
 
 void umountCommand(char * cmd, char * end) {
@@ -449,6 +462,28 @@ void mkrootdevCommand(char * cmd, char * end) {
     }
 }
 
+void mkdirCommand(char * cmd, char * end) {
+    char * dir;
+    int ignoreExists = 0;
+
+    cmd = getArg(cmd, end, &dir);
+
+    if (cmd && !strcmp(dir, "-p")) {
+	ignoreExists = 1;
+	cmd = getArg(cmd, end, &dir);
+    }
+
+    if (!cmd) {
+	printf("mkdir: directory expected\n");
+	return;
+    }
+
+    if (mkdir(dir, 0755)) {
+	if (!ignoreExists && errno == EEXIST)
+	    printf("mkdir: failed to create %s: %d\n", dir, errno);
+    }
+}
+
 int runStartup(int fd) {
     char contents[32768];
     int i;
@@ -508,9 +543,13 @@ int runStartup(int fd) {
 	    mkrootdevCommand(chptr, end);
 	else if (!strncmp(start, "umount", MAX(6, chptr - start)))
 	    umountCommand(chptr, end);
+	else if (!strncmp(start, "exec", MAX(4, chptr - start)))
+	    execCommand(chptr, end);
+	else if (!strncmp(start, "mkdir", MAX(5, chptr - start)))
+	    mkdirCommand(chptr, end);
 	else {
 	    *chptr = '\0';
-	    otherCommand(start, chptr + 1, end);
+	    otherCommand(start, chptr + 1, end, 1);
 	}
 
 	start = end + 1;

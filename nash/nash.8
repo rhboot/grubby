@@ -28,10 +28,18 @@ Currently, \fBnash\fR supports the following built in commands.
 Echos the text strings given to a file, with a space in between each
 item. The output may be optionally redirected to a file.
 
+\fBexec\fR \fI<command>\fR
+The command given is execed, overlaying the nash process.
+
 .TP
 \fBlosetup \fI/dev/loopdev\fR \fIfile\fR
 Binds \fIfile\fR to the loopback device \fI/dev/loopdev\fR. See
 \fBlosetup(8)\fR for information on loopback devices.
+
+\fBmkdir\fR \fI[-p]\fR \fIpath\fR
+Creates the directory \fIpath\fR. If \fI-p\fR is specified, this command
+will not complain if the directory exists. Note this is a subset of the
+standard \fBmkdir\fR \fI-p\fR behavior.
 
 .TP
 \fBmkrootdev \fIpath\fR

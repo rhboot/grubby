@@ -1,5 +1,7 @@
 #include <stdarg.h>
 
+#include <asm/errno.h>
+
 #define _LOOSE_KERNEL_NAMES 1
 
 #define NULL ((void *) 0)
@@ -57,6 +59,7 @@ static inline _syscall3(int,open,const char *,fn,int,flags,mode_t,mode)
 static inline _syscall2(int,access,const char *,fn,int,flags)
 static inline _syscall3(int,ioctl,int,fd,int,request,void *,argp)
 static inline _syscall2(int,dup2,int,one,int,two)
+static inline _syscall2(int,mkdir,const char *,path,int,perms)
 static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
 static inline _syscall2(int,kill,pid_t,pid,int,sig)
 static inline _syscall2(int,symlink,const char *,a,const char *,b)
