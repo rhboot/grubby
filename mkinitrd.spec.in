@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 1
+Release: 2
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Thu Jan 25 2001 Erik Troan <ewt@redhat.com>
+- we need to insert xor.o before raid5.o
+
 * Wed Jan 24 2001 Matt Wilson <msw@redhat.com>
 - code in RAID_AUTORUN ioctl fallback
 - fixed raidstart check flag from -z to -n
