@@ -102,7 +102,7 @@ uuidcache_init(void) {
 	int ma, mi, sz;
 	static char ptname[100];
 	FILE *procpt;
-	char uuid[16], *label = NULL;
+	char uuid[16], *label;
 	char device[110];
 	int firstPass;
 	int handleOnFirst;
@@ -279,7 +279,7 @@ get_spec_by_volume_label(const char *s, int * major, int * minor) {
 
 int display_uuid_cache(void) {
 	struct uuidCache_s * u;
-	size_t i;
+	int i;
 
 	uuidcache_init();
 
