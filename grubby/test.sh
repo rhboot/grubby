@@ -186,4 +186,14 @@ grubTest grub.2 add/g2.1 --add-kernel=/boot/vmlinuz-2.4.7-2	    \
     --title="Red Hat Linux (2.4.7-2)"					    \
     --remove-kernel="TITLE=Red Hat Linux (2.4.7-2)" 
 
+if [ $(uname -m) != ia64 ]; then
+    echo "LILO long titles..."
+    liloTest lilo.1 longtitle/l1.1 --add-kernel=/boot/new-kernel.img \
+	--title="linux-longtitle" --copy-default --boot-filesystem=/boot 
+    liloTest lilo.1 longtitle/l1.2 --add-kernel=/boot/new-kernel.img \
+	--title="linux-toolongtitle" --copy-default --boot-filesystem=/boot 
+    liloTest lilo.7 longtitle/l7.1 --add-kernel=/boot/new-kernel.img \
+	--title="linux-longtitle-fix" --copy-default --boot-filesystem=/boot 
+fi
+
 exit $RESULT

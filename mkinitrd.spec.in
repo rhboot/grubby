@@ -59,6 +59,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Sun Jan 26 2003 <ewt@redhat.com>
+- grubby now shortens lilo titles to ensure they are less then 16 characters
+  long
+
 * Mon Jan 20 2003 Bill Nottingham <notting@redhat.com> 3.4.36-1
 - don't error out running awk on /proc/mdstat if /proc/mdstat isn't
   there

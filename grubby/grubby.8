@@ -138,9 +138,11 @@ The first entry which boots the specified kernel is made the default
 boot entry.
 
 .TP
-\fB-\-title\fR=\fIentry-path\fR
-When a new kernel entry is added \fIentry-path\fR is used as the title
-(\fBlilo\fR label) for the entry.
+\fB-\-title\fR=\fIentry-title\fR
+When a new kernel entry is added \fIentry-title\fR is used as the title
+(\fBlilo\fR label) for the entry. If \fIentry-title\fR is longer then maximum
+length allowed by the bootloader (15 for lilo, unlimited for grub and elilo)
+the title is shortened to a (unique) entry.
 
 .TP
 \fB-\-update-kernel\fR=\fIkernel-path\fR

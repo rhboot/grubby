@@ -81,6 +81,7 @@ struct configFileInfo {
     enum lineType_e entrySeparator;
     int needsBootPrefix;
     int argsInQuotes;
+    int maxTitleLength;
 };
 
 struct keywordTypes grubKeywords[] = {
@@ -101,6 +102,7 @@ struct configFileInfo grubConfigType = {
     LT_TITLE,				    /* entrySeparator */
     1,					    /* needsBootPrefix */
     0,					    /* argsInQuotes */
+    0,					    /* maxTitleLength */
 };
 
 struct keywordTypes liloKeywords[] = {
@@ -116,23 +118,29 @@ struct keywordTypes liloKeywords[] = {
     { NULL,	    0 },
 };
 
-struct configFileInfo liloConfigType = {
 #ifdef __ia64__
+struct configFileInfo liloConfigType = {
     "/boot/efi/EFI/redhat/elilo.conf",		    /* defaultConfig */
-#else
-    "/etc/lilo.conf",			    /* defaultConfig */
-#endif
     liloKeywords,			    /* keywords */
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
-#ifdef __ia64__
     1,			
-#else
-    0,					    /* needsBootPrefix */
-#endif
     1,					    /* argsInQuotes */
+    0,					    /* maxTitleLength */
 };
+#else
+struct configFileInfo liloConfigType = {
+    "/etc/lilo.conf",			    /* defaultConfig */
+    liloKeywords,			    /* keywords */
+    0,					    /* defaultIsIndex */
+    0,					    /* defaultSupportSaved */
+    LT_KERNEL,				    /* entrySeparator */
+    0,					    /* needsBootPrefix */
+    1,					    /* argsInQuotes */
+    15,					    /* maxTitleLength */
+};
+#endif
 
 struct grubConfig {
     struct singleLine * theLines;
@@ -1642,6 +1650,24 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
     enum lineType_e type;
 
     if (!newKernelPath) return 0;
+
+    /* if the newKernelTitle is too long silently munge it into something
+     * we can live with. truncating is first check, then we'll just mess with
+     * it until it looks better */
+    if (config->cfi->maxTitleLength && 
+	    (strlen(newKernelTitle) > config->cfi->maxTitleLength)) {
+	char * buf = alloca(config->cfi->maxTitleLength + 7);
+	char * numBuf = alloca(config->cfi->maxTitleLength + 1);
+	int i = 1;
+
+	sprintf(buf, "TITLE=%.*s", config->cfi->maxTitleLength, newKernelTitle);
+	while (findEntryByPath(config, buf, NULL, NULL)) {
+	    sprintf(numBuf, "%d", i++);
+	    strcpy(buf + strlen(buf) - strlen(numBuf), numBuf);
+	}
+
+	newKernelTitle = buf + 6;
+    }
 
     new = malloc(sizeof(*new));
     new->skip = 0;
