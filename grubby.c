@@ -26,7 +26,6 @@
 #include <unistd.h>
 
 #define _(A) (A)
-#define VERSION "0.01"
 
 struct newKernelInfo {
     char * image;
