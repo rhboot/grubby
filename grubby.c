@@ -408,6 +408,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 		} else if (cfg->defaultImage == DEFAULT_SAVED) {
 		    fprintf(out, "%sdefault%ssaved\n", line->indent,
 			 line->elements[0].indent);
+		    needs &= ~MAIN_DEFAULT;
 		}
 	    } else {
 		lineWrite(out, line);
