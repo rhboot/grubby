@@ -63,7 +63,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Fri Apr  1 2005 Peter Jones <pjones@redhat.com> - 4.2.1.4-1
 - close /init just after reading the file, instead of after runStartup()
-  finishes, so it gets closed before we exec() /sbin/init .
+  finishes, so it gets closed before we exec() /sbin/init . (#145601)
 
 * Thu Mar 17 2005 Peter Jones <pjones@redhat.com> - 4.2.1.3-1
 - Don't do vgmknodes (more of #151172)
