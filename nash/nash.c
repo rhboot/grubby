@@ -771,7 +771,7 @@ int sleepCommand(char * cmd, char * end) {
 
 int readlinkCommand(char * cmd, char * end) {
     char * path;
-    char * buf;
+    char * buf, * respath, * fullpath;
     struct stat sb;
 
     if (!(cmd = getArg(cmd, end, &path))) {
@@ -789,13 +789,34 @@ int readlinkCommand(char * cmd, char * end) {
         return 0;
     }
     
-    buf = alloca(512);
+    buf = malloc(512);
     if (readlink(path, buf, 512) == -1) {
 	fprintf(stderr, "error readlink %s: %d\n", path, errno);
 	return 1;
     }
 
-    printf("%s\n", buf);
+    /* symlink is absolute */
+    if (buf[0] == '/') {
+        printf("%s\n", buf);
+        return 0;
+    } 
+   
+    /* nope, need to handle the relative symlink case too */
+    respath = strrchr(path, '/');
+    if (respath) {
+        *respath = '\0';
+    }
+
+    fullpath = malloc(512);
+    /* and normalize it */
+    snprintf(fullpath, 512, "%s/%s", path, buf);
+    respath = malloc(PATH_MAX);
+    if (!(respath = realpath(fullpath, respath))) {
+        fprintf(stderr, "error realpath %s: %d\n", fullpath, errno);
+        return 1;
+    }
+
+    printf("%s\n", respath);
     return 0;
 }
 
