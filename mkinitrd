@@ -54,6 +54,11 @@ findmodule() {
 	modName=$(echo $modName | cut -b2-)
     fi
 
+    if [ "$modName" = "i2o_block" ]; then
+	findmodule i2o_pci
+	findmodule i2o_core
+    fi
+
     if [ "$modName" = "pluto" ]; then
 	findmodule fc4
 	findmodule soc
