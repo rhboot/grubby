@@ -76,6 +76,8 @@
 static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
 #endif
 
+extern dev_t name_to_dev_t(char *name);
+
 #define MAX(a, b) ((a) > (b) ? a : b)
 
 int testing = 0, quiet = 0;
@@ -613,7 +615,7 @@ int umountCommand(char * cmd, char * end) {
 
 int mkrootdevCommand(char * cmd, char * end) {
     char * path;
-    char * start, * chptr;
+    char * start, *root, * chptr;
     unsigned int devNum = 0;
     int fd;
     int i;
@@ -647,19 +649,29 @@ int mkrootdevCommand(char * cmd, char * end) {
     buf[i - 1] = '\0';
 
     start = buf;
-    while (*start && isspace(*start)) start++;
-    while (*start && strncmp(start, "root=", 5)) {
-	while (*start && !isspace(*start)) start++;
-	while (*start && isspace(*start)) start++;
+    root = NULL;
+    while (*start) {
+	if (isspace(*start)) {
+	    start++;
+	    continue;
+	}
+	if (strncmp(start, "init=", 5) == 0)
+	    break;
+	if (strncmp(start, "root=", 5) == 0)
+	    root = start;
+	while (*++start && !isspace(*start))
+	    ;
     }
 
-    start += 5;
-    chptr = start;
-    while (*chptr && !isspace(*chptr)) chptr++;
-    *chptr = '\0';
+    if (root) {
+	root += 5;
+	chptr = root;
+	while (*chptr && !isspace(*chptr)) chptr++;
+	*chptr = '\0';
+    }
 
-    if (!strncmp(start, "LABEL=", 6)) {
-	if (get_spec_by_volume_label(start + 6, &major, &minor)) {
+    if (root && !strncmp(root, "LABEL=", 6)) {
+	if (get_spec_by_volume_label(root + 6, &major, &minor)) {
 	    if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
 		printf("mount: cannot create device %s (%d,%d)\n",
 		       path, major, minor);
@@ -669,7 +681,7 @@ int mkrootdevCommand(char * cmd, char * end) {
 	    return 0;
 	}
 
-	printf("mkrootdev: label %s not found\n", start + 6);
+	printf("mkrootdev: label %s not found\n", root + 6);
 
 	return 1;
     }
@@ -695,6 +707,9 @@ int mkrootdevCommand(char * cmd, char * end) {
 	printf("mkrootdev: bad device %s\n", buf);
 	return 1;
     }
+
+    if (!devNum && root)
+	devNum = name_to_dev_t(root);
 
     if (smartmknod(path, S_IFBLK | 0700, devNum)) {
 	printf("mkrootdev: mknod failed: %d\n", errno);
@@ -1108,7 +1123,7 @@ static int getDevNumFromProc(char * file, char * device) {
     end = strchr(start, '\n');
     while (start && end) {
         *end++ = '\0';
-        if ((sscanf(start, "%d %s", &num, &line)) == 2) {
+        if ((sscanf(start, "%d %s", &num, line)) == 2) {
             if (!strncmp(device, line, strlen(device)))
                 return num;
         }

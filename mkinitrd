@@ -516,6 +516,7 @@ mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
 mkdir -p $MNTIMAGE/loopfs
 mkdir -p $MNTIMAGE/proc
+mkdir -p $MNTIMAGE/sys
 mkdir -p $MNTIMAGE/sysroot
 ln -s bin $MNTIMAGE/sbin
 
@@ -591,6 +592,9 @@ done
 echo "echo Mounting /proc filesystem" >> $RCFILE
 echo "mount -t proc /proc /proc" >> $RCFILE
 
+echo "echo Mounting sysfs" >> $RCFILE
+echo "mount -t sysfs none /sys" >> $RCFILE
+
 if [ -n "$startraid" ]; then
     for dev in $raiddevices; do
 	cp -a /dev/${dev} $MNTIMAGE/dev
@@ -628,6 +632,8 @@ else
     echo "mkrootdev /dev/root" >> $RCFILE
     rootdev=/dev/root
 fi
+
+echo "umount /sys" >> $RCFILE
 
 if [ -n "$pivot" ]; then
     echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE

@@ -13,11 +13,11 @@ endif
 
 mandir=usr/share/man
 
-nash: nash.o mount_by_label.o
-	$(CC) $(STATIC) -g $(LDFLAGS) -o $@ nash.o mount_by_label.o
+nash: nash.o mount_by_label.o name_to_dev_t.o
+	$(CC) $(STATIC) -g $(LDFLAGS) -o $@ $^
 
 clean:
-	rm -f nash $(MINILIBC) nash.o mount_by_label.o
+	rm -f nash $(MINILIBC) *.o
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
