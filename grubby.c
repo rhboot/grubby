@@ -550,7 +550,7 @@ static void writeDefault(FILE * out, char * indent,
     }
 }
 
-static int writeConfig(struct grubConfig * cfg, const char * outName, 
+static int writeConfig(struct grubConfig * cfg, char * outName, 
 		       const char * prefix) {
     FILE * out;
     struct singleLine * line;
@@ -564,6 +564,27 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 	out = stdout;
 	tmpOutName = NULL;
     } else {
+	if (!lstat(outName, &sb) && S_ISLNK(sb.st_mode)) {
+	    char * buf;
+	    int len = 256;
+	    int rc;
+
+	    do {
+		buf = alloca(len + 1);
+		rc = readlink(outName, buf, len);
+		if (rc == len) len += 256;
+	    } while (rc == len);
+	    
+	    if (rc < 0) {
+		fprintf(stderr, _("grubby: error readlink link %s: %s"), 
+			outName, strerror(errno));
+		return 1;
+	    }
+
+	    outName = buf;
+	    outName[len] = '\0';
+	}
+
 	tmpOutName = alloca(strlen(outName) + 2);
 	sprintf(tmpOutName, "%s-", outName);
 	out = fopen(tmpOutName, "w");
