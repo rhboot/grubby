@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Aug 12 2004 Jeremy Katz <katzj@redhat.com> - 4.0.5-1
+- nash: oops, let's try that again
+
 * Wed Aug 11 2004 Jeremy Katz <katzj@redhat.com> - 4.0.4-1
 - nash: fix mounting by label in some cases (tracked down by 
   Erik Jacobson, #129581, #129673, #129667, #129635)

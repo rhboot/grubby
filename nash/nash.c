@@ -164,7 +164,7 @@ static char * getKernelCmdLine(void) {
 	return NULL;
     }
 
-    i = read(fd, buf, sizeof(buf));
+    i = read(fd, buf, 1024);
     if (i < 0) {
 	printf("getKernelCmdLine: failed to read /proc/cmdline: %d\n", errno);
 	close(fd);
@@ -172,7 +172,7 @@ static char * getKernelCmdLine(void) {
     }
 
     close(fd);
-    buf[i - 1] = '\0';
+    *(buf + i - 1) = '\0';
     return buf;
 }
 
@@ -678,7 +678,6 @@ int switchrootCommand(char * cmd, char * end) {
             initargs[i] = start;
             start = chptr;
         }
-        free(cmdline);
     }
 
     execv(initargs[0], initargs);
