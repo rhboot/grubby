@@ -503,13 +503,14 @@ char * findBootPrefix(void) {
     stat("/", &sb);
     stat("/boot", &sb2);
 
-    if (sb.st_dev == sb2.st_dev) 
+    if (sb.st_dev == sb2.st_dev)
 	return strdup("");
 
     return strdup("/boot");
 }
 
-void markRemovedImage(struct grubConfig * cfg, const char * image) {
+void markRemovedImage(struct grubConfig * cfg, const char * image, 
+		      const char * prefix) {
     struct singleLine * line, * title = NULL;
 
     if (!image) return;
@@ -520,7 +521,7 @@ void markRemovedImage(struct grubConfig * cfg, const char * image) {
 	    title = line;
 	    line = line->next;
 	} else if (title && line->type == LT_KERNEL && line->numElements >= 2
-		   && !strcmp(line->elements[1].item, image)) {
+		   && !strcmp(line->elements[1].item, image + strlen(prefix))){
 	    title->skip = 1;
 	    title = title->next;
 	    while (title && title->type != LT_TITLE) {
@@ -672,7 +673,7 @@ int main(int argc, const char ** argv) {
 	if (!template) return 1;
     }
 
-    markRemovedImage(config, oldKernelPath);
+    markRemovedImage(config, oldKernelPath, bootPrefix);
     setDefaultImage(config, newKernelPath != NULL, makeDefault, bootPrefix);
 
     newKernel.title = newKernelTitle;
