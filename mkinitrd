@@ -2,6 +2,8 @@
 
 # mkinitrd
 #
+# Copyright 2005 Red Hat, Inc.
+#
 # Written by Erik Troan <ewt@redhat.com>
 #
 # Contributors:
@@ -20,12 +22,13 @@
 #       Preston Brown <pbrown@redhat.com>
 #	Bill Nottingham <notting@redhat.com>
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
+#	Peter Jones <pjones@redhat.com>
 
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.6
+VERSION=4.2.7
 
 compress=1
 allowmissing=""
@@ -737,13 +740,15 @@ echo "mkrootdev /dev/root" >> $RCFILE
 rootdev=/dev/root
 
 if [ -n "$initramfs" ]; then
-    echo "echo Mounting root filesystem" >> $RCFILE
-    echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+  echo "echo Mounting root filesystem" >> $RCFILE
+  echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
-    [  -n "$UDEV_KEEP_DEV" ] && echo "mount -t tmpfs --bind /dev /sysroot/dev" >> $RCFILE
-
-    echo "echo Switching to new root" >> $RCFILE
+  echo "echo Switching to new root" >> $RCFILE
+  if [ -n "$UDEV_KEEP_DEV" ]; then
+    echo "switchroot --movedev /sysroot" >> $RCFILE
+  else
     echo "switchroot /sysroot" >> $RCFILE
+  fi
 else 
   if [ "$kernelmajor" != "2.4" ]; then
     echo "umount /sys" >> $RCFILE
@@ -760,9 +765,9 @@ else
   else
     echo "umount /proc" >> $RCFILE
   fi
-fi
 
-[ -n "$UDEV_TMPFS" ] && echo "umount /initrd/dev" >> $RCFILE
+  [ -n "$UDEV_TMPFS" ] && echo "umount /initrd/dev" >> $RCFILE
+fi
 chmod +x $RCFILE
 
 if [ -z "$initramfs" ]; then
