@@ -6,8 +6,9 @@
  *
  * Erik Troan (ewt@redhat.com)
  * Jeremy Katz (katzj@redhat.com)
+ * Peter Jones (pjones@redhat.com)
  *
- * Copyright 2002-2004 Red Hat Software 
+ * Copyright 2002-2005 Red Hat Software 
  *
  * This software may be freely redistributed under the terms of the GNU
  * public license.
