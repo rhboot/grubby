@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Aug 13 2002 Jeremy Katz <katzj@redhat.com>
+- /boot/efi/redhat -> /boot/efi/EFI/redhat on ia64
+
 * Sun Aug 11 2002 Jeremy Katz <katzj@redhat.com>
 - fix grubby to work correctly on ia64
 

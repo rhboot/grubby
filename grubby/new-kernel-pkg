@@ -21,8 +21,8 @@ else
 fi
 
 if [ $(uname -m) == ia64 ]; then
-    liloConfig=/boot/efi/redhat/elilo.conf
-    bootPrefix=/boot/efi/redhat
+    liloConfig=/boot/efi/EFI/redhat/elilo.conf
+    bootPrefix=/boot/efi/EFI/redhat
 else
     liloConfig=/etc/lilo.conf
     bootPrefix=/boot
@@ -205,7 +205,7 @@ fi
 # set the initrd file based on arch; ia64 is the only currently known oddball
 if [ -z "$initrdfile" ]; then
     if [ `uname -m` = "ia64" ]; then
-	initrdfile="/boot/efi/redhat/initrd-$version.img"
+	initrdfile="/boot/efi/EFI/redhat/initrd-$version.img"
     else
 	initrdfile="/boot/initrd-$version.img"
     fi
