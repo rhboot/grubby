@@ -60,12 +60,18 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Feb  9 2004 Jeremy Katz <katzj@redhat.com> - 3.5.19-1
+- quiet mode for nash and necessary mkinitrd changes to work with it
+
 * Tue Jan 13 2004 Jeremy Katz <katzj@redhat.com> 
 - mkinitrd: add patch from Alex Kiernan for modules with multiple 
   deps in 2.6 (#113306)
 
 * Thu Jan  8 2004 Jeremy Katz <katzj@redhat.com> 3.5.18-1
 - new-kernel-pkg: add a --kernel-arguments option (#113125)
+
+* Tue Jan  6 2004 Jeremy Katz <katzj@redhat.com> 
+- fix ybin path (#112939)
 
 * Sun Jan  4 2004 Jeremy Katz <katzj@redhat.com> 3.5.17-1
 - mkinitrd: handle multiple spaces in modules.conf (from Lubomir Bulej)

@@ -76,7 +76,7 @@ extern dev_t name_to_dev_t(char *name);
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 
-int testing = 0, quiet = 0;
+int testing = 0, quiet = 0, reallyquiet = 0;
 
 #define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
 
@@ -549,6 +549,12 @@ int pivotrootCommand(char * cmd, char * end) {
     return 0;
 }
 
+int isEchoQuiet(int fd) {
+    if (!reallyquiet) return 0;
+    if (fd != 1) return 0;
+    return 1;
+}
+
 int echoCommand(char * cmd, char * end) {
     char * args[256];
     char ** nextArg = args;
@@ -577,11 +583,11 @@ int echoCommand(char * cmd, char * end) {
 
     for (i = 0; i < num;i ++) {
 	if (i)
-	    write(outFd, " ", 1);
-	write(outFd, args[i], strlen(args[i]));
+	    if (!isEchoQuiet(outFd)) write(outFd, " ", 1);
+	if (!isEchoQuiet(outFd)) write(outFd, args[i], strlen(args[i]));
     }
 
-    write(outFd, "\n", 1);
+    if (!isEchoQuiet(outFd)) write(outFd, "\n", 1);
 
     if (outFd != 1) close(outFd);
 
@@ -1147,6 +1153,24 @@ int mkDMNodCommand(char * cmd, char * end) {
     return 0;
 }
 
+int setQuietCommand(char * cmd, char * end) {
+    int fd, rc;
+
+    if ((fd = open("/proc/cmdline", O_RDONLY)) >= 0) {
+        char * buf = malloc(512);
+        rc = read(fd, buf, 511);
+        if (strstr(buf, "quiet") != NULL)
+            reallyquiet = 1;
+        close(fd);
+        free(buf);
+    }
+
+    if (reallyquiet)
+          quiet = 1;
+
+    return 0;
+}
+
 int runStartup(int fd) {
     char contents[32768];
     int i;
@@ -1229,6 +1253,8 @@ int runStartup(int fd) {
             rc = mkDMNodCommand(chptr, end);
         else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
             rc = readlinkCommand(chptr, end);
+        else if (!strncmp(start, "setquiet", MAX(8, chptr-start)))
+            rc = setQuietCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);
@@ -1266,6 +1292,9 @@ int main(int argc, char **argv) {
 	} else if (!strcmp(*argv, "--quiet")) {
 	    quiet = 1;
 	    argv++, argc--;
+        } else if (!strcmp(*argv, "--reallyquiet")) {
+            reallyquiet = 1;
+            argv++, argc--;
 	} else {
 	    printf("unknown argument %s\n", *argv);
 	    return 1;

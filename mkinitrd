@@ -576,6 +576,13 @@ fi
 echo "#!/bin/nash" > $RCFILE
 echo "" >> $RCFILE
 
+echo "mount -t proc /proc /proc" >> $RCFILE
+echo "setquiet" >> $RCFILE
+echo "echo Mounted /proc filesystem" >> $RCFILE
+
+echo "echo Mounting sysfs" >> $RCFILE
+echo "mount -t sysfs none /sys" >> $RCFILE
+
 for MODULE in $MODULES; do
     text=""
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
@@ -598,12 +605,6 @@ for MODULE in $MODULES; do
 	echo "sleep 5" >> $RCFILE
     fi
 done
-
-echo "echo Mounting /proc filesystem" >> $RCFILE
-echo "mount -t proc /proc /proc" >> $RCFILE
-
-echo "echo Mounting sysfs" >> $RCFILE
-echo "mount -t sysfs none /sys" >> $RCFILE
 
 if [ -n "$startraid" ]; then
     for dev in $raiddevices; do
