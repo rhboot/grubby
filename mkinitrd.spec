@@ -8,7 +8,7 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
 ExclusiveArch: i386 sparc sparc64
 ExclusiveOs: Linux
-Requires: /bin/sash losetup e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static
+Requires: /sbin/sash losetup e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static
 BuildRoot: /var/tmp/%{name}-root
 
 %description
