@@ -47,29 +47,42 @@ done
 echo "Permission preservation..."
 cp test/grub.1 grub-test
 chmod 0614 grub-test 
-touch 01010101 grub-test
+touch -t 200301010101.00 grub-test
 time=$(ls -l grub-test | awk '{ print $6 " " $7 " "$8}')
 perm=$(ls -l grub-test | awk '{print $1}')
 ./grubby --grub --add-kernel bar --title title -c grub-test 
 newtime=$(ls -l grub-test | awk '{ print $6 " " $7 " "$8}')
 newperm=$(ls -l grub-test | awk '{print $1}')
 if [ "$time" == "$newtime" -o "$perm" != "$newperm" ]; then
-    echo "  failed ($p)"; 
+    echo "  failed ($perm $newperm)"; 
 fi
 rm -f grub-test
 
 cp test/lilo.1 lilo-test
 chmod 0614 lilo-test 
-touch 01010101 lilo-test
+touch -t 200301010101.00 lilo-test
 time=$(ls -l lilo-test | awk '{ print $6 " " $7 " "$8}')
 perm=$(ls -l lilo-test | awk '{print $1}')
 ./grubby --lilo --add-kernel bar --title title -c lilo-test 
 newtime=$(ls -l lilo-test | awk '{ print $6 " " $7 " "$8}')
 newperm=$(ls -l lilo-test | awk '{print $1}')
 if [ "$time" == "$newtime" -o "$perm" != "$newperm" ]; then
-    echo "  failed ($p)"; 
+    echo "  failed ($perm $newperm)"; 
 fi
 rm -f lilo-test
+
+echo "Following symlinks..."
+cp test/grub.1 grub-test
+ln -s grub-test mytest
+./grubby --grub --add-kernel bar --title title -c mytest
+if [ ! -L mytest ]; then
+    echo " failed (not a symlink)"
+fi
+target=$(ls -l mytest | awk '{ print $11 }')
+if [ "$target" != grub-test ]; then
+    echo "  failed (wrong target)"
+fi
+rm -f grub-test mytest
 
 echo "GRUB default directive..."
 grubTest grub.1 default/g1.1 --boot-filesystem=/boot --add-kernel /boot/new-kernel --title Some_Title 

@@ -59,6 +59,13 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Jan 14 2003 <ewt@redhat.com>
+- all mkdev() actions will create directories as needed (some code in
+  mkdevices is now obsolete; I'll remove it later) (#73317)
+- added mkdev command to test the above
+- support diratime/nodiratime mount options (#78738)
+- grubby will follow symlinks when writing new config file (#78713)
+
 * Sun Jan  5 2003 Jeremy Katz <katzj@redhat.com> 3.4.34-1
 - grubby: fix segfault finding default if default doesn't have a root= (#66000)
 - don't include usb modules by default.  pass --with-usb to get usb modules
