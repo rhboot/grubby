@@ -545,9 +545,10 @@ if [ -n "$pivot" ]; then
     echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
     echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
+    echo "umount /initrd/proc" >> $RCFILE
+else
+    echo "umount /proc" >> $RCFILE
 fi
-
-echo "umount /proc" >> $RCFILE
 
 chmod +x $RCFILE
 
