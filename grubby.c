@@ -756,7 +756,7 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
 
 	    /* most likely the symlink is relative, so change our
 	       directory to / */
-	    chdir("/");
+	    rc = chdir("/");
 	    do {
 		buf = alloca(len + 1);
 		rc = readlink(outName, buf, len);
