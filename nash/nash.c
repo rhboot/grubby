@@ -130,22 +130,21 @@ int mountCommand(char * cmd, char * end) {
     char * mntPoint;
     char * deviceDir;
     char * options = NULL;
-    int readOnly = 0;
     int mustRemove = 0;
     int mustRemoveDir = 0;
     int rc;
+    int flags = MS_MGC_VAL;
+    char * newOpts;
 
     cmd = getArg(cmd, end, &device);
     if (!cmd) {
-	printf("usage: mount [--ro] -t <type> <device> <mntpoint>\n");
+	printf("usage: mount [--ro] [-o <opts>] -t <type> <device> <mntpoint>\n");
 	return 1;
     }
 
-    printf("is %d\n", readOnly);
-
     while (cmd && *device == '-') {
 	if (!strcmp(device, "--ro")) {
-	    readOnly = MS_RDONLY;
+	    flags |= MS_RDONLY;
 	} else if (!strcmp(device, "-o")) {
 	    cmd = getArg(cmd, end, &options);
 	    if (!cmd) {
@@ -180,6 +179,63 @@ int mountCommand(char * cmd, char * end) {
     if (cmd < end) {
 	printf("mount: unexpected arguments\n");
 	return 1;
+    }
+
+    /* need to deal with options */ 
+    if (options) {
+	char * end;
+	char * start = options;
+
+	newOpts = alloca(strlen(options) + 1);
+	*newOpts = '\0';
+
+	while (*start) {
+	    end = strchr(start, ',');
+	    if (!end) {
+		end = start + strlen(start);
+	    } else {
+		*end = '\0';
+		end++;
+	    }
+
+	    if (!strcmp(start, "ro"))
+		flags |= MS_RDONLY;
+	    else if (!strcmp(start, "rw"))
+		flags &= ~MS_RDONLY;
+	    else if (!strcmp(start, "nosuid"))
+		flags |= MS_NOSUID;
+	    else if (!strcmp(start, "suid"))
+		flags &= ~MS_NOSUID;
+	    else if (!strcmp(start, "nodev"))
+		flags |= MS_NODEV;
+	    else if (!strcmp(start, "dev"))
+		flags &= ~MS_NODEV;
+	    else if (!strcmp(start, "noexec"))
+		flags |= MS_NOEXEC;
+	    else if (!strcmp(start, "exec"))
+		flags &= ~MS_NOEXEC;
+	    else if (!strcmp(start, "sync"))
+		flags |= MS_SYNCHRONOUS;
+	    else if (!strcmp(start, "async"))
+		flags &= ~MS_SYNCHRONOUS;
+	    else if (!strcmp(start, "noatime"))
+		flags |= MS_NOATIME;
+	    else if (!strcmp(start, "atime"))
+		flags &= ~MS_NOATIME;
+	    else if (!strcmp(start, "remount"))
+		flags |= MS_REMOUNT;
+	    else if (!strcmp(start, "defaults"))
+		;
+	    else {
+		if (*newOpts)
+		    strcat(newOpts, ",");
+		strcat(newOpts, start);
+	    }
+
+	    start = end;
+	}
+
+	options = newOpts;
     }
 
     if (!strncmp("LABEL=", device, 6)) {
@@ -221,14 +277,21 @@ int mountCommand(char * cmd, char * end) {
     }
 
     if (testing) {
-	printf("mount %s%s%s%s-t '%s' '%s' '%s'\n", 
+	printf("mount %s%s%s-t '%s' '%s' '%s' (%s%s%s%s%s%s%s)\n", 
 		options ? "-o '" : "",	
 		options ? options : "",	
 		options ? "\' " : "",	
-		readOnly ? "--ro " : "",
-		fsType, device, mntPoint);
+		fsType, device, mntPoint,
+		(flags & MS_RDONLY) ? "ro " : "",
+		(flags & MS_NOSUID) ? "nosuid " : "",
+		(flags & MS_NODEV) ? "nodev " : "",
+		(flags & MS_NOEXEC) ? "noexec " : "",
+		(flags & MS_SYNCHRONOUS) ? "sync " : "",
+		(flags & MS_REMOUNT) ? "remount " : "",
+		(flags & MS_NOATIME) ? "noatime " : ""
+	    );
     } else {
-	if (mount(device, mntPoint, fsType, readOnly | MS_MGC_VAL, options)) {
+	if (mount(device, mntPoint, fsType, flags, options)) {
 	    printf("mount: error %d mounting %s\n", errno, fsType);
 	    rc = 1;
 	}

@@ -63,12 +63,14 @@ Makes \fIpath\fR a block inode for the device whose device number is
 /proc/sys/kernel/real-root-dev.
 
 .TP
-\fBmount \fI[--ro] -t \fItype\fR \fIdevice\fR \fImntpoint\fR
+\fBmount \fI[--ro]\fR -o \fIopts\fR -t \fItype\fR \fIdevice\fR \fImntpoint\fR
 Mounts a filesystem. It does not support NFS, and it must be used in
-\fBexactly\fR the form given above. If \fI--ro\fR is given, the filesystem
-is mounted read only. If \fIdevice\fR is of the form \fBLABEL=\fIfoo\fR
-the devices listed in /fB/proc/partitions\fR will be searched, and the
-first device with a volume label of \fIfoo\fR will be mounted.
+the form given above (arguments must go first).  If \fIdevice\fR is of the form
+\fBLABEL=\fIfoo\fR the devices listed in /fB/proc/partitions\fR will
+be searched, and the first device with a volume label of \fIfoo\fR will
+be mounted. Normal \fBmount\fR(2) options are supported, and \fB--ro\fR will
+mount the filesystem read only for compatibility with older versions of nash.
+The \fBdefaults\fR mount option is silently ignored.
 
 .TP
 \fBpivot_root \fInewrootpath\fR \fIoldrootpath\fR
