@@ -1,3 +1,5 @@
+%define grubbyarch i386 i586 i686 athlon x86_64 ia64
+
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
@@ -31,8 +33,10 @@ ramdisk using information found in the /etc/conf.modules file.
 
 %build
 make
+%ifarch %{grubbyarch}
 make test
 if [ $? != 0 ]; then exit 1; fi
+%endif
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -49,7 +53,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 %config %attr(755,root,root) /sbin/installkernel
 %attr(755,root,root) /sbin/new-kernel-pkg
-%ifarch i386 i586 i686 athlon ia64 x86_64
+%ifarch %{grubbyarch}
 %attr(755,root,root) /sbin/grubby
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 %endif
