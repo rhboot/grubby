@@ -72,10 +72,6 @@
 #define MS_REMOUNT      32
 #endif
 
-#ifdef USE_DIET
-static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
-#endif
-
 extern dev_t name_to_dev_t(char *name);
 
 #define MAX(a, b) ((a) > (b) ? a : b)
