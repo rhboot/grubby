@@ -1,0 +1,25 @@
+default=0
+timeout=10
+splashimage=(hd0,5)/boot/grub/splash.xpm.gz
+
+title Red Hat Linux (2.4.7-2.9)
+	root (hd0,5)
+	kernel /boot/vmlinuz-2.4.7-2.9 ro root=/dev/hda6
+	initrd /boot/initrd-2.4.7-2.9.img
+
+title Red Hat Linux (2.4.7-2.5)
+	root (hd0,5)
+	kernel /boot/vmlinuz-2.4.7-2.5 ro root=/dev/hda6
+	initrd /boot/initrd-2.4.7-2.5.img
+
+title Red Hat Linux (2.4.7-ac3)
+	root (hd0,5)
+	kernel /boot/vmlinuz-2.4.7-ac3 ro root=/dev/hda6
+	initrd /boot/initrd-2.4.7-ac3.img
+
+title dos
+	root (hd0,0)
+	chainloader +1
+ 
+
+
