@@ -9,6 +9,7 @@ ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm2
 Requires: filesystem >= 2.1.0
+Conflicts: udev < 0:032
 BuildRequires: popt
 %ifarch i386
 BuildRequires: dietlibc
@@ -60,6 +61,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Sep 22 2004 Jeremy Katz <katzj@redhat.com> - 4.1.12-1
+- update to work with udev 032, conflict with old udev
+- if udev is present, use it.  trying to avoid the use of udev if it's 
+  installed is the road to things not working
+
 * Fri Sep 10 2004 Jeremy Katz <katzj@redhat.com> - 4.1.11-1
 - more fixing
 

@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.1.11
+VERSION=4.1.12
 
 compress=1
 allowmissing=""
@@ -46,10 +46,11 @@ PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
 
 if [ -f /etc/udev/udev.conf ]; then
+    USE_UDEV="yes"
+    UDEV_TMPFS="yes"
+    UDEV_KEEP_DEV="yes"
     . /etc/udev/udev.conf
-    [ "$USE_UDEV" = "yes" -a "$UDEV_INITRD" = "yes" -a -x /sbin/udevstart ] || USE_UDEV=
-    # use ramfs if keep_dev is set
-    [ "$UDEV_KEEP_DEV" = "yes" ] && UDEV_TMPFS="yes"
+    [ -x /sbin/udev.static ] || USE_UDEV=
 fi
 
 usage () {
@@ -575,7 +576,7 @@ ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 if [ -n "$USE_UDEV" ]; then
     inst /sbin/udev.static $MNTIMAGE/sbin/udev
-    inst /sbin/udevstart.static $MNTIMAGE/sbin/udevstart
+    ln -s udev $MNTIMAGE/sbin/udevstart
     mkdir -p $MNTIMAGE/etc/udev
     inst /etc/udev/udev.conf $MNTIMAGE/etc/udev/udev.conf
     ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
@@ -742,8 +743,6 @@ else
 
     echo "echo Mounting root filesystem" >> $RCFILE
     echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
-
-    [ -n "$UDEV_KEEP_DEV" ] && echo "mount -t tmpfs --bind /dev /sysroot/dev" >> $RCFILE
 
     echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
     echo "umount /initrd/proc" >> $RCFILE
