@@ -1,7 +1,7 @@
 VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' mkinitrd)
 CVSTAG = r$(subst .,-,$(VERSION))
 
-SUBDIRS = nash grubby
+SUBDIRS = nash grubby loadinitrd
 
 mandir=usr/share/man
 
