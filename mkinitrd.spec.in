@@ -56,6 +56,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Mar 26 2003 Jeremy Katz <katzj@redhat.com> 3.4.47-1
+- mkinitrd: fix using options for loading modules
+- mkinitrd: don't use kernel parameters for dasd at mkinitrd time, 
+  use what's in modules.conf
+
 * Mon Mar 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.46-1
 - new-kernel-pkg: add necessary bits for s390, some logic cleanups
 - grubby: fix root detection for s390{,x}

@@ -23,7 +23,7 @@
 PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.4.46
+VERSION=3.4.47
 
 compress=1
 target=""
@@ -550,22 +550,19 @@ echo "" >> $RCFILE
 
 for MODULE in $MODULES; do
     text=""
-    module=`echo $MODULE | sed "s|.*/||"`
+    module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
+    fullmodule=`echo $MODULE | sed "s|.*/||"`
 
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
-    if [ "$module" = "dasd_mod" ]; then
-        options=$(cat /proc/cmdline | grep "dasd=" && options="$options `cat /proc/cmdline | sed 's/.*\(dasd=.*\).*/\1/'`")
-    fi
- 
     if [ -n "$verbose" ]; then
 	if [ -n "$options" ]; then
 	    text=" with options $options"
 	fi
         echo "Loading module $module$text"
     fi
-    echo "echo \"Loading $module module\"" >> $RCFILE
-    echo "insmod /lib/$module $options" >> $RCFILE
+    echo "echo \"Loading $fullmodule module\"" >> $RCFILE
+    echo "insmod /lib/$fullmodule $options" >> $RCFILE
 
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
