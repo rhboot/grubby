@@ -1926,7 +1926,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		 char * newKernelArgs, char * newKernelInitrd,
                  char * newMBKernel, char * newMBKernelArgs) {
     struct singleEntry * new;
-    struct singleLine * newLine = NULL, * tmplLine, * lastLine;
+    struct singleLine * newLine = NULL, * tmplLine = NULL, * lastLine = NULL;
     int needs;
     char * indent = NULL;
     char * rootspec = NULL;
