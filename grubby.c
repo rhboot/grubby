@@ -816,9 +816,10 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 
     indexVar = strtol(kernel, &chptr, 10);
     if (!*chptr) {
-	if (*index && *index > indexVar) return NULL;
+	if (index && *index > indexVar) return NULL;
 
 	entry = findEntryByIndex(config, indexVar);
+	if (!entry) return NULL;
 
 	line = entry->lines;
 	while (line && line->type != LT_KERNEL)
