@@ -55,6 +55,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Jul 17 2002 Erik Troan <ewt@redhat.com>
+- do proper probing to check root=LABEL
+- --bootloader-probe didn't support /etc/sysconfig/grub
+
 * Fri Jul 12 2002 Erik Troan <ewt@redhat.com>
 - don't sanity check root=LABEL right now; probing might make sense?
 
