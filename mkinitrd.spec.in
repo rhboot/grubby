@@ -55,6 +55,9 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Wed Nov  6 2002 Jeremy Katz <katzj@redhat.com>
+- grubby: don't bail when looking for root in appends of lilo-style configs
+
 * Thu Sep 26 2002 Nalin Dahyabhai <nalin@redhat.com>
 - fix some syntax errors
 - use grep's -q flag to save a redirect in places where we're not redirecting
