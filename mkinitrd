@@ -289,7 +289,7 @@ if echo $rootdev | cut -d/ -f3 | grep loop >/dev/null; then
 	
 fi
 
-rootfs=$(awk '{ if ($2 == "/") { print $3; }}' $fstab)
+rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
 
 # in case the root filesystem is modular
 findmodule -${rootfs}
