@@ -1230,6 +1230,16 @@ int mkDMNodCommand(char * cmd, char * end) {
         return 1;
     }
 
+    if (!access("/dev/mapper/control", R_OK)) {
+        struct stat sb;
+        if (stat("/dev/mapper/control", &sb) == 0) {
+            if (S_ISCHR(sb.st_mode) && (sb.st_rdev == makedev(major, minor)))
+                return 0;
+        } 
+
+        unlink("/dev/mapper/control");
+    }
+
     if (smartmknod("/dev/mapper/control", S_IFCHR | 0600, 
                    makedev(major, minor))) {
         printf("failed to create /dev/mapper/control\n");
