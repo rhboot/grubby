@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Aug 19 2004 Jeremy Katz <katzj@redhat.com> - 4.1.1-1
+- don't remove lost+found (#130327)
+
 * Tue Aug 17 2004 Jeremy Katz <katzj@redhat.com> - 4.1.0-1
 - mkinitrd: if using udev for the initrd, set things up appropriately 
   (based on patches from Harald Hoyer and Thomas Woerner)

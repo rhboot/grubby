@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.1.0
+VERSION=4.1.1
 
 compress=1
 allowmissing=""
@@ -553,6 +553,9 @@ if [ -z "$initramfs" ]; then
 	echo "Can't get a loopback device"
 	exit 1
   }
+
+  # We don't need this directory, so let's save space
+  rmdir $MNTPOINT/lost+found >/dev/null 2>&1
 fi
 
 mkdir -p $MNTIMAGE
@@ -565,9 +568,6 @@ mkdir -p $MNTIMAGE/proc
 mkdir -p $MNTIMAGE/sys
 mkdir -p $MNTIMAGE/sysroot
 ln -s bin $MNTIMAGE/sbin
-
-# We don't need this directory, so let's save space
-rmdir $MNTPOINT/lost+found >/dev/null 2>&1
 
 inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
