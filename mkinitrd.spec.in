@@ -58,9 +58,17 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
-* Fri Jun 14 2002 Erik Troan <ewt@redhat.com>
+* Sun Jun 23 2002 Erik Troan <ewt@redhat.com>
 - added loadinitrd (used by mkbootdisk) on ia32 and sparc
 - modules "off" and "null" should be ignored (67086)
+- mkrootdev looks for root=LABEL=/ in /proc/cmdline, so root by label
+  works again (fully determined by root= kernel parameter)
+- added --update-kernel and --remove-args arguments to grubby
+- kernel specification of ALL supported by grubby
+- DEFAULT accepted much more consistently
+- grubby --info displays info on all kernels specified, not just the first
+- ext3 need mbcache now (67354)
+- grubby allows config file entry numbers to be used as kernel paths
 
 * Thu Jun 13 2002 Jeremy Katz <katzj@redhat.com>
 - don't run lilo twice on kernel removal in new-kernel-pkg
