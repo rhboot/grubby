@@ -1,7 +1,7 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
-Release: 2
+Release: 1
 License: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
@@ -60,6 +60,14 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Jun 10 2003 Jeremy Katz <katzj@redhat.com> 3.5.0-1
+- mkinitrd: add patch from gc@mandrakesoft.com to determine module 
+  deps from modules.dep (#87873)
+- tweak patch to not break weird cases where module deps aren't all 
+  you need :/
+- grubby: don't remove the last kernel (#60041)
+- mkinitrd: use modprobe -c to find module options (#89794)
+
 * Tue May 20 2003 Matt Wilson <msw@redhat.com> 3.4.52-1
 - use addSystemMap to build the image for iSeries (#91187)
 
@@ -68,6 +76,7 @@ rm -rf $RPM_BUILD_ROOT
 - mkinitrd: copy parent dirs for pvs (#88962)
 - mkinitrd: exit with an exit status if tar fails (#90123)
 - new-kernel-pkg: only use the first entry for / (#90155)
+- grubby: fix a buffer overflow  (#90444)
 
 * Wed Apr 30 2003 Jeremy Katz <katzj@redhat.com> 3.4.50-1
 - fix typo in new-kernel-pkg for iSeries
