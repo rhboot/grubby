@@ -48,6 +48,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/installkernel
 
 %changelog
+* Mon Aug 27 2001 Jeremy Katz <katzj@redhat.com>
+- more grubby fixups for having a /boot
+- grubby --new-default=kver to add new kernel image with version kver to
+  the grub.conf
+
 * Sun Aug 26 2001 Erik Troan <ewt@redhat.com>
 - added grubby
 - added installkernel
