@@ -156,7 +156,7 @@ char * getArg(char * cmd, char * end, char ** arg) {
 /* get the contents of the kernel command line from /proc/cmdline */
 static char * getKernelCmdLine(void) {
     int fd, i;
-    char buf[1024];
+    char * buf = malloc(1024);
 
     fd = open("/proc/cmdline", O_RDONLY, 0);
     if (fd < 0) {
@@ -180,9 +180,9 @@ static char * getKernelCmdLine(void) {
  * (useful for things like getting the args to init=).  so if you only
  * want one arg, you need to terminate it at the n */
 static char * getKernelArg(char * arg) {
-    char * start;
+    char * start, * cmdline;
 
-    start = getKernelCmdLine();
+    cmdline = start = getKernelCmdLine();
     while (*start) {
 	if (isspace(*start)) {
 	    start++;
@@ -195,6 +195,7 @@ static char * getKernelArg(char * arg) {
 	    ;
     }
 
+    free(cmdline);
     return NULL;
 }
 
@@ -677,6 +678,7 @@ int switchrootCommand(char * cmd, char * end) {
             initargs[i] = start;
             start = chptr;
         }
+        free(cmdline);
     }
 
     execv(initargs[0], initargs);

@@ -60,6 +60,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Aug 11 2004 Jeremy Katz <katzj@redhat.com> - 4.0.4-1
+- nash: fix mounting by label in some cases (tracked down by 
+  Erik Jacobson, #129581, #129673, #129667, #129635)
+
 * Tue Aug 10 2004 Jeremy Katz <katzj@redhat.com>  4.0.3-1
 - grubby: more (hd0,0) support (#125156)
 - mkinitrd.8: update manpage (#129585)
