@@ -61,6 +61,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Mar 15 2005 Peter Jones <pjones@redhat.com - 4.2.1.2-1
+- Fix clustered volume group locking in the initrd during vgscan/vgchange,
+  and only activate the volume group / lives on (#151172)
+
 * Mon Mar 14 2005 Peter Jones <pjones@redhat.com - 4.2.1.1-1
 - Make getArg return NULL on cmd=NULL, fixing #144472 .  Based on a
   patch from Kasper Dupont.

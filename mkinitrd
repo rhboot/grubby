@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.1.1
+VERSION=4.2.1.2
 
 compress=1
 allowmissing=""
@@ -484,6 +484,7 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     basicmodules="$basicmodules -${loopFs}"
 # check if the root fs is on a logical volume
 elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
+    root_vg=$(echo $rootdev | cut -d/ -f3)
     rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
     major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
     [ "$major" != "58" ] || root_lvm=1
@@ -725,9 +726,9 @@ elif [ -n "$root_lvm" ]; then
     echo "echo Making device-mapper control node" >> $RCFILE
     echo "mkdmnod" >> $RCFILE
     echo "echo Scanning logical volumes" >> $RCFILE
-    echo "lvm vgscan" >> $RCFILE
+    echo "lvm vgscan --ignorelockingfailure" >> $RCFILE
     echo "echo Activating logical volumes" >> $RCFILE
-    echo "lvm vgchange -ay" >> $RCFILE
+    echo "lvm vgchange -ay --ignorelockingfailure $root_vg" >> $RCFILE
     echo "echo Making device nodes" >> $RCFILE
     echo "lvm vgmknodes" >> $RCFILE
   fi
