@@ -149,6 +149,11 @@ liloTest lilo.4 add/l4.1 --add-kernel=/boot/new-kernel.img --title="title" \
     --copy-default --boot-filesystem=/boot
 liloTest lilo.4 add/l4.2 --add-kernel=/boot/new-kernel.img --title="linux" \
     --copy-default --boot-filesystem=/boot --remove-kernel "TITLE=linux"
+liloTest lilo.5 add/l5.1 --add-kernel=/boot/new-kernel.img --title="title" \
+    --copy-default --boot-filesystem=/boot
+liloTest lilo.5 add/l5.2 --add-kernel=/boot/new-kernel.img --title="linux" \
+    --copy-default --boot-filesystem=/boot --remove-kernel "TITLE=linux"
+
 
 echo "GRUB add kernel..."
 grubTest grub.1 add/g1.1 --add-kernel=/boot/new-kernel.img --title='title' \
