@@ -22,8 +22,10 @@ fi
 
 if [ $(uname -m) == ia64 ]; then
     liloConfig=/boot/efi/redhat/elilo.conf
+    bootPrefix=/boot/efi/redhat
 else
     liloConfig=/etc/lilo.conf
+    bootPrefix=/boot
 fi
 
 mode=""
@@ -43,7 +45,7 @@ usage() {
 
 install() {
     # XXX kernel should be able to be specified also (or work right on ia64)
-    if [ ! -f /boot/vmlinuz-$version ] ; then
+    if [ ! -f $bootPrefix/vmlinuz-$version ] ; then
 	[ -n "$verbose" ] && echo "kernel for $version does not exist, not running grubby"
 	return
     fi
@@ -71,7 +73,7 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
 
 	title="Red Hat Linux ($version)"
-	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD    \
+	/sbin/grubby --add-kernel=$bootPrefix/vmlinuz-$version $INITRD    \
 		     --copy-default --title "$title"		    \
 		     --args="root=$rootdevice"			    \
 		     --remove-kernel="TITLE=$title"
@@ -82,7 +84,7 @@ install() {
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $liloConfig"
 
-	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD    \
+	/sbin/grubby --add-kernel=$bootPrefix/vmlinuz-$version $INITRD    \
 		     --copy-default --title $version		    \
 		     --args="root=$rootdevice"			    \
 		     --remove-kernel="TITLE=$version"		    \
@@ -101,14 +103,14 @@ install() {
 remove() {
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
-	/sbin/grubby --remove-kernel=/boot/vmlinuz-$version
+	/sbin/grubby --remove-kernel=$bootPrefix/vmlinuz-$version
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
 
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $liloConfig"
-	/sbin/grubby --remove-kernel=/boot/vmlinuz-$version	    \
+	/sbin/grubby --remove-kernel=$bootPrefix/vmlinuz-$version	    \
 		     --lilo
 
 	if [ -n "$runLilo" ]; then 
