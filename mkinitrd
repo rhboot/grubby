@@ -381,8 +381,9 @@ if [ -z "$noraid" ]; then
     # load appropriate raid devices if necessary, this means that the
     # /etc/raidtab *must* be up to date for raided root to work.
     #if grep '^/dev/md' $fstab | grep -v noauto >/dev/null 2>&1 ; then
-	for number in $(grep '^[	]*raid-level' /etc/raidtab 2>/dev/null |
-			  awk '{print $2}' | LC_ALL=C sort -u) ; do
+	# note that this grep below contains a space and a tab
+	for number in $(grep '^[	 ]*raid-level' /etc/raidtab 
+		  2>/dev/null | awk '{print $2}' | LC_ALL=C sort -u) ; do
 	    case $number in
 	    linear)
 		findmodule -md
