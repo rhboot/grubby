@@ -914,6 +914,11 @@ int mkrootdevCommand(char * cmd, char * end) {
 	*chptr = '\0';
     }
 
+    if (root && !access(root, R_OK)) {
+        if (!symlink(root, "/dev/root"))
+            return 0;
+    }
+
     if (root && !strncmp(root, "LABEL=", 6)) {
 	if (get_spec_by_volume_label(root + 6, &major, &minor)) {
 	    if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {

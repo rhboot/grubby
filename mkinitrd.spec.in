@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Sep 30 2004 Jeremy Katz <katzj@redhat.com> - 4.1.14-1
+- support changing root on the kernel command line with lvm (#133236)
+
 * Wed Sep 22 2004 Jeremy Katz <katzj@redhat.com> - 4.1.12-1
 - update to work with udev 032, conflict with old udev
 - if udev is present, use it.  trying to avoid the use of udev if it's 
