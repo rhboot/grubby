@@ -5,7 +5,7 @@ ARCH := $(patsubst sparc%,sparc,$(ARCH))
 ARCH := $(patsubst ppc%,ppc,$(ARCH))
 
 CFLAGS = -Wall -g $(RPM_OPT_FLAGS) -DVERSION=\"$(VERSION)\"
-LDFLAGS = -ggdb
+LDFLAGS = -g
 
 ifneq (,$(filter ppc64 x86_64 s390x,$(ARCH)))
 LOADLIBES = /usr/lib64/libpopt.a
