@@ -271,29 +271,34 @@ eliloTest lilo.7 longtitle/e7.1 --add-kernel=/boot/new-kernel.img \
 
 echo "GRUB add multiboot..."
 grubTest grub.1 multiboot/g1.1 --add-multiboot=/boot/xen.gz \
-    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 --boot-filesystem=/boot \
     --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
     --mbargs="dom0_mem=130000"
 grubTest grub.1 multiboot/g1.2 --add-multiboot=/boot/xen.gz \
-    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 --boot-filesystem=/boot \
     --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
     --mbargs="dom0_mem=130000" --copy-default
 grubTest grub.10 multiboot/g10.1 --add-multiboot=/boot/xen.gz \
-    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 --boot-filesystem=/boot \
     --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
     --mbargs="dom0_mem=130000"
 grubTest grub.10 multiboot/g10.2 --add-multiboot=/boot/xen.gz \
-    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 --boot-filesystem=/boot \
     --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
     --mbargs="dom0_mem=130000" --copy-default
 grubTest grub.10 multiboot/g10.3 --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
-    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo --copy-default
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
+    --copy-default --boot-filesystem=/boot
 grubTest grub.10 multiboot/g10.4 --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
-    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
+    --boot-filesystem=/boot
 
 echo "GRUB remove multiboot..."
-grubTest grub.10 multiboot/g10.5 --remove-kernel=/boot/vmlinuz-2.6.10-1.1076_FC4
-grubTest grub.10 multiboot/g10.6 --remove-kernel=/boot/vmlinuz-2.6.10-1.1082_FC4
-grubTest grub.10 multiboot/g10.7 --remove-multiboot=/boot/xen.gz
+grubTest grub.10 multiboot/g10.5 --boot-filesystem=/boot \
+    --remove-kernel=/boot/vmlinuz-2.6.10-1.1076_FC4
+grubTest grub.10 multiboot/g10.6 --boot-filesystem=/boot \
+    --remove-kernel=/boot/vmlinuz-2.6.10-1.1082_FC4
+grubTest grub.10 multiboot/g10.7 --boot-filesystem=/boot \
+    --remove-multiboot=/boot/xen.gz
 
 exit $RESULT
