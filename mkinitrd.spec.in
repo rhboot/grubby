@@ -8,7 +8,7 @@ Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm2
-Requires: filesystem >= 2.1.0
+Requires: filesystem >= 2.1.0, cpio
 Conflicts: udev < 0:032
 BuildRequires: popt
 %ifarch i386
@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Sun Oct 24 2004 Jeremy Katz <katzj@redhat.com> - VERSIONSUBST-1
+- require cpio (#136814)
+
 * Sun Oct 17 2004 Jeremy Katz <katzj@redhat.com> - 4.1.18-1
 - fix UPDATEDEFAULT with new-kernel-pkg (#135997)
 
