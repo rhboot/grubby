@@ -118,7 +118,7 @@ struct keywordTypes liloKeywords[] = {
 
 struct configFileInfo liloConfigType = {
 #ifdef __ia64__
-    "/boot/efi/redhat/elilo.conf",		    /* defaultConfig */
+    "/boot/efi/EFI/redhat/elilo.conf",		    /* defaultConfig */
 #else
     "/etc/lilo.conf",			    /* defaultConfig */
 #endif
@@ -855,7 +855,7 @@ char * findBootPrefix(void) {
 
     stat("/", &sb);
 #ifdef __ia64__
-    stat("/boot/efi/redhat/", &sb2);
+    stat("/boot/efi/EFI/redhat/", &sb2);
 #else
     stat("/boot", &sb2);
 #endif
@@ -864,7 +864,7 @@ char * findBootPrefix(void) {
 	return strdup("");
 
 #ifdef __ia64__
-    return strdup("/boot/efi/redhat/");
+    return strdup("/boot/efi/EFI/redhat/");
 #else
     return strdup("/boot");
 #endif
