@@ -6,7 +6,7 @@ Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm
 Requires: filesystem >= 2.1.0
 BuildRoot: %{_tmppath}/%{name}-root
 
@@ -52,6 +52,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri Feb  1 2002 Jeremy Katz <katzj@redhat.com>
+- require lvm
+
 * Thu Jan 31 2002 Jeremy Katz <katzj@redhat.com>
 - clean up warnings for when /proc isn't mounted
 
