@@ -60,10 +60,13 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Mon Jan 10 2005 Peter Jones <pjones@redhat.com> - 3.5.13.2-1
+* Mon Apr  4 2005 Peter Jones <pjones@redhat.com> - 3.5.13.4-1
+- Don't consolidate duplicates in "--args"
+
+* Mon Jan 10 2005 Peter Jones <pjones@redhat.com> - 3.5.13.3-1
 - handle multipath correctly (#123079)
 
-* Wed Nov  3 2004 Jeremy Katz <katzj@redhat.com>
+* Wed Nov  3 2004 Jeremy Katz <katzj@redhat.com> - 3.5.13.2-1
 - handle machines with lots of disks in /proc/partitions (#137816)
 
 * Mon Feb  9 2004 Jeremy Katz <katzj@redhat.com> - 3.5.13.1-1
