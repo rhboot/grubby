@@ -324,7 +324,6 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 
 	    if (!pathEnd) pathEnd = pathStart + strlen(pathStart);
 
-	    strncpy(fullPath, pathStart, pathEnd - pathStart);
 	    fullPath[pathEnd - pathStart] = '/';
 	    strcpy(fullPath + (pathEnd - pathStart + 1), bin); 
 
@@ -578,10 +577,12 @@ int umountCommand(char * cmd, char * end) {
 
 int mkrootdevCommand(char * cmd, char * end) {
     char * path;
+    char * start, * chptr;
     unsigned int devNum = 0;
     int fd;
     int i;
     char buf[1024];
+    int major, minor;
 
     if (!(cmd = getArg(cmd, end, &path))) {
 	printf("mkrootdev: path expected\n");
@@ -590,6 +591,50 @@ int mkrootdevCommand(char * cmd, char * end) {
 
     if (cmd < end) {
 	printf("mkrootdev: unexpected arguments\n");
+	return 1;
+    }
+
+    fd = open("/tmp/cmdline", O_RDONLY, 0);
+    if (fd < 0) {
+	printf("mkrootdev: failed to open /proc/cmdline: %d\n", errno);
+	return 1;
+    }
+
+    i = read(fd, buf, sizeof(buf));
+    if (i < 0) {
+	printf("mkrootdev: failed to read /proc/cmdline: %d\n", errno);
+	close(fd);
+	return 1;
+    }
+
+    close(fd);
+    buf[i - 1] = '\0';
+
+    start = buf;
+    while (*start && isspace(*start)) start++;
+    while (*start && strncmp(start, "root=", 5)) {
+	while (*start && !isspace(*start)) start++;
+	while (*start && isspace(*start)) start++;
+    }
+
+    start += 5;
+    chptr = start;
+    while (*chptr && !isspace(*chptr)) chptr++;
+    *chptr = '\0';
+
+    if (!strncmp(start, "LABEL=", 6)) {
+	if (get_spec_by_volume_label(start + 6, &major, &minor)) {
+	    if (mknod(path, S_IFBLK | 0600, makedev(major, minor))) {
+		printf("mount: cannot create device %s (%d,%d)\n",
+		       path, major, minor);
+		return 1;
+	    }
+
+	    return 0;
+	}
+
+	printf("mkrootdev: label %s not found\n", start + 6);
+
 	return 1;
     }
 

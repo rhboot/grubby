@@ -59,8 +59,12 @@ standard \fBmkdir\fR \fI-p\fR behavior.
 
 .TP
 \fBmkrootdev \fIpath\fR
-Makes \fIpath\fR a block inode for the device whose device number is
-/proc/sys/kernel/real-root-dev.
+Makes \fIpath\fR a block inode for the device which should be mounted
+as root. To determine this device nash uses 
+the device suggested by the root= kernel command line argument (if
+root=LABEL is used devices are probed to find one with that label). If
+no root= argument is available, /proc/sys/kernel/real-root-dev provides
+the device number.
 
 .TP
 \fBmount \fI[--ro]\fR -o \fIopts\fR -t \fItype\fR \fIdevice\fR \fImntpoint\fR
