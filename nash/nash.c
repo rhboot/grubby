@@ -119,7 +119,7 @@ int smartmknod(char * device, mode_t mode, dev_t dev) {
 char * getArg(char * cmd, char * end, char ** arg) {
     char quote = '\0';
 
-    if (cmd >= end) return NULL;
+    if (!cmd || cmd >= end) return NULL;
 
     while (isspace(*cmd) && cmd < end) cmd++;
     if (cmd >= end) return NULL;
