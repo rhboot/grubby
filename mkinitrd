@@ -217,7 +217,6 @@ if [ -n "$ide" ]; then
     findmodule -ide-mod
     findmodule -ide-probe-mod
     findmodule -ide-disk
-    findmodule -ide-cd
 fi
 
 if [ -z "$noraid" ]; then
