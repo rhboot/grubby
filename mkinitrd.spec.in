@@ -52,6 +52,10 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Tue Feb  5 2002 Bill Nottingham <notting@redhat.com>
+- run mkinitrd with -f in new-kernel-pkg
+- don't run lilo in /sbin/installkernel
+
 * Fri Feb  1 2002 Jeremy Katz <katzj@redhat.com>
 - require lvm
 
