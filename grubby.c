@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <mntent.h>
 #include <popt.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -251,6 +252,33 @@ static char * strndup(char * from, int len) {
     to[len] = '\0';
 
     return to;
+}
+
+static char * sdupprintf(const char *format, ...) {
+    char *buf = NULL;
+    char c;
+    va_list args;
+    size_t size = 0;
+
+    va_start(args, format);
+    
+    /* XXX requires C99 vsnprintf behavior */
+    size = vsnprintf(&c, 1, format, args) + 1;
+    if (size == -1) {
+	printf("ERROR: vsnprintf behavior is not C99\n");
+	abort();
+    }
+
+    va_end(args);
+    va_start(args, format);
+
+    buf = malloc(size);
+    if (buf == NULL)
+	return NULL;
+    vsnprintf(buf, size, format, args);
+    va_end (args);
+
+    return buf;
 }
 
 static int isBracketedTitle(struct singleLine * line) {
@@ -1808,6 +1836,17 @@ int checkForGrub(struct grubConfig * config) {
     return checkDeviceBootloader(boot, bootSect);
 }
 
+static char * getRootSpecifier(char * str) {
+    char * idx, * rootspec = NULL;
+
+    if (*str == '(') {
+        idx = rootspec = strdup(str);
+        while(*idx && (*idx != ')') && (!isspace(*idx))) idx++;
+        *(++idx) = '\0';
+    }
+    return rootspec;
+}
+
 int addNewKernel(struct grubConfig * config, struct singleEntry * template, 
 	         const char * prefix,
 		 char * newKernelPath, char * newKernelTitle,
@@ -1816,6 +1855,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
     struct singleLine * newLine, * tmplLine;
     int needs;
     char * indent = NULL;
+    char * rootspec = NULL;
     char * chptr;
     int i;
     enum lineType_e type;
@@ -1886,14 +1926,30 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	    if (tmplLine->type == LT_KERNEL && tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_KERNEL;
 		free(newLine->elements[1].item);
-		newLine->elements[1].item = strdup(newKernelPath + 
-						    strlen(prefix));
+                rootspec = getRootSpecifier(tmplLine->elements[1].item);
+                if (rootspec != NULL) {
+                    newLine->elements[1].item = sdupprintf("%s%s",
+                                                           rootspec,
+                                                           newKernelPath + 
+                                                           strlen(prefix));
+                } else {
+                    newLine->elements[1].item = strdup(newKernelPath + 
+                                                       strlen(prefix));
+                }
 	    } else if (tmplLine->type == LT_INITRD && 
 			    tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_INITRD;
 		free(newLine->elements[1].item);
-		newLine->elements[1].item = strdup(newKernelInitrd + 
-						    strlen(prefix));
+                rootspec = getRootSpecifier(tmplLine->elements[1].item);
+                if (rootspec != NULL) {
+                    newLine->elements[1].item = sdupprintf("%s%s",
+                                                           rootspec,
+                                                           newKernelInitrd + 
+                                                           strlen(prefix));
+                } else {
+                    newLine->elements[1].item = strdup(newKernelInitrd + 
+                                                       strlen(prefix));
+                }
 	    } else if (tmplLine->type == LT_TITLE && 
 			    tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_TITLE;

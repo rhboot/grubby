@@ -240,6 +240,8 @@ grubTest grub.2 add/g2.1 --add-kernel=/boot/vmlinuz-2.4.7-2	    \
     --initrd=/boot/initrd-2.4.7-new.img --boot-filesystem=/boot --copy-default \
     --title="Red Hat Linux (2.4.7-2)"					    \
     --remove-kernel="TITLE=Red Hat Linux (2.4.7-2)" 
+grubTest grub.8 add/g8.1 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default
 
 echo "YABOOT add kernel..."
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
