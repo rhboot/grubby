@@ -1,12 +1,12 @@
 /*
  * nash.c
  * 
- * Simple code to load modules, mount root, and get things going. It's designed
- * not to be linked against libc, which keeps it small.
+ * Simple code to load modules, mount root, and get things going. Uses
+ * dietlibc to keep things small.
  *
  * Erik Troan (ewt@redhat.com)
  *
- * Copyright 2001 Red Hat Software 
+ * Copyright 2002 Red Hat Software 
  *
  * This software may be freely redistributed under the terms of the GNU
  * public license.
@@ -653,6 +653,33 @@ int findCommand(char * cmd, char * end) {
     return doFind(dir, name);
 }
 
+int findlodevCommand(char * cmd, char * end) {
+    char devName[20];
+    int devNum;
+    int fd;
+    struct loop_info loopInfo;
+
+    if (*end != '\n') {
+	printf("usage: findlodev\n");
+	return 1;
+    }
+
+    for (devNum = 0; devNum < 256; devNum++) {
+	sprintf(devName, "/dev/loop%d", devNum);
+	if ((fd = open(devName, O_RDONLY)) < 0) return 0;
+
+	if (ioctl(fd, LOOP_GET_STATUS, &loopInfo)) {
+	    close(fd);
+	    printf("%s\n", devName);
+	    return 0;
+	}
+
+	close(fd);
+    }
+
+    return 0;
+}
+
 int runStartup(int fd) {
     char contents[32768];
     int i;
@@ -721,6 +748,8 @@ int runStartup(int fd) {
 	    rc = accessCommand(chptr, end);
 	else if (!strncmp(start, "find", MAX(4, chptr - start)))
 	    rc = findCommand(chptr, end);
+	else if (!strncmp(start, "findlodev", MAX(7, chptr - start)))
+	    rc = findlodevCommand(chptr, end);
 	else {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);
