@@ -53,6 +53,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Wed Apr 10 2002 Jeremy Katz <katzj@redhat.com>
+- revert to not mounting by label
+
 * Fri Apr  5 2002 Jeremy Katz <katzj@redhat.com>
 - include pbrown's changes to load parport_pc when needing ppa.o (#35360)
 

@@ -23,7 +23,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.3.8
+VERSION=3.3.9
 
 compress=1
 target=""
@@ -505,7 +505,7 @@ elif [ -n "$root_lvm" ]; then
     echo "vgscan" >> $RCFILE
     echo "echo Activating logical volumes" >> $RCFILE
     echo "vgchange -ay" >> $RCFILE
-elif [ $(echo $rootdev | cut -c1-6) != LABEL= ]; then
+else
     echo "echo Creating root device" >> $RCFILE
     echo "mkrootdev /dev/root" >> $RCFILE
     rootdev=/dev/root
