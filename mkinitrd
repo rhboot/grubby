@@ -413,12 +413,16 @@ echo "#!/bin/nash" > $RCFILE
 echo "" >> $RCFILE
 
 for MODULE in $MODULES; do
+    text=""
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
 
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
     if [ -n "$verbose" ]; then
-        echo "Loading module $module with options $options"
+	if [ -n "$options" ]; then
+	    text=" with options $options"
+	fi
+        echo "Loading module $module$text"
     fi
     echo "echo \"Loading $module module\"" >> $RCFILE
     echo "insmod /lib/$module.o $options" >> $RCFILE
