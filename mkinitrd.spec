@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
+* Wed Dec 20 2000 Erik Troan <ewt@redhat.com>
+- let the kernel autoload ide-cd
+
 * Fri Dec 08 2000 Erik Troan <ewt@redhat.com>
 - added modular ide support
 
