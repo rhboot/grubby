@@ -520,9 +520,9 @@ done
 
 # FIXME -- this won't work if you're using devfs
 if [ -n "$root_lvm" ]; then
-    pvs=$(/sbin/lvmdiskscan |grep "0x8E" | /bin/awk {'print $3;'})
+    pvs=$(/sbin/pvscan | grep " PV " | /bin/awk {'print $5;'} |sed 's/"//g')
     for pv in $pvs; do
-	cp --parents -a $pv $MNTIMAGE/
+	cp $verbose --parents -a $pv $MNTIMAGE/
     done
 
     inst /sbin/vgwrapper "$MNTIMAGE/bin/vgwrapper"
