@@ -278,6 +278,8 @@ if echo $rootdev | cut -d/ -f3 | grep loop >/dev/null; then
 	
 fi
 
+rootfs=$(awk '{ if ($2 == "/") { print $3; }}' $fstab)
+
 for n in $basicmodules; do 
     findmodule $n
 done
@@ -344,6 +346,8 @@ mkdir -p $MNTIMAGE/sbin
 mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
 mkdir -p $MNTIMAGE/loopfs
+mkdir -p $MNTIMAGE/proc
+mkdir -p $MNTIMAGE/sysroot
 ln -s bin $MNTIMAGE/sbin
 
 # We don't need this directory, so let's save space
@@ -382,6 +386,8 @@ for MODULE in $MODULES; do
     echo "insmod /lib/$module.o $options" >> $RCFILE
 done
 
+echo "mount -t proc /proc /proc" >> $RCFILE
+
 if [ -n "$loopDev" ]; then
     if [ ! -d /initrd ]; then
 	mkdir /initrd
@@ -393,7 +399,20 @@ if [ -n "$loopDev" ]; then
     echo "mount -t $loopFs $loopDev /loopfs" >> $RCFILE
     echo "echo Setting up loopback device $rootdev" >> $RCFILE
     echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
+else
+    echo "echo Mounting /proc filesystem" >> $RCFILE
+    echo "echo Creating root device" >> $RCFILE
+    echo "mkrootdev /dev/root" >> $RCFILE
+    rootdev=/dev/root
 fi
+
+echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
+echo "umount /proc" >> $RCFILE
+
+echo "echo Mounting root filesystem" >> $RCFILE
+echo "mount --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
+echo "exec /sbin/cleaninitrd" >> $RCFILE
 
 if [ -n "$startraid" ]; then
     cp -a /dev/md0 $MNTIMAGE/dev
