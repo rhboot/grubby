@@ -6,7 +6,7 @@ Release: 1
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
-ExclusiveArch: i386 sparc sparc64 ia64 alpha
+ExclusiveArch: i386 sparc sparc64 ia64 alpha ppc
 ExclusiveOs: Linux
 Requires: sash >= 3.4, e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mkinitrd
 BuildRoot: %{_tmppath}/%{name}-root
