@@ -12,8 +12,13 @@
 PATH=/sbin:/bin:$PATH
 
 grubConfig=/boot/grub/grub.conf
-grubby=/sbin/grubby
 lilo=/sbin/lilo
+
+if [ -x ./grubby ]; then
+    grubby=./grubby
+else
+    grubby=/sbin/grubby
+fi
 
 if [ $(uname -m) == ia64 ]; then
     liloConfig=/boot/efi/elilo.conf
@@ -49,11 +54,27 @@ install() {
 	INITRD="--initrd $initrdfile"
     fi
 
+    # get the root filesystem to use; if it's on a label make sure it's
+    # been configured. if not, get the root device from mount
+    rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' $fstab)
+    short=$(echo $rootdevice | cut -d= -f1)
+    if [ $short == "LABEL" ]; then
+	label=$(echo $rootdevice | cut -d= -f2)
+	rootdevice=$(echo "showlabels" | /sbin/nash  --force --quiet | 
+			awk '$2 == "'$label'" {print $1}'
+	if [ -z "$rootdevice" ]; then
+	    rootdevice=$(mount | awk '$3 == "/" { print $1 }')
+	fi
+    fi
+
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
 
-	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD \
-		     --copy-default --title "Red Hat Linux ($version)"
+	title="Red Hat Linux ($version)"
+	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD    \
+		     --copy-default --title "$title"		    \
+		     --args="root=$rootdevice"			    \
+		     --remove-kernel="TITLE=$title"
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
@@ -61,8 +82,10 @@ install() {
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $liloConfig"
 
-	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD \
-		     --copy-default --title $version \
+	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD    \
+		     --copy-default --title $version		    \
+		     --args="root=$rootdevice"			    \
+		     --remove-kernel="TITLE=$version"		    \
 		     --lilo
 
 	if [ -n "$runLilo" ]; then 
@@ -99,7 +122,7 @@ remove() {
 
 mkinitrd() {
     [ -n "$verbose" ] && echo "creating initrd $initrdfile using $version"
-    /sbin/mkinitrd --ifneeded -f $initrdfile $version
+    /sbin/mkinitrd -f $initrdfile $version
     rc=$?
     if [ $rc != 0 ]; then
 	echo "mkinitrd failed" >2
