@@ -59,6 +59,12 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Fri Jan 31 2003 <ewt@redhat.com>
+- added support for yaboot
+- test script runs tests for all platforms
+- separated elilo configuration from lilo mode, allowing elilo specific
+  tests to be run on any platform
+
 * Sun Jan 26 2003 <ewt@redhat.com>
 - grubby now shortens lilo titles to ensure they are less then 16 characters
   long (76236)

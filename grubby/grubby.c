@@ -105,6 +105,22 @@ struct configFileInfo grubConfigType = {
     0,					    /* maxTitleLength */
 };
 
+struct keywordTypes yabootKeywords[] = {
+    { "label",	    LT_TITLE,	    '=' },
+    { "root",	    LT_ROOT,	    '=' },
+    { "default",    LT_DEFAULT,	    '=' },
+    { "image",	    LT_KERNEL,	    '=' },
+    { "bsd",	    LT_OTHER,	    '=' },
+    { "macos",	    LT_OTHER,	    '=' },
+    { "macosx",	    LT_OTHER,	    '=' },
+    { "darwin",	    LT_OTHER,	    '=' },
+    { "initrd",	    LT_INITRD,	    '=' },
+    { "append",	    LT_KERNELARGS,  '=' },
+    { "boot",	    LT_BOOT,	    '=' },
+    { "lba",	    LT_LBA,	    ' ' },
+    { NULL,	    0 },
+};
+
 struct keywordTypes liloKeywords[] = {
     { "label",	    LT_TITLE,	    '=' },
     { "root",	    LT_ROOT,	    '=' },
@@ -118,9 +134,8 @@ struct keywordTypes liloKeywords[] = {
     { NULL,	    0 },
 };
 
-#ifdef __ia64__
-struct configFileInfo liloConfigType = {
-    "/boot/efi/EFI/redhat/elilo.conf",		    /* defaultConfig */
+struct configFileInfo eliloConfigType = {
+    "/boot/efi/EFI/redhat/elilo.conf",	    /* defaultConfig */
     liloKeywords,			    /* keywords */
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
@@ -129,7 +144,7 @@ struct configFileInfo liloConfigType = {
     1,					    /* argsInQuotes */
     0,					    /* maxTitleLength */
 };
-#else
+
 struct configFileInfo liloConfigType = {
     "/etc/lilo.conf",			    /* defaultConfig */
     liloKeywords,			    /* keywords */
@@ -140,7 +155,17 @@ struct configFileInfo liloConfigType = {
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
 };
-#endif
+
+struct configFileInfo yabootConfigType = {
+    "/etc/yaboot.conf",			    /* defaultConfig */
+    yabootKeywords,			    /* keywords */
+    0,					    /* defaultIsIndex */
+    0,					    /* defaultSupportSaved */
+    LT_KERNEL,				    /* entrySeparator */
+    0,					    /* needsBootPrefix */
+    1,					    /* argsInQuotes */
+    15,					    /* maxTitleLength */
+};
 
 struct grubConfig {
     struct singleLine * theLines;
@@ -1777,8 +1802,8 @@ int main(int argc, const char ** argv) {
     int arg;
     int flags = 0;
     int badImageOkay = 0;
-    int configureLilo = 0;
-    int configureGrub = 0;
+    int configureLilo = 0, configureELilo = 0, configureGrub = 0;
+    int configureYaboot = 0;
     int bootloaderProbe = 0;
     char * updateKernelPath = NULL;
     char * newKernelPath = NULL;
@@ -1792,11 +1817,7 @@ int main(int argc, const char ** argv) {
     char * removeArgs = NULL;
     char * kernelInfo = NULL;
     const char * chptr;
-#ifdef __ia64__
-    struct configFileInfo * cfi = &liloConfigType;
-#else
-    struct configFileInfo * cfi = &grubConfigType;
-#endif
+    struct configFileInfo * cfi;
     struct grubConfig * config;
     struct singleEntry * template = NULL;
     int copyDefault = 0, makeDefault = 0;
@@ -1828,15 +1849,17 @@ int main(int argc, const char ** argv) {
 	      "template"), NULL },
 	{ "default-kernel", 0, 0, &displayDefault, 0,
 	    _("display the path of the default kernel") },
+	{ "elilo", 0, POPT_ARG_NONE, &configureELilo, 0,
+	    _("configure elilo bootloader") },
 	{ "grub", 0, POPT_ARG_NONE, &configureGrub, 0,
-	    _("configure grub instead of lilo") },
+	    _("configure grub bootloader") },
 	{ "info", 0, POPT_ARG_STRING, &kernelInfo, 0,
 	    _("display boot information for specified kernel"),
 	    _("kernel-path") },
 	{ "initrd", 0, POPT_ARG_STRING, &newKernelInitrd, 0,
 	    _("initrd image for the new kernel"), _("initrd-path") },
 	{ "lilo", 0, POPT_ARG_NONE, &configureLilo, 0,
-	    _("configure lilo instead of grub") },
+	    _("configure lilo bootloader") },
 	{ "make-default", 0, 0, &makeDefault, 0,
 	    _("make the newly added entry the default boot entry"), NULL },
 	{ "output-file", 'o', POPT_ARG_STRING, &outputFile, 0,
@@ -1857,6 +1880,8 @@ int main(int argc, const char ** argv) {
 	    _("kernel-path") },
 	{ "version", 'v', 0, NULL, 'v',
 	    _("print the version of this program and exit"), NULL },
+	{ "yaboot", 0, POPT_ARG_NONE, &configureYaboot, 0,
+	    _("configure yaboot bootloader") },
 	POPT_AUTOHELP
 	{ 0, 0, 0, 0, 0 }
     };
@@ -1885,8 +1910,9 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
-    if (configureLilo && configureGrub) {
-	fprintf(stderr, _("grubby: cannot specify --grub and --lilo\n"));
+    if ((configureLilo + configureGrub + configureELilo + 
+		configureYaboot) > 1) {
+	fprintf(stderr, _("grubby: cannot specify multiple bootloaders\n"));
 	return 1;
     } else if (bootloaderProbe && grubConfig) {
 	fprintf(stderr, 
@@ -1896,6 +1922,20 @@ int main(int argc, const char ** argv) {
 	cfi = &liloConfigType;
     } else if (configureGrub) {
 	cfi = &grubConfigType;
+    } else if (configureELilo) {
+	cfi = &eliloConfigType;
+    } else if (configureYaboot) {
+	cfi = &yabootConfigType;
+    }
+
+    if (!cfi) {
+      #ifdef __ia64__
+	cfi = &eliloConfigType;
+      #elif __powerpc__
+	cfi = &yabootConfigType;
+      #else
+	cfi = &grubConfigType;
+      #endif
     }
 
     if (!grubConfig) 
