@@ -438,7 +438,7 @@ int losetupCommand(char * cmd, char * end) {
 	    return 1;
 	}
 
-	if (ioctl(dev, LOOP_SET_FD, (void *) fd)) {
+	if (ioctl(dev, LOOP_SET_FD, (long) fd)) {
 	    printf("losetup: LOOP_SET_FD failed: %d\n", errno);
 	    close(dev);
 	    close(fd);
