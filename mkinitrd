@@ -554,6 +554,10 @@ for MODULE in $MODULES; do
 
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
+    if [ "$module" = "dasd_mod" ]; then
+        `cat /proc/cmdline | grep "dasd=" && options="$options `cat /proc/cmdline | sed 's/.*\(dasd=.*\).*/\1/'`"
+    fi
+ 
     if [ -n "$verbose" ]; then
 	if [ -n "$options" ]; then
 	    text=" with options $options"
