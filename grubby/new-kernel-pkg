@@ -54,6 +54,8 @@ install() {
 
 	/sbin/grubby --add-kernel=/boot/vmlinuz-$version $INITRD \
 		     --copy-default --title "Red Hat Linux ($version)"
+    else
+	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
 
     if [ -n "$cfgLilo" ]; then
@@ -67,6 +69,8 @@ install() {
 	    [ -n "$verbose" ] && echo "running $lilo"
 	    $lilo > /dev/null
 	fi
+    else
+	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
     fi
 
 }
@@ -75,6 +79,8 @@ remove() {
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
 	/sbin/grubby --remove-kernel=/boot/vmlinuz-$version
+    else
+	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
 
     if [ -n "$cfgLilo" ]; then
@@ -86,6 +92,8 @@ remove() {
 	    [ -n "$verbose" ] && echo "running $lilo"
 	    $lilo > /dev/null
 	fi
+    else
+	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
     fi
 }
 
@@ -193,9 +201,9 @@ if [ ! -x $grubby ] ; then
 fi
 
 
-cfgGrub=0
-cfgLilo=0
-runLilo=0
+cfgGrub=""
+cfgLilo=""
+runLilo=""
 
 [ -f $grubConfig ] && cfgGrub=1;
 [ -f $liloConfig ] && cfgLilo=1;
