@@ -16,5 +16,7 @@ install:    all
 	install -m 755 new-kernel-pkg $(BUILDROOT)/sbin
 	install -m 644 grubby.8 $(BUILDROOT)/usr/share/man/man8
 
+grubby:	grubby.o mount_by_label.o
+
 clean:
 	rm -f grubby
