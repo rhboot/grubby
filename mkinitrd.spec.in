@@ -48,14 +48,25 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 %config %attr(755,root,root) /sbin/installkernel
 %attr(755,root,root) /sbin/new-kernel-pkg
-%ifarch i386 i586 i686 athlon
+%ifarch i386 i586 i686 athlon ia64
 %attr(755,root,root) /sbin/grubby
+%attr(644,root,root) %{_mandir}/man8/grubby.8*
 %endif
 
 
 %changelog
+* Thu Jun 06 2002 Erik Troan <ewt@redhat.com>
+- added --bootloader-probe to grubby
+- wrote a man page for grubby
+- include grubby on ia64
+- updated new-kernel-pkg to work with lilo/elilo
+- added --info=DEFAULT option
+
 * Mon Jun 10 2002 Jeremy Katz <katzj@redhat.com>
 - start raid before lvm so that you can have root on lvm on raid (#66175)
+
+* Tue Jun 04 2002 Erik Troan <ewt@redhat.com>
+- failed to initialize a variable in grubby
 
 * Fri May 31 2002 Erik Troan <ewt@redhat.com>
 - added --grub option so grub tests could run on ia64
