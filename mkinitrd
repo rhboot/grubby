@@ -23,7 +23,7 @@
 PATH=/sbin:/usr/sbin:$PATH
 export PATH
 
-VERSION=3.4.39
+VERSION=3.4.40
 
 compress=1
 target=""
@@ -81,8 +81,8 @@ findmodule() {
     fi
 
     if [ "$modName" = "i2o_block" ]; then
-	findmodule i2o_pci
 	findmodule i2o_core
+	findmodule i2o_pci
 	modName="i2o_block"
     fi
 
