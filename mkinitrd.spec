@@ -2,13 +2,13 @@ Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 %define version 2.4
 Version: %{version}
-Release: 1
+Release: 2
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
 ExclusiveArch: i386 sparc sparc64
 ExclusiveOs: Linux
-Requires: /sbin/sash losetup e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static
+Requires: /bin/ash.static losetup e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static
 BuildRoot: /var/tmp/%{name}-root
 
 %description
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) /usr/man/man8/mkinitrd.8
 
 %changelog
+* Mon Jan  3 2000 Matt Wilson <msw@redhat.com>
+
+- use ash.static for /bin/sh, not sash
 * Tue Sep 28 1999 Bill Nottingham <notting@redhat.com>
 - sparc fixup from jakub
 
