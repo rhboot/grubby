@@ -6,13 +6,11 @@ grubby \- command line tool for configuring grub, lilo, and elilo
 .SH SYNOPSIS
 \fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR] 
         [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
-        [-c \fIpath\fR] [--copy-default] [--default-kernel]
-        [--grub] [--info=\fIkernel-path\fR]
-        [--initrd=\fIinitrd-path\fR] [--lilo] 
-        [--lilo-installed] [--make-default] [-o path] 
-        [--remove-kernel=\fIkernel-path\fR] 
-        [--set-default=\fIkernel-path\fR] 
-        [--title=entry-title] [--usage]
+        [--bootloader-probe] [-c \fIpath\fR] [--copy-default] 
+        [--default-kernel] [--grub] [--info=\fIkernel-path\fR]
+        [--initrd=\fIinitrd-path\fR] [--lilo] [--make-default] 
+        [-o path] [--remove-kernel=\fIkernel-path\fR] 
+        [--set-default=\fIkernel-path\fR] [--title=entry-title] 
 
 .SH DESCRIPTION
 \fBgrubby\fR is a command line tool for updating and displaying information
@@ -55,6 +53,19 @@ is given \fBgrubby\fR acts as if the specified filesystem was the filesystem
 containing the kernel (this option is designed primarily for testing).
 
 .TP
+\fB-\-bootloader-probe\fR
+\fBgrubby\fR tries to determine if \fBgrub\fR or \fBlilo\fR is currently 
+installed. When one of those bootloaders is found the name of that bootloader
+is displayed on stdout.  Both could be installed (on different devices), and
+grubby will print out the names of both bootloaders, one per line. The probe
+for \fBgrub\fR requires a commented out boot directive \fBgrub.conf\fR
+identical to the standard directive in the lilo configuration file. If this
+is not present \fBgrubby\fR will return with an error (note that \fBanaconda\fR
+places this directive in \fBgrub.conf\fR files it creates).
+This option is only available on ia32 platforms. 
+
+
+.TP
 \fB-c\fR \fIpath\fR
 Use \fIpath\fR as the configuration file rather then the default.
 
@@ -88,14 +99,6 @@ being added.
 Use a \fBlilo\fR style configuration file instead of \fBgrub\fR style. This
 is the default on ia64 platforms. On ia32 platforms this option changes the
 default configuration file path to \fB/etc/lilo.conf\fR.
-
-.TP
-\fB-\-lilo-installed\fR
-\fBgrubby\fR will check to see if \fBlilo\fR is currently installed on the 
-boot device configured in the configuration file. If so, a return code of
-2 is returned. If an error occurs a message is displayed and 1 is returned.
-If \fBlilo\fR does not seem to be installed, a 0 is returned.
-This option is only available on ia32 platforms. 
 
 .TP
 \fB-\-make-default\fR
