@@ -25,7 +25,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=3.5.16.1
+VERSION=3.5.17
 
 compress=1
 target=""
@@ -286,6 +286,11 @@ if [ $UID != 0 ]; then
     exit 1
 fi
 
+kernelmajor=`echo $kernel | cut -d . -f 1,2`
+if [ "$kernelmajor" == "2.6" ]; then
+    modulefile=/etc/modprobe.conf
+fi
+
 # find a temporary directory which doesn't use tmpfs
 TMPDIR=""
 for t in /tmp /var/tmp /root ${PWD}; do
@@ -332,7 +337,7 @@ if [ -n "$withusb" ]; then
 fi
 
 if [ -n "$needusb" ]; then
-    drivers=$(awk '/^alias[[:space:]]+usb-controller[0-9]* / { print $3}' < /etc/modules.conf)
+    drivers=$(awk '/^alias[[:space:]]+usb-controller[0-9]* / { print $3}' < $modulefile)
     if [ -n "$drivers" ]; then
 	for driver in $drivers; do
 	    findmodule $driver
@@ -375,13 +380,17 @@ fi
 if [ -z "$nolvm" ]; then
     if [ -f /proc/lvm/global  ]; then
         if  grep -q '^VG:' /proc/lvm/global ; then
-	    findmodule -lvm-mod
+	    if [ "$kernelmajor" == "2.4" ]; then
+		findmodule -lvm-mod
+	    else
+		findmodule -dm-mod
+	    fi
         fi
     fi
 
-    if [ -x /sbin/dmsetup -a -f /dev/mapper/control ]; then
-	dmout=$(/sbin/dmsetup ls)
-	if [ "$dmout" != "No devices found" ]; then
+    if [ -x /sbin/dmsetup -a -e /dev/mapper/control ]; then
+	dmout=$(/sbin/dmsetup ls 2>/dev/null)
+	if [ "$dmout" != "No devices found" -a "$dmout" != "" ]; then
 	    findmodule -dm-mod
 	fi
     fi
@@ -447,7 +456,7 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
     rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
     major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
     [ "$major" != "58" ] || root_lvm=1
-    if echo $rootdev |grep -q /dev/mapper 2>/dev/null ; then root_lvm2=1 ; fi
+    if echo $rootdev |grep -q /dev/mapper 2>/dev/null ; then root_lvm=1 ; fi
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
@@ -457,10 +466,11 @@ rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
 findmodule -${rootfs}
 
 if [ -n "$root_lvm" ]; then
-    findmodule -lvm-mod
-fi
-if [ -n "$root_lvm2" ]; then
-    findmodule -dm-mod
+    if [ "$kernelmajor" == "2.4" ]; then    
+	findmodule -lvm-mod
+    else
+	findmodule -dm-mod
+    fi
 fi
 
 for n in $basicmodules; do 
@@ -546,7 +556,7 @@ for i in 1 2 3 4; do
 done
 
 # FIXME -- this won't work if you're using devfs
-if [ -n "$root_lvm" ]; then
+if [ -n "$root_lvm" -a "$kernelmajor" == "2.4" ]; then
     pvs=$(/sbin/pvscan | grep " PV " | /bin/awk {'print $5;'} |sed 's/"//g')
     for pv in $pvs; do
 	cp $verbose --parents -a $pv $MNTIMAGE/
@@ -559,7 +569,7 @@ if [ -n "$root_lvm" ]; then
     mknod $MNTIMAGE/dev/lvm b 109 0
 fi
 
-if [ -n "$root_lvm2" ]; then
+if [ -n "$root_lvm" -a "$kernelmajor" == "2.6" ]; then
     inst /sbin/lvm.static "$MNTIMAGE/bin/lvm"
 fi
 
@@ -614,11 +624,12 @@ if [ -n "$loopDev" ]; then
     echo "echo Setting up loopback device $rootdev" >> $RCFILE
     echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
 elif [ -n "$root_lvm" ]; then
+  if [ "$kernelmajor" == "2.4" ]; then
     echo "echo Scanning logical volumes" >> $RCFILE
     echo "vgscan" >> $RCFILE
     echo "echo Activating logical volumes" >> $RCFILE
     echo "vgchange -ay" >> $RCFILE
-elif [ -n "$root_lvm2" ]; then
+  else
     echo "echo Making device-mapper control node" >> $RCFILE
     echo "mkdmnod" >> $RCFILE
     echo "echo Scanning logical volumes" >> $RCFILE
@@ -627,6 +638,7 @@ elif [ -n "$root_lvm2" ]; then
     echo "lvm vgchange -ay" >> $RCFILE
     echo "echo Making device nodes" >> $RCFILE
     echo "lvm vgmknodes" >> $RCFILE
+  fi
 else
     echo "echo Creating root device" >> $RCFILE
     echo "mkrootdev /dev/root" >> $RCFILE
