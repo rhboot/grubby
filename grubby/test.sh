@@ -169,6 +169,8 @@ grubTest grub.7 updargs/g7.2 --boot-filesystem=/    \
     --update-kernel=ALL --args "hde=ide-scsi"
 grubTest grub.7 updargs/g7.3 --boot-filesystem=/    \
     --update-kernel=DEFAULT --args "hde=ide-scsi"
+grubTest grub.7 updargs/g7.4 --boot-filesystem=/ --update-kernel=DEFAULT \
+    --args "ro root=LABEL=/ console=tty0 console=ttyS1,9600n81 single"
 
 echo "LILO update kernel argument handling..."
 liloTest lilo.1 updargs/l1.1 --update-kernel=/boot/vmlinuz-2.4.18-4 \
