@@ -727,7 +727,6 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     char * end;
 
     line = entry->lines;
-
     while (line && line->type != LT_KERNEL) line = line->next;
 
     if (!line) return 0;
@@ -743,11 +742,21 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
     for (i = 2; i < line->numElements; i++)
 	if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
-    if (i == line->numElements) return 0;
+    if (i < line->numElements) {
+	dev = line->elements[i].item + 5;
+    } else {
+	/* look for a lilo style LT_ROOT line */
+	line = entry->lines;
+	while (line && line->type != LT_ROOT) line = line->next;
 
-    dev = line->elements[i].item + 5;
+	if (line && line->numElements >= 2)
+	    dev = line->elements[1].item;
+	else
+	    return 0;
+    }
+
     if (*dev == '/') {
-	if (stat(line->elements[i].item + 5, &sb))
+	if (stat(dev, &sb))
 	    return 0;
     } else {
 	sb.st_rdev = strtol(dev, &end, 16);
