@@ -47,8 +47,6 @@
 
 #include "mount_by_label.h"
 
-static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
-
 /* Need to tell loop.h what the actual dev_t type is. */
 #undef dev_t
 #if defined(__alpha) || (defined(__sparc__) && defined(__arch64__))
@@ -72,6 +70,10 @@ static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
 
 #ifndef MS_REMOUNT
 #define MS_REMOUNT      32
+#endif
+
+#ifdef USE_DIET
+static inline _syscall2(int,pivot_root,const char *,one,const char *,two)
 #endif
 
 #define MAX(a, b) ((a) > (b) ? a : b)
@@ -514,6 +516,14 @@ int raidautorunCommand(char * cmd, char * end) {
     return 0;
 }
 
+static int my_pivot_root(char * one, char * two) {
+#ifdef USE_DIET
+    pivot_root(one, two);
+#else
+    syscall(__NR_pivot_root, new, old);
+#endif
+}
+
 int pivotrootCommand(char * cmd, char * end) {
     char * new;
     char * old;
@@ -533,7 +543,7 @@ int pivotrootCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    if (pivot_root(new, old)) {
+    if (my_pivot_root(new, old)) {
 	printf("pivotroot: pivot_root(%s,%s) failed: %d\n", new, old, errno);
 	return 1;
     }
