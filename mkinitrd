@@ -19,7 +19,7 @@
 PATH=/sbin:$PATH
 export PATH
 
-VERSION=3.1.4
+VERSION=3.1.5
 
 compress=1
 target=""
@@ -74,7 +74,11 @@ findmodule() {
     fi
 
     if [ "$modName" = "ext3" ]; then
-	findmodule jbd
+	if [ -n "$skiperrors" ]; then
+		findmodule -jbd
+	else
+		findmodule jbd
+	fi
 	modName="ext3"
     fi
 
