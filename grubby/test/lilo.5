@@ -1,0 +1,19 @@
+prompt
+timeout=50
+boot=/dev/hda
+map=/boot/map
+install=/boot/boot.b
+message=/boot/message
+linear
+default=DOS
+
+image=/boot/vmlinuz-2.4.18-4
+        label=linux
+        root=/dev/hda1
+        read-only
+        initrd=/boot/initrd-2.4.18-4.img
+
+other=/dev/hda2
+        label=DOS
+        optional
+

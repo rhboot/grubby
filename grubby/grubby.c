@@ -39,7 +39,7 @@ struct lineElement {
 
 enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
        LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS, LT_BOOT,
-       LT_BOOTROOT, LT_LBA};
+       LT_BOOTROOT, LT_LBA, LT_OTHER };
 
 struct singleLine {
     char * indent;
@@ -108,7 +108,7 @@ struct keywordTypes liloKeywords[] = {
     { "root",	    LT_ROOT,	    '=' },
     { "default",    LT_DEFAULT,	    '=' },
     { "image",	    LT_KERNEL,	    '=' },
-    { "other",	    LT_KERNEL,	    '=' },
+    { "other",	    LT_OTHER,	    '=' },
     { "initrd",	    LT_INITRD,	    '=' },
     { "append",	    LT_KERNELARGS,  '=' },
     { "boot",	    LT_BOOT,	    '=' },
@@ -401,7 +401,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    cfg->secondaryIndent = strdup(line->indent);
 	}
 
-	if (line->type == cfi->entrySeparator) {
+	if ((line->type == cfi->entrySeparator) || (line->type == LT_OTHER)) {
 	    sawEntry = 1;
 	    if (!entry) {
 		cfg->entries = malloc(sizeof(*entry));
@@ -638,7 +638,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
     line = entry->lines;
     while (line && line->type != LT_KERNEL) line = line->next;
-
+    
     if (!line) return 0;
     if (skipRemoved && entry->skip) return 0;
     if (line->numElements < 2) return 0;
@@ -650,7 +650,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     sprintf(fullName, "%s%s", bootPrefix, line->elements[1].item);
     if (access(fullName, R_OK)) return 0;
 
-    for (i = 2; i < line->numElements; i++)
+    for (i = 2; i < line->numElements; i++) 
 	if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
     if (i < line->numElements) {
 	dev = line->elements[i].item + 5;
@@ -659,7 +659,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	line = entry->lines;
 	while (line && line->type != LT_ROOT) line = line->next;
 
-	if (line && line->numElements >= 2)
+	if (line && line->numElements >= 2) 
 	    dev = line->elements[1].item;
 	else {
 	    /* didn't succeed in finding a LT_ROOT, let's try LT_KERNELARGS */
@@ -1658,7 +1658,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	}
     } else {
 	for (i = 0; config->cfi->keywords[i].key; i++)
-	    if (config->cfi->keywords[i].type == config->cfi->entrySeparator) 
+	    if ((config->cfi->keywords[i].type == config->cfi->entrySeparator) || (config->cfi->keywords[i].type == LT_OTHER)) 
 		break;
 
 	switch (config->cfi->keywords[i].type) {
