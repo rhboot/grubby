@@ -1,5 +1,7 @@
 #!/bin/bash
 
+RESULT=0
+
 oneTest () {
     mode=$1
     cfg=test/$2
@@ -16,6 +18,7 @@ oneTest () {
 	done
 	echo ""
 	./grubby $mode --bad-image-okay -c $cfg -o - "$@" | diff -u $correct -; 
+	RESULT=1
     fi 
 }
 
@@ -135,3 +138,5 @@ liloTest lilo.3 updargs/l3.1 --update-kernel=/boot/vmlinuz-2.4.18-4 \
     --remove-args="hda"
 liloTest lilo.3 updargs/l3.2 --update-kernel=ALL \
     --remove-args="single" --args "root=/dev/hda2"
+
+exit $RESULT
