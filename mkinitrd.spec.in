@@ -61,6 +61,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Oct 13 2004 Jeremy Katz <katzj@redhat.com> - 4.1.15-1
+- new-kernel-pkg: set new kernels as default (#135161) when
+  a) /etc/sysconfig/kernel contains UPDATEDEFAULT=yes
+  b) --package foo is passed in and foo matches DEFAULTKERNEL 
+     in /etc/sysconfig/kernel
+
 * Thu Sep 30 2004 Jeremy Katz <katzj@redhat.com> - 4.1.14-1
 - support changing root on the kernel command line with lvm (#133236)
 
