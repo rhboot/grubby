@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Apr  4 2005 Peter Jones <pjones@redhat.com> - 4.2.1.5-1
+- Don't consolidate duplicates in "--args" (#147222)
+
 * Fri Apr  1 2005 Peter Jones <pjones@redhat.com> - 4.2.1.4-1
 - close /init just after reading the file, instead of after runStartup()
   finishes, so it gets closed before we exec() /sbin/init . (#145601)
