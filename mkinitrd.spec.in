@@ -55,6 +55,10 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Tue Jul 30 2002 Jeremy Katz <katzj@redhat.com>
+- grubby: adding kernels to lilo.conf when not using root=LABEL will work 
+  now too
+
 * Fri Jul 26 2002 Erik Troan <ewt@redhat.com>
 - didn't close /proc/partitions in mkdevices
 
