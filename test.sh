@@ -142,6 +142,8 @@ liloTest lilo.3 updargs/l3.2 --update-kernel=ALL \
 echo "LILO add kernel..."
 liloTest lilo.4 add/l4.1 --add-kernel=/boot/new-kernel.img --title="title" \
     --copy-default --boot-filesystem=/boot
+liloTest lilo.4 add/l4.2 --add-kernel=/boot/new-kernel.img --title="linux" \
+    --copy-default --boot-filesystem=/boot --remove-kernel "TITLE=linux"
 
 echo "GRUB add kernel..."
 grubTest grub.1 add/g1.1 --add-kernel=/boot/new-kernel.img --title='title' \
@@ -152,5 +154,9 @@ grubTest grub.1 add/g1.3 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/ --copy-default
 grubTest grub.1 add/g1.4 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default
+grubTest grub.2 add/g2.1 --add-kernel=/boot/vmlinuz-2.4.7-2	    \
+    --initrd=/boot/initrd-2.4.7-new.img --boot-filesystem=/boot --copy-default \
+    --title="Red Hat Linux (2.4.7-2)"					    \
+    --remove-kernel="TITLE=Red Hat Linux (2.4.7-2)" 
 
 exit $RESULT
