@@ -270,7 +270,7 @@ static struct grubConfig * readConfig(const char * inName) {
 }
 
 int writeNewKernel(FILE * out, struct grubConfig * cfg, 
-		   struct newKernelInfo * nki) {
+		   struct newKernelInfo * nki, const char * prefix) {
     struct singleLine * line;
     char * indent;
     int needs;
@@ -298,7 +298,8 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 	if (line->type == LT_KERNEL && line->numElements > 2) {
 	    fprintf(out, "%s%s%s%s%s", line->indent,
 		    line->elements[0].item, line->elements[0].indent,
-		    nki->image,		line->elements[1].indent);
+		    nki->image + strlen(prefix),
+		    line->elements[1].indent);
 	    if (nki->args) {
 		if (!strlen(line->elements[1].indent))
 		    fprintf(out, " ");
@@ -315,7 +316,8 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
 		   nki->initrd) {
 	    fprintf(out, "%s%s%s%s%s\n", line->indent,
 		    line->elements[0].item, line->elements[0].indent,
-		    nki->initrd,		line->elements[1].indent);
+		    nki->initrd + strlen(prefix),
+		    line->elements[1].indent);
 
 	    needs &= ~KERNEL_INITRD;
 	} else if (line->type == LT_KERNEL || line->type == LT_INITRD) {
@@ -336,21 +338,21 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
     if (!indent) indent = cfg->secondaryIndent;
 
     if (needs & KERNEL_IMAGE) {
-	fprintf(out, "%skernel %s", indent, nki->image);
+	fprintf(out, "%skernel %s", indent, nki->image + strlen(prefix));
 	if (nki->args)
 	    fprintf(out, " %s", nki->args);
 	fprintf(out, "\n");
     }
 
     if ((needs & KERNEL_INITRD) && nki->initrd) {
-	fprintf(out, "%sinitrd %s\n", indent, nki->initrd);
+	fprintf(out, "%sinitrd %s\n", indent, nki->initrd + strlen(prefix));
     }
 
     return 0;
 }
 
 static int writeConfig(struct grubConfig * cfg, const char * outName, 
-		       struct newKernelInfo * nki) {
+		       struct newKernelInfo * nki, const char * prefix) {
     FILE * out;
     struct singleLine * line;
     char * tmpOutName;
@@ -373,7 +375,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     while (line) {
 	if (!line->skip) {
 	    if (line->type == LT_TITLE && nki) {
-		writeNewKernel(out, cfg, nki);
+		writeNewKernel(out, cfg, nki, prefix);
 		nki = NULL;
 		lineWrite(out, line);
 	    } else if (line->type == LT_DEFAULT) {
@@ -682,5 +684,6 @@ int main(int argc, const char ** argv) {
     if (!outputFile)
 	outputFile = grubConfig;
 
-    return writeConfig(config, outputFile, newKernelPath ? &newKernel : NULL);
+    return writeConfig(config, outputFile, newKernelPath ? &newKernel : NULL,
+		       bootPrefix);
 }
