@@ -417,7 +417,8 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     return 0;
 }
 
-int suitableImage(struct singleLine * line, const char * bootPrefix) {
+int suitableImage(struct singleLine * line, const char * bootPrefix,
+		  int skipRemoved) {
     char * fullName;
     int i;
     struct stat sb, sb2;
@@ -429,6 +430,7 @@ int suitableImage(struct singleLine * line, const char * bootPrefix) {
     } while (line && (line->type != LT_TITLE) && (line->type != LT_KERNEL));
 
     if (!line) return 0;
+    if (skipRemoved && line->skip) return 0;
     if (line->type == LT_TITLE) return 0;
     if (line->numElements < 2) return 0;
 
@@ -484,7 +486,7 @@ struct singleLine * findTemplate(struct grubConfig * cfg, const char * prefix,
 
     if (cfg->defaultImage != -1) {
 	line = findTitleByIndex(cfg, cfg->defaultImage);
-	if (line && suitableImage(line, prefix)) {
+	if (line && suitableImage(line, prefix, skipRemoved)) {
 	    if (indexPtr) *indexPtr = cfg->defaultImage;
 	    return line;
 	}
@@ -498,7 +500,7 @@ struct singleLine * findTemplate(struct grubConfig * cfg, const char * prefix,
 	    line = line->next;
 	if (!line) break;
 
-	if (suitableImage(line, prefix)) {
+	if (suitableImage(line, prefix, skipRemoved)) {
 	    if (indexPtr) *indexPtr = index;
 	    return line;
 	}
@@ -750,7 +752,7 @@ int main(int argc, const char ** argv) {
 	if (config->defaultImage == -1) return 0;
 	image = findTitleByIndex(config, config->defaultImage);
 	if (!image) return 0;
-	if (!suitableImage(image, bootPrefix)) return 0;
+	if (!suitableImage(image, bootPrefix, 0)) return 0;
 
 	while (image->type != LT_KERNEL) image = image->next;
 	printf("%s%s\n", bootPrefix, image->elements[1].item);
