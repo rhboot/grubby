@@ -189,7 +189,7 @@ while [ $# -gt 0 ]; do
 
 	--builtin*)
 	    if echo $1 | grep -q '=' ; then
-	    	modname=`echo $1 | sed 's/^--builtins=//'`
+	    	modname=`echo $1 | sed 's/^--builtin=//'`
 	    else
 		modname=$2
 		shift
