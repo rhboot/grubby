@@ -11,7 +11,6 @@
 
 PATH=/sbin:/bin:$PATH
 
-grubConfig=/boot/grub/grub.conf
 lilo=/sbin/lilo
 
 # some defaults that are sane for most arches
@@ -26,6 +25,7 @@ fi
 cfgGrub=""
 cfgLilo=""
 runLilo=""
+grubConfig=""
 
 ARCH=$(uname -m)
 
@@ -58,6 +58,7 @@ elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
 else
     # this leaves i?86 and x86_64
     liloConfig=/etc/lilo.conf
+    grubConfig=/boot/grub/grub.conf
     bootPrefix=/boot
     liloFlag=lilo
     isx86="yes"
@@ -299,7 +300,7 @@ if [ ! -x $grubby ] ; then
 fi
 
 
-[ -f $grubConfig ] && cfgGrub=1;
+[ -n $grubConfig ] && [ -f $grubConfig ] && cfgGrub=1;
 [ -f $liloConfig ] && cfgLilo=1;
 
 # if we have a lilo config on an x86 box, see if the default boot loader

@@ -60,6 +60,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Aug 29 2003 Jeremy Katz <katzj@redhat.com> 3.5.10-1
+- clean up bogus warning in installkernel
+- only try to do grub configs on arches which support grub (#103261)
+
 * Thu Aug  7 2003 Matt Wilson <msw@redhat.com> 3.5.9-1
 - add \n to error messages in grubby
 - NUL terminate buffer returned from readlink properly
@@ -68,9 +72,12 @@ rm -rf $RPM_BUILD_ROOT
 - yaboot needs boot prefix
 - silo needs boot prefix too
 
+* Wed Jul 30 2003 Jeremy Katz <katzj@redhat.com> 
+- grubby: don't segfault on label=\n (reported by dburcaw)
+
 * Thu Jul 24 2003 Jeremy Katz <katzj@redhat.com> 
-- patch from zaitcev for uninitialized variable that can get hit in 
-  the zipl case
+- grubby: patch from zaitcev for uninitialized variable that can get 
+  hit in the zipl case
 
 * Mon Jul 21 2003 Jeremy Katz <katzj@redhat.com> 3.5.8-1
 - bump initrd size (#99525)
