@@ -23,6 +23,6 @@ archive:
 	@cd /tmp; cvs -Q -d $(CVSROOT) export -r$(CVSTAG) mkinitrd || :
 	@cd /tmp/mkinitrd; sed "s/VERSIONSUBST/$(VERSION)/" < mkinitrd.spec.in > mkinitrd.spec
 	@mv /tmp/mkinitrd /tmp/mkinitrd-$(VERSION)
-	@dir=$$PWD; cd /tmp; tar cvjf $$dir/mkinitrd-$(VERSION).tar.bz2 mkinitrd-$(VERSION)
+	@dir=$$PWD; cd /tmp; tar -cv --bzip2 -f $$dir/mkinitrd-$(VERSION).tar.bz2 mkinitrd-$(VERSION)
 	@rm -rf /tmp/mkinitrd-$(VERSION)
 	@echo "The archive is in mkinitrd-$(VERSION).tar.bz2"
