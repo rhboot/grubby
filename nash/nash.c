@@ -658,14 +658,18 @@ int findlodevCommand(char * cmd, char * end) {
     int devNum;
     int fd;
     struct loop_info loopInfo;
+    char separator[2] = "";
 
     if (*end != '\n') {
 	printf("usage: findlodev\n");
 	return 1;
     }
 
+    if (!access("/dev/.devfsd", X_OK))
+	strcpy(separator, "/");
+
     for (devNum = 0; devNum < 256; devNum++) {
-	sprintf(devName, "/dev/loop%d", devNum);
+	sprintf(devName, "/dev/loop%s%d", separator, devNum);
 	if ((fd = open(devName, O_RDONLY)) < 0) return 0;
 
 	if (ioctl(fd, LOOP_GET_STATUS, &loopInfo)) {
