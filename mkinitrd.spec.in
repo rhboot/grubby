@@ -61,7 +61,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Sun Oct 24 2004 Jeremy Katz <katzj@redhat.com> - VERSIONSUBST-1
+* Wed Nov  3 2004 Jeremy Katz <katzj@redhat.com>
+- handle machines with lots of disks in /proc/partitions (#137816)
+
+* Sun Oct 24 2004 Jeremy Katz <katzj@redhat.com>
 - require cpio (#136814)
 
 * Sun Oct 17 2004 Jeremy Katz <katzj@redhat.com> - 4.1.18-1

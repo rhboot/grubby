@@ -155,6 +155,39 @@ char * getArg(char * cmd, char * end, char ** arg) {
     return cmd;
 }
 
+/* taken from anaconda/isys/probe.c */
+static int readFD (int fd, char **buf)
+{
+    char *p;
+    size_t size = 4096;
+    int s, filesize;
+
+    *buf = malloc (size);
+    if (*buf == 0)
+      return -1;
+
+    filesize = 0;
+    do {
+	p = &(*buf) [filesize];
+	s = read (fd, p, 4096);
+	if (s < 0)
+	    break;
+	filesize += s;
+	if (s != 4096)
+	    break;
+	size += 4096;
+	*buf = realloc (*buf, size);
+    } while (1);
+
+    if (filesize == 0 && s < 0) {
+	free (*buf);     
+	*buf = NULL;
+	return -1;
+    }
+
+    return filesize;
+}
+
 #ifdef __powerpc__
 #define CMDLINESIZE 256
 #else
@@ -1252,7 +1285,7 @@ int mknodCommand(char * cmd, char * end) {
 
 int mkdevicesCommand(char * cmd, char * end) {
     int fd;
-    char buf[32768];
+    char *buf;
     int i;
     char * start, * chptr;
     int major, minor;
@@ -1275,7 +1308,7 @@ int mkdevicesCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    i = read(fd, buf, sizeof(buf));
+    i = readFD(fd, &buf);
     if (i < 1) {
 	close(fd);
 	printf("failed to read /proc/partitions: %d\n", errno);
