@@ -58,6 +58,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Mar 23 2005 Peter Jones <pjones@redhat.com> - 4.2.6-1
+- work correctly with "set -o noclobber"
+- wait longer after modprobe of usb-storage
+- fix a wrong error output file
+
 * Tue Mar 22 2005 Peter Jones <pjones@redhat.com> - 4.2.5-1
 - handle mount-by-uuid for root correctly (##148756)
 
