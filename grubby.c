@@ -58,17 +58,6 @@ struct singleEntry {
     struct singleEntry * next;
 };
 
-struct grubConfig {
-    struct singleLine * theLines;
-    struct singleEntry * entries;
-    char * primaryIndent;
-    char * secondaryIndent;
-    int defaultImage;		    /* -1 if none specified -- this value is
-				     * written out, overriding original */
-    int fallbackImage;		    /* just like defaultImage */
-    int flags;
-};
-
 #define GRUBBY_BADIMAGE_OKAY	(1 << 0)
 
 #define GRUB_CONFIG_NO_DEFAULT	    (1 << 0)	/* don't write out default=0 */
@@ -82,13 +71,75 @@ struct grubConfig {
 #define KERNEL_PATH "/boot/vmlinuz-"
 #define INITRD_PATH "/boot/initrd-"
 
+struct keywordTypes {
+    char * key;
+    enum lineType_e type;
+} ;
+
+struct configFileInfo {
+    struct keywordTypes * keywords;
+    int defaultIsIndex;
+    int defaultSupportSaved;
+    enum lineType_e entrySeparator;
+    int needsBootPrefix;
+};
+
+struct keywordTypes grubKeywords[] = {
+    { "title",	    LT_TITLE },
+    { "root",	    LT_ROOT },
+    { "default",    LT_DEFAULT },
+    { "fallback",   LT_FALLBACK },
+    { "kernel",	    LT_KERNEL },
+    { "initrd",	    LT_INITRD },
+    { NULL,	    0 },
+};
+
+struct configFileInfo grubConfigType = {
+    grubKeywords,			    /* keywords */
+    1,					    /* defaultIsIndex */
+    1,					    /* defaultSupportSaved */
+    LT_TITLE,				    /* entrySeparator */
+    1,					    /* needsBootPrefix */
+};
+
+struct keywordTypes liloKeywords[] = {
+    { "label",	    LT_TITLE },
+    { "root",	    LT_ROOT },
+    { "default",    LT_DEFAULT },
+    { "image",	    LT_KERNEL },
+    { "initrd",	    LT_INITRD },
+    { NULL,	    0 },
+};
+
+struct configFileInfo liloConfigType = {
+    liloKeywords,			    /* keywords */
+    0,					    /* defaultIsIndex */
+    0,					    /* defaultSupportSaved */
+    LT_KERNEL,				    /* entrySeparator */
+    0,					    /* needsBootPrefix */
+};
+
+struct grubConfig {
+    struct singleLine * theLines;
+    struct singleEntry * entries;
+    char * primaryIndent;
+    char * secondaryIndent;
+    int defaultImage;		    /* -1 if none specified -- this value is
+				     * written out, overriding original */
+    int fallbackImage;		    /* just like defaultImage */
+    int flags;
+    struct configFileInfo * cfi;
+};
+
+
 struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index);
 static char * strndup(char * from, int len);
 static int readFile(int fd, char ** bufPtr);
 static void lineInit(struct singleLine * line);
 static void lineFree(struct singleLine * line);
 static int lineWrite(FILE * out, struct singleLine * line);
-static int getNextLine(char ** bufPtr, struct singleLine * line);
+static int getNextLine(char ** bufPtr, struct singleLine * line,
+		       struct keywordTypes * keywords);
 
 static char * strndup(char * from, int len) {
     char * to;
@@ -163,13 +214,15 @@ static int lineWrite(FILE * out, struct singleLine * line) {
 }
 
 /* we've guaranteed that the buffer ends w/ \n\0 */
-static int getNextLine(char ** bufPtr, struct singleLine * line) {
+static int getNextLine(char ** bufPtr, struct singleLine * line,
+		       struct keywordTypes * keywords) {
     char * end;
     char * start = *bufPtr;
     char * chptr;
     int elementsAlloced = 0;
     struct lineElement * element;
     int first = 1;
+    int i;
 
     lineFree(line);
 
@@ -216,31 +269,28 @@ static int getNextLine(char ** bufPtr, struct singleLine * line) {
 
     if (!line->numElements)
 	line->type = LT_WHITESPACE;
-    else if (!strcmp(line->elements[0].item, "title"))
-	line->type = LT_TITLE;
-    else if (!strcmp(line->elements[0].item, "root"))
-	line->type = LT_ROOT;
-    else if (!strcmp(line->elements[0].item, "default"))
-	line->type = LT_DEFAULT;
-    else if (!strcmp(line->elements[0].item, "fallback"))
-	line->type = LT_FALLBACK;
-    else if (!strcmp(line->elements[0].item, "kernel"))
-	line->type = LT_KERNEL;
-    else if (!strcmp(line->elements[0].item, "initrd"))
-	line->type = LT_INITRD;
+    else {
+	for (i = 0; keywords[i].key; i++) 
+	    if (!strcmp(line->elements[0].item, keywords[i].key)) break;
+
+	if (keywords[i].key)
+	    line->type = keywords[i].type;
+    }
 
     return 0;
 }
 
-static struct grubConfig * readConfig(const char * inName) {
+static struct grubConfig * readConfig(const char * inName,
+				      struct configFileInfo * cfi) {
     int in;
     char * incoming, * head;
     int rc;
-    int sawTitle = 0;
+    int sawEntry = 0;
     struct grubConfig * cfg;
-    struct singleLine * last = NULL, * line;
+    struct singleLine * last = NULL, * line, * defaultLine = NULL;
     char * end;
     struct singleEntry * entry = NULL;
+    int i;
 
     if (!strcmp(inName, "-")) {
 	in = 0;
@@ -261,19 +311,20 @@ static struct grubConfig * readConfig(const char * inName) {
     cfg->primaryIndent = strdup("");
     cfg->secondaryIndent = strdup("\t");
     cfg->flags = GRUB_CONFIG_NO_DEFAULT;
+    cfg->cfi = cfi;
 
     /* copy everything we have */
     while (*head) {
 	line = malloc(sizeof(*line));
 	lineInit(line);
 
-	if (getNextLine(&head, line)) {
+	if (getNextLine(&head, line, cfi->keywords)) {
 	    free(line);
 	    /* XXX memory leak of everything in cfg */
 	    return NULL;
 	}
 
-	if (!sawTitle && line->numElements) {
+	if (!sawEntry && line->numElements) {
 	    free(cfg->primaryIndent);
 	    cfg->primaryIndent = strdup(line->indent);
 	} else if (line->numElements) {
@@ -281,8 +332,8 @@ static struct grubConfig * readConfig(const char * inName) {
 	    cfg->secondaryIndent = strdup(line->indent);
 	}
 
-	if (line->type == LT_TITLE) {
-	    sawTitle = 1;
+	if (line->type == cfi->entrySeparator) {
+	    sawEntry = 1;
 	    if (!entry) {
 		cfg->entries = malloc(sizeof(*entry));
 		entry = cfg->entries;
@@ -296,18 +347,13 @@ static struct grubConfig * readConfig(const char * inName) {
 	    entry->next = NULL;
 	} else if (line->type == LT_DEFAULT && line->numElements == 2) {
 	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
-	    if (strncmp(line->elements[1].item, "saved", 5) == 0) {
-	        cfg->defaultImage = DEFAULT_SAVED;
-	    } else {
-	        cfg->defaultImage = strtol(line->elements[1].item, &end, 10);
-	        if (*end) cfg->defaultImage = -1;
-	    }
+	    defaultLine = line;
 	} else if (line->type == LT_FALLBACK && line->numElements == 2) {
 	    cfg->fallbackImage = strtol(line->elements[1].item, &end, 10);
 	    if (*end) cfg->fallbackImage = -1;
 	}
 
-	if (sawTitle) {
+	if (sawEntry) {
 	    if (!entry->lines)
 		entry->lines = line;
 	    else
@@ -323,6 +369,28 @@ static struct grubConfig * readConfig(const char * inName) {
     }
 
     free(incoming);
+
+    if (defaultLine) {
+	if (cfi->defaultSupportSaved && 
+		!strncmp(defaultLine->elements[1].item, "saved", 5)) {
+	    cfg->defaultImage = DEFAULT_SAVED;
+	} else if (cfi->defaultIsIndex) {
+	    cfg->defaultImage = strtol(defaultLine->elements[1].item, &end, 10);
+	    if (*end) cfg->defaultImage = -1;
+	} else if (defaultLine->numElements >= 2) {
+	    i = 0;
+	    while ((entry = findEntryByIndex(cfg, i))) {
+		for (line = entry->lines; line; line = line->next);
+
+		if (line && !strcmp(defaultLine->elements[1].item,
+				    line->elements[1].item)) break;
+
+		i++;
+	    }
+
+	    if (entry) cfg->defaultImage = i;
+	}
+    }
 
     return cfg;
 }
@@ -411,14 +479,32 @@ int writeNewKernel(FILE * out, struct grubConfig * cfg,
     return 0;
 }
 
-static void writeDefault(FILE * out, char * tag, char * indent, 
-			 char * separator, int defaultImage, int flags) {
-    if (!defaultImage && flags == GRUB_CONFIG_NO_DEFAULT) return;
+static void writeDefault(FILE * out, char * indent, 
+			 char * separator, struct grubConfig * cfg) {
+    struct singleEntry * entry;
+    struct singleLine * line;
 
-    if (defaultImage > -1)
-	fprintf(out, "%s%s%s%d\n", indent, tag, separator, defaultImage);
-    else if (defaultImage == DEFAULT_SAVED)
-	fprintf(out, "%s%s%ssaved\n", indent, tag, separator);
+    if (!cfg->defaultImage && cfg->flags == GRUB_CONFIG_NO_DEFAULT) return;
+
+    if (cfg->defaultImage == DEFAULT_SAVED)
+	fprintf(out, "%sdefault%ssaved\n", indent, separator);
+    else if (cfg->defaultImage > -1) {
+	if (cfg->cfi->defaultIsIndex) {
+	    fprintf(out, "%sdefault%s%d\n", indent, separator, 
+		    cfg->defaultImage);
+	} else {
+	    entry = findEntryByIndex(cfg, cfg->defaultImage);
+
+	    if (!entry) return;
+
+	    line = entry->lines;
+	    while (line && line->type != LT_TITLE) line = line->next;
+
+	    if (line && line->numElements >= 2)
+		fprintf(out, "%sdefault%s%s\n", indent, separator, 
+			line->elements[1].item);
+	}
+    }
 }
 
 static int writeConfig(struct grubConfig * cfg, const char * outName, 
@@ -457,8 +543,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     line = cfg->theLines;
     while (line) {
 	if (line->type == LT_DEFAULT) {
-	    writeDefault(out, "default", line->indent, 
-		line->elements[0].indent, cfg->defaultImage, cfg->flags);
+	    writeDefault(out, line->indent, line->elements[0].indent, cfg);
 	    needs &= ~MAIN_DEFAULT;
 	} else if (line->type == LT_FALLBACK) {
 	    if (cfg->fallbackImage > -1)
@@ -473,8 +558,7 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
     }
 
     if (needs & MAIN_DEFAULT) {
-	writeDefault(out, "default", cfg->primaryIndent, 
-		     "=", cfg->defaultImage, cfg->flags);
+	writeDefault(out, cfg->primaryIndent, "=", cfg);
 	needs &= ~MAIN_DEFAULT;
     }
 
@@ -516,9 +600,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
     line = entry->lines;
 
-    do {
-	line = line->next;
-    } while (line && line->type != LT_KERNEL);
+    while (line && line->type != LT_KERNEL) line = line->next;
 
     if (!line) return 0;
     if (skipRemoved && entry->skip) return 0;
@@ -672,6 +754,10 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
     /* defaultImage now points to what we'd like to use, but before any order 
        changes */
 
+    if (config->defaultImage == DEFAULT_SAVED) 
+      /* default is set to saved, we don't want to change it */
+      return;
+
     if (config->defaultImage > -1) 
 	entry = findEntryByIndex(config, config->defaultImage);
 
@@ -686,8 +772,6 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 	    entry2 = findEntryByIndex(config, j);
 	    if (entry2->skip) config->defaultImage--;
 	}
-    } else if (config->defaultImage == DEFAULT_SAVED) {
-      /* default is set to saved, we don't want to change it */
     } else if (hasNew) {
 	config->defaultImage = 0;
     } else {
@@ -725,11 +809,12 @@ void setFallbackImage(struct grubConfig * config, int hasNew) {
 
 int main(int argc, const char ** argv) {
     poptContext optCon;
-    char * grubConfig = "/boot/grub/grub.conf";
+    char * grubConfig = NULL;
     char * outputFile = NULL;
     int arg;
     int flags = 0;
     int badImageOkay = 0;
+    int configureLilo = 0;
     char * newKernelPath = NULL;
     char * oldKernelPath = NULL;
     char * newKernelArgs = NULL;
@@ -738,6 +823,7 @@ int main(int argc, const char ** argv) {
     char * newKernelVersion = NULL;
     char * bootPrefix = NULL;
     char * defaultKernel = NULL;
+    struct configFileInfo * cfi = &grubConfigType;
     struct grubConfig * config;
     struct newKernelInfo newKernel;
     struct singleEntry * template = NULL;
@@ -766,6 +852,8 @@ int main(int argc, const char ** argv) {
 	    _("display the path of the default kernel") },
 	{ "initrd", 0, POPT_ARG_STRING, &newKernelInitrd, 0,
 	    _("initrd image for the new kernel"), _("args") },
+	{ "lilo", 0, POPT_ARG_NONE, &configureLilo, 0,
+	    _("configure lilo instead of grub") },
 	{ "make-default", 0, 0, &makeDefault, 0,
 	    _("make the newly added entry the default boot entry"), NULL },
 	{ "output-file", 'o', POPT_ARG_STRING, &outputFile, 0,
@@ -802,6 +890,13 @@ int main(int argc, const char ** argv) {
 		poptBadOption(optCon, POPT_BADOPTION_NOALIAS),
 		poptStrerror(arg));
 	return 1;
+    }
+
+    if (configureLilo) {
+	if (!grubConfig) grubConfig = "/etc/lilo.conf";
+	cfi = &liloConfigType;
+    } else {
+	if (!grubConfig) grubConfig = "/boot/grub/grub.conf";
     }
 
     if (displayDefault && (newKernelVersion || newKernelPath ||
@@ -848,16 +943,20 @@ int main(int argc, const char ** argv) {
 
     flags |= badImageOkay ? GRUBBY_BADIMAGE_OKAY : 0;
 
-    if (!bootPrefix) {
-	bootPrefix = findBootPrefix();
-	if (!bootPrefix) return 1;
+    if (cfi->needsBootPrefix) {
+	if (!bootPrefix) {
+	    bootPrefix = findBootPrefix();
+	    if (!bootPrefix) return 1;
+	} else {
+	    /* this shouldn't end with a / */
+	    if (bootPrefix[strlen(bootPrefix) - 1] == '/')
+		bootPrefix[strlen(bootPrefix) - 1] = '\0';
+	}
     } else {
-	/* this shouldn't end with a / */
-	if (bootPrefix[strlen(bootPrefix) - 1] == '/')
-	    bootPrefix[strlen(bootPrefix) - 1] = '\0';
+	bootPrefix = "";
     }
 
-    config = readConfig(grubConfig);
+    config = readConfig(grubConfig, cfi);
     if (!config) return 1;
 
     if (displayDefault) {
