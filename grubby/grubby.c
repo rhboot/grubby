@@ -799,6 +799,19 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
     return 0;
 }
 
+static int numEntries(struct grubConfig *cfg) {
+    int i = 0;
+    struct singleEntry * entry;
+
+    entry = cfg->entries;
+    while (entry) {
+        if (!entry->skip)
+            i++;
+        entry = entry->next;
+    }
+    return i;
+}
+
 int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 		  int skipRemoved, int flags) {
     struct singleLine * line;
@@ -2241,6 +2254,12 @@ int main(int argc, const char ** argv) {
 		removeArgs)) return 1;
     if (addNewKernel(config, template, bootPrefix, newKernelPath, 
 		newKernelTitle, newKernelArgs, newKernelInitrd)) return 1;
+
+    if (numEntries(config) == 0) {
+        fprintf(stderr, _("grubby: doing this would leave no kernel entries. "
+                          "Not writing out new config.\n"));
+        return 1;
+    }
 
     if (!outputFile)
 	outputFile = grubConfig;
