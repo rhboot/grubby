@@ -22,6 +22,8 @@ else
     grubby=/sbin/grubby
 fi
 
+[ -f /etc/sysconfig/kernel ] && . /etc/sysconfig/kernel
+
 cfgGrub=""
 cfgLilo=""
 runLilo=""
@@ -70,6 +72,7 @@ initrdfile=""
 moddep=""
 verbose=""
 makedefault=""
+package=""
 
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
@@ -269,6 +272,15 @@ while [ $# -gt 0 ]; do
 	    makedefault="--make-default"
 	    ;;
 
+	--package)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	package=`echo $1 | sed 's/^--package=//'`
+	    else
+		package=$2
+		shift
+	    fi		    
+	    ;;
+
 	-v)
 	    verbose=-v
 	    ;;
@@ -320,6 +332,12 @@ if [ -z "$initrdfile" ]; then
 
 fi
 [ -n "$verbose" ] && echo "initrdfile is $initrdfile"
+
+# set this as the default if we have the package and it matches
+if [ "$mode" == "--install" -a "$UPDATEDEFAULT" == "yes" -a -n "$package" -a -n "$DEFAULTKERNEL" -a "$package" == "$DEFAULTKERNEL" ]; then
+    makedefault="yes"
+    [ -n "$verbose" ] && echo "making it the default based on config"
+fi
 
 if [ "$moddep" == "make" ]; then
     doDepmod
