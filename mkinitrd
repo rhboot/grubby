@@ -63,9 +63,9 @@ moduledep() {
 	exit 1
     fi
 
-    [ -n "$verbose" ] && echo -n "Looking for deps of module $1.o"
+    [ -n "$verbose" ] && echo -n "Looking for deps of module $1"
     deps=$(awk 'BEGIN { searched=ARGV[2]; ARGV[2]=""; rc=1 } \
-                function modname(filename) { match(filename, /\/([^\/]+)\.o/, ret); return ret[1] } \
+                function modname(filename) { match(filename, /\/([^\/]+)\.k?o/, ret); return ret[1] } \
                 function show() { if (orig == searched) { print dep; orig=""; rc=0; exit } } \
                 /^\/lib/ { show(); \
                            orig=modname($1); \
@@ -541,7 +541,7 @@ echo "" >> $RCFILE
 
 for MODULE in $MODULES; do
     text=""
-    module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
+    module=`echo $MODULE | sed "s|.*/||" | sed "s/.k?o$//"`
     fullmodule=`echo $MODULE | sed "s|.*/||"`
 
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`    
