@@ -2,11 +2,11 @@ Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 %define version 2.4.4
 Version: %{version}
-Release: 1
+Release: 2
 Copyright: GPL
 Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.gz
-ExclusiveArch: i386 sparc sparc64 ia64
+ExclusiveArch: i386 sparc sparc64 ia64 alpha
 ExclusiveOs: Linux
 Requires: sash >= 3.4 e2fsprogs /bin/sh fileutils grep mount gzip tar /sbin/insmod.static /sbin/losetup
 BuildRoot: %{_tmppath}/%{name}-root
@@ -42,6 +42,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
 
 %changelog
+* Tue Jul  4 2000 Matt Wilson <msw@redhat.com>
+- build on alpha
+
 * Mon Jun 26 2000 Bill Nottingham <notting@redhat.com>
 - ignore 'unknown' aliases (they shouldn't be there anyways)
 
