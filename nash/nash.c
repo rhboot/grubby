@@ -789,7 +789,7 @@ int switchrootCommand(char * cmd, char * end) {
         }
     }
 
-    initargs[i + 1] = NULL;
+    initargs[i] = NULL;
 
     if (access(initargs[0], X_OK)) {
         printf("WARNING: can't access %s\n", initargs[0]);
