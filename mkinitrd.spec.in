@@ -58,6 +58,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Mar  1 2005 Peter Jones <pjones@redhat.com> - 4.2.1-1
+- typo fixes
+- one missed gcc4 fix
+
 * Tue Mar  1 2005 Peter Jones <pjones@redhat.com> - 4.2.0.4-1
 - fix gcc4 warnings/errors
 - use -D_FORTIFY_SOURCE=2 wherever we don't use RPM_OPT_FLAGS
