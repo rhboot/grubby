@@ -9,6 +9,7 @@ ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm
 Requires: filesystem >= 2.1.0
+BuildRequires: popt
 %ifarch i386
 BuildRequires: dietlibc
 %endif
@@ -59,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Apr 30 2003 Elliot Lee <sopwith@redhat.com>
+- BuildRequires: popt
+
 * Thu Apr 24 2003 Jeremy Katz <katzj@redhat.com> 3.4.49.1-1
 - use Arjan's suggestion of vmlinitrd for the kernel + initrd combo file
 
