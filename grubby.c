@@ -574,13 +574,13 @@ static int writeConfig(struct grubConfig * cfg, const char * outName,
 	}
 
 	if (!stat(outName, &sb)) {
-	    if (chmod(tmpOutName, sb.st_mode)) {
+	    if (chmod(tmpOutName, sb.st_mode & ~(S_IFMT))) {
 		fprintf(stderr, _("grubby: error setting perms on %s: %s\n"),
 		        tmpOutName, strerror(errno));
 		fclose(out);
 		unlink(tmpOutName);
 	    }
-	}
+	} 
     }
 
     line = cfg->theLines;
