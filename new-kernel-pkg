@@ -38,7 +38,6 @@ elif [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
     liloConfig=/etc/yaboot.conf
     bootPrefix=/boot
     lilo=/sbin/ybin
-    kernelName=vmlinux
     liloFlag=yaboot
     runLilo="yes"
     isx86=""
@@ -300,6 +299,16 @@ fi
 if [ "$mode" != "--install" -a "$makedefault" ]; then
     usage
 fi
+
+kernelmajor=`echo $kernel | cut -d . -f 1,2`
+
+# kernel image for 2.4 is vmlinux
+if [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
+  if [ "$kernelmajor" == "2.4" ]; then
+      kernelName=vmlinux
+  fi
+fi
+
 
 # set the initrd file based on arch; ia64 is the only currently known oddball
 if [ -z "$initrdfile" ]; then
