@@ -1025,8 +1025,13 @@ int checkLiloDevice(const char * device, const unsigned char * boot) {
     if (memcmp(boot, lilo, 3))
 	return 0;
 
-    if (boot[1] != 0xeb)
+    if (boot[1] == 0xeb) {
+	offset = boot[2] + 2;
+    } else if (boot[1] == 0xe8 || boot[1] == 0xe9) {
+	offset = (boot[3] << 8) + boot[2] + 2;
+    } else {
 	return 0;
+    }
 
     offset = boot[2] + 2;
 
@@ -1106,7 +1111,12 @@ int checkForLilo(struct grubConfig * config) {
     for (line = config->theLines; line; line = line->next)
 	if (line->type == LT_BOOT) break;
 
-    if (!line) return 1;
+    if (!line) { 
+	fprintf(stderr, 
+		_("grubby: no boot line found in lilo configuration\n"));
+	return 1;
+    }
+
     if (line->numElements != 2) return 1;
 
     fd = open("/boot/boot.b", O_RDONLY);
@@ -1182,9 +1192,10 @@ int main(int argc, const char ** argv) {
 	{ "grub", 0, POPT_ARG_NONE, &configureGrub, 0,
 	    _("configure grub instead of lilo") },
 	{ "info", 0, POPT_ARG_STRING, &kernelInfo, 0,
-	    _("display boot information for specified kernel") },
+	    _("display boot information for specified kernel"),
+	    _("kernel-path") },
 	{ "initrd", 0, POPT_ARG_STRING, &newKernelInitrd, 0,
-	    _("initrd image for the new kernel"), _("args") },
+	    _("initrd image for the new kernel"), _("initrd-path") },
 	{ "lilo", 0, POPT_ARG_NONE, &configureLilo, 0,
 	    _("configure lilo instead of grub") },
 #ifdef __i386__
@@ -1201,7 +1212,7 @@ int main(int argc, const char ** argv) {
 	    _("kernel-path") },
 	{ "set-default", 0, POPT_ARG_STRING, &defaultKernel, 0,
 	    _("make the first entry referencing the specified kernel "
-	      "the default") },
+	      "the default"), _("kernel-path") },
 	{ "title", 0, POPT_ARG_STRING, &newKernelTitle, 0,
 	    _("title to use for the new kernel entry"), _("entry-title") },
 	{ "version", 'v', 0, NULL, 'v',
