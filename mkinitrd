@@ -315,12 +315,8 @@ mkdir -p $MNTIMAGE/loopfs
 # We don't need this directory, so let's save space
 rm -rf $MNTPOINT/lost+found
 
-inst /sbin/sash "$MNTIMAGE/bin/sh"
+inst /sbin/sash "$MNTIMAGE/bin/sash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
-
-if [ -n "$loopDev" ]; then
-    inst /sbin/losetup "$MNTIMAGE/bin/losetup"
-fi
 
 for MODULE in $MODULES; do
     cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
@@ -330,7 +326,9 @@ for n in console null ram systty tty[1234]; do
     cp -a /dev/$n $MNTIMAGE/dev
 done
 
-echo "#!/bin/sh" > $RCFILE
+echo "#!/bin/sash" > $RCFILE
+echo "" >> $RCFILE
+echo "aliasall" >> $RCFILE
 echo "" >> $RCFILE
 
 for MODULE in $MODULES; do
