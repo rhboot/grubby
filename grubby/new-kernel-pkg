@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Invoked upon installation or removal of a kernel package, the following
+# tasks are done here:
+# addition/removal of kernel images from grub configuration (via grubby)
+#
+# Copyright (C) 2001 Red Hat, Inc.
+# 
+
+grubConfig=/boot/grub/grub.conf
+grubby=/sbin/grubby
+verbose=""
+
+usage() {
+    echo "Usage: `basename $0` <--install | --remove> <kernel-version>" >&2
+    echo "       (ex: `basename $0` --install 2.4.7-2)" >&2
+}
+
+install() {
+    VERSION="$1"
+    INITRD=""
+    
+    [ -f $grubConfig ] && [ -x $grubby ] || return
+    [ -f /boot/vmlinuz-$VERSION ] || return
+    
+    if [ -f /boot/initrd-$VERSION.img ]; then
+	INITRD="--initrd /boot/initrd-$VERSION.img"
+    fi
+
+    /sbin/grubby --add-kernel=/boot/vmlinuz-$VERSION $INITRD --copy-default --title "Red Hat Linux ($VERSION)"
+
+}
+
+remove() {
+    VERSION="$1"
+
+    /sbin/grubby --remove-kernel=/boot/vmlinuz-$VERSION
+}
+
+if [ "$#" != "2" ]; then
+    usage
+    exit 1
+fi
+
+
+case "$1" in
+    --install)
+	install $2
+	;;
+    --remove)
+	remove $2
+	;;
+    *)
+	usage
+	;;
+esac
+
+exit 0
+
+
