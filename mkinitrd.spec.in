@@ -58,6 +58,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Mar 15 2005 Peter Jones <pjones@redhat.com> - 4.2.2-1
+- Fix accidental formatting of data in grub.conf (#151118,
+  from proski@gnu.org)
+
 * Tue Mar  1 2005 Peter Jones <pjones@redhat.com> - 4.2.1-1
 - typo fixes
 - one missed gcc4 fix
