@@ -184,7 +184,7 @@ if [ -z "$noraid" ]; then
     # load appropriate raid devices if necessary
     if grep '^/dev/md' /etc/fstab | grep -v noauto >/dev/null 2>&1 ; then
 	for number in $(grep '^[ 	]*raid-level' /etc/raidtab |
-			  awk '{print $2}' | sort -u) ; do
+			  awk '{print $2}' | LC_ALL=C sort -u) ; do
 	    case $number in
 	    [0145])
 		findmodule "" raid$number
