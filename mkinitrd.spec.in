@@ -11,6 +11,9 @@ Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.st
 Requires: filesystem >= 2.1.0, cpio
 Conflicts: udev < 0:032
 BuildRequires: popt
+%ifarch i386
+BuildRequires: dietlibc
+%endif
 %ifarch ppc
 Requires: ppc64-utils >= 0.3-1
 %endif
@@ -58,34 +61,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Tue Mar  1 2005 Peter Jones <pjones@redhat.com> - 4.2.1-1
-- typo fixes
-- one missed gcc4 fix
-
-* Tue Mar  1 2005 Peter Jones <pjones@redhat.com> - 4.2.0.4-1
-- fix gcc4 warnings/errors
-- use -D_FORTIFY_SOURCE=2 wherever we don't use RPM_OPT_FLAGS
-
-* Fri Jan 21 2005 Peter Jones <pjones@redhat.com> - 4.2.0.3-1
-- Make nash expand environment variables on command lines (#144474)
-- Make nash check pids returned from wait*() (#145660)
-
-* Fri Jan 21 2005 Peter Jones <pjones@redhat.com> - 4.2.0.2-1
+* Mon Mar 14 2005 Peter Jones <pjones@redhat.com - 4.2.1.1-1
 - Make getArg return NULL on cmd=NULL, fixing #144472 .  Based on a
   patch from Kasper Dupont.
-
-* Tue Jan 18 2005 Jeremy Katz <katzj@redhat.com> - 4.2.0.1-1
-- fix grubby tests to run on systems with /boot = /
-
-* Tue Jan 18 2005 Jeremy Katz <katzj@redhat.com> - 4.2.0-1
-- grubby: add multiboot support for xen0
-- new-kernel-pkg: likewise
-
-* Mon Dec 20 2004 Jeremy Katz <katzj@redhat.com> - 4.1.20-1
-- grubby: fix mac yaboot.conf updating if magicboot line is present
-
-* Mon Nov 22 2004 Jeremy Katz <katzj@redhat.com> - 4.1.19-1
-- remove use of dietlibc for nash
+- Make nash expand environment variables on command lines (#144474)
+- Make nash check pids returned from wait*() (#145660)
 
 * Wed Nov  3 2004 Jeremy Katz <katzj@redhat.com>
 - handle machines with lots of disks in /proc/partitions (#137816)
