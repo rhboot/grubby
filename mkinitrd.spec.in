@@ -60,6 +60,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Nov  3 2004 Jeremy Katz <katzj@redhat.com>
+- handle machines with lots of disks in /proc/partitions (#137816)
+
 * Mon Feb  9 2004 Jeremy Katz <katzj@redhat.com> - 3.5.13.1-1
 - nash/mkinitrd: add quiet mode bits
 - new-kernel-pkg: add --kernel-arguments option (#113125)
