@@ -28,7 +28,7 @@ PRESCSIMODS="scsi_mod sd_mod"
 
 usage () {
     echo "usage: `basename $0` [--version] [-v] [-f] [--ifneeded] [--preload <module>]" >&2
-    echo "       [--omit-scsi-modules] [--with <module>] [--image-version] <initrd-image>" >&2
+    echo "       [--omit-scsi-modules] [--with=<module>] [--image-version] <initrd-image>" >&2
     echo "       <kernel>" >&2
     echo "       (ex: `basename $0` /boot/initrd 2.0.3)" >&2
     exit 1
