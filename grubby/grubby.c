@@ -464,6 +464,7 @@ struct singleLine * findTitleByIndex(struct grubConfig * cfg, int index) {
     do {
 	while (line && line->type != LT_TITLE) line = line->next;
 	if (line && !index) break;
+	if (!line) return NULL;
 	line = line->next;
 	index--;
     } while (line);
