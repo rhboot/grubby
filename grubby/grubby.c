@@ -25,6 +25,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "mount_by_label.h"
+
 #define _(A) (A)
 
 #define CODE_SEG_SIZE	  128	/* code segment checked by --bootloader-probe */
@@ -656,8 +658,13 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     }
 
     /* XXX should compare this against the label for this root device */
-    if (!strncmp(dev, "LABEL=", 6))
-	return 1;
+    if (!strncmp(dev, "LABEL=", 6)) {
+	dev += 6;
+	
+	/* check which device has this label */
+	dev = get_spec_by_volume_label(dev, &i, &i);
+	if (!dev) return 0;
+    }
 
     if (*dev == '/') {
 	if (stat(dev, &sb))
