@@ -81,7 +81,6 @@ remove() {
 	[ -n "$verbose" ] && echo "removing $version from $liloConfig"
 	/sbin/grubby --remove-kernel=/boot/vmlinuz-$version	    \
 		     --lilo
-	[ -n "$runLilo" ] && $lilo > /dev/null
 
 	if [ -n "$runLilo" ]; then 
 	    [ -n "$verbose" ] && echo "running $lilo"
