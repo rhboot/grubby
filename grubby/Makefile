@@ -13,8 +13,8 @@ test:	all
 	done
 
 install:    all
-	mkdir -p $(BUILDROOT)/usr/sbin
-	install -m 755 -s grubby $(BUILDROOT)/usr/sbin
+	mkdir -p $(BUILDROOT)/sbin
+	install -m 755 -s grubby $(BUILDROOT)/sbin
 
 clean:
 	rm -f grubby
