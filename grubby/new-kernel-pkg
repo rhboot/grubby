@@ -37,7 +37,7 @@ if [ $ARCH = 'ia64' ]; then
 elif [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
     liloConfig=/etc/yaboot.conf
     bootPrefix=/boot
-    lilo=/usr/sbin/ybin
+    lilo=/sbin/ybin
     kernelName=vmlinux
     liloFlag=yaboot
     runLilo="yes"
