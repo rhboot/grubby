@@ -7,7 +7,7 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveArch: i386 sparc sparc64 ia64 alpha ppc
 ExclusiveOs: Linux
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5, findutils
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 BuildRoot: %{_tmppath}/%{name}-root
 
 %description
@@ -46,6 +46,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 
 %changelog
+* Wed Feb 28 2001 Matt Wilson <msw@redhat.com>
+- changed the Requires on mktemp from >= 1.5 to >= 1.5-5 (which included
+  -d support)
+
 * Fri Feb 23 2001 Erik Troan <ewt@redhat.com>
 - let nash be invoked as modprobe to avoid a modprobe failure to exec
 - nash will try to run arbitrary commands now (removing insmod as a special 
