@@ -96,9 +96,9 @@ install() {
 	[ -n "$verbose" ] && echo "On an iSeries, just making img file"
 	if [ -z $initrdfile  ]; then
 	    [ -n "$verbose" ] && echo "No initrd, just hardlinking kernel"
-	    ln $bootPrefix/$kernelName-$version $bootPrefix/vmlinux-$version.img
+	    ln $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version
 	else
-	    /sbin/addRamDisk $INITRD $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/$kernelName-$version.img 2>/dev/null
+	    /sbin/addRamDisk $INITRD $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version 2>/dev/null
 	fi
 	return
     fi
