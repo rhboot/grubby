@@ -1,5 +1,4 @@
-.TH MKINITRD 8 "Sat Mar 27 1999"
-.UC 4
+.TH MKINITRD 8 "Tue Aug 10 2004"
 .SH NAME
 mkinitrd \- creates initial ramdisk images for preloading modules
 .SH SYNOPSIS
@@ -12,30 +11,16 @@ mkinitrd \- creates initial ramdisk images for preloading modules
          \fIimage\fR \fIkernel-version\fR
 
 .SH DESCRIPTION
-\fBmkinitrd\fR creates filesystem images which are suitable for use
-as Linux initial ramdisk (initrd) images. Such images are often
-used for preloading the block device modules (such as IDE, SCSI or RAID)
+\fBmkinitrd\fR creates an initial image used by the kernel for
+preloading the block device modules (such as IDE, SCSI or RAID)
 which are needed to access the root filesystem. \fBmkinitrd\fR
 automatically loads filesystem modules (such as ext3 and jbd), IDE modules, all
-\fIscsi_hostadapter\fR entries in \fI/etc/modules.conf\fR, and raid
+\fIscsi_hostadapter\fR entries in \fI/etc/modprobe.conf\fR, and raid
 modules if the system's root partition is on raid, which makes it simple
 to build and use kernels using modular device drivers.
 
-Any module options specified in \fI/etc/modules.conf\fR are passed
+Any module options specified in \fI/etc/modprobe.conf\fR are passed
 to the modules as they are loaded by the initial ramdisk.
-
-If the root device is on a loop device (such as /dev/loop0), \fBmkinitrd\fR
-will build an initrd which sets up the loopback file properly.
-To do this, the fstab must contain a comment of the form:
-
-    # LOOP0: /dev/hda1 vfat /linux/rootfs
-
-LOOP0 must be the name of the loop device which needs to be configured, in
-all capital lettes. The parameters after the colon are the device which 
-contains the filesystem with the loopback image on it, the filesystem which
-is on the device, and the full path to the loopback image. If the filesystem
-is modular, initrd will automatically add the filesystem's modules to the
-initrd image.
 
 The root filesystem used by the kernel is specified in the boot configuration
 file, as always. The traditional \fBroot=/dev/hda1\fR style device 
@@ -93,7 +78,7 @@ modules, even if they are present.
 .TP
 \fB-\-preload=\fR\fImodule\fR
 Load the module \fImodule\fR in the initial ramdisk image. The module gets
-loaded before any SCSI modules which are specified in \fI/etc/modules.conf\fR.
+loaded before any SCSI modules which are specified in \fI/etc/modprobe.conf\fR.
 This option may be used as many times as necessary.
 
 .TP
@@ -109,7 +94,7 @@ Prints the version of \fBmkinitrd\fR that's being used and then exits.
 \fB-\-with=\fR\fImodule\fR
 Load the modules \fImodule\fR in the initial ramdisk image. The module
 gets loaded after any SCSI modules which are specified in 
-\fI/etc/modules.conf\fR. This option may be used as many times as 
+\fI/etc/modprobe.conf\fR. This option may be used as many times as 
 necessary.
 
 .SH FILES
@@ -117,11 +102,18 @@ necessary.
 .TP 20
 \fI/dev/loop*\fR
 A block loopback device is used to create the image, which makes this
-script useless on systems without block loopback support available.
+script useless on systems without block loopback support available
+\fI(only used on kernels < 2.6)\fR
+
+.TP 20
+\fI/etc/modprobe.conf\fR
+Specifies SCSI modules to be loaded and module options to be used.
 
 .TP 20
 \fI/etc/modules.conf\fR
-Specified SCSI modules to be loaded and module options to be used.
+Specifies SCSI modules to be loaded and module options to be used.
+\fI(only used on kernels < 2.6)\fR
+
 .PD
 .SH "SEE ALSO"
 .BR fstab (5),
