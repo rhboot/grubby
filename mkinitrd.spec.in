@@ -55,6 +55,11 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Thu Jun 13 2002 Jeremy Katz <katzj@redhat.com>
+- don't run lilo twice on kernel removal in new-kernel-pkg
+- don't run grubby to add/remove kernels from new-kernel-pkg if 
+  bootloader config doesn't 
+
 * Tue Jun 11 2002 Erik Troan <ewt@redhat.com>
 - added --bootloader-probe to grubby
 - wrote a man page for grubby
