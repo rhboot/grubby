@@ -1,0 +1,26 @@
+boot=/dev/sda1
+partition=sda2
+init-message="\nWelcome to Red Hat Linux!\nHit <TAB> for boot options.\n\n"
+install=/usr/lib/yaboot/yaboot
+nonvram
+default=test
+timeout=100
+
+image=/boot/vmlinux-2.4.9-23.19.8
+	label=linux
+	read-only
+	root=/dev/sda2
+
+image=/boot/zImage-2.4.20
+	label=test
+	read-only
+	root=/dev/sda2
+	append="eeh-force-off console=ttyS0 console=tty"
+
+darwin=foo
+
+image=/boot/vmlinuz-2.5.50-eepro
+        label=25eepro
+        read-only
+        root=/dev/sda2
+        append="console=ttyS0 console=tty"

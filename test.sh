@@ -31,8 +31,16 @@ liloTest() {
     oneTest --lilo "$@"
 }
 
+eliloTest() {
+    oneTest --elilo "$@"
+}
+
 grubTest() {
     oneTest --grub "$@"
+}
+
+yabootTest() {
+    oneTest --yaboot "$@"
 }
 
 echo "Parse/write comparison..."
@@ -116,11 +124,16 @@ grubTest grub.1 args/g1.1 --boot-filesystem=/boot \
 grubTest grub.1 args/g1.2 --boot-filesystem=/boot \
     --add-kernel=/boot/foo --title=some_title --args="1234" 
 
-echo "GRUB remove directive..."
+echo "GRUB remove kernel..."
 grubTest grub.7 remove/g7.1 --boot-filesystem=/ \
     --remove-kernel=/boot/vmlinuz-2.4.7-2.5
 grubTest grub.3 remove/g3.1 --boot-filesystem=/ \
     --remove-kernel=DEFAULT
+
+echo "YABOOT remove kernel..."
+yabootTest yaboot.1 remove/y1.1 --remove-kernel=DEFAULT
+yabootTest yaboot.1 remove/y1.2 --remove-kernel=/boot/vmlinuz-2.5.50-eepro
+yabootTest yaboot.2 remove/y2.1 --remove-kernel=/boot/vmlinux-2.5.50
 
 echo "GRUB update kernel argument handling..."
 grubTest grub.1 updargs/g1.1 --update-kernel=DEFAULT --args="root=/dev/hda1"
@@ -186,14 +199,21 @@ grubTest grub.2 add/g2.1 --add-kernel=/boot/vmlinuz-2.4.7-2	    \
     --title="Red Hat Linux (2.4.7-2)"					    \
     --remove-kernel="TITLE=Red Hat Linux (2.4.7-2)" 
 
-if [ $(uname -m) != ia64 ]; then
-    echo "LILO long titles..."
-    liloTest lilo.1 longtitle/l1.1 --add-kernel=/boot/new-kernel.img \
-	--title="linux-longtitle" --copy-default --boot-filesystem=/boot 
-    liloTest lilo.1 longtitle/l1.2 --add-kernel=/boot/new-kernel.img \
-	--title="linux-toolongtitle" --copy-default --boot-filesystem=/boot 
-    liloTest lilo.7 longtitle/l7.1 --add-kernel=/boot/new-kernel.img \
-	--title="linux-longtitle-fix" --copy-default --boot-filesystem=/boot 
-fi
+echo "YABOOT add kernel..."
+yabootTest yaboot.1 add/y1.1 --copy-default --add-kernel=/boot/new-kernel  \
+    --title=newtitle
+yabootTest yaboot.1 add/y1.2 --add-kernel=/boot/new-kernel --title=newtitle
+
+echo "LILO long titles..."
+liloTest lilo.1 longtitle/l1.1 --add-kernel=/boot/new-kernel.img \
+    --title="linux-longtitle" --copy-default --boot-filesystem=/boot 
+liloTest lilo.1 longtitle/l1.2 --add-kernel=/boot/new-kernel.img \
+    --title="linux-toolongtitle" --copy-default --boot-filesystem=/boot 
+liloTest lilo.7 longtitle/l7.1 --add-kernel=/boot/new-kernel.img \
+    --title="linux-longtitle-fix" --copy-default --boot-filesystem=/boot 
+
+echo "ELILO long titles..."
+eliloTest lilo.7 longtitle/e7.1 --add-kernel=/boot/new-kernel.img \
+    --title="linux-longtitle-fix" --copy-default --boot-filesystem=/boot 
 
 exit $RESULT

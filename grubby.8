@@ -15,16 +15,16 @@ grubby \- command line tool for configuring grub, lilo, and elilo
 
 .SH DESCRIPTION
 \fBgrubby\fR is a command line tool for updating and displaying information
-about the configuration files for the \fBgrub\fR, \fBlilo\fR, and \fBelilo\fR 
-(ia64) boot loaders. It is primarily designed to be used from scripts
-which install new kernels and need to find information about the current
-boot environment.
+about the configuration files for the \fBgrub\fR, \fBlilo\fR, \fBelilo\fR 
+(ia64), and \fByaboot\fR (powerpc) boot loaders. It is primarily designed to 
+be used from scripts which install new kernels and need to find information 
+about the current boot environment.
 
 On Intel x86 platforms, \fBgrub\fR is the default bootloader and the
-configuration file is in \fB/boot/grub/grub.conf\fR. On
-Intel ia64 platforms, \fBlilo\fR mode is used (elilo is almost entirely
-configuration compatible with lilo) and the default location for the
-configuration file is \fB/boot/grub/grub.conf\fR.
+configuration file is in \fB/boot/grub/grub.conf\fR. On Intel ia64 platforms, 
+\fBelilo\fR mode is used and the default location for the configuration file 
+is \fB/boot/grub/grub.conf\fR. On PowerPC platforms, \fByaboot\fR parsing
+is used and the configuration file should be in \fB/etc/yaboot.conf\fR.
 
 There are a number of ways to specify the kernel used for \fB-\-info\fR,
 \fB-\-remove-kernel\fR, and \fB-\-update-kernel\fR. Specificying \fBDEFAULT\fR
@@ -96,6 +96,10 @@ and initrd path will never be copied.
 Display the full path to the current default kernel and exit.
 
 .TP
+\fB-\-elilo\fR
+Use an \fBelilo\fR style configuration file.
+
+.TP
 \fB-\-grub\fR
 Use a \fBgrub\fR style configuration file instead of \fBlilo\fR style. This
 is the default on ia32 platforms.
@@ -111,9 +115,7 @@ being added.
 
 .TP
 \fB-\-lilo\fR
-Use a \fBlilo\fR style configuration file instead of \fBgrub\fR style. This
-is the default on ia64 platforms. On ia32 platforms this option changes the
-default configuration file path to \fB/etc/lilo.conf\fR.
+Use a \fBlilo\fR style configuration file.
 
 .TP
 \fB-\-make-default\fR
@@ -150,6 +152,14 @@ The entries for kernels matching \fRkernel-path\fR are updated. Currently
 the only items that can be updated is the kernel argument list, which is
 modified via the \fB-\-args\fR and \fB-\-remove-args\fR options.
 
+.TP
+\fB-\-version\fR
+Display the version of \fBgrubby\fR being run and then exit immediately.
+
+.TP
+\fB-\-yaboot\fR
+Use an \fByaboot\fR style configuration file.
+
 .SH "BUGS"
 The command line syntax is more then a little baroque. This probably
 won't be fixed as \fBgrubby\fR is only intended to be called from shell
@@ -158,6 +168,7 @@ scripts which can get it right.
 .SH "SEE ALSO"
 .BR grub (8),
 .BR lilo (8),
+.BR yaboot (8),
 .BR mkinitrd (8)
 
 .SH AUTHOR
