@@ -644,7 +644,6 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
     for (i = 2; i < line->numElements; i++)
 	if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
-
     if (i < line->numElements) {
 	dev = line->elements[i].item + 5;
     } else {
@@ -665,8 +664,6 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	/* it failed too...  can't find root= */
 	else
 	    return 0;
-    } else {
-	return 0;
     }
 
     /* XXX should compare this against the label for this root device */
