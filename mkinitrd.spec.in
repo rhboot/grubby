@@ -55,6 +55,11 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Thu Sep  5 2002 Jeremy Katz <katzj@redhat.com>
+- grubby could segfault by going into its lilo checking if it couldn't find 
+  a default to copy (default had no root= and --bad-image-okay wasn't 
+  being used)
+
 * Mon Sep  2 2002 Jeremy Katz <katzj@redhat.com>
 - nash: create directories if needed in mkdevices command (#73090)
 - grubby: handle lilo case of non-linux default (#72202)
