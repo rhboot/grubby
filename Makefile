@@ -13,24 +13,7 @@ else
 LOADLIBES = /usr/lib64/libpopt.a
 endif
 
-
-ifeq ($(ARCH), i386)
-TARGETS += grubby
-endif
-
-ifeq ($(ARCH), x86_64)
-TARGETS += grubby
-endif
-
-ifeq ($(ARCH), ia64)
-TARGETS += grubby
-endif
-
-ifeq ($(ARCH), ppc)
-TARGETS += grubby
-endif
-
-all:	$(TARGETS)
+all:	grubby
 
 test:	all
 	@./test.sh
