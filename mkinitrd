@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # mkinitrd
 #
@@ -229,7 +229,7 @@ echo "" >> $RCFILE
 for MODULE in $MODULES; do
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.o$//"`
 
-    options=`grep $module /etc/conf.modules | grep "^options" | sed "s/.*$module *//"`
+    options=`sed -n -e "s/^options[ \t][ \t]*$module[ \t][ \t]*//p" /etc/conf.modules`
 
     if [ -n "$verbose" ]; then
         echo "Loading module $module with options $options"
