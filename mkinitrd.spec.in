@@ -46,12 +46,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 %attr(755,root,root) /sbin/grubby
 %attr(755,root,root) /sbin/installkernel
+%attr(755,root,root) /sbin/new-kernel-pkg
 
 %changelog
 * Mon Aug 27 2001 Jeremy Katz <katzj@redhat.com>
 - more grubby fixups for having a /boot
-- grubby --new-default=kver to add new kernel image with version kver to
-  the grub.conf
+- added new-kernel-pkg
 
 * Sun Aug 26 2001 Erik Troan <ewt@redhat.com>
 - added grubby
