@@ -833,7 +833,7 @@ int switchrootCommand(char * cmd, char * end) {
 
     fd = open("/", O_RDONLY);
     for (; umounts[i] != NULL; i++) {
-        printf("unmounting old %s\n", umounts[i]);
+        if (reallyquiet) printf("unmounting old %s\n", umounts[i]);
         if (umount2(umounts[i], MNT_DETACH)) {
             printf("ERROR unmounting old %s: %d\n", umounts[i], errno);
             printf("forcing unmount of %s\n", umounts[i]);
