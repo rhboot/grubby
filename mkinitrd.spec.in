@@ -7,9 +7,8 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 Prereq: dev
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm2
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm2, udev >= 057-3
 Requires: filesystem >= 2.1.0, cpio
-Conflicts: udev < 0:032
 BuildRequires: popt
 %ifarch ppc
 Requires: ppc64-utils >= 0.3-1
@@ -58,6 +57,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Apr 26 2005 Peter Jones <pjones@redhat.com> - 4.2.9-1
+- invoke bash with "--norc" (#155986)
+- use binary udevstart.static, not a symlink
+- print exit status in nash when programs return an error
+
 * Tue Apr  5 2005 Peter Jones <pjones@redhat.com> - 4.2.8-1
 - Don't consolidate duplicates in "--args" (#147222)
 
