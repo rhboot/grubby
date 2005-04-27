@@ -536,7 +536,7 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 		  continue;
 
 	     if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-		  printf("ERROR: %s exited abnormally! (pid %d)\n", args[0], pid);
+		  printf("ERROR: %s exited abnormally with value %d ! (pid %d)\n", args[0], WEXITSTATUS(status), pid);
 		  return 1;
 	     }
 	     break;
