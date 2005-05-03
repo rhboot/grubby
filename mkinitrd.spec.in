@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue May  3 2005 Peter Jones <pjones@redhat.com> - 4.2.10-1
+- set umask explicitly
+
 * Tue Apr 26 2005 Peter Jones <pjones@redhat.com> - 4.2.9-1
 - invoke bash with "--norc" (#155986)
 - use binary udevstart.static, not a symlink
