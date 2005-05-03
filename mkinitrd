@@ -24,6 +24,7 @@
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
 #	Peter Jones <pjones@redhat.com>
 
+umask 0022
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
@@ -639,14 +640,14 @@ echo "echo Mounted /proc filesystem" >> $RCFILE
 
 if [ "$kernelmajor" != "2.4" ]; then
     echo "echo Mounting sysfs" >> $RCFILE
-    echo "mount -t sysfs none /sys" >> $RCFILE
+    echo "mount -t sysfs /sys /sys" >> $RCFILE
 fi
 
 if [ -n "$USE_UDEV" ]; then
     if [ -n "$UDEV_TMPFS" ]; then
 	cat >> $RCFILE <<EOF
 echo Creating /dev
-mount -o mode=0755 -t tmpfs none /dev
+mount -o mode=0755 -t tmpfs /dev /dev
 mknod /dev/console c 5 1
 mknod /dev/null c 1 3
 mknod /dev/zero c 1 5
