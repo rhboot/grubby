@@ -29,7 +29,7 @@ umask 0022
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.9
+VERSION=4.2.10
 
 compress=1
 allowmissing=""
