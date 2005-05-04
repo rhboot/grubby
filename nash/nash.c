@@ -882,6 +882,16 @@ int switchrootCommand(char * cmd, char * end) {
         for (; (i < MAX_INIT_ARGS) && (*start != '\0'); i++) {
             while (*chptr && !isspace(*chptr)) chptr++;
             if (*chptr != '\0') *(chptr++) = '\0';
+            /*
+             * On x86_64, the kernel adds a magic command line parameter
+             * *after* everything you pass.  Bash doesn't know what "console="
+             * means, so it exits, init gets killed, etc, etc.  Bad news.
+             * 
+             * Apparently being removed "soon", but for now, nash needs to
+             * special case it.
+             */
+            if (!strncmp(start, "console=", 8))
+                continue;
             initargs[i] = strdup(start);
             start = chptr;
         }

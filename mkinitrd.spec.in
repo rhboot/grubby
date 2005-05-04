@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed May  4 2005 Peter Jones <pjones@redhat.com> - 4.2.12-1
+- Don't copy "console=" arguments from /proc/cmdline to init
+
 * Wed May  4 2005 Peter Jones <pjones@redhat.com> - 4.2.11-1
 - don't copy "rw" option into the initrd; use "ro" instead if it's
   the only option.
