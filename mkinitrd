@@ -29,7 +29,7 @@ umask 0022
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.10
+VERSION=4.2.11
 
 compress=1
 allowmissing=""
@@ -496,7 +496,8 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
-rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
+rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab \
+    | sed -e 's/\(^rw,\|rw,$\)//' -e 's/,rw,/,/' -e 's/^rw$/ro/')
 
 # in case the root filesystem is modular
 findmodule -${rootfs}
