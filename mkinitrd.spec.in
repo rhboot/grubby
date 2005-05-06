@@ -58,7 +58,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Fri May  6 2005 Peter Jones <pjones@redhat.com> - 4.2.13-1
-- allow for lvm VGs to be in the /dev/mapper/$VG-$LV format
+- allow for lvm VGs to be in the /dev/mapper/$VG-$LV format (#154767)
 
 * Wed May  4 2005 Peter Jones <pjones@redhat.com> - 4.2.12-1
 - Don't copy "console=" arguments from /proc/cmdline to init
