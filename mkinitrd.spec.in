@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue May 17 2005 Peter Jones <pjones@redhat.com> - 4.2.15-1
+- Better init argument handling (don't mess up with serial console)
+
 * Tue May 10 2005 Peter Jones <pjones@redhat.com> - 4.2.14-1
 - Better init argument handling (no uninitialized args)
 
