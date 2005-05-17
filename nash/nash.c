@@ -890,11 +890,11 @@ int switchrootCommand(char * cmd, char * end) {
              * Apparently being removed "soon", but for now, nash needs to
              * special case it.
              */
-            if (!strncmp(start, "console=", 8)) {
-                if (*chptr == '\0') {
+            if (cmdline == init && !strncmp(start, "console=", 8)) {
+                if (!*chptr)
                     initargs[i] = NULL;
+                else
                     i--;
-                }
                 start = chptr;
                 continue;
             }
