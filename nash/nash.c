@@ -779,6 +779,71 @@ int pivotrootCommand(char * cmd, char * end) {
     return 0;
 }
 
+/* remove all files/directories below dirName -- don't cross mountpoints */
+int recursiveRemove(char * dirName) {
+    struct stat sb,rb;
+    DIR * dir;
+    struct dirent * d;
+    char * strBuf = alloca(strlen(dirName) + 1024);
+
+    if (!(dir = opendir(dirName))) {
+	fprintf(stderr, "error opening %s: %d\n", dirName, errno);
+	return 0;
+    }
+
+    if (fstat(dirfd(dir),&rb)) {
+	fprintf(stderr, "unable to stat %s: %d\n", dirName, errno);
+	return 0;
+    }
+
+    errno = 0;
+    while ((d = readdir(dir))) {
+	errno = 0;
+
+	if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) {
+	    errno = 0;
+	    continue;
+	}
+
+	strcpy(strBuf, dirName);
+	strcat(strBuf, "/");
+	strcat(strBuf, d->d_name);
+
+	if (lstat(strBuf, &sb)) {
+	    fprintf(stderr, "failed to stat %s: %d\n", strBuf, errno);
+	    errno = 0;
+	    continue;
+	}
+
+	/* only descend into subdirectories if device is same as dir */
+	if (S_ISDIR(sb.st_mode)) {
+	    if (sb.st_dev == rb.st_dev) {
+	        recursiveRemove(strBuf);
+	        if (rmdir(strBuf))
+		    fprintf(stderr, "failed to rmdir %s: %d\n", strBuf, errno);
+	    }
+	    errno = 0;
+	    continue;
+	}
+
+	if (unlink(strBuf)) {
+	    fprintf(stderr, "failed to remove %s: %d\n", strBuf, errno);
+	    errno = 0;
+	    continue;
+	}
+    }
+
+    if (errno) {
+	closedir(dir);
+	printf("error reading from %s: %d\n", dirName, errno);
+	return 1;
+    }
+
+    closedir(dir);
+
+    return 0;
+}
+
 #define MAX_INIT_ARGS 32
 /* 2.6 magic not-pivot-root but kind of similar stuff.
  * This is based on code from klibc/utils/run_init.c
@@ -830,6 +895,8 @@ int switchrootCommand(char * cmd, char * end) {
     if (dup2(fd, 2) != 2) printf("error dup2'ing fd of %d to 2\n", fd);
     if (fd > 2)
         close(fd);
+
+    recursiveRemove("/");
 
     fd = open("/", O_RDONLY);
     for (; umounts[i] != NULL; i++) {
