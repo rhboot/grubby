@@ -1609,6 +1609,106 @@ int mkDMNodCommand(char * cmd, char * end) {
     return 0;
 }
 
+static int dev_read_devnum(const char *path, dev_t *dev)
+{
+    char *devname;
+    char first[64], *second;
+    int major, minor;
+    int fd, len;
+    
+    devname = calloc(1, strlen(path) + sizeof("/dev"));
+    strcpy(devname, path);
+    strcat(devname, "/dev");
+    fd = open(devname, O_RDONLY);
+    if (fd < 0)
+        return -1;
+
+    memset(first, '\0', 64);
+    len = read(fd, first, 63);
+    first[63] = '\0';
+
+    close(fd);
+    free(devname);
+
+    second = strchr(first, ':');
+    if (!second)
+        return -1;
+    *second++ = '\0';
+    if (second - first >= len)
+        return -1;
+
+    errno = 0;
+    major = strtol(first, NULL, 10);
+    if (errno == ERANGE || major < 0)
+        return -1;
+
+    errno = 0;
+    minor = strtol(second, NULL, 10);
+    if (errno == ERANGE || minor < 0)
+        return -1;
+
+    *dev = makedev(major, minor);
+    return 0;
+}
+
+static void dev_probe_dir(const char *dirname, const char *name)
+{
+    char *path, *devpath;
+    dev_t dev = 0;
+    int ret;
+    DIR *dir;
+    struct dirent *dent;
+
+    path = calloc(1, strlen(dirname) + strlen(name) + 2);
+    strcpy(path, dirname);
+    strcat(path, "/");
+    strcat(path, name);
+
+    ret = dev_read_devnum(path, &dev);
+    if (ret < 0) {
+        free(path);
+        return;
+    }
+
+    devpath = calloc(1, strlen(name) + strlen("/dev/"));
+    strcpy(devpath, "/dev/");
+    strcat(devpath, name);
+
+    smartmknod(devpath, S_IFBLK | 0700, dev);
+    free(devpath);
+
+    dir = opendir(path);
+    if (dir == NULL) {
+        free(path);
+        return;
+    }
+
+    for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
+        if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
+            continue;
+
+        dev_probe_dir(path, dent->d_name);
+    }
+}
+
+static int dev_probe(char * cmd, char * end)
+{
+    DIR *dir;
+    struct dirent *dent;
+
+    dir = opendir("/sys/block");
+    if (dir == NULL)
+        return -1;
+
+    for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
+        if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
+            continue;
+
+        dev_probe_dir("/sys/block", dent->d_name);
+    }
+    return 1;
+}
+
 int setQuietCommand(char * cmd, char * end) {
     int fd, rc;
 
@@ -1712,6 +1812,8 @@ int runStartup(int fd) {
             rc = mkDMNodCommand(chptr, end);
         else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
             rc = readlinkCommand(chptr, end);
+        else if (!strncmp(start, "makedevs", MAX(8, chptr-start)))
+            rc = dev_probe(chptr, end);
         else if (!strncmp(start, "setquiet", MAX(8, chptr-start)))
             rc = setQuietCommand(chptr, end);
 #ifdef DEBUG

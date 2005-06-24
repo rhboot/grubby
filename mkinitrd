@@ -53,8 +53,6 @@ if [ -f /etc/udev/udev.conf ]; then
     USE_UDEV="yes"
     UDEV_TMPFS="yes"
     UDEV_KEEP_DEV="yes"
-    . /etc/udev/udev.conf
-    [ -x /sbin/udev.static ] || USE_UDEV=
 fi
 
 usage () {
@@ -590,10 +588,6 @@ inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 if [ -n "$USE_UDEV" ]; then
-    inst /sbin/udev.static $MNTIMAGE/sbin/udev
-    inst /sbin/udevstart.static $MNTIMAGE/sbin/udevstart
-    mkdir -p $MNTIMAGE/etc/udev
-    inst /etc/udev/udev.conf $MNTIMAGE/etc/udev/udev.conf
     ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
 fi
 
@@ -662,8 +656,8 @@ EOF
     fi
     cat >> $RCFILE <<EOF
 echo Starting udev
-/sbin/udevstart
 echo -n "/sbin/hotplug" > /proc/sys/kernel/hotplug
+makedevs
 EOF
 fi
 
@@ -702,7 +696,7 @@ done
 # this will make sure that we have all of our devices before trying
 # things like RAID or LVM
 if [ -n "$USE_UDEV" ]; then
-  echo "/sbin/udevstart" >> $RCFILE
+  echo "makedevs" >> $RCFILE
 fi
 
 if [ -n "$startraid" ]; then
