@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Jul 20 2005 Bill Nottingham <notting@redhat.com> - 4.2.18-1
+- since udev is not in use, don't require it or claim to be starting it
+
 * Fri Jun 24 2005 Peter Jones <pjones@redhat.com> - 4.2.17-1
 - Don't use udev or udevstart in the initrd; it's trivial to do
   all that work by looking for directories with "dev" nodes in sysfs
