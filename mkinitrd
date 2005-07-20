@@ -50,9 +50,7 @@ PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
 
 if [ -f /etc/udev/udev.conf ]; then
-    USE_UDEV="yes"
-    UDEV_TMPFS="yes"
-    UDEV_KEEP_DEV="yes"
+    DYNAMIC_DEV="yes"
 fi
 
 usage () {
@@ -263,7 +261,7 @@ while [ $# -gt 0 ]; do
 	    img_vers=yes
 	    ;;
 	--noudev)
-	    USE_UDEV=
+	    DYNAMIC_DEV=
 	    ;;
 	--allow-missing)
 	    allowmissing=yes
@@ -309,16 +307,13 @@ kernelmajor=`echo $kernel | cut -d . -f 1,2`
 
 if [ "$kernelmajor" == "2.4" ]; then
     if [ -n "$verbose" ]; then echo "Creating old-style initrd"; fi
-    USE_UDEV=
+    DYNAMIC_DEV=
 else
     if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
     modulefile=/etc/modprobe.conf
     initramfs=1
     pivot=""
 fi
-
-# if we're not using udev, don't set any of the other bits
-[ -z "$USE_UDEV" ] && UDEV_TMPFS= && UDEV_KEEP_DEV=
 
 # find a temporary directory which doesn't use tmpfs
 TMPDIR=""
@@ -587,7 +582,7 @@ inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
-if [ -n "$USE_UDEV" ]; then
+if [ -n "$DYNAMIC_DEV" ]; then
     ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
 fi
 
@@ -642,9 +637,8 @@ if [ "$kernelmajor" != "2.4" ]; then
     echo "mount -t sysfs /sys /sys" >> $RCFILE
 fi
 
-if [ -n "$USE_UDEV" ]; then
-    if [ -n "$UDEV_TMPFS" ]; then
-	cat >> $RCFILE <<EOF
+if [ -n "$DYNAMIC_DEV" ]; then
+    cat >> $RCFILE <<EOF
 echo Creating /dev
 mount -o mode=0755 -t tmpfs /dev /dev
 mknod /dev/console c 5 1
@@ -653,7 +647,6 @@ mknod /dev/zero c 1 5
 mkdir /dev/pts
 mkdir /dev/shm
 EOF
-    fi
     cat >> $RCFILE <<EOF
 echo Creating device nodes
 echo -n "/sbin/hotplug" > /proc/sys/kernel/hotplug
@@ -695,7 +688,7 @@ done
 # HACK: module loading + device creation isn't necessarily synchronous...
 # this will make sure that we have all of our devices before trying
 # things like RAID or LVM
-if [ -n "$USE_UDEV" ]; then
+if [ -n "$DYNAMIC_DEV" ]; then
   echo "makedevs" >> $RCFILE
 fi
 
@@ -706,7 +699,7 @@ if [ -n "$startraid" ]; then
     done
 fi
 
-if [ -z "$USE_UDEV" ]; then
+if [ -z "$DYNAMIC_DEV" ]; then
     echo "echo Creating block devices" >> $RCFILE
     echo "mkdevices /dev" >> $RCFILE
 fi
@@ -744,7 +737,7 @@ if [ -n "$initramfs" ]; then
   echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
   echo "echo Switching to new root" >> $RCFILE
-  if [ -n "$UDEV_KEEP_DEV" ]; then
+  if [ -n "$DYNAMIC_DEV" ]; then
     echo "switchroot --movedev /sysroot" >> $RCFILE
   else
     echo "switchroot /sysroot" >> $RCFILE
@@ -766,7 +759,7 @@ else
     echo "umount /proc" >> $RCFILE
   fi
 
-  [ -n "$UDEV_TMPFS" ] && echo "umount /initrd/dev" >> $RCFILE
+  [ -n "$DYNAMIC_DEV" ] && echo "umount /initrd/dev" >> $RCFILE
 fi
 chmod +x $RCFILE
 
