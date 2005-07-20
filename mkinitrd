@@ -655,7 +655,7 @@ mkdir /dev/shm
 EOF
     fi
     cat >> $RCFILE <<EOF
-echo Starting udev
+echo Creating device nodes
 echo -n "/sbin/hotplug" > /proc/sys/kernel/hotplug
 makedevs
 EOF
