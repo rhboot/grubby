@@ -1,8 +1,6 @@
-#!/bin/bash --norc
+#!/bin/bash
 
 # mkinitrd
-#
-# Copyright 2005 Red Hat, Inc.
 #
 # Written by Erik Troan <ewt@redhat.com>
 #
@@ -22,14 +20,12 @@
 #       Preston Brown <pbrown@redhat.com>
 #	Bill Nottingham <notting@redhat.com>
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
-#	Peter Jones <pjones@redhat.com>
 
-umask 0022
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.18
+VERSION=4.1.18.1
 
 compress=1
 allowmissing=""
@@ -50,7 +46,11 @@ PRESCSIMODS="scsi_mod sd_mod unknown"
 fstab="/etc/fstab"
 
 if [ -f /etc/udev/udev.conf ]; then
-    DYNAMIC_DEV="yes"
+    USE_UDEV="yes"
+    UDEV_TMPFS="yes"
+    UDEV_KEEP_DEV="yes"
+    . /etc/udev/udev.conf
+    [ -x /sbin/udev.static ] || USE_UDEV=
 fi
 
 usage () {
@@ -261,7 +261,7 @@ while [ $# -gt 0 ]; do
 	    img_vers=yes
 	    ;;
 	--noudev)
-	    DYNAMIC_DEV=
+	    USE_UDEV=
 	    ;;
 	--allow-missing)
 	    allowmissing=yes
@@ -307,13 +307,16 @@ kernelmajor=`echo $kernel | cut -d . -f 1,2`
 
 if [ "$kernelmajor" == "2.4" ]; then
     if [ -n "$verbose" ]; then echo "Creating old-style initrd"; fi
-    DYNAMIC_DEV=
+    USE_UDEV=
 else
     if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
     modulefile=/etc/modprobe.conf
     initramfs=1
     pivot=""
 fi
+
+# if we're not using udev, don't set any of the other bits
+[ -z "$USE_UDEV" ] && UDEV_TMPFS= && UDEV_KEEP_DEV=
 
 # find a temporary directory which doesn't use tmpfs
 TMPDIR=""
@@ -463,9 +466,9 @@ fi
 rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
 if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
-    if ! grep "$key" $fstab >> /dev/null; then
-	echo "The root filesystem is on a $rootdev, but there is no magic entry in $fstab" >&2
-	echo "for this device. Consult the mkinitrd man page for more information" >&2
+    if ! grep "$key" $fstab > /dev/null; then
+	echo "The root filesystem is on a $rootdev, but there is no magic entry in $fstab" 1>&2
+	echo "for this device. Consult the mkinitrd man page for more information" 2>&2
 	exit 1
     fi
 
@@ -481,11 +484,6 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     basicmodules="$basicmodules -${loopFs}"
 # check if the root fs is on a logical volume
 elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
-    if echo $rootdev | grep -q /dev/mapper 2>/dev/null; then
-        root_vg=$(echo $rootdev | cut -d/ -f4 | cut -d- -f1)
-    else
-        root_vg=$(echo $rootdev | cut -d/ -f3)
-    fi
     rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
     major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
     [ "$major" != "58" ] || root_lvm=1
@@ -493,8 +491,7 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
-rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab \
-    | sed -e 's/\(^rw,\|rw,$\)//' -e 's/,rw,/,/' -e 's/^rw$/ro/')
+rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
 
 # in case the root filesystem is modular
 findmodule -${rootfs}
@@ -582,7 +579,11 @@ inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
-if [ -n "$DYNAMIC_DEV" ]; then
+if [ -n "$USE_UDEV" ]; then
+    inst /sbin/udev.static $MNTIMAGE/sbin/udev
+    ln -s udev $MNTIMAGE/sbin/udevstart
+    mkdir -p $MNTIMAGE/etc/udev
+    inst /etc/udev/udev.conf $MNTIMAGE/etc/udev/udev.conf
     ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
 fi
 
@@ -625,7 +626,7 @@ if [ -n "$root_lvm" -a "$kernelmajor" == "2.6" ]; then
     fi
 fi
 
-echo "#!/bin/nash" >| $RCFILE
+echo "#!/bin/nash" > $RCFILE
 echo "" >> $RCFILE
 
 echo "mount -t proc /proc /proc" >> $RCFILE
@@ -634,23 +635,25 @@ echo "echo Mounted /proc filesystem" >> $RCFILE
 
 if [ "$kernelmajor" != "2.4" ]; then
     echo "echo Mounting sysfs" >> $RCFILE
-    echo "mount -t sysfs /sys /sys" >> $RCFILE
+    echo "mount -t sysfs none /sys" >> $RCFILE
 fi
 
-if [ -n "$DYNAMIC_DEV" ]; then
-    cat >> $RCFILE <<EOF
+if [ -n "$USE_UDEV" ]; then
+    if [ -n "$UDEV_TMPFS" ]; then
+	cat >> $RCFILE <<EOF
 echo Creating /dev
-mount -o mode=0755 -t tmpfs /dev /dev
+mount -o mode=0755 -t tmpfs none /dev
 mknod /dev/console c 5 1
 mknod /dev/null c 1 3
 mknod /dev/zero c 1 5
 mkdir /dev/pts
 mkdir /dev/shm
 EOF
+    fi
     cat >> $RCFILE <<EOF
-echo Creating device nodes
+echo Starting udev
+/sbin/udevstart
 echo -n "/sbin/hotplug" > /proc/sys/kernel/hotplug
-makedevs
 EOF
 fi
 
@@ -673,7 +676,7 @@ for MODULE in $MODULES; do
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" ]; then
-	echo "sleep 8" >> $RCFILE
+	echo "sleep 5" >> $RCFILE
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
         echo "sleep 2" >> $RCFILE
@@ -688,8 +691,8 @@ done
 # HACK: module loading + device creation isn't necessarily synchronous...
 # this will make sure that we have all of our devices before trying
 # things like RAID or LVM
-if [ -n "$DYNAMIC_DEV" ]; then
-  echo "makedevs" >> $RCFILE
+if [ -n "$USE_UDEV" ]; then
+  echo "/sbin/udevstart" >> $RCFILE
 fi
 
 if [ -n "$startraid" ]; then
@@ -699,7 +702,7 @@ if [ -n "$startraid" ]; then
     done
 fi
 
-if [ -z "$DYNAMIC_DEV" ]; then
+if [ -z "$USE_UDEV" ]; then
     echo "echo Creating block devices" >> $RCFILE
     echo "mkdevices /dev" >> $RCFILE
 fi
@@ -722,9 +725,11 @@ elif [ -n "$root_lvm" ]; then
     echo "echo Making device-mapper control node" >> $RCFILE
     echo "mkdmnod" >> $RCFILE
     echo "echo Scanning logical volumes" >> $RCFILE
-    echo "lvm vgscan --ignorelockingfailure" >> $RCFILE
+    echo "lvm vgscan" >> $RCFILE
     echo "echo Activating logical volumes" >> $RCFILE
-    echo "lvm vgchange -ay --ignorelockingfailure $root_vg" >> $RCFILE
+    echo "lvm vgchange -ay" >> $RCFILE
+    echo "echo Making device nodes" >> $RCFILE
+    echo "lvm vgmknodes" >> $RCFILE
   fi
 fi
 
@@ -732,21 +737,19 @@ echo "echo Creating root device" >> $RCFILE
 echo "mkrootdev /dev/root" >> $RCFILE
 rootdev=/dev/root
 
-if [ -n "$initramfs" ]; then
-  echo "echo Mounting root filesystem" >> $RCFILE
-  echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
-
-  echo "echo Switching to new root" >> $RCFILE
-  if [ -n "$DYNAMIC_DEV" ]; then
-    echo "switchroot --movedev /sysroot" >> $RCFILE
-  else
-    echo "switchroot /sysroot" >> $RCFILE
-  fi
-else 
-  if [ "$kernelmajor" != "2.4" ]; then
+if [ "$kernelmajor" != "2.4" ]; then
     echo "umount /sys" >> $RCFILE
-  fi
+fi
 
+if [ -n "$initramfs" ]; then
+    echo "echo Mounting root filesystem" >> $RCFILE
+    echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+
+    [  -n "$UDEV_KEEP_DEV" ] && echo "mount -t tmpfs --bind /dev /sysroot/dev" >> $RCFILE
+
+    echo "echo Switching to new root" >> $RCFILE
+    echo "switchroot /sysroot" >> $RCFILE
+else 
   if [ -n "$pivot" ]; then
     echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
 
@@ -758,9 +761,9 @@ else
   else
     echo "umount /proc" >> $RCFILE
   fi
-
-  [ -n "$DYNAMIC_DEV" ] && echo "umount /initrd/dev" >> $RCFILE
 fi
+
+[ -n "$UDEV_TMPFS" ] && echo "umount /initrd/dev" >> $RCFILE
 chmod +x $RCFILE
 
 if [ -z "$initramfs" ]; then
@@ -769,11 +772,11 @@ if [ -z "$initramfs" ]; then
   umount $MNTPOINT
   losetup -d $LODEV
 else
-  (cd $MNTIMAGE; find . | cpio --quiet -c -o) >| $IMAGE || exit 1
+  (cd $MNTIMAGE; find . | cpio --quiet -c -o) > $IMAGE || exit 1
 fi
 
 if [ -n "$compress" ]; then
-    gzip -9 < $IMAGE >| $target || rc=1
+    gzip -9 < $IMAGE > $target || rc=1
 else
     cp -a $IMAGE $target || rc=1
 fi
