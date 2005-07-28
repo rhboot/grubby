@@ -6,7 +6,6 @@
  *
  * Erik Troan (ewt@redhat.com)
  * Jeremy Katz (katzj@redhat.com)
- * Peter Jones (pjones@redhat.com)
  *
  * Copyright 2002-2005 Red Hat Software 
  *
@@ -82,14 +81,6 @@
 #define MS_MOVE 8192
 #endif
 
-#ifndef MNT_FORCE
-#define MNT_FORCE 0x1
-#endif
-
-#ifndef MNT_DETACH
-#define MNT_DETACH 0x2
-#endif
-
 extern dev_t name_to_dev_t(char *name);
 extern int display_uuid_cache(void);
 
@@ -101,7 +92,6 @@ int testing = 0, quiet = 0, reallyquiet = 0;
 
 char * env[] = {
     "PATH=" PATH,
-    "LVM_SUPPRESS_FD_WARNINGS=1",
     NULL
 };
 
@@ -129,7 +119,7 @@ int smartmknod(char * device, mode_t mode, dev_t dev) {
 char * getArg(char * cmd, char * end, char ** arg) {
     char quote = '\0';
 
-    if (!cmd || cmd >= end) return NULL;
+    if (cmd >= end) return NULL;
 
     while (isspace(*cmd) && cmd < end) cmd++;
     if (cmd >= end) return NULL;
@@ -156,10 +146,6 @@ char * getArg(char * cmd, char * end, char ** arg) {
 	*arg = cmd;
 	while (!isspace(*cmd) && cmd < end) cmd++;
 	*cmd = '\0';
-	if (**arg == '$')
-            *arg = getenv(*arg+1);
-        if (*arg == NULL)
-            *arg = "";
     }
 
     cmd++;
@@ -167,39 +153,6 @@ char * getArg(char * cmd, char * end, char ** arg) {
     while (isspace(*cmd)) cmd++;
 
     return cmd;
-}
-
-/* taken from anaconda/isys/probe.c */
-static int readFD (int fd, char **buf)
-{
-    char *p;
-    size_t size = 4096;
-    int s, filesize;
-
-    *buf = malloc (size);
-    if (*buf == 0)
-      return -1;
-
-    filesize = 0;
-    do {
-	p = &(*buf) [filesize];
-	s = read (fd, p, 4096);
-	if (s < 0)
-	    break;
-	filesize += s;
-	if (s != 4096)
-	    break;
-	size += 4096;
-	*buf = realloc (*buf, size);
-    } while (1);
-
-    if (filesize == 0 && s < 0) {
-	free (*buf);     
-	*buf = NULL;
-	return -1;
-    }
-
-    return filesize;
 }
 
 #ifdef __powerpc__
@@ -779,71 +732,6 @@ int pivotrootCommand(char * cmd, char * end) {
     return 0;
 }
 
-/* remove all files/directories below dirName -- don't cross mountpoints */
-int recursiveRemove(char * dirName) {
-    struct stat sb,rb;
-    DIR * dir;
-    struct dirent * d;
-    char * strBuf = alloca(strlen(dirName) + 1024);
-
-    if (!(dir = opendir(dirName))) {
-	fprintf(stderr, "error opening %s: %d\n", dirName, errno);
-	return 0;
-    }
-
-    if (fstat(dirfd(dir),&rb)) {
-	fprintf(stderr, "unable to stat %s: %d\n", dirName, errno);
-	return 0;
-    }
-
-    errno = 0;
-    while ((d = readdir(dir))) {
-	errno = 0;
-
-	if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) {
-	    errno = 0;
-	    continue;
-	}
-
-	strcpy(strBuf, dirName);
-	strcat(strBuf, "/");
-	strcat(strBuf, d->d_name);
-
-	if (lstat(strBuf, &sb)) {
-	    fprintf(stderr, "failed to stat %s: %d\n", strBuf, errno);
-	    errno = 0;
-	    continue;
-	}
-
-	/* only descend into subdirectories if device is same as dir */
-	if (S_ISDIR(sb.st_mode)) {
-	    if (sb.st_dev == rb.st_dev) {
-	        recursiveRemove(strBuf);
-	        if (rmdir(strBuf))
-		    fprintf(stderr, "failed to rmdir %s: %d\n", strBuf, errno);
-	    }
-	    errno = 0;
-	    continue;
-	}
-
-	if (unlink(strBuf)) {
-	    fprintf(stderr, "failed to remove %s: %d\n", strBuf, errno);
-	    errno = 0;
-	    continue;
-	}
-    }
-
-    if (errno) {
-	closedir(dir);
-	printf("error reading from %s: %d\n", dirName, errno);
-	return 1;
-    }
-
-    closedir(dir);
-
-    return 0;
-}
-
 #define MAX_INIT_ARGS 32
 /* 2.6 magic not-pivot-root but kind of similar stuff.
  * This is based on code from klibc/utils/run_init.c
@@ -854,19 +742,9 @@ int switchrootCommand(char * cmd, char * end) {
                                  "/bin/init", "/bin/sh", NULL };
     char * init, * cmdline = NULL;
     char ** initargs;
-    /*  Don't try to unmount the old "/", there's no way to do it. */
-    const char * umounts[] = { "/dev", "/proc", "/sys", NULL };
     int fd, i = 0;
-    int moveDev = 0;
 
-    cmd = getArg(cmd, end, &new);
-    if (cmd) {
-        if (!strcmp(new, "--movedev"))
-            moveDev = 1;
-        cmd = getArg(cmd, end, &new);
-    }
-
-    if (!cmd) {
+    if (!(cmd = getArg(cmd, end, &new))) {
 	printf("switchroot: new root mount point expected\n");
 	return 1;
     }
@@ -876,19 +754,9 @@ int switchrootCommand(char * cmd, char * end) {
         return 1;
     }
 
-    init = getKernelArg("init=");
-    if (init == NULL)
-        cmdline = getKernelCmdLine();
-
-    if (moveDev) {
-        i = 1;
-        mount("/dev", "./dev", NULL, MS_MOVE, NULL);
-    }
-
-    if ((fd = open("./dev/console", O_RDWR)) < 0) {
+    if ((fd = open("/dev/console", O_RDWR)) < 0) {
         printf("ERROR opening /dev/console!!!!: %d\n", errno);
-        fd = 0;
-    }
+    } 
 
     if (dup2(fd, 0) != 0) printf("error dup2'ing fd of %d to 0\n", fd);
     if (dup2(fd, 1) != 1) printf("error dup2'ing fd of %d to 1\n", fd);
@@ -896,33 +764,19 @@ int switchrootCommand(char * cmd, char * end) {
     if (fd > 2)
         close(fd);
 
-    recursiveRemove("/");
-
-    fd = open("/", O_RDONLY);
-    for (; umounts[i] != NULL; i++) {
-        if (!quiet) printf("unmounting old %s\n", umounts[i]);
-        if (umount2(umounts[i], MNT_DETACH)) {
-            printf("ERROR unmounting old %s: %d\n", umounts[i], errno);
-            printf("forcing unmount of %s\n", umounts[i]);
-            umount2(umounts[i], MNT_FORCE);
-        }
-    }
-    i=0;
+    init = getKernelArg("init=");
+    if (init == NULL)
+        cmdline = getKernelCmdLine();
 
     if (mount(".", "/", NULL, MS_MOVE, NULL)) {
         printf("switchroot: mount failed: %d\n", errno);
-        close(fd);
         return 1;
     }
 
     if (chroot(".") || chdir("/")) {
         printf("switchroot: chroot() failed: %d\n", errno);
-        close(fd);
         return 1;
     }
-
-    /* release the old "/" */
-    close(fd);
 
     if (init == NULL) {
         int j;
@@ -949,22 +803,6 @@ int switchrootCommand(char * cmd, char * end) {
         for (; (i < MAX_INIT_ARGS) && (*start != '\0'); i++) {
             while (*chptr && !isspace(*chptr)) chptr++;
             if (*chptr != '\0') *(chptr++) = '\0';
-            /*
-             * On x86_64, the kernel adds a magic command line parameter
-             * *after* everything you pass.  Bash doesn't know what "console="
-             * means, so it exits, init gets killed, etc, etc.  Bad news.
-             * 
-             * Apparently being removed "soon", but for now, nash needs to
-             * special case it.
-             */
-            if (cmdline == init && !strncmp(start, "console=", 8)) {
-                if (!*chptr)
-                    initargs[i] = NULL;
-                else
-                    i--;
-                start = chptr;
-                continue;
-            }
             initargs[i] = strdup(start);
             start = chptr;
         }
@@ -1105,22 +943,6 @@ int mkrootdevCommand(char * cmd, char * end) {
 	printf("mkrootdev: label %s not found\n", root + 6);
 
 	return 1;
-    }
-
-    if (root && !strncmp(root, "UUID=", 5)) {
-        if (get_spec_by_uuid(root+5, &major, &minor)) {
-            if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
-                printf("mount: cannot create device %s (%d,%d)\n",
-                       path, major, minor);
-                return 1;
-            }
-
-            return 0;
-        }
-
-        printf("mkrootdev: UUID %s not found\n", root+5);
-
-        return 1;
     }
 
     fd = open("/proc/sys/kernel/real-root-dev", O_RDONLY, 0);
@@ -1440,7 +1262,7 @@ int mknodCommand(char * cmd, char * end) {
 
 int mkdevicesCommand(char * cmd, char * end) {
     int fd;
-    char *buf;
+    char buf[32768];
     int i;
     char * start, * chptr;
     int major, minor;
@@ -1463,7 +1285,7 @@ int mkdevicesCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    i = readFD(fd, &buf);
+    i = read(fd, buf, sizeof(buf));
     if (i < 1) {
 	close(fd);
 	printf("failed to read /proc/partitions: %d\n", errno);
@@ -1609,106 +1431,6 @@ int mkDMNodCommand(char * cmd, char * end) {
     return 0;
 }
 
-static int dev_read_devnum(const char *path, dev_t *dev)
-{
-    char *devname;
-    char first[64], *second;
-    int major, minor;
-    int fd, len;
-    
-    devname = calloc(1, strlen(path) + sizeof("/dev"));
-    strcpy(devname, path);
-    strcat(devname, "/dev");
-    fd = open(devname, O_RDONLY);
-    if (fd < 0)
-        return -1;
-
-    memset(first, '\0', 64);
-    len = read(fd, first, 63);
-    first[63] = '\0';
-
-    close(fd);
-    free(devname);
-
-    second = strchr(first, ':');
-    if (!second)
-        return -1;
-    *second++ = '\0';
-    if (second - first >= len)
-        return -1;
-
-    errno = 0;
-    major = strtol(first, NULL, 10);
-    if (errno == ERANGE || major < 0)
-        return -1;
-
-    errno = 0;
-    minor = strtol(second, NULL, 10);
-    if (errno == ERANGE || minor < 0)
-        return -1;
-
-    *dev = makedev(major, minor);
-    return 0;
-}
-
-static void dev_probe_dir(const char *dirname, const char *name)
-{
-    char *path, *devpath;
-    dev_t dev = 0;
-    int ret;
-    DIR *dir;
-    struct dirent *dent;
-
-    path = calloc(1, strlen(dirname) + strlen(name) + 2);
-    strcpy(path, dirname);
-    strcat(path, "/");
-    strcat(path, name);
-
-    ret = dev_read_devnum(path, &dev);
-    if (ret < 0) {
-        free(path);
-        return;
-    }
-
-    devpath = calloc(1, strlen(name) + strlen("/dev/"));
-    strcpy(devpath, "/dev/");
-    strcat(devpath, name);
-
-    smartmknod(devpath, S_IFBLK | 0700, dev);
-    free(devpath);
-
-    dir = opendir(path);
-    if (dir == NULL) {
-        free(path);
-        return;
-    }
-
-    for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
-        if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
-            continue;
-
-        dev_probe_dir(path, dent->d_name);
-    }
-}
-
-static int dev_probe(char * cmd, char * end)
-{
-    DIR *dir;
-    struct dirent *dent;
-
-    dir = opendir("/sys/block");
-    if (dir == NULL)
-        return -1;
-
-    for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
-        if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
-            continue;
-
-        dev_probe_dir("/sys/block", dent->d_name);
-    }
-    return 1;
-}
-
 int setQuietCommand(char * cmd, char * end) {
     int fd, rc;
 
@@ -1739,7 +1461,6 @@ int runStartup(int fd) {
 	printf("Failed to read /startup.rc -- file too large.\n");
 	return 1;
     }
-    close(fd);
 
     contents[i] = '\0';
 
@@ -1812,8 +1533,6 @@ int runStartup(int fd) {
             rc = mkDMNodCommand(chptr, end);
         else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
             rc = readlinkCommand(chptr, end);
-        else if (!strncmp(start, "makedevs", MAX(8, chptr-start)))
-            rc = dev_probe(chptr, end);
         else if (!strncmp(start, "setquiet", MAX(8, chptr-start)))
             rc = setQuietCommand(chptr, end);
 #ifdef DEBUG
@@ -1890,8 +1609,8 @@ int main(int argc, char **argv) {
 	}
     }
 
-    /* runStartup closes fd */
     rc = runStartup(fd);
+    close(fd);
 
     return rc;
 }
