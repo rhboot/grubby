@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Jul 28 2005 Peter Jones <pjones@redhat.com> - 4.1.18.1-1
+- Make nash check pids returned from wait*() (#145660)
+
 * Sun Oct 17 2004 Jeremy Katz <katzj@redhat.com> - 4.1.18-1
 - fix UPDATEDEFAULT with new-kernel-pkg (#135997)
 
