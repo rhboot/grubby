@@ -8,7 +8,7 @@ Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm2
-Requires: filesystem >= 2.1.0
+Requires: filesystem >= 2.1.0, cpio
 Conflicts: udev < 0:032
 BuildRequires: popt
 %ifarch i386
