@@ -1,6 +1,6 @@
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
-Version: 3.5.13.4
+Version: VERSIONSUBST
 Release: 1
 License: GPL
 Group: System Environment/Base
