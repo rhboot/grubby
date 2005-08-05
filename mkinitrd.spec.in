@@ -57,7 +57,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Wed Aug  3 2005 Peter Jones <pjones@redhat.com> - 4.2.19-1
+* Wed Aug  5 2005 Peter Jones <pjones@redhat.com> - 4.2.19-1
 - Fix yaboot stanza placement with a patch from dwmw2 (#142346)
 
 * Wed Jul 20 2005 Bill Nottingham <notting@redhat.com> - 4.2.18-1
