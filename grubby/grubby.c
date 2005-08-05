@@ -40,7 +40,7 @@ struct lineElement {
 
 enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
        LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS, LT_BOOT,
-       LT_BOOTROOT, LT_LBA, LT_MBMODULE, LT_OTHER };
+       LT_BOOTROOT, LT_LBA, LT_MBMODULE, LT_OTHER, LT_GENERIC };
 
 struct singleLine {
     char * indent;
@@ -116,6 +116,32 @@ struct keywordTypes yabootKeywords[] = {
     { "root",	    LT_ROOT,	    '=' },
     { "default",    LT_DEFAULT,	    '=' },
     { "image",	    LT_KERNEL,	    '=' },
+    { "bsd",	    LT_GENERIC,	    '=' },
+    { "macos",	    LT_GENERIC,	    '=' },
+    { "macosx",	    LT_GENERIC,	    '=' },
+    { "magicboot",  LT_GENERIC,	    '=' },
+    { "darwin",	    LT_GENERIC,	    '=' },
+    { "timeout",    LT_GENERIC,	    '=' },
+    { "install",    LT_GENERIC,	    '=' },
+    { "fstype",	    LT_GENERIC,	    '=' },
+    { "hfstype",    LT_GENERIC,	    '=' },
+    { "delay",	    LT_GENERIC,	    '=' },
+    { "defaultos",  LT_GENERIC,     '=' },
+    { "init-message", LT_GENERIC,   '=' },
+    { "enablecdboot", LT_GENERIC,   ' ' },
+    { "enableofboot", LT_GENERIC,   ' ' },
+    { "enablenetboot", LT_GENERIC,  ' ' },
+    { "nonvram",    LT_GENERIC,	    ' ' },
+    { "hide",	    LT_GENERIC,	    ' ' },
+    { "protect",    LT_GENERIC,	    ' ' },
+    { "nobless",    LT_GENERIC,	    ' ' },
+    { "nonvram",    LT_GENERIC,	    ' ' },
+    { "brokenosx",  LT_GENERIC,	    ' ' },
+    { "usemount",   LT_GENERIC,	    ' ' },
+    { "mntpoint",   LT_GENERIC,	    '=' },
+    { "partition",  LT_GENERIC,	    '=' },
+    { "device",	    LT_GENERIC,	    '=' },
+    { "fstype",	    LT_GENERIC,	    '=' },
     { "initrd",	    LT_INITRD,	    '=' },
     { "append",	    LT_KERNELARGS,  '=' },
     { "boot",	    LT_BOOT,	    '=' },
@@ -518,6 +544,7 @@ static struct grubConfig * readConfig(const char * inName,
     char * incoming = NULL, * head;
     int rc;
     int sawEntry = 0;
+    int movedLine = 0;
     struct grubConfig * cfg;
     struct singleLine * last = NULL, * line, * defaultLine = NULL;
     char * end;
@@ -635,6 +662,33 @@ static struct grubConfig * readConfig(const char * inName,
 	    }
 
 	}
+
+	/* If we find a generic config option which should live at the
+	   top of the file, move it there. Old versions of grubby were
+	   probably responsible for putting new images in the wrong 
+	   place in front of it anyway. */
+	if (sawEntry && line->type == LT_GENERIC) {
+		struct singleLine **l = &cfg->theLines;
+		struct singleLine **last_nonws = &cfg->theLines;
+		while (*l) {
+			if ((*l)->type != LT_WHITESPACE)
+				last_nonws = &((*l)->next);
+			l = &((*l)->next);
+		}
+		line->next = *last_nonws;
+		*last_nonws = line;
+		movedLine = 1;
+		continue; /* without setting 'last' */
+	}
+	/* If a second line of whitespace happens after a generic option
+	   which was moved, drop it. */
+	if (movedLine && line->type == LT_WHITESPACE && last->type == LT_WHITESPACE) {
+		lineFree(line);
+		free(line);
+		movedLine = 0;
+		continue;
+	}
+	movedLine = 0;
 
 	if (sawEntry) {
 	    if (!entry->lines)
