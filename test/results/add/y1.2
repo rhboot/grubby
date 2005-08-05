@@ -5,6 +5,7 @@ install=/usr/lib/yaboot/yaboot
 nonvram
 default=test
 timeout=100
+macosx=path-to-macos
 
 image=/boot/new-kernel
         label=newtitle
@@ -18,8 +19,6 @@ image=/boot/zImage-2.4.20
 	read-only
 	root=/dev/sda2
 	append="eeh-force-off console=ttyS0 console=tty"
-
-macosx=path-to-macos
 
 image=/boot/vmlinux-2.5.50
         label=25

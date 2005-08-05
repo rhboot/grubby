@@ -5,6 +5,7 @@ install=/usr/lib/yaboot/yaboot
 nonvram
 default=test
 timeout=100
+darwin=foo
 
 image=/boot/vmlinux-2.4.9-23.19.8
 	label=linux
@@ -16,8 +17,6 @@ image=/boot/zImage-2.4.20
 	read-only
 	root=/dev/sda2
 	append="eeh-force-off console=ttyS0 console=tty"
-
-darwin=foo
 
 image=/boot/vmlinuz-2.5.50-eepro
         label=25eepro
