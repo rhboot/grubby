@@ -1100,7 +1100,7 @@ int mkpathbyspec(char * spec, char * path) {
 }
 
 /* 2.6 magic swsusp stuff */
-int realResumeCommand(char * cmd, char * end) {
+int resumeCommand(char * cmd, char * end) {
     char * resumedev = NULL;
     char * resume = NULL;
     int fd;
@@ -1157,18 +1157,6 @@ int realResumeCommand(char * cmd, char * end) {
     printf("Resume failed.  Continuing with normal startup.\n");
     return 0;
 }
-
-int resumeCommand(char * cmd, char * end) {
-    int ret;
-
-    printf("going to do resume\n");
-    sleep(2);
-    ret = realResumeCommand(cmd, end);
-    printf("resume returned %d\n", ret);
-    sleep(2);
-    return 0;
-}
-
 
 int mkrootdevCommand(char * cmd, char * end) {
     char * path;
