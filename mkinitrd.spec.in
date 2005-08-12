@@ -57,6 +57,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Aug 12 2005 Jeremy Katz <katzj@redhat.com> - 4.2.20-1
+- fix a buglet in root vg finding
+- support resume with swsusp
+
 * Wed Aug  5 2005 Peter Jones <pjones@redhat.com> - 4.2.19-1
 - Fix yaboot stanza placement with a patch from dwmw2 (#142346)
 

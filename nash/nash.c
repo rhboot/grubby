@@ -1059,6 +1059,117 @@ int umountCommand(char * cmd, char * end) {
     return 0;
 }
 
+int mkpathbyspec(char * spec, char * path) {
+    int major, minor;
+
+    if (!spec)
+        return -1;
+
+    if (!strncmp(spec, "LABEL=", 6)) {
+	if (get_spec_by_volume_label(spec + 6, &major, &minor)) {
+	    if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
+		printf("mkdev: cannot create device %s (%d,%d)\n",
+		       path, major, minor);
+		return 1;
+	    }
+
+            printf("created path for %s: %d/%d\n", spec, major, minor);
+	    return 0;
+	}
+
+	printf("label %s not found\n", spec + 6);
+	return 1;
+    }
+
+    if (!strncmp(spec, "UUID=", 5)) {
+        if (get_spec_by_uuid(spec+5, &major, &minor)) {
+            if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
+                printf("mkdev: cannot create device %s (%d,%d)\n",
+                       path, major, minor);
+                return 1;
+            }
+
+            return 0;
+        }
+
+        printf("mkdev: UUID %s not found\n", spec+5);
+        return 1;
+    }
+    printf("mkdev: not a labeled device\n");
+    return -1;
+}
+
+/* 2.6 magic swsusp stuff */
+int realResumeCommand(char * cmd, char * end) {
+    char * resumedev = NULL;
+    char * resume = NULL;
+    int fd;
+    struct stat sb;
+    char buf[25];
+
+    if (!(cmd = getArg(cmd, end, &resume))) {
+	printf("resume: resume device expected\n");
+	return 1;
+    }
+
+    if (access("/sys/power/resume", W_OK)) {
+        /*        printf("/sys/power/resume doesn't exist, can't resume!\n");*/
+        return 0;
+    }
+
+    if (strstr(getKernelCmdLine(), "noresume")) {
+        printf("noresume passed, not resuming...\n");
+        return 0; 
+    }
+
+    resumedev = getKernelArg("resume=");
+    if (resumedev == NULL) {
+        resumedev = resume;
+    }
+
+    printf("Going to resume from %s\n", resumedev);
+
+    if (mkpathbyspec(resumedev, "/dev/swsuspresume") == 0)
+        resumedev = strdup("/dev/swsuspresume");
+
+    if (access(resumedev, R_OK)) {
+        printf("Unable to access resume device (%s)\n", resumedev);
+        return 1;
+    }
+
+    if ((fd = open(resumedev, O_RDONLY)) < 0) return 1;
+    if (lseek(fd, getpagesize() - 10, SEEK_SET) != getpagesize() - 10) return 1;
+    if (read(fd, &buf, 6) != 6) return 1;
+    if (strncmp(buf, "S1SUSP", 6) && strncmp(buf, "S2SUSP", 6)) {
+        printf("No suspend signature on swap, not resuming...\n");
+        return 1;
+    }
+
+    if (fstat(fd, &sb)) return 1;
+    close(fd);
+
+    fd = open("/sys/power/resume", O_WRONLY);
+    memset(buf, 20, '\0');
+    snprintf(buf, 20, "%d:%d", major(sb.st_rdev), minor(sb.st_rdev));
+    write(fd, buf, 20);
+    close(fd);
+
+    printf("Resume failed.  Continuing with normal startup.\n");
+    return 0;
+}
+
+int resumeCommand(char * cmd, char * end) {
+    int ret;
+
+    printf("going to do resume\n");
+    sleep(2);
+    ret = realResumeCommand(cmd, end);
+    printf("resume returned %d\n", ret);
+    sleep(2);
+    return 0;
+}
+
+
 int mkrootdevCommand(char * cmd, char * end) {
     char * path;
     char *root, * chptr;
@@ -1066,7 +1177,6 @@ int mkrootdevCommand(char * cmd, char * end) {
     int fd;
     int i;
     char buf[1024];
-    int major, minor;
 
     if (!(cmd = getArg(cmd, end, &path))) {
 	printf("mkrootdev: path expected\n");
@@ -1091,37 +1201,8 @@ int mkrootdevCommand(char * cmd, char * end) {
             return 0;
     }
 
-    if (root && !strncmp(root, "LABEL=", 6)) {
-	if (get_spec_by_volume_label(root + 6, &major, &minor)) {
-	    if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
-		printf("mount: cannot create device %s (%d,%d)\n",
-		       path, major, minor);
-		return 1;
-	    }
-
-	    return 0;
-	}
-
-	printf("mkrootdev: label %s not found\n", root + 6);
-
-	return 1;
-    }
-
-    if (root && !strncmp(root, "UUID=", 5)) {
-        if (get_spec_by_uuid(root+5, &major, &minor)) {
-            if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
-                printf("mount: cannot create device %s (%d,%d)\n",
-                       path, major, minor);
-                return 1;
-            }
-
-            return 0;
-        }
-
-        printf("mkrootdev: UUID %s not found\n", root+5);
-
-        return 1;
-    }
+    if ((i = mkpathbyspec(root, path)) != -1)
+        return i;
 
     fd = open("/proc/sys/kernel/real-root-dev", O_RDONLY, 0);
     if (fd < 0) {
@@ -1816,6 +1897,8 @@ int runStartup(int fd) {
             rc = dev_probe(chptr, end);
         else if (!strncmp(start, "setquiet", MAX(8, chptr-start)))
             rc = setQuietCommand(chptr, end);
+        else if (!strncmp(start, "resume", MAX(6, chptr-start)))
+            rc = resumeCommand(chptr, end);
 #ifdef DEBUG
         else if (!strncmp(start, "cat", MAX(3, chptr-start)))
             rc = catCommand(chptr, end);

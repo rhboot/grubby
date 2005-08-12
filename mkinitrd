@@ -29,7 +29,7 @@ umask 0022
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.19
+VERSION=4.2.20
 
 compress=1
 allowmissing=""
@@ -266,6 +266,9 @@ while [ $# -gt 0 ]; do
 	--allow-missing)
 	    allowmissing=yes
 	    ;;
+	--noresume)
+	    noresume=1
+	    ;;
 	*)
 	    if [ -z "$target" ]; then
 		target=$1
@@ -481,15 +484,13 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     basicmodules="$basicmodules -${loopFs}"
 # check if the root fs is on a logical volume
 elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
+    rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
     if echo $rootdev | grep -q /dev/mapper 2>/dev/null; then
         root_vg=$(echo $rootdev | cut -d/ -f4 | cut -d- -f1)
-    else
-        root_vg=$(echo $rootdev | cut -d/ -f3)
+	root_lvm=1
     fi
-    rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
     major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
     [ "$major" != "58" ] || root_lvm=1
-    if echo $rootdev |grep -q /dev/mapper 2>/dev/null ; then root_lvm=1 ; fi
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
@@ -498,6 +499,16 @@ rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab \
 
 # in case the root filesystem is modular
 findmodule -${rootfs}
+
+# find the first swap dev which would get used for swsusp
+swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; }}' $fstab | head -n 1)
+if ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
+    swsuspdev=$(echo "readlink $swsuspdev" | /sbin/nash --quiet)
+    if echo $swsuspdev | grep -q /dev/mapper 2>/dev/null; then
+        swap_vg=$(echo $swsuspdev | cut -d/ -f4 | cut -d- -f1)
+	root_lvm=1
+    fi
+fi
 
 if [ -n "$root_lvm" ]; then
     if [ "$kernelmajor" == "2.4" ]; then    
@@ -724,8 +735,12 @@ elif [ -n "$root_lvm" ]; then
     echo "echo Scanning logical volumes" >> $RCFILE
     echo "lvm vgscan --ignorelockingfailure" >> $RCFILE
     echo "echo Activating logical volumes" >> $RCFILE
-    echo "lvm vgchange -ay --ignorelockingfailure $root_vg" >> $RCFILE
+    echo "lvm vgchange -ay --ignorelockingfailure $root_vg $swap_vg" >> $RCFILE
   fi
+fi
+
+if [ -z "$noresume" ]; then
+  echo "resume $swsuspdev" >> $RCFILE
 fi
 
 echo "echo Creating root device" >> $RCFILE
