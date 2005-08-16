@@ -860,9 +860,8 @@ int switchrootCommand(char * cmd, char * end) {
     int moveDev = 0;
 
     cmd = getArg(cmd, end, &new);
-    if (cmd) {
-        if (!strcmp(new, "--movedev"))
-            moveDev = 1;
+    if (cmd && !strcmp(new, "--movedev")) {
+        moveDev = 1;
         cmd = getArg(cmd, end, &new);
     }
 
