@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Aug 15 2005 Peter Jones <pjones@redhat.com> - 4.2.21-1
+- Fix a bug in switchroot's command line parsing (patch from mkj)
+
 * Fri Aug 12 2005 Jeremy Katz <katzj@redhat.com> - 4.2.20-1
 - fix a buglet in root vg finding
 - support resume with swsusp
