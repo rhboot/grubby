@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Aug 29 2005 Peter Jones <pjones@redhat.com> - 4.2.1.5-1
+- More fixes for duplicate arguments (#147222)
+
 * Mon Apr  4 2005 Peter Jones <pjones@redhat.com> - 4.2.1.5-1
 - Don't consolidate duplicates in "--args" (#147222)
 
