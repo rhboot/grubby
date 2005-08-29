@@ -1,0 +1,10 @@
+#boot=/dev/hda
+timeout=10
+default=0
+splashimage=(hd0,1)/grub/splash.xpm.gz
+title Red Hat Linux (2.4.7-2smp)
+	kernel (hd0,1)/vmlinuz-2.4.7-2smp ro root=LABEL=/ hdd=ide-scsi console=tty0 console=ttyS1,9600n81 single
+	initrd (hd0,1)/initrd-2.4.7-2smp.img
+title Red Hat Linux-up (2.4.7-2)
+	kernel (hd0,1)/vmlinuz-2.4.7-2 ro root=/dev/hda5 hdd=ide-scsi
+	initrd (hd0,1)/initrd-2.4.7-2.img
