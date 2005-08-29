@@ -202,6 +202,12 @@ grubTest grub.7 updargs/g7.3 --boot-filesystem=/    \
 grubTest grub.7 updargs/g7.4 --boot-filesystem=/    \
     --update-kernel=/vmlinuz-2.4.7-2 \
     --args "ro root=LABEL=/ console=tty0 console=ttyS1,9600n81 single"
+grubTest grub.11 updargs/g11.1 --boot-filesystem=/    \
+    --update-kernel=/vmlinuz-2.4.7-2smp \
+    --args "ro root=LABEL=/ console=tty0 console=ttyS1,9600n81 single"
+grubTest grub.11 updargs/g11.2 --boot-filesystem=/    \
+    --update-kernel=/vmlinuz-2.4.7-2smp \
+    --args "ro root=LABEL=/ single"
 
 echo "LILO update kernel argument handling..."
 liloTest lilo.1 updargs/l1.1 --update-kernel=/boot/vmlinuz-2.4.18-4 \
@@ -247,6 +253,12 @@ grubTest grub.2 add/g2.1 --add-kernel=/boot/vmlinuz-2.4.7-2	    \
     --remove-kernel="TITLE=Red Hat Linux (2.4.7-2)" 
 grubTest grub.8 add/g8.1 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default
+grubTest grub.8 add/g8.2 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default \
+    --args='console=tty0 console=ttyS1,9600n81 single'
+grubTest grub.11 add/g11.1 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default \
+    --args='console=tty0 console=ttyS1,9600n81 single'
 
 echo "YABOOT add kernel..."
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
