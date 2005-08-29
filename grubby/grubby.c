@@ -1691,6 +1691,9 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 		line->elements = realloc(line->elements,
 			(line->numElements + 1) * sizeof(*line->elements));
 		line->elements[line->numElements].item = strdup(*arg);
+		usedElements = realloc(usedElements,
+			(line->numElements + 1) * sizeof(int));
+		usedElements[line->numElements] = 1;
 
 		if (line->numElements > 1) {
 		    /* add to existing list of arguments */
