@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <mntent.h>
 #include <popt.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -242,6 +243,7 @@ static int lineWrite(FILE * out, struct singleLine * line,
 		     struct configFileInfo * cfi);
 static int getNextLine(char ** bufPtr, struct singleLine * line,
 		       struct configFileInfo * cfi);
+static char * getRootSpecifier(char * str);
 
 static char * strndup(char * from, int len) {
     char * to;
@@ -251,6 +253,39 @@ static char * strndup(char * from, int len) {
     to[len] = '\0';
 
     return to;
+}
+
+static char * sdupprintf(const char *format, ...)
+#ifdef __GNUC__
+        __attribute__ ((format (printf, 1, 2)));
+#else
+        ;
+#endif
+
+static char * sdupprintf(const char *format, ...) {
+    char *buf = NULL;
+    char c;
+    va_list args;
+    size_t size = 0;
+    va_start(args, format);
+    
+    /* XXX requires C99 vsnprintf behavior */
+    size = vsnprintf(&c, 1, format, args) + 1;
+    if (size == -1) {
+	printf("ERROR: vsnprintf behavior is not C99\n");
+	abort();
+    }
+
+    va_end(args);
+    va_start(args, format);
+
+    buf = malloc(size);
+    if (buf == NULL)
+	return NULL;
+    vsnprintf(buf, size, format, args);
+    va_end (args);
+
+    return buf;
 }
 
 static int isBracketedTitle(struct singleLine * line) {
@@ -305,12 +340,16 @@ static int readFile(int fd, char ** bufPtr) {
 
     if (i < 0) {
 	fprintf(stderr, _("error reading input: %s\n"), strerror(errno));
+        free(buf);
 	return 1;
     }
 
     buf = realloc(buf, size + 2);
-    if (buf[size - 1] != '\n')
-	buf[size++] = '\n';
+    if (size == 0)
+        buf[size++] = '\n';
+    else 
+        if (buf[size - 1] != '\n')
+            buf[size++] = '\n';
     buf[size] = '\0';
 
     *bufPtr = buf;
@@ -824,6 +863,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     struct stat sb, sb2;
     char * dev;
     char * end;
+    char * rootspec;
 
     line = entry->lines;
     while (line && line->type != LT_KERNEL) line = line->next;
@@ -836,7 +876,10 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
     fullName = alloca(strlen(bootPrefix) + 
 		      strlen(line->elements[1].item) + 1);
-    sprintf(fullName, "%s%s", bootPrefix, line->elements[1].item);
+    rootspec = getRootSpecifier(line->elements[1].item);
+    sprintf(fullName, "%s%s", bootPrefix, 
+            line->elements[1].item + ((rootspec != NULL) ? 
+                                      strlen(rootspec) : 0));
     if (access(fullName, R_OK)) return 0;
 
     for (i = 2; i < line->numElements; i++) 
@@ -900,6 +943,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
     struct singleLine * line;
     int i;
     char * chptr;
+    char * rootspec = NULL;
     enum lineType_e checkType = LT_KERNEL;
 
     if (isdigit(*kernel)) {
@@ -978,9 +1022,14 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	    line = entry->lines;
 	    while (line && line->type != checkType) line=line->next;
 
-	    if (line && line->numElements >= 2 && !entry->skip &&
-	        !strcmp(line->elements[1].item, kernel + strlen(prefix)))
-		break;
+
+	    if (line && line->numElements >= 2 && !entry->skip) {
+                rootspec = getRootSpecifier(line->elements[1].item);
+	        if (!strcmp(line->elements[1].item  + 
+                            ((rootspec != NULL) ? strlen(rootspec) : 0),
+                            kernel + strlen(prefix)))
+                    break;
+            }
 
 	    i++;
 	}
@@ -1478,6 +1527,7 @@ int updateImage(struct grubConfig * cfg, const char * image,
 	if (poptParseArgvString(removeArgs, NULL, &oldArgs)) {
 	    fprintf(stderr, 
 		    _("grubby: error separating arguments '%s'\n"), removeArgs);
+            free(newArgs);
 	    return 1;
 	}
     }
@@ -1560,6 +1610,9 @@ int updateImage(struct grubConfig * cfg, const char * image,
 		line->elements = realloc(line->elements,
 			(line->numElements + 1) * sizeof(*line->elements));
 		line->elements[line->numElements].item = strdup(*arg);
+		usedElements = realloc(usedElements,
+			(line->numElements + 1) * sizeof(int));
+		usedElements[line->numElements] = 1;
 
 		if (line->numElements > 1) {
 		    /* add to existing list of arguments */
@@ -1674,7 +1727,7 @@ int checkDeviceBootloader(const char * device, const unsigned char * boot) {
     return 2;
 }
 
-int checkLiloOnRaid(char * mdDev, const char * boot) {
+int checkLiloOnRaid(char * mdDev, const unsigned char * boot) {
     int fd;
     char buf[65536];
     char * end;
@@ -1830,14 +1883,26 @@ int checkForGrub(struct grubConfig * config) {
     return checkDeviceBootloader(boot, bootSect);
 }
 
+static char * getRootSpecifier(char * str) {
+    char * idx, * rootspec = NULL;
+
+    if (*str == '(') {
+        idx = rootspec = strdup(str);
+        while(*idx && (*idx != ')') && (!isspace(*idx))) idx++;
+        *(++idx) = '\0';
+    }
+    return rootspec;
+}
+
 int addNewKernel(struct grubConfig * config, struct singleEntry * template, 
 	         const char * prefix,
 		 char * newKernelPath, char * newKernelTitle,
 		 char * newKernelArgs, char * newKernelInitrd) {
     struct singleEntry * new;
-    struct singleLine * newLine, * tmplLine;
+    struct singleLine * newLine = NULL, * tmplLine;
     int needs;
     char * indent = NULL;
+    char * rootspec = NULL;
     char * chptr;
     int i;
     enum lineType_e type;
@@ -1908,14 +1973,30 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	    if (tmplLine->type == LT_KERNEL && tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_KERNEL;
 		free(newLine->elements[1].item);
-		newLine->elements[1].item = strdup(newKernelPath + 
-						    strlen(prefix));
+                rootspec = getRootSpecifier(tmplLine->elements[1].item);
+                if (rootspec != NULL) {
+                    newLine->elements[1].item = sdupprintf("%s%s",
+                                                           rootspec,
+                                                           newKernelPath + 
+                                                           strlen(prefix));
+                } else {
+                    newLine->elements[1].item = strdup(newKernelPath + 
+                                                       strlen(prefix));
+                }
 	    } else if (tmplLine->type == LT_INITRD && 
 			    tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_INITRD;
 		free(newLine->elements[1].item);
-		newLine->elements[1].item = strdup(newKernelInitrd + 
-						    strlen(prefix));
+                rootspec = getRootSpecifier(tmplLine->elements[1].item);
+                if (rootspec != NULL) {
+                    newLine->elements[1].item = sdupprintf("%s%s",
+                                                           rootspec,
+                                                           newKernelInitrd + 
+                                                           strlen(prefix));
+                } else {
+                    newLine->elements[1].item = strdup(newKernelInitrd + 
+                                                       strlen(prefix));
+                }
 	    } else if (tmplLine->type == LT_TITLE && 
 			    tmplLine->numElements >= 2) {
 		needs &= ~KERNEL_TITLE;
@@ -2252,6 +2333,7 @@ int main(int argc, const char ** argv) {
     if (displayDefault) {
 	struct singleLine * line;
 	struct singleEntry * entry;
+        char * rootspec;
 
 	if (config->defaultImage == -1) return 0;
 	entry = findEntryByIndex(config, config->defaultImage);
@@ -2262,7 +2344,9 @@ int main(int argc, const char ** argv) {
 	while (line && line->type != LT_KERNEL) line = line->next;
 	if (!line) return 0;
 
-	printf("%s%s\n", bootPrefix, line->elements[1].item);
+        rootspec = getRootSpecifier(line->elements[1].item);
+        printf("%s%s\n", bootPrefix, line->elements[1].item + 
+               ((rootspec != NULL) ? strlen(rootspec) : 0));
 
 	return 0;
     } else if (kernelInfo)
