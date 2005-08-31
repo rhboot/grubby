@@ -164,23 +164,24 @@ char * getArg(char * cmd, char * end, char ** arg) {
 static int readFD (int fd, char **buf)
 {
     char *p;
-    size_t size = 4096;
+    size_t size = 16384;
     int s, filesize;
 
     *buf = malloc (size);
     if (*buf == 0)
-      return -1;
+	return -1;
 
     filesize = 0;
     do {
 	p = &(*buf) [filesize];
-	s = read (fd, p, 4096);
+	s = read (fd, p, 16384);
 	if (s < 0)
 	    break;
 	filesize += s;
-	if (s != 4096)
+	/* only exit for empty reads */
+	if (s == 0)
 	    break;
-	size += 4096;
+	size += s;
 	*buf = realloc (*buf, size);
     } while (1);
 
