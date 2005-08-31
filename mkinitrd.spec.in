@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Aug 31 2005 Peter Jones <pjones@redhat.com> - 4.2.1.6-1
+- Handle short reads correctly when dealing with files in /proc (#137816)
+
 * Mon Aug 29 2005 Peter Jones <pjones@redhat.com> - 4.2.1.5-1
 - More fixes for duplicate arguments (#147222)
 
