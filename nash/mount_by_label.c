@@ -81,10 +81,10 @@ uuidcache_addentry(char * device, int major, int minor, char *label, char *uuid)
 	struct uuidCache_s *last;
     
 	if (!uuidCache) {
-		last = uuidCache = malloc(sizeof(*uuidCache));
+		last = uuidCache = calloc(1, sizeof (*uuidCache));
 	} else {
 		for (last = uuidCache; last->next; last = last->next) ;
-		last->next = malloc(sizeof(*uuidCache));
+		last->next = calloc(1, sizeof (*uuidCache));
 		last = last->next;
 	}
 	last->next = NULL;
