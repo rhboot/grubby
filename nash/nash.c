@@ -173,28 +173,29 @@ char * getArg(char * cmd, char * end, char ** arg) {
 static int readFD (int fd, char **buf)
 {
     char *p;
-    size_t size = 4096;
+    size_t size = 16384;
     int s, filesize;
 
-    *buf = malloc (size);
+    *buf = calloc (16384, sizeof (char));
     if (*buf == 0)
-      return -1;
+	return -1;
 
     filesize = 0;
     do {
 	p = &(*buf) [filesize];
-	s = read (fd, p, 4096);
+	s = read (fd, p, 16384);
 	if (s < 0)
 	    break;
 	filesize += s;
-	if (s != 4096)
+	/* only exit for empty reads */
+	if (s == 0)
 	    break;
-	size += 4096;
+	size += s;
 	*buf = realloc (*buf, size);
     } while (1);
 
     if (filesize == 0 && s < 0) {
-	free (*buf);     
+	free (*buf);
 	*buf = NULL;
 	return -1;
     }
@@ -219,9 +220,9 @@ static char * getKernelCmdLine(void) {
 	return NULL;
     }
 
-    buf = malloc(CMDLINESIZE);
+    buf = calloc(CMDLINESIZE, sizeof (char));
     if (!buf)
-        return buf;
+	return buf;
 
     i = read(fd, buf, CMDLINESIZE);
     if (i < 0) {
@@ -459,7 +460,7 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
     char * stdoutFile = NULL;
     int stdoutFd = 0;
 
-    args = (char **)malloc(sizeof(char *) * 128);
+    args = (char **)calloc(128, sizeof (char *));
     if (!args)
         return 1;
     nextArg = args;
@@ -558,7 +559,7 @@ static int lsdir(char *thedir, char * prefix) {
         return 1;
     }
 
-    fn = malloc(1024);
+    fn = calloc(1024, sizeof (char));
     while ((entry = readdir(dir))) {
         if (entry->d_name[0] == '.')
             continue;
@@ -568,7 +569,7 @@ static int lsdir(char *thedir, char * prefix) {
 
         if (S_ISDIR(sb.st_mode)) {
             char * pfx;
-            pfx = malloc(strlen(prefix) + 3);
+            pfx = calloc(strlen(prefix) + 3, sizeof (char));
             sprintf(pfx, "%s  ", prefix);
             printf("/\n");
         } else if (S_ISCHR(sb.st_mode)) {
@@ -577,7 +578,7 @@ static int lsdir(char *thedir, char * prefix) {
             printf(" b %d %d\n", major(sb.st_rdev), minor(sb.st_rdev));
         } else if (S_ISLNK(sb.st_mode)) {
             char * target;
-            target = malloc(1024);
+            target = calloc(1024, sizeof (char));
             readlink(fn, target, 1024);
             printf("->%s\n", target);
             free(target);
@@ -603,7 +604,7 @@ int catCommand(char * cmd, char * end) {
         return 1;
     }
 
-    buf = malloc(1024);
+    buf = calloc(1024, sizeof (char));
     while (read(fd, buf, 1024) > 0) {
         write(1, buf, 1024);
     }
@@ -933,7 +934,7 @@ int switchrootCommand(char * cmd, char * end) {
         }
     }
 
-    initargs = (char **)malloc(sizeof(char *)*(MAX_INIT_ARGS+1));
+    initargs = (char **)calloc(MAX_INIT_ARGS+1, sizeof (char *));
     if (cmdline && init) {
         initargs[i++] = strdup(init);
     } else {
@@ -1021,7 +1022,7 @@ int echoCommand(char * cmd, char * end) {
         newline = 0;
 	num -= 2;
     }
-    string = (char *)malloc(length * sizeof(char));
+    string = (char *)calloc(length, sizeof (char));
     *string = '\0';
     for (i = 0; i < num;i ++) {
 	if (i) strcat(string, " ");
@@ -1072,11 +1073,12 @@ int mkpathbyspec(char * spec, char * path) {
 		return 1;
 	    }
 
-            printf("created path for %s: %d/%d\n", spec, major, minor);
+            if (!quiet)
+                printf("created path for %s: %d/%d\n", spec, major, minor);
 	    return 0;
 	}
 
-	printf("label %s not found\n", spec + 6);
+        printf("label %s not found\n", spec + 6);
 	return 1;
     }
 
@@ -1093,8 +1095,9 @@ int mkpathbyspec(char * spec, char * path) {
 
         printf("mkdev: UUID %s not found\n", spec+5);
         return 1;
+
     }
-    printf("mkdev: not a labeled device\n");
+    if (!quiet) printf("mkdev: '%s' is not a UUID or LABEL spec\n", spec);
     return -1;
 }
 
@@ -1117,7 +1120,7 @@ int resumeCommand(char * cmd, char * end) {
     }
 
     if (strstr(getKernelCmdLine(), "noresume")) {
-        printf("noresume passed, not resuming...\n");
+        if (!quiet) printf("noresume passed, not resuming...\n");
         return 0; 
     }
 
@@ -1126,7 +1129,7 @@ int resumeCommand(char * cmd, char * end) {
         resumedev = resume;
     }
 
-    printf("Going to resume from %s\n", resumedev);
+    if (!quiet) printf("Going to resume from %s\n", resumedev);
 
     if (mkpathbyspec(resumedev, "/dev/swsuspresume") == 0)
         resumedev = strdup("/dev/swsuspresume");
@@ -1140,7 +1143,7 @@ int resumeCommand(char * cmd, char * end) {
     if (lseek(fd, getpagesize() - 10, SEEK_SET) != getpagesize() - 10) return 1;
     if (read(fd, &buf, 6) != 6) return 1;
     if (strncmp(buf, "S1SUSP", 6) && strncmp(buf, "S2SUSP", 6)) {
-        printf("No suspend signature on swap, not resuming...\n");
+        if (!quiet) printf("No suspend signature on swap, not resuming...\n");
         return 1;
     }
 
@@ -1323,7 +1326,7 @@ int readlinkCommand(char * cmd, char * end) {
         return 0;
     }
     
-    buf = malloc(512);
+    buf = calloc(512, sizeof (char));
     if (readlink(path, buf, 512) == -1) {
 	fprintf(stderr, "error readlink %s: %d\n", path, errno);
         free(buf);
@@ -1343,20 +1346,21 @@ int readlinkCommand(char * cmd, char * end) {
         *respath = '\0';
     }
 
-    fullpath = malloc(512);
+    fullpath = calloc(512, sizeof (char));
     /* and normalize it */
     snprintf(fullpath, 512, "%s/%s", path, buf);
-    respath = malloc(PATH_MAX);
-    if (!(respath = realpath(fullpath, respath))) {
+    respath = NULL;
+    respath = canonicalize_file_name(fullpath);
+    if (respath == NULL) {
         fprintf(stderr, "error realpath %s: %d\n", fullpath, errno);
         rc = 1;
         goto readlinkout;
     }
 
     printf("%s\n", respath);
+    free(respath);
  readlinkout:
     free(buf);
-    free(respath);
     free(fullpath);
     return rc;
 }
@@ -1781,7 +1785,7 @@ int setQuietCommand(char * cmd, char * end) {
     int fd, rc;
 
     if ((fd = open("/proc/cmdline", O_RDONLY)) >= 0) {
-        char * buf = malloc(512);
+        char * buf = calloc(512, sizeof (char));
         rc = read(fd, buf, 511);
         if (strstr(buf, "quiet") != NULL)
             reallyquiet = 1;
