@@ -7,9 +7,9 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 Prereq: dev
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm2
+Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 Requires: filesystem >= 2.1.0, cpio
-BuildRequires: popt
+BuildRequires: popt, mdadm, device-mapper, e2fsprogs-devel
 %ifarch ppc
 Requires: ppc64-utils >= 0.3-1
 %endif
@@ -57,6 +57,15 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Sep 21 2005 Peter Jones <pjones@redhat.com> - 4.2.22-1
+- Only scan appended kernel command line args for duplicates once.
+- handle short reads correctly in nash's readFD
+- use calloc for things instead of malloc, since we usually need zeroed memory
+  and we never memset
+- use canonicalize_file_name instead of malloc+realpath
+- honor quiet flag on suspend/resume
+- autodetect storage drivers in mkinitrd
+
 * Mon Aug 15 2005 Peter Jones <pjones@redhat.com> - 4.2.21-1
 - Fix a bug in switchroot's command line parsing (patch from mkj)
 
