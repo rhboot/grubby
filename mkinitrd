@@ -102,7 +102,6 @@ findmodule() {
 
     if echo $builtins | egrep -q '(^| )'$modName'( |$)' ; then
 	[ -n "$verbose" ] && echo "module $modName assumed to be built in"
-	set +x
 	return
     fi
 
@@ -176,6 +175,73 @@ inst() {
     fi 
     [ -n "$verbose" ] && echo "$1 -> $2"
     cp $1 $2
+}
+
+readlink() {
+    echo readlink "$1" | /sbin/nash --quiet
+}
+
+findstoragedriver () {
+    for device in $@ ; do
+        sysfs=$(find /sys/block -name $device -type d)
+        [ -z "$sysfs" ] && return
+        pushd $sysfs >/dev/null 2>&1
+        while [ ! -L device ]; do
+            [ "$PWD" = "/sys" ] && continue 2
+            cd ..
+        done
+        cd $(readlink ./device)
+        while [ ! -f modalias ]; do
+            [ "$PWD" = "/sys/devices" ] && continue 2
+            cd ..
+        done
+        modalias=$(cat modalias)
+        for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
+            findmodule ${driver%%.ko}
+        done
+        popd >/dev/null 2>&1
+    done
+}
+
+handleraid() {
+    local start=0
+
+    if [ -n "$noraid" -o ! -f /proc/mdstat ]; then
+        return 0
+    fi
+
+    levels=$(grep "^$1[	 ]*:" /proc/mdstat | \
+        awk '{ print $4 }')
+    devs=$(grep "^$1[	 ]*:" /proc/mdstat | \
+        awk '{ print gensub("\\[[0-9]*\\]","","g",gensub("^md.*raid[0-9]*","","1")) }')
+
+    for level in $levels ; do
+	case $level in
+	linear)
+	    findmodule linear
+	    start=1
+	    ;;
+	multipath)
+	    findmodule multipath
+	    start=1
+	    ;;
+	raid[01456])
+	    findmodule $level
+	    start=1
+	    ;;
+	*)
+	    echo "raid level $level (in /proc/mdstat) not recognized" >&2
+	    ;;
+	esac
+    done
+    for dev in $devs; do
+       if [[ "$dev" =~ "md[0-9]+" ]]; then
+           handleraid $dev
+       else
+           findstoragedriver $dev
+       fi
+    done
+    return $start
 }
 
 while [ $# -gt 0 ]; do
@@ -430,38 +496,6 @@ if [ -d /proc/dasd ]; then
     findmodule -dasd_fba_mod
 fi
 
-if [ -z "$noraid" -a -f /proc/mdstat ]; then
-    # load appropriate raid devices if necessary -- we'll load whatever
-    # /proc/mdstat suggests
-
-    # note that the awk below contains a space and a tab
-    for level in $(awk '/^md[0-9][0-9]*[ 	]*:/ { print $4 }' \
-		    /proc/mdstat | sort -u); do
-	case $level in
-	linear)
-	    findmodule linear
-	    startraid=1
-	    ;;
-	multipath)
-	    findmodule multipath
-	    startraid=1
-	    ;;
-	raid[01456])
-	    findmodule $level
-	    startraid=1
-	    ;;
-	*)
-	    echo "raid level $level (in /proc/mdstat) not recognized" >&2
-	    ;;
-	esac
-    done
-
-    if [ -n "$startraid" ]; then
-	raiddevices=$(awk '/^md[0-9][0-9]*[        ]*:/ { print $1 }' \
-			    /proc/mdstat | sort)
-    fi
-fi
-
 # check to see if we need to set up a loopback filesystem
 rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
 if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
@@ -482,15 +516,55 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
 	basicmodules="$basicmodules -fat"
     fi
     basicmodules="$basicmodules -${loopFs}"
+# check if it's root by label
+elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
+    majmin=$(stat -c "%t:%T" /dev/root)
+    if [ -n "$majmin" ]; then
+        dev=
+        dev=$(find /sys/block -name dev | while read device ; do \
+	      echo "3:1" | cmp -s $device && echo $device ; done)
+	if [ -n "$dev" ]; then
+	    dev=${dev%%/dev}
+	    dev=${dev##*/}
+	    echo "Found root device /dev/$dev"
+	    if [[ "$dev" =~ "md[0-9]+" ]]; then
+	        handleraid $dev
+	    else
+	        findstoragedriver $dev
+	    fi
+	fi
+    fi
+    set +x
 # check if the root fs is on a logical volume
 elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
-    rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
+    rawrootdev=$rootdev
+    rootdev=$(readlink $rootdev)
     if echo $rootdev | grep -q /dev/mapper 2>/dev/null; then
         root_vg=$(echo $rootdev | cut -d/ -f4 | cut -d- -f1)
 	root_lvm=1
     fi
-    major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
+    major=$(stat -c "%t" $rootdev)
     [ "$major" != "58" ] || root_lvm=1
+    if [ "$root_lvm" = 1 ]; then
+        for device in $(lvdisplay -m $rawrootdev | awk '/Physical volume/ { print $3 }') ; do
+	    if [[ "$device" =~ "/dev/md[0-9]+" ]]; then
+	        echo "Found RAID component $device for $rawrootdev"
+	        handleraid ${device##*/}
+	        if [ "$?" = "1" ]; then
+	            raiddevices="$raiddevices ${device##*/}"
+	        fi
+	    else
+	        findstoragedriver $device
+	    fi
+	done
+    fi
+# check if the root fs is on RAID
+elif [[ "$rootdev" =~ "/dev/md[0-9]+" ]]; then
+     echo "Found RAID device $rootdev"[5~
+     handleraid ${rootdev##*/}
+     if [ "$?" = "1" ]; then
+         raiddevices="$raiddevices ${rootdev##*/}"
+     fi
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
@@ -503,7 +577,7 @@ findmodule -${rootfs}
 # find the first swap dev which would get used for swsusp
 swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; }}' $fstab | head -n 1)
 if ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
-    swsuspdev=$(echo "readlink $swsuspdev" | /sbin/nash --quiet)
+    swsuspdev=$(readlink $swsuspdev)
     if echo $swsuspdev | grep -q /dev/mapper 2>/dev/null; then
         swap_vg=$(echo $swsuspdev | cut -d/ -f4 | cut -d- -f1)
 	root_lvm=1
@@ -703,7 +777,7 @@ if [ -n "$DYNAMIC_DEV" ]; then
   echo "makedevs" >> $RCFILE
 fi
 
-if [ -n "$startraid" ]; then
+if [ -n "$raiddevices" ]; then
     for dev in $raiddevices; do
 	cp -a /dev/${dev} $MNTIMAGE/dev
 	echo "raidautorun /dev/${dev}" >> $RCFILE
