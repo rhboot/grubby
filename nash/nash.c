@@ -23,6 +23,8 @@
    commands are run from the filesystem. Comments and blank lines work as 
    well, argument parsing is screwy. */
 
+#define _GNU_SOURCE 1
+
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>
