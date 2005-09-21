@@ -9,7 +9,7 @@ ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils
 Requires: filesystem >= 2.1.0, cpio
-BuildRequires: popt, mdadm, device-mapper, e2fsprogs-devel
+BuildRequires: popt
 %ifarch ppc
 Requires: ppc64-utils >= 0.3-1
 %endif
