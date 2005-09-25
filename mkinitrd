@@ -26,6 +26,8 @@
 
 umask 0022
 
+export MALLOC_PERTURB_=204 
+
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
@@ -183,6 +185,7 @@ readlink() {
 
 findstoragedriver () {
     for device in $@ ; do
+    	[ -n "$verbose" ] && echo "Looking for driver for device $device"
         sysfs=$(find /sys/block -name $device -type d)
         [ -z "$sysfs" ] && return
         pushd $sysfs >/dev/null 2>&1
@@ -520,9 +523,9 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
 elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
     majmin=$(stat -c "%t:%T" /dev/root)
     if [ -n "$majmin" ]; then
-        dev=
+	dev=""
         dev=$(find /sys/block -name dev | while read device ; do \
-	      echo "3:1" | cmp -s $device && echo $device ; done)
+	      echo "$majmin" | cmp -s $device && echo $device ; done)
 	if [ -n "$dev" ]; then
 	    dev=${dev%%/dev}
 	    dev=${dev##*/}
@@ -535,7 +538,15 @@ elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
 	fi
     fi
     set +x
+# check if the root fs is on RAID
+elif [[ "$rootdev" =~ "/dev/md[0-9]+" ]]; then
+     echo "Found RAID device $rootdev"
+     handleraid ${rootdev##*/}
+     if [ "$?" = "1" ]; then
+         raiddevices="$raiddevices ${rootdev##*/}"
+     fi
 # check if the root fs is on a logical volume
+# this check must be last
 elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
     rawrootdev=$rootdev
     rootdev=$(readlink $rootdev)
@@ -558,13 +569,9 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
 	    fi
 	done
     fi
-# check if the root fs is on RAID
-elif [[ "$rootdev" =~ "/dev/md[0-9]+" ]]; then
-     echo "Found RAID device $rootdev"[5~
-     handleraid ${rootdev##*/}
-     if [ "$?" = "1" ]; then
-         raiddevices="$raiddevices ${rootdev##*/}"
-     fi
+else
+    echo "Error identifying root devices." >&2
+    exit 1
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
