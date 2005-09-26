@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Sep 26 2005 Peter Jones <pjones@redhat.com> - 4.2.24-1
+- Fix module discovery for raid (eleminates "find" warning as well)
+
 * Sun Sep 25 2005 Peter Jones <pjones@redhat.com> - 4.2.23-2
 - Fix module discovery to not always use the modules /dev/hda1 requires
   when using root-on-label.
