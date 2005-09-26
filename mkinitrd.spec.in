@@ -57,7 +57,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Sun Sep 25 2005 Peter Jones <pjones@redhat.com> - 4.2.23-1
+* Sun Sep 25 2005 Peter Jones <pjones@redhat.com> - 4.2.23-2
 - Fix module discovery to not always use the modules /dev/hda1 requires
   when using root-on-label.
 - Put the lvm check after the raid check, so the raid check atually gets run.
