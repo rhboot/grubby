@@ -42,7 +42,6 @@ verbose=""
 MODULES=""
 img_vers=""
 builtins=""
-initramfs=""
 modulefile=/etc/modules.conf
 rc=0
 
@@ -372,7 +371,6 @@ fi
 
 if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
 modulefile=/etc/modprobe.conf
-initramfs=1
 
 # find a temporary directory which doesn't use tmpfs
 TMPDIR=""
@@ -594,48 +592,11 @@ fi
 
 MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
 IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
-if [ -z "$initramfs" ]; then
-    MNTPOINT=`mktemp -d ${TMPDIR}/initrd.mnt.XXXXXX`
-    RCFILE=$MNTIMAGE/linuxrc
-else
-    RCFILE=$MNTIMAGE/init
-fi
+RCFILE=$MNTIMAGE/init
 
 if [ -z "$MNTIMAGE" -o -z "$IMAGE" ]; then
     echo "Error creating temporaries.  Try again" >&2
     exit 1
-fi
-
-if [ -z "$initramfs" ]; then
-  dd if=/dev/zero of=$IMAGE bs=1k count=$IMAGESIZE 2> /dev/null || exit 1
-
-  LODEV=$(echo findlodev | /sbin/nash --quiet)
-
-  if [ -z "$LODEV" ]; then
-    rm -rf $MNTIMAGE $MNTPOINT $IMAGE
-    echo "All of your loopback devices are in use." >&2
-    exit 1
-  fi
-
-  losetup ${LODEV} $IMAGE || exit 1
-
-  # We have to "echo y |" so that it doesn't complain about $IMAGE not
-  # being a block device
-  echo y | mke2fs $LODEV $IMAGESIZE >/dev/null 2>/dev/null
-  tune2fs -i0 $LODEV >/dev/null
-
-  if [ -n "$verbose" ]; then
-      echo "Using loopback device $LODEV"
-  fi
-
-  mkdir -p $MNTPOINT
-  mount -t ext2 $LODEV $MNTPOINT || {
-	echo "Can't get a loopback device"
-	exit 1
-  }
-
-  # We don't need this directory, so let's save space
-  rmdir $MNTPOINT/lost+found >/dev/null 2>&1
 fi
 
 mkdir -p $MNTIMAGE
@@ -686,11 +647,11 @@ fi
 echo "#!/bin/nash" >| $RCFILE
 echo "" >> $RCFILE
 
-echo "mount -t proc /proc /proc" >> $RCFILE
 echo "setquiet" >> $RCFILE
-echo "echo Mounted proc filesystem" >> $RCFILE
+echo "echo Mounting proc filesystem" >> $RCFILE
+echo "mount -t proc /proc /proc" >> $RCFILE
+echo "echo Mounting sysfs filesystem" >> $RCFILE
 echo "mount -t sysfs /sys /sys" >> $RCFILE
-echo "echo Mounted sysfs filesystem" >> $RCFILE
 
 if [ -n "$DYNAMIC_DEV" ]; then
     cat >> $RCFILE <<EOF
@@ -784,32 +745,18 @@ echo "echo Creating root device" >> $RCFILE
 echo "mkrootdev /dev/root" >> $RCFILE
 rootdev=/dev/root
 
-if [ -n "$initramfs" ]; then
-  echo "echo Mounting root filesystem" >> $RCFILE
-  echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+echo "echo Mounting root filesystem" >> $RCFILE
+echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
 
-  echo "echo Switching to new root" >> $RCFILE
-  if [ -n "$DYNAMIC_DEV" ]; then
+echo "echo Switching to new root" >> $RCFILE
+if [ -n "$DYNAMIC_DEV" ]; then
     echo "switchroot --movedev /sysroot" >> $RCFILE
-  else
+else
     echo "switchroot /sysroot" >> $RCFILE
-  fi
-else 
-  echo "umount /sys" >> $RCFILE
-  echo "umount /proc" >> $RCFILE
-
-  [ -n "$DYNAMIC_DEV" ] && echo "umount /initrd/dev" >> $RCFILE
 fi
 chmod +x $RCFILE
 
-if [ -z "$initramfs" ]; then
-  (cd $MNTIMAGE; tar cf - .) | (cd $MNTPOINT; tar xf -) || exit 1
-
-  umount $MNTPOINT
-  losetup -d $LODEV
-else
-  (cd $MNTIMAGE; find . | cpio --quiet -c -o) >| $IMAGE || exit 1
-fi
+(cd $MNTIMAGE; find . | cpio --quiet -c -o) >| $IMAGE || exit 1
 
 if [ -n "$compress" ]; then
     gzip -9 < $IMAGE >| $target || rc=1
