@@ -420,12 +420,12 @@ for t in /tmp /var/tmp /root ${PWD}; do
 done
 
 if [ -z "$TMPDIR" ]; then
-    echo "no temporary directory could be found" >&2
+    error "no temporary directory could be found."
     exit 1
 fi
 
 if [ $TMPDIR = "/root" -o $TMPDIR = "${PWD}" ]; then
-    echo "WARNING: using $TMPDIR for temporary files" >&2
+    error "WARNING: using $TMPDIR for temporary files"
 fi
 
 for n in $PREMODS; do
@@ -519,8 +519,8 @@ rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
 if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
     if ! grep "$key" $fstab >> /dev/null; then
-	echo "The root filesystem is on a $rootdev, but there is no magic entry in $fstab" >&2
-	echo "for this device. Consult the mkinitrd man page for more information" >&2
+	error "The root filesystem is on a $rootdev, but there is no magic entry in $fstab"
+	error "for this device. Consult the mkinitrd man page for more information"
 	exit 1
     fi
 
@@ -585,7 +585,7 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
 	done
     fi
 else
-    echo "Error identifying root devices." >&2
+    error "Error identifying root devices."
     exit 1
 fi
 
@@ -626,7 +626,7 @@ IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
 RCFILE=$MNTIMAGE/init
 
 if [ -z "$MNTIMAGE" -o -z "$IMAGE" ]; then
-    echo "Error creating temporaries.  Try again" >&2
+    error "Error creating temporaries.  Try again"
     exit 1
 fi
 
