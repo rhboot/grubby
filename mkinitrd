@@ -510,7 +510,7 @@ elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
 	if [ -n "$dev" ]; then
 	    dev=${dev%%/dev}
 	    dev=${dev##*/}
-	    echo "Found root device /dev/$dev"
+	    [ -n "$verbose" ] && echo "Found root device /dev/$dev"
 	    if [[ "$dev" =~ "md[0-9]+" ]]; then
 	        handleraid $dev
 	    else
@@ -521,7 +521,7 @@ elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
     set +x
 # check if the root fs is on RAID
 elif [[ "$rootdev" =~ "/dev/md[0-9]+" ]]; then
-    echo "Found RAID device $rootdev"
+    [ -n "$verbose" ] && echo "Found RAID device $rootdev"
     handleraid ${rootdev##*/}
     if [ "$?" = "1" ]; then
         raiddevices="$raiddevices ${rootdev##*/}"
@@ -540,7 +540,7 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
     if [ "$root_lvm" = 1 ]; then
         for device in $(lvdisplay -m $rawrootdev | awk '/Physical volume/ { print $3 }') ; do
 	    if [[ "$device" =~ "/dev/md[0-9]+" ]]; then
-	        echo "Found RAID component $device for $rawrootdev"
+	        [ -n "$verbose"] && echo "Found RAID component $device for $rawrootdev"
 	        handleraid ${device##*/}
 	        if [ "$?" = "1" ]; then
 	            raiddevices="$raiddevices ${device##*/}"
