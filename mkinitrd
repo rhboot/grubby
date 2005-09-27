@@ -46,7 +46,7 @@ modulefile=/etc/modules.conf
 rc=0
 
 IMAGESIZE=8000
-PRESCSIMODS="scsi_mod sd_mod unknown"
+PRESCSIMODS="sd_mod"
 fstab="/etc/fstab"
 
 if [ -f /etc/udev/udev.conf ]; then
@@ -360,12 +360,12 @@ if [ -z "$force" -a -f $target ]; then
 fi
 
 if [ ! -d /lib/modules/$kernel ]; then
-    echo "/lib/modules/$kernel is not a directory." >&2
+    echo 'No modules available for kernel "'${kernel}'".' >&2
     exit 1
 fi
 
 if [ $UID != 0 ]; then
-    echo "mkinitrd must be run as root"
+    echo "mkinitrd must be run as root."
     exit 1
 fi
 
