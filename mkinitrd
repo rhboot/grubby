@@ -42,7 +42,6 @@ verbose=""
 MODULES=""
 img_vers=""
 builtins=""
-pivot=1
 initramfs=""
 modulefile=/etc/modules.conf
 rc=0
@@ -59,7 +58,7 @@ usage () {
     echo "usage: `basename $0` [--version] [-v] [-f] [--preload <module>]" >&2
     echo "       [--omit-scsi-modules] [--omit-raid-modules] [--omit-lvm-modules]" >&2
     echo "       [--with=<module>] [--image-version] [--fstab=<fstab>] [--nocompress]" >&2
-    echo "       [--builtin=<module>] [--nopivot] <initrd-image> <kernel-version>" >&2
+    echo "       [--builtin=<module>] <initrd-image> <kernel-version>" >&2
     echo "" >&2
     echo "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)" >&2
     exit 1
@@ -296,10 +295,6 @@ while [ $# -gt 0 ]; do
 	    compress=""
 	    ;;
 
-	--nopivot)
-	    pivot=""
-	    ;;
-
 	--ifneeded)
 	    # legacy
 	    ;;
@@ -384,7 +379,6 @@ else
     if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
     modulefile=/etc/modprobe.conf
     initramfs=1
-    pivot=""
 fi
 
 # find a temporary directory which doesn't use tmpfs
@@ -843,17 +837,7 @@ else
     echo "umount /sys" >> $RCFILE
   fi
 
-  if [ -n "$pivot" ]; then
-    echo "echo 0x0100 > /proc/sys/kernel/real-root-dev" >> $RCFILE
-
-    echo "echo Mounting root filesystem" >> $RCFILE
-    echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
-
-    echo "pivot_root /sysroot /sysroot/initrd" >> $RCFILE
-    echo "umount /initrd/proc" >> $RCFILE
-  else
-    echo "umount /proc" >> $RCFILE
-  fi
+  echo "umount /proc" >> $RCFILE
 
   [ -n "$DYNAMIC_DEV" ] && echo "umount /initrd/dev" >> $RCFILE
 fi
