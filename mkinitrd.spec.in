@@ -65,6 +65,7 @@ rm -rf $RPM_BUILD_ROOT
   same for "unknown"; it's not needed any more.
 - lots of whitespace adjustment
 - minor messaging changes
+- no manual redirection to stderr or RCFILE, nor manual verbose checking
 - in light of these changes and other planned changes, this is 5.0.0
 
 * Mon Sep 26 2005 Peter Jones <pjones@redhat.com> - 4.2.24-1
