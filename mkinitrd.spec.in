@@ -57,6 +57,16 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Sep 27 2005 Peter Jones <pjones@redhat.com> - 5.0.0-1
+- remove support for pivotroot
+- remove support for non-initramfs initrds
+- remove support for 2.4 kernels
+- don't force scsi_mod before scsi modules; deps should bring it in.
+  same for "unknown"; it's not needed any more.
+- lots of whitespace adjustment
+- minor messaging changes
+- in light of these changes and other planned changes, this is 5.0.0
+
 * Mon Sep 26 2005 Peter Jones <pjones@redhat.com> - 4.2.24-1
 - Fix module discovery for raid (eleminates "find" warning as well)
 
