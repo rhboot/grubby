@@ -53,19 +53,50 @@ if [ -f /etc/udev/udev.conf ]; then
     DYNAMIC_DEV="yes"
 fi
 
+vecho()
+{
+    NOECHO=""
+    if [ "$1" == "-e" ]; then
+        NOECHO="-e"
+        shift
+    fi
+    [ -n "$verbose" ] && echo $NOECHO "$@"
+}
+
+error()
+{
+    NOECHO=""
+    if [ "$1" == "-e" ]; then
+        NOECHO="-e"
+        shift
+    fi
+    echo $NOECHO "$@" >&2
+}
+
 usage () {
-    echo "usage: `basename $0` [--version] [-v] [-f] [--preload <module>]" >&2
-    echo "       [--omit-scsi-modules] [--omit-raid-modules] [--omit-lvm-modules]" >&2
-    echo "       [--with=<module>] [--image-version] [--fstab=<fstab>] [--nocompress]" >&2
-    echo "       [--builtin=<module>] <initrd-image> <kernel-version>" >&2
-    echo "" >&2
-    echo "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)" >&2
-    exit 1
+    if [ "$1" == "-n" ]; then
+        cmd=echo
+    else
+        cmd=error
+    fi
+
+    $cmd "usage: `basename $0` [--version] [--help] [-v] [-f] [--preload <module>]"
+    $cmd "       [--omit-scsi-modules] [--omit-raid-modules] [--omit-lvm-modules]"
+    $cmd "       [--with=<module>] [--image-version] [--fstab=<fstab>] [--nocompress]"
+    $cmd "       [--builtin=<module>] <initrd-image> <kernel-version>"
+    $cmd ""
+    $cmd "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)"
+
+    if [ "$1" == "-n" ]; then
+        exit 0
+    else
+        exit 1
+    fi
 }
 
 moduledep() {
     if [ ! -f "/lib/modules/$kernel/modules.dep" ]; then
-	echo "No dep file found for kernel $kernel" >&2
+	error "No dep file found for kernel $kernel"
 	exit 1
     fi
 
@@ -78,7 +109,7 @@ moduledep() {
                            if ($2) { for (i = 2; i <= NF; i++) { dep=sprintf("%s %s", dep, modname($i)); } } } \
                 /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
                 END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
-    [ -n "$verbose" ] && echo -e "\t$deps"
+    vecho -e "\t$deps"
 }
 
 findmodule() {
@@ -101,7 +132,7 @@ findmodule() {
     fi
 
     if echo $builtins | egrep -q '(^| )'$modName'( |$)' ; then
-	[ -n "$verbose" ] && echo "module $modName assumed to be built in"
+        vecho "module $modName assumed to be built in"
 	return
     fi
 
@@ -154,11 +185,11 @@ findmodule() {
 	done;
 
 	if [ -n "$allowmissing" ]; then
-	    echo "WARNING: No module $modName found for kernel $kernel, continuing anyway" >&2
+	    error "WARNING: No module $modName found for kernel $kernel, continuing anyway"
 	    return
 	fi
 
-	echo "No module $modName found for kernel $kernel, aborting." >&2
+	error "No module $modName found for kernel $kernel, aborting."
 	exit 1
     fi
 
@@ -173,7 +204,7 @@ inst() {
         echo "usage: inst <file> <destination>"
         return
     fi
-    [ -n "$verbose" ] && echo "$1 -> $2"
+    vecho "$1 -> $2"
     cp $1 $2
 }
 
@@ -183,7 +214,7 @@ readlink() {
 
 findstoragedriver () {
     for device in $@ ; do
-    	[ -n "$verbose" ] && echo "Looking for driver for device $device"
+        vecho "Looking for driver for device $device"
         sysfs=$(find /sys/block -name $device -type d)
         [ -z "$sysfs" ] && return
         pushd $sysfs >/dev/null 2>&1
@@ -231,7 +262,7 @@ handleraid() {
 	    start=1
 	    ;;
 	*)
-	    echo "raid level $level (in /proc/mdstat) not recognized" >&2
+	    error "raid level $level (in /proc/mdstat) not recognized"
 	    ;;
 	esac
     done
@@ -332,6 +363,9 @@ while [ $# -gt 0 ]; do
 	--noresume)
 	    noresume=1
 	    ;;
+        --help)
+            usage -n
+            ;;
 	*)
 	    if [ -z "$target" ]; then
 		target=$1
@@ -355,21 +389,21 @@ if [ -n "$img_vers" ]; then
 fi
 
 if [ -z "$force" -a -f $target ]; then
-    echo "$target already exists." >&2
+    error "$target already exists."
     exit 1
 fi
 
 if [ ! -d /lib/modules/$kernel ]; then
-    echo 'No modules available for kernel "'${kernel}'".' >&2
+    error 'No modules available for kernel "'${kernel}'".'
     exit 1
 fi
 
 if [ $UID != 0 ]; then
-    echo "mkinitrd must be run as root."
+    error "mkinitrd must be run as root."
     exit 1
 fi
 
-if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
+vecho "Creating initramfs"
 modulefile=/etc/modprobe.conf
 
 # find a temporary directory which doesn't use tmpfs
@@ -510,7 +544,7 @@ elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
 	if [ -n "$dev" ]; then
 	    dev=${dev%%/dev}
 	    dev=${dev##*/}
-	    [ -n "$verbose" ] && echo "Found root device /dev/$dev"
+            vecho "Found root device /dev/$dev"
 	    if [[ "$dev" =~ "md[0-9]+" ]]; then
 	        handleraid $dev
 	    else
@@ -521,7 +555,7 @@ elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
     set +x
 # check if the root fs is on RAID
 elif [[ "$rootdev" =~ "/dev/md[0-9]+" ]]; then
-    [ -n "$verbose" ] && echo "Found RAID device $rootdev"
+    vecho "Found RAID device $rootdev"
     handleraid ${rootdev##*/}
     if [ "$?" = "1" ]; then
         raiddevices="$raiddevices ${rootdev##*/}"
@@ -540,7 +574,7 @@ elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
     if [ "$root_lvm" = 1 ]; then
         for device in $(lvdisplay -m $rawrootdev | awk '/Physical volume/ { print $3 }') ; do
 	    if [[ "$device" =~ "/dev/md[0-9]+" ]]; then
-	        [ -n "$verbose"] && echo "Found RAID component $device for $rawrootdev"
+                vecho "Found RAID component $device for $rawrootdev"
 	        handleraid ${device##*/}
 	        if [ "$?" = "1" ]; then
 	            raiddevices="$raiddevices ${device##*/}"
@@ -585,10 +619,7 @@ for n in $basicmodules; do
     findmodule $n
 done
 
-if [ -n "$verbose" ]; then
-    echo "Using modules: $MODULES"
-fi
-
+vecho "Using modules: $MODULES"
 
 MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
 IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
@@ -677,11 +708,10 @@ for MODULE in $MODULES; do
 
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
-    if [ -n "$verbose" ]; then
-	if [ -n "$options" ]; then
-	    text=" with options $options"
-	fi
-        echo "Loading module $module$text"
+    if [ -n "$options" ]; then
+        vecho "Loading module $module$text with options $options"
+    else
+        vecho "Loading module $module$text"
     fi
     echo "echo \"Loading $fullmodule module\"" >> $RCFILE
     echo "insmod /lib/$fullmodule $options" >> $RCFILE
