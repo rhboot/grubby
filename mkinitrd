@@ -100,7 +100,7 @@ moduledep() {
 	exit 1
     fi
 
-    [ -n "$verbose" ] && echo -n "Looking for deps of module $1"
+    vecho -n "Looking for deps of module $1"
     deps=$(awk 'BEGIN { searched=ARGV[2]; ARGV[2]=""; rc=1 } \
                 function modname(filename) { match(filename, /\/([^\/]+)\.k?o:?$/, ret); return ret[1] } \
                 function show() { if (orig == searched) { print dep; orig=""; rc=0; exit } } \
@@ -109,7 +109,7 @@ moduledep() {
                            if ($2) { for (i = 2; i <= NF; i++) { dep=sprintf("%s %s", dep, modname($i)); } } } \
                 /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
                 END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
-    vecho -n ":$deps"
+    vecho ":$deps"
 }
 
 findmodule() {
