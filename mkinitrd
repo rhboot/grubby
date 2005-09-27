@@ -109,7 +109,7 @@ moduledep() {
                            if ($2) { for (i = 2; i <= NF; i++) { dep=sprintf("%s %s", dep, modname($i)); } } } \
                 /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
                 END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
-    vecho ":$deps"
+    [ -n "$deps" ] && vecho ":$deps" || vecho
 }
 
 findmodule() {
@@ -625,6 +625,21 @@ MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
 IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
 RCFILE=$MNTIMAGE/init
 
+cemit()
+{
+    cat >> $RCFILE
+}
+
+emit()
+{
+    NONL=""
+    if [ "$1" == "-n" ]; then
+        NONL="-n"
+        shift
+    fi
+    echo $NONL "$@" >> $RCFILE
+}
+
 if [ -z "$MNTIMAGE" -o -z "$IMAGE" ]; then
     error "Error creating temporaries.  Try again"
     exit 1
@@ -675,17 +690,18 @@ if [ -n "$root_lvm" ]; then
     fi
 fi
 
-echo "#!/bin/nash" >| $RCFILE
-echo "" >> $RCFILE
+echo -n >| $RCFILE
+emit "#!/bin/nash"
+emit
 
-echo "setquiet" >> $RCFILE
-echo "echo Mounting proc filesystem" >> $RCFILE
-echo "mount -t proc /proc /proc" >> $RCFILE
-echo "echo Mounting sysfs filesystem" >> $RCFILE
-echo "mount -t sysfs /sys /sys" >> $RCFILE
+emit "setquiet"
+emit "echo Mounting proc filesystem"
+emit "mount -t proc /proc /proc"
+emit "echo Mounting sysfs filesystem"
+emit "mount -t sysfs /sys /sys"
 
 if [ -n "$DYNAMIC_DEV" ]; then
-    cat >> $RCFILE <<EOF
+    cemit <<EOF
 echo Creating /dev
 mount -o mode=0755 -t tmpfs /dev /dev
 mknod /dev/console c 5 1
@@ -694,7 +710,7 @@ mknod /dev/zero c 1 5
 mkdir /dev/pts
 mkdir /dev/shm
 EOF
-    cat >> $RCFILE <<EOF
+    cemit <<EOF
 echo Creating device nodes
 echo -n "/sbin/hotplug" > /proc/sys/kernel/hotplug
 makedevs
@@ -709,24 +725,26 @@ for MODULE in $MODULES; do
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
     if [ -n "$options" ]; then
-        vecho "Loading module $module$text with options $options"
+        vecho "Adding module $module$text with options $options"
     else
-        vecho "Loading module $module$text"
+        vecho "Adding module $module$text"
     fi
-    echo "echo \"Loading $fullmodule module\"" >> $RCFILE
-    echo "insmod /lib/$fullmodule $options" >> $RCFILE
+    emit "echo \"Loading $fullmodule module\""
+    emit "insmod /lib/$fullmodule $options"
 
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" ]; then
-	echo "sleep 8" >> $RCFILE
+	emit "sleep 8"
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
-        echo "sleep 2" >> $RCFILE
+        emit "sleep 2"
         cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICE SCSIID WWPN SCSILUN FCPLUN; do
-            echo "echo -n $WWPN > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/port_add" >>$RCFILE
-            echo "echo -n $FCPLUN > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/$WWPN/unit_add" >>$RCFILE
-            echo "echo -n 1 > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/online" >>$RCFILE
+        cemit <<EOF 
+echo -n $WWPN > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/port_add
+echo -n $FCPLUN > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/$WWPN/unit_add
+echo -n 1 > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/online
+EOF
         done
     fi
 done
@@ -735,54 +753,54 @@ done
 # this will make sure that we have all of our devices before trying
 # things like RAID or LVM
 if [ -n "$DYNAMIC_DEV" ]; then
-    echo "makedevs" >> $RCFILE
+    emit "makedevs"
 fi
 
 if [ -n "$raiddevices" ]; then
     for dev in $raiddevices; do
 	cp -a /dev/${dev} $MNTIMAGE/dev
-	echo "raidautorun /dev/${dev}" >> $RCFILE
+	emit "raidautorun /dev/${dev}"
     done
 fi
 
 if [ -z "$DYNAMIC_DEV" ]; then
-    echo "echo Creating block devices" >> $RCFILE
-    echo "mkdevices /dev" >> $RCFILE
+    emit "echo Creating block devices."
+    emit "mkdevices /dev"
 fi
 
 if [ -n "$loopDev" ]; then
     mkdir /initrd
     cp -a $loopDev $MNTIMAGE/dev
     cp -a $rootdev $MNTIMAGE/dev
-    echo "echo Mounting device containing loopback root filesystem" >> $RCFILE
-    echo "mount -t $loopFs $loopDev /loopfs" >> $RCFILE
-    echo "echo Setting up loopback device $rootdev" >> $RCFILE
-    echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
+    emit "echo Mounting device containing loopback root filesystem."
+    emit "mount -t $loopFs $loopDev /loopfs"
+    emit "echo Setting up loopback device $rootdev"
+    emit "losetup $rootdev /loopfs$loopFile"
 elif [ -n "$root_lvm" ]; then
-    echo "echo Making device-mapper control node" >> $RCFILE
-    echo "mkdmnod" >> $RCFILE
-    echo "echo Scanning logical volumes" >> $RCFILE
-    echo "lvm vgscan --ignorelockingfailure" >> $RCFILE
-    echo "echo Activating logical volumes" >> $RCFILE
-    echo "lvm vgchange -ay --ignorelockingfailure $root_vg $swap_vg" >> $RCFILE
+    emit "echo Making device-mapper control node"
+    emit "mkdmnod"
+    emit "echo Scanning logical volumes"
+    emit "lvm vgscan --ignorelockingfailure"
+    emit "echo Activating logical volumes"
+    emit "lvm vgchange -ay --ignorelockingfailure $root_vg $swap_vg"
 fi
 
 if [ -z "$noresume" ]; then
-    echo "resume $swsuspdev" >> $RCFILE
+    emit "resume $swsuspdev"
 fi
 
-echo "echo Creating root device" >> $RCFILE
-echo "mkrootdev /dev/root" >> $RCFILE
+emit "echo Creating root device."
+emit "mkrootdev /dev/root"
 rootdev=/dev/root
 
-echo "echo Mounting root filesystem" >> $RCFILE
-echo "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot" >> $RCFILE
+emit "echo Mounting root filesystem"
+emit "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot"
 
-echo "echo Switching to new root" >> $RCFILE
+emit "echo Switching to new root"
 if [ -n "$DYNAMIC_DEV" ]; then
-    echo "switchroot --movedev /sysroot" >> $RCFILE
+    emit "switchroot --movedev /sysroot"
 else
-    echo "switchroot /sysroot" >> $RCFILE
+    emit "switchroot /sysroot"
 fi
 chmod +x $RCFILE
 
