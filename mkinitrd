@@ -26,12 +26,12 @@
 
 umask 0022
 
-export MALLOC_PERTURB_=204 
+export MALLOC_PERTURB_=204
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.24
+VERSION=5.0.0
 
 compress=1
 allowmissing=""
@@ -129,7 +129,7 @@ findmodule() {
 	if [ -d /lib/modules/$kernel/updates ]; then
 	    fmPath=`(cd /lib/modules/$kernel/updates; echo find . -name $modName.$modExt -type f | /sbin/nash --quiet) | /bin/awk {'print $1; exit;'}`
 	fi
-	
+
 	if [ -f /lib/modules/$kernel/updates/$fmPath ]; then
 	    fmPath=updates/$fmPath
 	    break
@@ -157,7 +157,7 @@ findmodule() {
 	    echo "WARNING: No module $modName found for kernel $kernel, continuing anyway" >&2
 	    return
 	fi
-    
+
 	echo "No module $modName found for kernel $kernel, aborting." >&2
 	exit 1
     fi
@@ -172,7 +172,7 @@ inst() {
     if [ "$#" != "2" ];then
         echo "usage: inst <file> <destination>"
         return
-    fi 
+    fi
     [ -n "$verbose" ] && echo "$1 -> $2"
     cp $1 $2
 }
@@ -236,11 +236,11 @@ handleraid() {
 	esac
     done
     for dev in $devs; do
-       if [[ "$dev" =~ "md[0-9]+" ]]; then
-           handleraid $dev
-       else
-           findstoragedriver $dev
-       fi
+        if [[ "$dev" =~ "md[0-9]+" ]]; then
+            handleraid $dev
+        else
+            findstoragedriver $dev
+        fi
     done
     return $start
 }
@@ -253,7 +253,7 @@ while [ $# -gt 0 ]; do
 	    else
 		fstab=$2
 		shift
-	    fi		    
+	    fi
 	    ;;
 
 	--with-usb)
@@ -266,7 +266,7 @@ while [ $# -gt 0 ]; do
 	    else
 		modname=$2
 		shift
-	    fi		    
+	    fi
 
 	    basicmodules="$basicmodules $modname"
 	    ;;
@@ -277,7 +277,7 @@ while [ $# -gt 0 ]; do
 	    else
 		modname=$2
 		shift
-	    fi		    
+	    fi
 	    builtins="$builtins $modname"
 	    ;;
 
@@ -307,7 +307,7 @@ while [ $# -gt 0 ]; do
 	    else
 		modname=$2
 		shift
-	    fi		    
+	    fi
 	    PREMODS="$PREMODS $modname"
 	    ;;
 	--omit-scsi-modules)
@@ -379,7 +379,7 @@ for t in /tmp /var/tmp /root ${PWD}; do
     if ! echo access -w $t | /sbin/nash --quiet; then continue; fi
 
     fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
-    if [ "$fs" != "tmpfs" ]; then 
+    if [ "$fs" != "tmpfs" ]; then
 	TMPDIR=$t
 	break
     fi
@@ -390,7 +390,7 @@ if [ -z "$TMPDIR" ]; then
     exit 1
 fi
 
-if [ $TMPDIR = "/root" -o $TMPDIR = "${PWD}" ]; then 
+if [ $TMPDIR = "/root" -o $TMPDIR = "${PWD}" ]; then
     echo "WARNING: using $TMPDIR for temporary files" >&2
 fi
 
@@ -403,17 +403,17 @@ if [ -n "$withusb" ]; then
     # If / or /boot is on a USB device include the driver. With root by
     # label we could still get some odd behaviors
     for fs in / /boot ; do
-	esc=$(echo $fs | sed 's,/,\\/,g')
-	dev=$(mount | awk "/ on ${esc} / { print \$1 }" | sed 's/[0-9]*$//' | cut -d/ -f3)
-	if [ "$(echo $dev | cut -c1-2)" = sd ]; then
-          if [ `which kudzu 2>/dev/null` ]; then
-	    host=$(kudzu --probe -b scsi |
-	      gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) { print $2; exit; } }')
-	    if [ -d /proc/scsi/usb-storage-${host} -o -f /proc/scsi/usb-storage/${host} ]; then
-		needusb=1
-	    fi
-          fi
-	fi
+        esc=$(echo $fs | sed 's,/,\\/,g')
+        dev=$(mount | awk "/ on ${esc} / { print \$1 }" | sed 's/[0-9]*$//' | cut -d/ -f3)
+        if [ "$(echo $dev | cut -c1-2)" = sd ]; then
+            if [ `which kudzu 2>/dev/null` ]; then
+                host=$(kudzu --probe -b scsi |
+                gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) { print $2; exit; } }')
+                if [ -d /proc/scsi/usb-storage-${host} -o -f /proc/scsi/usb-storage/${host} ]; then
+                    needusb=1
+                fi
+            fi
+        fi
     done
 fi
 
@@ -521,11 +521,11 @@ elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
     set +x
 # check if the root fs is on RAID
 elif [[ "$rootdev" =~ "/dev/md[0-9]+" ]]; then
-     echo "Found RAID device $rootdev"
-     handleraid ${rootdev##*/}
-     if [ "$?" = "1" ]; then
-         raiddevices="$raiddevices ${rootdev##*/}"
-     fi
+    echo "Found RAID device $rootdev"
+    handleraid ${rootdev##*/}
+    if [ "$?" = "1" ]; then
+        raiddevices="$raiddevices ${rootdev##*/}"
+    fi
 # check if the root fs is on a logical volume
 # this check must be last
 elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
@@ -581,7 +581,7 @@ if [ -n "$root_lvm" ]; then
     findmodule -dm-snapshot
 fi
 
-for n in $basicmodules; do 
+for n in $basicmodules; do
     findmodule $n
 done
 
@@ -705,7 +705,7 @@ done
 # this will make sure that we have all of our devices before trying
 # things like RAID or LVM
 if [ -n "$DYNAMIC_DEV" ]; then
-  echo "makedevs" >> $RCFILE
+    echo "makedevs" >> $RCFILE
 fi
 
 if [ -n "$raiddevices" ]; then
@@ -738,7 +738,7 @@ elif [ -n "$root_lvm" ]; then
 fi
 
 if [ -z "$noresume" ]; then
-  echo "resume $swsuspdev" >> $RCFILE
+    echo "resume $swsuspdev" >> $RCFILE
 fi
 
 echo "echo Creating root device" >> $RCFILE
