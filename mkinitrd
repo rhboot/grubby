@@ -370,16 +370,9 @@ if [ $UID != 0 ]; then
     exit 1
 fi
 
-kernelmajor=`echo $kernel | cut -d . -f 1,2`
-
-if [ "$kernelmajor" == "2.4" ]; then
-    if [ -n "$verbose" ]; then echo "Creating old-style initrd"; fi
-    DYNAMIC_DEV=
-else
-    if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
-    modulefile=/etc/modprobe.conf
-    initramfs=1
-fi
+if [ -n "$verbose" ]; then echo "Creating initramfs"; fi
+modulefile=/etc/modprobe.conf
+initramfs=1
 
 # find a temporary directory which doesn't use tmpfs
 TMPDIR=""
@@ -470,11 +463,7 @@ fi
 if [ -z "$nolvm" ]; then
     if [ -f /proc/lvm/global  ]; then
         if  grep -q '^VG:' /proc/lvm/global ; then
-	    if [ "$kernelmajor" == "2.4" ]; then
-		findmodule -lvm-mod
-	    else
-		findmodule -dm-mod
-	    fi
+	    findmodule -dm-mod
         fi
     fi
 
@@ -586,16 +575,12 @@ if ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
 fi
 
 if [ -n "$root_lvm" ]; then
-    if [ "$kernelmajor" == "2.4" ]; then    
-	findmodule -lvm-mod
-    else
-	findmodule -dm-mod
-	# DM requires all of these to be there in case someone used the
-	# feature.  broken.  (#132001)
-	findmodule -dm-mirror
-	findmodule -dm-zero
-	findmodule -dm-snapshot
-    fi
+    findmodule -dm-mod
+    # DM requires all of these to be there in case someone used the
+    # feature.  broken.  (#132001)
+    findmodule -dm-mirror
+    findmodule -dm-zero
+    findmodule -dm-snapshot
 fi
 
 for n in $basicmodules; do 
@@ -691,20 +676,7 @@ for i in 1 2 3 4; do
 done
 
 # FIXME -- this won't work if you're using devfs
-if [ -n "$root_lvm" -a "$kernelmajor" == "2.4" ]; then
-    pvs=$(/sbin/pvscan | grep " PV " | /bin/awk {'print $5;'} |sed 's/"//g')
-    for pv in $pvs; do
-	cp $verbose --parents -a $pv $MNTIMAGE/
-    done
-
-    inst /sbin/vgwrapper "$MNTIMAGE/bin/vgwrapper"
-    ln "$MNTIMAGE/bin/vgwrapper" "$MNTIMAGE/bin/vgscan"
-    ln "$MNTIMAGE/bin/vgwrapper" "$MNTIMAGE/bin/vgchange"
-
-    mknod $MNTIMAGE/dev/lvm b 109 0
-fi
-
-if [ -n "$root_lvm" -a "$kernelmajor" == "2.6" ]; then
+if [ -n "$root_lvm" ]; then
     inst /sbin/lvm.static "$MNTIMAGE/bin/lvm"
     if [ -f /etc/lvm/lvm.conf ]; then
 	cp $verbose --parents /etc/lvm/lvm.conf $MNTIMAGE/
@@ -716,12 +688,9 @@ echo "" >> $RCFILE
 
 echo "mount -t proc /proc /proc" >> $RCFILE
 echo "setquiet" >> $RCFILE
-echo "echo Mounted /proc filesystem" >> $RCFILE
-
-if [ "$kernelmajor" != "2.4" ]; then
-    echo "echo Mounting sysfs" >> $RCFILE
-    echo "mount -t sysfs /sys /sys" >> $RCFILE
-fi
+echo "echo Mounted proc filesystem" >> $RCFILE
+echo "mount -t sysfs /sys /sys" >> $RCFILE
+echo "echo Mounted sysfs filesystem" >> $RCFILE
 
 if [ -n "$DYNAMIC_DEV" ]; then
     cat >> $RCFILE <<EOF
@@ -799,19 +768,12 @@ if [ -n "$loopDev" ]; then
     echo "echo Setting up loopback device $rootdev" >> $RCFILE
     echo "losetup $rootdev /loopfs$loopFile" >> $RCFILE
 elif [ -n "$root_lvm" ]; then
-  if [ "$kernelmajor" == "2.4" ]; then
-    echo "echo Scanning logical volumes" >> $RCFILE
-    echo "vgscan" >> $RCFILE
-    echo "echo Activating logical volumes" >> $RCFILE
-    echo "vgchange -ay" >> $RCFILE
-  else
     echo "echo Making device-mapper control node" >> $RCFILE
     echo "mkdmnod" >> $RCFILE
     echo "echo Scanning logical volumes" >> $RCFILE
     echo "lvm vgscan --ignorelockingfailure" >> $RCFILE
     echo "echo Activating logical volumes" >> $RCFILE
     echo "lvm vgchange -ay --ignorelockingfailure $root_vg $swap_vg" >> $RCFILE
-  fi
 fi
 
 if [ -z "$noresume" ]; then
@@ -833,10 +795,7 @@ if [ -n "$initramfs" ]; then
     echo "switchroot /sysroot" >> $RCFILE
   fi
 else 
-  if [ "$kernelmajor" != "2.4" ]; then
-    echo "umount /sys" >> $RCFILE
-  fi
-
+  echo "umount /sys" >> $RCFILE
   echo "umount /proc" >> $RCFILE
 
   [ -n "$DYNAMIC_DEV" ] && echo "umount /initrd/dev" >> $RCFILE
