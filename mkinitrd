@@ -55,22 +55,22 @@ fi
 
 vecho()
 {
-    NOECHO=""
-    if [ "$1" == "-e" ]; then
-        NOECHO="-e"
+    NONL=""
+    if [ "$1" == "-n" ]; then
+        NONL="-n"
         shift
     fi
-    [ -n "$verbose" ] && echo $NOECHO "$@"
+    [ -n "$verbose" ] && echo $NONL "$@"
 }
 
 error()
 {
-    NOECHO=""
-    if [ "$1" == "-e" ]; then
-        NOECHO="-e"
+    NONL=""
+    if [ "$1" == "-n" ]; then
+        NONL="-n"
         shift
     fi
-    echo $NOECHO "$@" >&2
+    echo $NONL "$@" >&2
 }
 
 usage () {
@@ -109,7 +109,7 @@ moduledep() {
                            if ($2) { for (i = 2; i <= NF; i++) { dep=sprintf("%s %s", dep, modname($i)); } } } \
                 /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
                 END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
-    vecho -e "\t$deps"
+    vecho -n ":$deps"
 }
 
 findmodule() {
