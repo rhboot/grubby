@@ -1099,7 +1099,9 @@ int mkpathbyspec(char * spec, char * path) {
         return 1;
 
     }
+#if 0
     if (!quiet) printf("mkdev: '%s' is not a UUID or LABEL spec\n", spec);
+#endif
     return -1;
 }
 
