@@ -57,6 +57,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Sep 28 2005 Peter Jones <pjones@redhat.com> - 5.0.1-1
+- create /dev/rtc
+- create /dev/tty, /dev/tty{0..11}, and /dev/ttyS{0..4}
+- tweak the messages output in loud mode during device node creation
+
 * Tue Sep 27 2005 Peter Jones <pjones@redhat.com> - 5.0.0-1
 - remove support for pivotroot
 - remove support for non-initramfs initrds
