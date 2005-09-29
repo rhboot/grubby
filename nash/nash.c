@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
@@ -99,6 +100,39 @@ extern int display_uuid_cache(void);
 
 int testing = 0, quiet = 0, reallyquiet = 0;
 
+int qprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
+int eprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
+
+int
+qprintf(const char *format, ...)
+{
+    va_list ap;
+    int ret;
+
+    if (quiet)
+        return 0;
+
+    va_start(ap, format);
+    ret = vprintf(format, ap);
+    va_end(ap);
+
+    fflush(stdout);
+    return ret;
+}
+
+int
+eprintf(const char *format, ...)
+{
+    va_list ap;
+    int ret;
+
+    va_start(ap, format);
+    ret = vfprintf(stderr, format, ap);
+    va_end(ap);
+
+    return ret;
+}
+
 #define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
 
 char * env[] = {
@@ -148,7 +182,7 @@ char * getArg(char * cmd, char * end, char ** arg) {
 	while (cmd < end && *cmd != quote) cmd++;
 
 	if (cmd == end) {
-	    printf("error: quote mismatch for %s\n", *arg);
+	    eprintf("error: quote mismatch for %s\n", *arg);
 	    return NULL;
 	}
 
@@ -179,8 +213,10 @@ static int readFD (int fd, char **buf)
     int s, filesize;
 
     *buf = calloc (16384, sizeof (char));
-    if (*buf == 0)
+    if (*buf == 0) {
+	eprintf("calloc failed: %s\n", strerror(errno));
 	return -1;
+    }
 
     filesize = 0;
     do {
@@ -213,31 +249,27 @@ static int readFD (int fd, char **buf)
 
 /* get the contents of the kernel command line from /proc/cmdline */
 static char * getKernelCmdLine(void) {
-    int fd, i;
-    char * buf;
+    int fd, i, errnum;
+    static char * buf = NULL;
+
+    if (buf)
+        return buf;
 
     fd = open("/proc/cmdline", O_RDONLY, 0);
     if (fd < 0) {
-	printf("getKernelCmdLine: failed to open /proc/cmdline: %d\n", errno);
+	eprintf("getKernelCmdLine: failed to open /proc/cmdline: %s\n",
+                strerror(errno));
 	return NULL;
     }
 
-    buf = calloc(CMDLINESIZE, sizeof (char));
-    if (!buf)
-	return buf;
-
-    i = read(fd, buf, CMDLINESIZE);
-    if (i < 0) {
-	printf("getKernelCmdLine: failed to read /proc/cmdline: %d\n", errno);
-	close(fd);
-	return NULL;
-    }
-
+    i = readFD(fd, &buf);
+    errnum = errno;
     close(fd);
-    if (i == 0)
-        buf[0] = '\0';
-    else
-        buf[i - 1] = '\0';
+    if (i < 0) {
+	eprintf("getKernelCmdLine: failed to read /proc/cmdline: %s\n",
+                strerror(errnum));
+	return NULL;
+    }
     return buf;
 }
 
@@ -246,6 +278,7 @@ static char * getKernelCmdLine(void) {
  * want one arg, you need to terminate it at the n */
 static char * getKernelArg(char * arg) {
     char * start, * cmdline;
+    int len;
 
     cmdline = start = getKernelCmdLine();
     if (start == NULL) return NULL;
@@ -254,8 +287,14 @@ static char * getKernelArg(char * arg) {
 	    start++;
 	    continue;
 	}
-	if (strncmp(start, arg, strlen(arg)) == 0) {
-            return start + strlen(arg);
+        len = strlen(arg);
+        /* don't return if it's some other arg that just starts like
+           this one */
+	if (strncmp(start, arg, len) == 0) {
+            if (start[len] == '=')
+                return start + len + 1;
+            if (start[len] == ' ' || start[len] == '\t')
+                return start + len;
         }
 	while (*++start && !isspace(*start))
 	    ;
@@ -278,7 +317,8 @@ int mountCommand(char * cmd, char * end) {
 
     cmd = getArg(cmd, end, &device);
     if (!cmd) {
-	printf("usage: mount [--ro] [-o <opts>] -t <type> <device> <mntpoint>\n");
+	eprintf(
+            "usage: mount [--ro] [-o <opts>] -t <type> <device> <mntpoint>\n");
 	return 1;
     }
 
@@ -291,12 +331,12 @@ int mountCommand(char * cmd, char * end) {
 	} else if (!strcmp(device, "-o")) {
 	    cmd = getArg(cmd, end, &options);
 	    if (!cmd) {
-		printf("mount: -o requires arguments\n");
+		eprintf("mount: -o requires arguments\n");
 		return 1;
 	    }
 	} else if (!strcmp(device, "-t")) {
 	    if (!(cmd = getArg(cmd, end, &fsType))) {
-		printf("mount: missing filesystem type\n");
+		eprintf("mount: missing filesystem type\n");
 		return 1;
 	    }
 	}
@@ -305,22 +345,22 @@ int mountCommand(char * cmd, char * end) {
     }
 
     if (!cmd) {
-	printf("mount: missing device\n");
+	eprintf("mount: missing device\n");
 	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &mntPoint))) {
-	printf("mount: missing mount point\n");
+	eprintf("mount: missing mount point\n");
 	return 1;
     }
 
     if (!fsType) {
-	printf("mount: filesystem type expected\n");
+	eprintf("mount: filesystem type expected\n");
 	return 1;
     }
 
     if (cmd < end) {
-	printf("mount: unexpected arguments\n");
+	eprintf("mount: unexpected arguments\n");
 	return 1;
     }
 
@@ -408,7 +448,8 @@ int mountCommand(char * cmd, char * end) {
 		    while (*ptr != '/')
 			*ptr-- = '\0';
 		    if (mkdir(deviceDir, 0644)) {
-		      printf("mkdir: cannot create directory %s\n", deviceDir);
+		        eprintf("mkdir: cannot create directory %s: %s\n",
+                                deviceDir, strerror(errno));
 		    } else {
 		      mustRemoveDir = 1;
 		    }
@@ -439,7 +480,8 @@ int mountCommand(char * cmd, char * end) {
 	    );
     } else {
 	if (mount(device, mntPoint, fsType, flags, options)) {
-	    printf("mount: error %d mounting %s\n", errno, fsType);
+	    eprintf("mount: error %s mounting %s on %s as %s\n",
+                    strerror(errno), device, mntPoint, fsType);
 	    rc = 1;
 	}
     }
@@ -505,7 +547,8 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 
 	stdoutFd = open(stdoutFile, O_CREAT | O_RDWR | O_TRUNC, 0600);
 	if (stdoutFd < 0) {
-	    printf("nash: failed to open %s: %d\n", stdoutFile, errno);
+	    eprintf("nash: failed to open %s: %s\n", stdoutFile,
+                    strerror(errno));
 	    return 1;
 	}
     }
@@ -523,27 +566,30 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 	    /* child */
 	    dup2(stdoutFd, 1);
 	    execve(args[0], args, env);
-	    printf("ERROR: failed in exec of %s\n", args[0]);
+	    eprintf("ERROR: failed in exec of %s: %s\n", args[0],
+                    strerror(errno));
 	    return 1;
 	}
 
 	close(stdoutFd);
 
 	for (;;) {
-	     wpid = wait4(-1, &status, 0, NULL);
-	     if (wpid == -1) {
-		  printf("ERROR: Failed to wait for process %d\n", wpid);
-	     }
+	    wpid = wait4(-1, &status, 0, NULL);
+	    if (wpid == -1) {
+	        eprintf("ERROR: Failed to wait for process %d: %s\n", wpid,
+                        strerror(errno));
+	    }
 
-	     if (wpid != pid)
-		  continue;
+	    if (wpid != pid)
+		continue;
 
-	     if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-		  printf("ERROR: %s exited abnormally with value %d ! (pid %d)\n", args[0], WEXITSTATUS(status), pid);
-		  return 1;
-	     }
-	     break;
-	}
+            if (!WIFEXITED(status) || WEXITSTATUS(status)) {
+                eprintf("ERROR: %s exited abnormally with value %d (pid %d)\n",
+                    args[0], WEXITSTATUS(status), pid);
+		return 1;
+	    }
+	    break;
+        }
     }
 
     return 0;
@@ -557,7 +603,7 @@ static int lsdir(char *thedir, char * prefix) {
     char * fn;
 
     if (!(dir = opendir(thedir))) {
-        printf("error opening %s: %d\n", thedir, errno);
+        eprintf("error opening %s: %s\n", thedir, strerror(errno));
         return 1;
     }
 
@@ -594,21 +640,21 @@ static int lsdir(char *thedir, char * prefix) {
 int catCommand(char * cmd, char * end) {
     char * file;
     char * buf;
-    int fd;
+    int fd, n;
 
     if (!(cmd = getArg(cmd, end, &file))) {
-	printf("cat: argument expected\n");
+	eprintf("cat: argument expected\n");
 	return 1;
     }
 
     if ((fd = open(file, O_RDONLY)) < 0) {
-        printf("cat: error opening %s: %d\n", file, errno);
+        eprintf("cat: error opening %s: %s\n", file, strerror(errno));
         return 1;
     }
 
     buf = calloc(1024, sizeof (char));
-    while (read(fd, buf, 1024) > 0) {
-        write(1, buf, 1024);
+    while ((n = read(fd, buf, 1024)) > 0) {
+        write(1, buf, n);
     }
     return 0;
 }
@@ -617,7 +663,7 @@ int lsCommand(char * cmd, char * end) {
     char * dir;
 
     if (!(cmd = getArg(cmd, end, &dir))) {
-	printf("ls: argument expected\n");
+	eprintf("ls: argument expected\n");
 	return 1;
     }
 
@@ -630,7 +676,7 @@ int execCommand(char * cmd, char * end) {
     char * bin;
 
     if (!(cmd = getArg(cmd, end, &bin))) {
-	printf("exec: argument expected\n");
+	eprintf("exec: argument expected\n");
 	return 1;
     }
 
@@ -645,17 +691,17 @@ int losetupCommand(char * cmd, char * end) {
     int dev;
 
     if (!(cmd = getArg(cmd, end, &device))) {
-	printf("losetup: missing device\n");
+	eprintf("losetup: missing device\n");
 	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &file))) {
-	printf("losetup: missing file\n");
+	eprintf("losetup: missing file\n");
 	return 1;
     }
 
     if (cmd < end) {
-	printf("losetup: unexpected arguments\n");
+	eprintf("losetup: unexpected arguments\n");
 	return 1;
     }
 
@@ -664,19 +710,20 @@ int losetupCommand(char * cmd, char * end) {
     } else {
 	dev = open(device, O_RDWR, 0);
 	if (dev < 0) {
-	    printf("losetup: failed to open %s: %d\n", device, errno);
+	    eprintf("losetup: failed to open %s: %s\n", device,strerror(errno));
 	    return 1;
 	}
 
 	fd = open(file, O_RDWR, 0);
 	if (fd < 0) {
-	    printf("losetup: failed to open %s: %d\n", file, errno);
+	    eprintf("losetup: failed to open %s: %s\n", file, strerror(errno));
 	    close(dev);
 	    return 1;
 	}
 
 	if (ioctl(dev, LOOP_SET_FD, (long) fd)) {
-	    printf("losetup: LOOP_SET_FD failed: %d\n", errno);
+	    eprintf("losetup: LOOP_SET_FD failed for fd %d: %s\n", fd,
+                    strerror(errno));
 	    close(dev);
 	    close(fd);
 	    return 1;
@@ -688,7 +735,7 @@ int losetupCommand(char * cmd, char * end) {
 	strcpy(loopInfo.lo_name, file);
 
 	if (ioctl(dev, LOOP_SET_STATUS, &loopInfo)) 
-	    printf("losetup: LOOP_SET_STATUS failed: %d\n", errno);
+	    eprintf("losetup: LOOP_SET_STATUS failed: %s\n", strerror(errno));
 
 	close(dev);
     }
@@ -702,12 +749,12 @@ int raidautorunCommand(char * cmd, char * end) {
     int fd;
 
     if (!(cmd = getArg(cmd, end, &device))) {
-	printf("raidautorun: raid device expected as first argument\n");
+	eprintf("raidautorun: raid device expected as first argument\n");
 	return 1;
     }
 
     if (cmd < end) {
-	printf("raidautorun: unexpected arguments\n");
+	eprintf("raidautorun: unexpected arguments\n");
 	return 1;
     }
 
@@ -717,68 +764,29 @@ int raidautorunCommand(char * cmd, char * end) {
     if (access(device, R_OK & W_OK)) {
         int minor;
         if (sscanf(device, "/dev/md%d", &minor) != 1) {
-            printf("raidautorun: unable to autocreate %s\n", device);
+            eprintf("raidautorun: unable to autocreate %s\n", device);
             return 1;
         }
 
         if (smartmknod(device, S_IFBLK | 0600, makedev(RAID_MAJOR, minor))) {
-            printf("raidautorun: unable to autocreate %s\n", device);
+            eprintf("raidautorun: unable to autocreate %s\n", device);
             return 1;
         }
     }
 
     fd = open(device, O_RDWR, 0);
     if (fd < 0) {
-	printf("raidautorun: failed to open %s: %d\n", device, errno);
+	eprintf("raidautorun: failed to open %s: %s\n", device,strerror(errno));
 	return 1;
     }
 
     if (ioctl(fd, RAID_AUTORUN, 0)) {
-	printf("raidautorun: RAID_AUTORUN failed: %d\n", errno);
+	eprintf("raidautorun: RAID_AUTORUN failed: %s\n", strerror(errno));
 	close(fd);
 	return 1;
     }
 
     close(fd);
-    return 0;
-}
-
-#ifdef USE_DIET
-extern int pivot_root(char *, char *);
-#endif
-
-static int my_pivot_root(char * one, char * two) {
-#ifdef USE_DIET
-    return pivot_root(one, two);
-#else
-    return syscall(__NR_pivot_root, one, two);
-#endif
-}
-
-int pivotrootCommand(char * cmd, char * end) {
-    char * new;
-    char * old;
-
-    if (!(cmd = getArg(cmd, end, &new))) {
-	printf("pivotroot: new root mount point expected\n");
-	return 1;
-    }
-
-    if (!(cmd = getArg(cmd, end, &old))) {
-	printf("pivotroot: old root mount point expected\n");
-	return 1;
-    }
-
-    if (cmd < end) {
-	printf("pivotroot: unexpected arguments\n");
-	return 1;
-    }
-
-    if (my_pivot_root(new, old)) {
-	printf("pivotroot: pivot_root(%s,%s) failed: %d\n", new, old, errno);
-	return 1;
-    }
-
     return 0;
 }
 
@@ -790,12 +798,12 @@ int recursiveRemove(char * dirName) {
     char * strBuf = alloca(strlen(dirName) + 1024);
 
     if (!(dir = opendir(dirName))) {
-	fprintf(stderr, "error opening %s: %d\n", dirName, errno);
+	eprintf("error opening %s: %s\n", dirName, strerror(errno));
 	return 0;
     }
 
     if (fstat(dirfd(dir),&rb)) {
-	fprintf(stderr, "unable to stat %s: %d\n", dirName, errno);
+	eprintf("unable to stat %s: %s\n", dirName, strerror(errno));
 	return 0;
     }
 
@@ -813,7 +821,7 @@ int recursiveRemove(char * dirName) {
 	strcat(strBuf, d->d_name);
 
 	if (lstat(strBuf, &sb)) {
-	    fprintf(stderr, "failed to stat %s: %d\n", strBuf, errno);
+	    eprintf("failed to stat %s: %s\n", strBuf, strerror(errno));
 	    errno = 0;
 	    continue;
 	}
@@ -823,14 +831,15 @@ int recursiveRemove(char * dirName) {
 	    if (sb.st_dev == rb.st_dev) {
 	        recursiveRemove(strBuf);
 	        if (rmdir(strBuf))
-		    fprintf(stderr, "failed to rmdir %s: %d\n", strBuf, errno);
+		    eprintf("failed to rmdir %s: %s\n", strBuf,
+                            strerror(errno));
 	    }
 	    errno = 0;
 	    continue;
 	}
 
 	if (unlink(strBuf)) {
-	    fprintf(stderr, "failed to remove %s: %d\n", strBuf, errno);
+	    eprintf("failed to remove %s: %s\n", strBuf, strerror(errno));
 	    errno = 0;
 	    continue;
 	}
@@ -838,7 +847,7 @@ int recursiveRemove(char * dirName) {
 
     if (errno) {
 	closedir(dir);
-	printf("error reading from %s: %d\n", dirName, errno);
+	eprintf("error reading from %s: %s\n", dirName, strerror(errno));
 	return 1;
     }
 
@@ -869,16 +878,16 @@ int switchrootCommand(char * cmd, char * end) {
     }
 
     if (!cmd) {
-	printf("switchroot: new root mount point expected\n");
+	eprintf("switchroot: new root mount point expected\n");
 	return 1;
     }
 
     if (chdir(new)) {
-        printf("switchroot: chdir(%s) failed: %d\n", new, errno);
+        eprintf("switchroot: chdir(%s) failed: %s\n", new, strerror(errno));
         return 1;
     }
 
-    init = getKernelArg("init=");
+    init = getKernelArg("init");
     if (init == NULL)
         cmdline = getKernelCmdLine();
 
@@ -888,13 +897,16 @@ int switchrootCommand(char * cmd, char * end) {
     }
 
     if ((fd = open("./dev/console", O_RDWR)) < 0) {
-        printf("ERROR opening /dev/console!!!!: %d\n", errno);
+        eprintf("ERROR opening /dev/console: %s\n", strerror(errno));
         fd = 0;
     }
 
-    if (dup2(fd, 0) != 0) printf("error dup2'ing fd of %d to 0\n", fd);
-    if (dup2(fd, 1) != 1) printf("error dup2'ing fd of %d to 1\n", fd);
-    if (dup2(fd, 2) != 2) printf("error dup2'ing fd of %d to 2\n", fd);
+    if (dup2(fd, 0) != 0) eprintf("error dup2'ing fd of %d to 0: %s\n", fd,
+            strerror(errno));
+    if (dup2(fd, 1) != 0) eprintf("error dup2'ing fd of %d to 1: %s\n", fd,
+            strerror(errno));
+    if (dup2(fd, 2) != 0) eprintf("error dup2'ing fd of %d to 2: %s\n", fd,
+            strerror(errno));
     if (fd > 2)
         close(fd);
 
@@ -902,23 +914,23 @@ int switchrootCommand(char * cmd, char * end) {
 
     fd = open("/", O_RDONLY);
     for (; umounts[i] != NULL; i++) {
-        if (!quiet) printf("unmounting old %s\n", umounts[i]);
+        qprintf("unmounting old %s\n", umounts[i]);
         if (umount2(umounts[i], MNT_DETACH)) {
-            printf("ERROR unmounting old %s: %d\n", umounts[i], errno);
-            printf("forcing unmount of %s\n", umounts[i]);
+            eprintf("ERROR unmounting old %s: %s\n",umounts[i],strerror(errno));
+            eprintf("forcing unmount of %s\n", umounts[i]);
             umount2(umounts[i], MNT_FORCE);
         }
     }
     i=0;
 
     if (mount(".", "/", NULL, MS_MOVE, NULL)) {
-        printf("switchroot: mount failed: %d\n", errno);
+        eprintf("switchroot: mount failed: %s\n", strerror(errno));
         close(fd);
         return 1;
     }
 
     if (chroot(".") || chdir("/")) {
-        printf("switchroot: chroot() failed: %d\n", errno);
+        eprintf("switchroot: chroot() failed: %s\n", strerror(errno));
         close(fd);
         return 1;
     }
@@ -975,10 +987,10 @@ int switchrootCommand(char * cmd, char * end) {
     initargs[i] = NULL;
 
     if (access(initargs[0], X_OK)) {
-        printf("WARNING: can't access %s\n", initargs[0]);
+        eprintf("WARNING: can't access %s\n", initargs[0]);
     }
     execv(initargs[0], initargs);
-    printf("exec of init (%s) failed!!!: %d\n", initargs[0], errno);
+    eprintf("exec of init (%s) failed!!!: %s\n", initargs[0], strerror(errno));
     return 1;
 }
 
@@ -998,10 +1010,8 @@ int echoCommand(char * cmd, char * end) {
     int length = 0;
     char *string;
 
-    if (testing && !quiet) {
-	printf("(echo) ");
-	fflush(stdout);
-    }
+    if (testing)
+        qprintf("(echo) ");
 
     while ((cmd = getArg(cmd, end, nextArg))) {
         if (!strncmp("-n", *nextArg, MAX(2, strlen(*nextArg)))) {
@@ -1016,8 +1026,8 @@ int echoCommand(char * cmd, char * end) {
     if ((nextArg - args >= 2) && !strcmp(*(nextArg - 2), ">")) {
 	outFd = open(*(nextArg - 1), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (outFd < 0) {
-	    printf("echo: cannot open %s for write: %d\n", 
-		    *(nextArg - 1), errno);
+	    eprintf("echo: cannot open %s for write: %s\n", *(nextArg - 1),
+                    strerror(errno));
 	    return 1;
 	}
 
@@ -1044,17 +1054,17 @@ int umountCommand(char * cmd, char * end) {
     char * path;
 
     if (!(cmd = getArg(cmd, end, &path))) {
-	printf("umount: path expected\n");
+	eprintf("umount: path expected\n");
 	return 1;
     }
 
     if (cmd < end) {
-	printf("umount: unexpected arguments\n");
+	eprintf("umount: unexpected arguments\n");
 	return 1;
     }
 
     if (umount(path)) {
-	printf("umount %s failed: %d\n", path, errno);
+	eprintf("umount %s failed: %s\n", path, strerror(errno));
 	return 1;
     }
 
@@ -1070,24 +1080,23 @@ int mkpathbyspec(char * spec, char * path) {
     if (!strncmp(spec, "LABEL=", 6)) {
 	if (get_spec_by_volume_label(spec + 6, &major, &minor)) {
 	    if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
-		printf("mkdev: cannot create device %s (%d,%d)\n",
+		eprintf("mkdev: cannot create device %s (%d,%d)\n",
 		       path, major, minor);
 		return 1;
 	    }
 
-            if (!quiet)
-                printf("created path for %s: %d/%d\n", spec, major, minor);
+            qprintf("created path for %s: %d/%d\n", spec, major, minor);
 	    return 0;
 	}
 
-        printf("label %s not found\n", spec + 6);
+        eprintf("label %s not found\n", spec + 6);
 	return 1;
     }
 
     if (!strncmp(spec, "UUID=", 5)) {
         if (get_spec_by_uuid(spec+5, &major, &minor)) {
             if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
-                printf("mkdev: cannot create device %s (%d,%d)\n",
+                eprintf("mkdev: cannot create device %s (%d,%d)\n",
                        path, major, minor);
                 return 1;
             }
@@ -1095,12 +1104,12 @@ int mkpathbyspec(char * spec, char * path) {
             return 0;
         }
 
-        printf("mkdev: UUID %s not found\n", spec+5);
+        eprintf("mkdev: UUID %s not found\n", spec+5);
         return 1;
 
     }
 #if 0
-    if (!quiet) printf("mkdev: '%s' is not a UUID or LABEL spec\n", spec);
+    qprintf("mkdev: '%s' is not a UUID or LABEL spec\n", spec);
 #endif
     return -1;
 }
@@ -1114,53 +1123,59 @@ int resumeCommand(char * cmd, char * end) {
     char buf[25];
 
     if (!(cmd = getArg(cmd, end, &resume))) {
-	printf("resume: resume device expected\n");
+	eprintf("resume: resume device expected\n");
 	return 1;
     }
 
     if (access("/sys/power/resume", W_OK)) {
-        /*        printf("/sys/power/resume doesn't exist, can't resume!\n");*/
+        /* eprintf("/sys/power/resume doesn't exist, can't resume!\n");*/
         return 0;
     }
 
     if (strstr(getKernelCmdLine(), "noresume")) {
-        if (!quiet) printf("noresume passed, not resuming...\n");
+        qprintf("noresume passed, not resuming...\n");
         return 0; 
     }
 
-    resumedev = getKernelArg("resume=");
+    resumedev = getKernelArg("resume");
     if (resumedev == NULL) {
         resumedev = resume;
     }
 
-    if (!quiet) printf("Going to resume from %s\n", resumedev);
+    qprintf("Trying to resume from %s\n", resumedev);
 
     if (mkpathbyspec(resumedev, "/dev/swsuspresume") == 0)
         resumedev = strdup("/dev/swsuspresume");
 
     if (access(resumedev, R_OK)) {
-        printf("Unable to access resume device (%s)\n", resumedev);
+        eprintf("Unable to access resume device (%s)\n", resumedev);
         return 1;
     }
 
-    if ((fd = open(resumedev, O_RDONLY)) < 0) return 1;
-    if (lseek(fd, getpagesize() - 10, SEEK_SET) != getpagesize() - 10) return 1;
-    if (read(fd, &buf, 6) != 6) return 1;
+    if ((fd = open(resumedev, O_RDONLY)) < 0)
+        return 1;
+    if (lseek(fd, getpagesize() - 10, SEEK_SET) != getpagesize() - 10)
+        return 1;
+    if (read(fd, &buf, 6) != 6)
+        return 1;
     if (strncmp(buf, "S1SUSP", 6) && strncmp(buf, "S2SUSP", 6)) {
-        if (!quiet) printf("No suspend signature on swap, not resuming...\n");
+        qprintf("No suspend signature on swap, not resuming.\n");
         return 1;
     }
 
-    if (fstat(fd, &sb)) return 1;
+    if (fstat(fd, &sb))
+        return 1;
     close(fd);
 
+    printf("Resuming from %s.\n", resumedev);
+    fflush(stdout);
     fd = open("/sys/power/resume", O_WRONLY);
     memset(buf, 20, '\0');
     snprintf(buf, 20, "%d:%d", major(sb.st_rdev), minor(sb.st_rdev));
     write(fd, buf, 20);
     close(fd);
 
-    printf("Resume failed.  Continuing with normal startup.\n");
+    eprintf("Resume failed.  Continuing with normal startup.\n");
     return 0;
 }
 
@@ -1170,19 +1185,20 @@ int mkrootdevCommand(char * cmd, char * end) {
     int devNum = 0;
     int fd;
     int i;
-    char buf[1024];
+    char *buf;
+    const char real_root_dev[] = "/proc/sys/kernel/real-root-dev";
 
     if (!(cmd = getArg(cmd, end, &path))) {
-	printf("mkrootdev: path expected\n");
+	eprintf("mkrootdev: path expected\n");
 	return 1;
     }
 
     if (cmd < end) {
-	printf("mkrootdev: unexpected arguments\n");
+	eprintf("mkrootdev: unexpected arguments\n");
 	return 1;
     }
 
-    root = getKernelArg("root=");
+    root = getKernelArg("root");
 
     if (root) {
 	chptr = root;
@@ -1198,15 +1214,17 @@ int mkrootdevCommand(char * cmd, char * end) {
     if ((i = mkpathbyspec(root, path)) != -1)
         return i;
 
-    fd = open("/proc/sys/kernel/real-root-dev", O_RDONLY, 0);
+    fd = open(real_root_dev, O_RDONLY, 0);
     if (fd < 0) {
-	printf("mkrootdev: failed to open /proc/sys/kernel/real-root-dev: %d\n", errno);
+	eprintf("mkrootdev: failed to open %s: %s\n", real_root_dev, 
+                strerror(errno));
 	return 1;
     }
 
-    i = read(fd, buf, sizeof(buf));
+    i = readFD(fd, &buf);
     if (i < 0) {
-	printf("mkrootdev: failed to read real-root-dev: %d\n", errno);
+	eprintf("mkrootdev: failed to read from real-root-dev: %s\n",
+                strerror(errno));
 	close(fd);
 	return 1;
     }
@@ -1219,15 +1237,18 @@ int mkrootdevCommand(char * cmd, char * end) {
 
     devNum = atoi(buf);
     if (devNum < 0) {
-	printf("mkrootdev: bad device %s\n", buf);
+	eprintf("mkrootdev: bad device %s\n", buf);
+	free(buf);
 	return 1;
     }
+    free(buf);
 
     if (!devNum && root)
 	devNum = name_to_dev_t(root);
 
     if (smartmknod(path, S_IFBLK | 0700, devNum)) {
-	printf("mkrootdev: mknod failed: %d\n", errno);
+	eprintf("mkrootdev: mknod %s 0x%08x failed: %s\n", path, devNum, 
+                strerror(errno));
 	return 1;
     }
 
@@ -1246,13 +1267,13 @@ int mkdirCommand(char * cmd, char * end) {
     }
 
     if (!cmd) {
-	printf("mkdir: directory expected\n");
+	eprintf("mkdir: directory expected\n");
 	return 1;
     }
 
     if (mkdir(dir, 0755)) {
 	if (!ignoreExists && errno == EEXIST) {
-	    printf("mkdir: failed to create %s: %d\n", dir, errno);
+	    eprintf("mkdir: failed to create %s: %s\n", dir, strerror(errno));
 	    return 1;
 	}
     }
@@ -1269,20 +1290,20 @@ int accessCommand(char * cmd, char * end) {
     if (cmd) cmd = getArg(cmd, end, &file);
 
     if (!cmd || *permStr != '-') {
-	printf("usage: access -[perm] file\n");
+	eprintf("usage: access -[perm] file\n");
 	return 1;
     }
 
     permStr++;
     while (*permStr) {
-	switch (*permStr) {
-	  case 'r': perms |= R_OK; break;
-	  case 'w': perms |= W_OK; break;
-	  case 'x': perms |= X_OK; break;
-	  case 'f': perms |= F_OK; break;
-	  default:
-	    printf("perms must be -[r][w][x][f]\n");
-	    return 1;
+        switch (*permStr) {
+	    case 'r': perms |= R_OK; break;
+	    case 'w': perms |= W_OK; break;
+	    case 'x': perms |= X_OK; break;
+	    case 'f': perms |= F_OK; break;
+	    default:
+	        eprintf("perms must be -[r][w][x][f]\n");
+	        return 1;
 	}
 
 	permStr++;
@@ -1299,7 +1320,7 @@ int sleepCommand(char * cmd, char * end) {
     int delay;
 
     if (!(cmd = getArg(cmd, end, &delaystr))) {
-	printf("sleep: delay expected\n");
+	eprintf("sleep: delay expected\n");
 	return 1;
     }
 
@@ -1316,12 +1337,12 @@ int readlinkCommand(char * cmd, char * end) {
     int rc = 0;
 
     if (!(cmd = getArg(cmd, end, &path))) {
-        printf("readlink: file expected\n");
+        eprintf("readlink: file expected\n");
         return 1;
     }
 
     if (lstat(path, &sb) == -1) {
-        fprintf(stderr, "unable to stat %s: %d\n", path, errno);
+        eprintf("unable to stat %s: %s\n", path, strerror(errno));
         return 1;
     }
 
@@ -1332,7 +1353,7 @@ int readlinkCommand(char * cmd, char * end) {
     
     buf = calloc(512, sizeof (char));
     if (readlink(path, buf, 512) == -1) {
-	fprintf(stderr, "error readlink %s: %d\n", path, errno);
+	eprintf("error readlink %s: %s\n", path, strerror(errno));
         free(buf);
 	return 1;
     }
@@ -1356,7 +1377,8 @@ int readlinkCommand(char * cmd, char * end) {
     respath = NULL;
     respath = canonicalize_file_name(fullpath);
     if (respath == NULL) {
-        fprintf(stderr, "error realpath %s: %d\n", fullpath, errno);
+        eprintf("error resolving symbolic link %s: %s\n", fullpath,
+                strerror(errno));
         rc = 1;
         goto readlinkout;
     }
@@ -1376,7 +1398,7 @@ int doFind(char * dirName, char * name) {
     char * strBuf = alloca(strlen(dirName) + 1024);
 
     if (!(dir = opendir(dirName))) {
-	fprintf(stderr, "error opening %s: %d\n", dirName, errno);
+	eprintf("error opening %s: %s\n", dirName, strerror(errno));
 	return 0;
     }
 
@@ -1397,7 +1419,7 @@ int doFind(char * dirName, char * name) {
 	}
 
 	if (lstat(strBuf, &sb)) {
-	    fprintf(stderr, "failed to stat %s: %d\n", strBuf, errno);
+	    eprintf("failed to stat %s: %s\n", strBuf, strerror(errno));
 	    errno = 0;
 	    continue;
 	}
@@ -1408,7 +1430,7 @@ int doFind(char * dirName, char * name) {
 
     if (errno) {
 	closedir(dir);
-	printf("error reading from %s: %d\n", dirName, errno);
+	eprintf("error reading from %s: %s\n", dirName, strerror(errno));
 	return 1;
     }
 
@@ -1424,13 +1446,13 @@ int findCommand(char * cmd, char * end) {
     cmd = getArg(cmd, end, &dir);
     if (cmd) cmd = getArg(cmd, end, &name);
     if (cmd && strcmp(name, "-name")) {
-	printf("usage: find [path] -name [file]\n");
+	eprintf("usage: find [path] -name [file]\n");
 	return 1;
     }
 
     if (cmd) cmd = getArg(cmd, end, &name);
     if (!cmd) {
-	printf("usage: find [path] -name [file]\n");
+	eprintf("usage: find [path] -name [file]\n");
 	return 1;
     }
 
@@ -1445,7 +1467,7 @@ int findlodevCommand(char * cmd, char * end) {
     char separator[2] = "";
 
     if (*end != '\n') {
-	printf("usage: findlodev\n");
+	eprintf("usage: findlodev\n");
 	return 1;
     }
 
@@ -1481,7 +1503,7 @@ int mknodCommand(char * cmd, char * end) {
     cmd = getArg(cmd, end, &majorStr);
     cmd = getArg(cmd, end, &minorStr);
     if (!minorStr) {
-	printf("mknod: usage mknod <path> [c|b] <major> <minor>\n");
+	eprintf("mknod: usage mknod <path> [c|b] <major> <minor>\n");
 	return 1;
     }
 
@@ -1490,134 +1512,25 @@ int mknodCommand(char * cmd, char * end) {
     } else if (!strcmp(type, "c")) {
 	mode = S_IFCHR;
     } else {
-	printf("mknod: invalid type\n");
+	eprintf("mknod: invalid type\n");
 	return 1;
     }
 
     major = strtol(majorStr, &chptr, 10);
     if (*chptr) {
-	printf("invalid major number\n");
+	eprintf("invalid major number\n");
 	return 1;
     }
 
     minor = strtol(minorStr, &chptr, 10);
     if (*chptr) {
-	printf("invalid minor number\n");
+	eprintf("invalid minor number\n");
 	return 1;
     }
 
     if (smartmknod(path, mode | 0600, makedev(major, minor))) {
-	printf("mknod: failed to create %s: %d\n", path, errno);
+	eprintf("mknod: failed to create %s: %s\n", path, strerror(errno));
 	return 1;
-    }
-
-    return 0;
-}
-
-int mkdevicesCommand(char * cmd, char * end) {
-    int fd;
-    char *buf;
-    int i;
-    char * start, * chptr;
-    int major, minor;
-    char old;
-    char devName[128];
-    char * prefix;
-
-    if (!(cmd = getArg(cmd, end, &prefix))) {
-	printf("mkdevices: path expected\n");
-	return 1;
-    }
-
-    if (cmd < end) {
-	printf("mkdevices: unexpected arguments\n");
-	return 1;
-    }
-
-    if ((fd = open("/proc/partitions", O_RDONLY)) < 0) {
-	printf("mkrootdev: failed to open /proc/partitions: %d\n", errno);
-	return 1;
-    }
-
-    i = readFD(fd, &buf);
-    if (i < 1) {
-	close(fd);
-	printf("failed to read /proc/partitions: %d\n", errno);
-	return 1;
-    }
-    buf[i] = '\0';
-    close(fd);
-
-    start = strchr(buf, '\n');
-    if (start) {
-	start++;
-	start = strchr(buf, '\n');
-    }
-    if (!start) return 1;
-
-    start = start + 1;
-    while (*start) {
-	while (*start && isspace(*start)) start++;
-	major = strtol(start, &chptr, 10);
-
-	if (start != chptr) {
-	    start = chptr;
-	    while (*start && isspace(*start)) start++;
-	    minor = strtol(start, &chptr, 10);
-
-	    if (start != chptr) {
-		start = chptr;
-		while (*start && isspace(*start)) start++;
-		while (*start && !isspace(*start)) start++;
-		while (*start && isspace(*start)) start++;
-
-		if (*start) {
-
-		    chptr = start;
-		    while (!isspace(*chptr)) chptr++;
-		    old = *chptr;
-		    *chptr = '\0';
-
-		    if (testing) {
-			printf("% 3d % 3d %s\n", major, minor, start);
-		    } else {
-			char * ptr, * deviceDir;
-			int i;
-
-			sprintf(devName, "%s/%s", prefix, start);
-			unlink(devName);
-
-			ptr = devName;
-			i = 0;
-			while (*ptr)
-			    if (*ptr++ == '/')
-				i++;
-			if (i > 2) {
-			    deviceDir = alloca(strlen(devName) + 1);
-			    strcpy(deviceDir, devName);
-			    ptr = deviceDir + (strlen(devName) - 1);
-			    while (*ptr != '/')
-				*ptr-- = '\0';
-			    if (access(deviceDir, X_OK) && mkdir(deviceDir, 0644)) {
-				printf("mkdir: cannot create directory %s: %d\n", deviceDir, errno);
-			    }
-			}
-			if (smartmknod(devName, S_IFBLK | 0600, 
-				  makedev(major, minor))) {
-			    printf("failed to create %s\n", devName);
-			}
-		    }
-
-		    *chptr = old;
-		    start = chptr;
-		}
-
-	    }
-	}
-
-	start = strchr(start, '\n');
-	if (!*start) return 1;
-	start = start + 1;
     }
 
     return 0;
@@ -1630,14 +1543,14 @@ static int getDevNumFromProc(char * file, char * device) {
     int fd;
 
     if ((fd = open(file, O_RDONLY)) == -1) {
-        printf("can't open file %s: %d\n", file, errno);
+        eprintf("can't open file %s: %s\n", file, strerror(errno));
         return -1;
     }
 
     num = read(fd, buf, sizeof(buf));
     if (num < 1) {
         close(fd);
-        printf("failed to read %s: %d\n", file, errno);
+        eprintf("failed to read %s: %s\n", file, strerror(errno));
         return -1;
     }
     buf[num] = '\0';
@@ -1662,7 +1575,7 @@ int mkDMNodCommand(char * cmd, char * end) {
     int minor = getDevNumFromProc("/proc/misc", "device-mapper");
 
     if ((major == -1) || (minor == -1)) {
-        printf("Unable to find device-mapper major/minor\n");
+        eprintf("Unable to find device-mapper major/minor\n");
         return 1;
     }
 
@@ -1678,77 +1591,63 @@ int mkDMNodCommand(char * cmd, char * end) {
 
     if (smartmknod("/dev/mapper/control", S_IFCHR | 0600, 
                    makedev(major, minor))) {
-        printf("failed to create /dev/mapper/control\n");
+        eprintf("failed to create /dev/mapper/control\n");
         return 1;
     }
     
     return 0;
 }
 
-static int dev_read_devnum(const char *path, dev_t *dev)
+static int parse_sysfs_devnum(const char *path, dev_t *dev)
 {
-    char *devname;
-    char first[64], *second;
+    char *first = NULL, *second;
     int major, minor;
-    int fd, len;
+    int fd, len = strlen(path);
+    char devname[len + 5];
     
-    devname = calloc(1, strlen(path) + sizeof("/dev"));
-    strcpy(devname, path);
-    strcat(devname, "/dev");
+    sprintf(devname, "%s/dev", path);
     fd = open(devname, O_RDONLY);
-    if (fd < 0)
+    if (fd < 0) {
+        // eprintf("open on %s failed: %s\n", devname, strerror(errno));
         return -1;
+    }
 
-    memset(first, '\0', 64);
-    len = read(fd, first, 63);
-    first[63] = '\0';
+    len = readFD(fd, &first);
 
     close(fd);
-    free(devname);
 
     second = strchr(first, ':');
-    if (!second)
-        return -1;
     *second++ = '\0';
-    if (second - first >= len)
-        return -1;
 
     errno = 0;
     major = strtol(first, NULL, 10);
-    if (errno == ERANGE || major < 0)
-        return -1;
 
     errno = 0;
     minor = strtol(second, NULL, 10);
-    if (errno == ERANGE || minor < 0)
-        return -1;
+    free(first);
 
     *dev = makedev(major, minor);
     return 0;
 }
 
-static void dev_probe_dir(const char *dirname, const char *name)
+static void sysfs_blkdev_probe(const char *dirname, const char *name)
 {
-    char *path, *devpath;
+    char *path = NULL, *devpath = NULL;
     dev_t dev = 0;
     int ret;
     DIR *dir;
     struct dirent *dent;
 
-    path = calloc(1, strlen(dirname) + strlen(name) + 2);
-    strcpy(path, dirname);
-    strcat(path, "/");
-    strcat(path, name);
+    asprintf(&path, "%s/%s", dirname, name);
+    //qprintf("Testing %s for block device.\n", path);
 
-    ret = dev_read_devnum(path, &dev);
+    ret = parse_sysfs_devnum(path, &dev);
     if (ret < 0) {
         free(path);
         return;
     }
 
-    devpath = calloc(1, strlen(name) + strlen("/dev/"));
-    strcpy(devpath, "/dev/");
-    strcat(devpath, name);
+    asprintf(&devpath, "/dev/%s", name);
 
     smartmknod(devpath, S_IFBLK | 0700, dev);
     free(devpath);
@@ -1763,14 +1662,20 @@ static void dev_probe_dir(const char *dirname, const char *name)
         if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
             continue;
 
-        dev_probe_dir(path, dent->d_name);
+        sysfs_blkdev_probe(path, dent->d_name);
     }
+    free(path);
 }
 
-static int dev_probe(char * cmd, char * end)
+static int mkblkdevsCommand(char * cmd, char * end)
 {
     DIR *dir;
     struct dirent *dent;
+
+    if (cmd < end) {
+	eprintf("mkblkdevs: unexpected arguments\n");
+	return 1;
+    }
 
     dir = opendir("/sys/block");
     if (dir == NULL)
@@ -1780,44 +1685,39 @@ static int dev_probe(char * cmd, char * end)
         if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
             continue;
 
-        dev_probe_dir("/sys/block", dent->d_name);
+        sysfs_blkdev_probe("/sys/block", dent->d_name);
     }
     return 1;
 }
 
 int setQuietCommand(char * cmd, char * end) {
-    int fd, rc;
+    char *quietcmd;
 
-    if ((fd = open("/proc/cmdline", O_RDONLY)) >= 0) {
-        char * buf = calloc(512, sizeof (char));
-        rc = read(fd, buf, 511);
-        if (strstr(buf, "quiet") != NULL)
-            reallyquiet = 1;
-        close(fd);
-        free(buf);
-    }
+    quietcmd = getKernelArg("quiet");
+    if (quietcmd)
+        reallyquiet = 1;
 
+    /* reallyquiet may be set elsewhere */
     if (reallyquiet)
           quiet = 1;
 
     return 0;
 }
 
-int runStartup(int fd) {
-    char contents[32768];
+int runStartup(int fd, char *name) {
+    char *contents;
     int i;
     char * start, * end;
     char * chptr;
     int rc;
 
-    i = read(fd, contents, sizeof(contents) - 1);
-    if (i == (sizeof(contents) - 1)) {
-	printf("Failed to read /startup.rc -- file too large.\n");
-	return 1;
+    i = readFD(fd, &contents);
+
+    if (i < 0) {
+        eprintf("Failed to read startup file %s", name);
+        return 1;
     }
     close(fd);
-
-    contents[i] = '\0';
 
     start = contents;
     while (*start) {
@@ -1832,7 +1732,7 @@ int runStartup(int fd) {
 	}
 
 	if (!*start) {
-	    printf("(last line in /startup.rc is empty)\n");
+	    eprintf("(last line in %s is empty)\n", name);
 	    continue;
 	}
 
@@ -1840,7 +1740,7 @@ int runStartup(int fd) {
 	end = start + 1;
 	while (*end && (*end != '\n')) end++;
 	if (!*end) {
-	    printf("(last line in /startup.rc missing \\n -- skipping)\n");
+	    eprintf("(last line in %s missing newline -- skipping)\n", name);
 	    start = end;
 	    continue;
 	}
@@ -1858,8 +1758,6 @@ int runStartup(int fd) {
 	    rc = echoCommand(chptr, end);
 	else if (!strncmp(start, "raidautorun", MAX(11, chptr - start)))
 	    rc = raidautorunCommand(chptr, end);
-	else if (!strncmp(start, "pivot_root", MAX(10, chptr - start)))
-	    rc = pivotrootCommand(chptr, end);
         else if (!strncmp(start, "switchroot", MAX(10, chptr - start)))
             rc = switchrootCommand(chptr, end);
 	else if (!strncmp(start, "mkrootdev", MAX(9, chptr - start)))
@@ -1878,8 +1776,8 @@ int runStartup(int fd) {
 	    rc = findlodevCommand(chptr, end);
 	else if (!strncmp(start, "showlabels", MAX(10, chptr-start)))
 	    rc = display_uuid_cache();
-	else if (!strncmp(start, "mkdevices", MAX(9, chptr-start)))
-	    rc = mkdevicesCommand(chptr, end);
+	else if (!strncmp(start, "mkblkdevs", MAX(9, chptr-start)))
+	    rc = mkblkdevsCommand(chptr, end);
 	else if (!strncmp(start, "sleep", MAX(5, chptr-start)))
 	    rc = sleepCommand(chptr, end);
 	else if (!strncmp(start, "mknod", MAX(5, chptr-start)))
@@ -1888,8 +1786,6 @@ int runStartup(int fd) {
             rc = mkDMNodCommand(chptr, end);
         else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
             rc = readlinkCommand(chptr, end);
-        else if (!strncmp(start, "makedevs", MAX(8, chptr-start)))
-            rc = dev_probe(chptr, end);
         else if (!strncmp(start, "setquiet", MAX(8, chptr-start)))
             rc = setQuietCommand(chptr, end);
         else if (!strncmp(start, "resume", MAX(6, chptr-start)))
@@ -1908,6 +1804,7 @@ int runStartup(int fd) {
 	start = end + 1;
     }
 
+    free(contents);
     return rc;
 }
 
@@ -1928,7 +1825,7 @@ int main(int argc, char **argv) {
     if (!strcmp(name, "hotplug")) {
         argv[0] = strdup("/sbin/udev");
         execv(argv[0], argv);
-        printf("ERROR: exec of udev failed!\n");
+        eprintf("ERROR: exec of udev failed!\n");
         exit(1);
     }
 
@@ -1947,29 +1844,29 @@ int main(int argc, char **argv) {
             reallyquiet = 1;
             argv++, argc--;
 	} else {
-	    printf("unknown argument %s\n", *argv);
+	    eprintf("unknown argument %s\n", *argv);
 	    return 1;
 	}
     }
 
-    if (force && !quiet)
-	printf("(forcing normal run)\n");
+    if (force)
+        qprintf("(forcing normal run)\n");
 
-    if (testing && !quiet)
-	printf("(running in test mode).\n");
+    if (testing)
+	qprintf("(running in test mode).\n");
 
-    if (!quiet) printf("Red Hat nash version %s starting\n", VERSION);
+    qprintf("Red Hat nash version %s starting\n", VERSION);
 
     if (*argv) {
 	fd = open(*argv, O_RDONLY, 0);
 	if (fd < 0) {
-	    printf("nash: cannot open %s: %d\n", *argv, errno);
+	    eprintf("nash: cannot open %s: %s\n", *argv, strerror(errno));
 	    exit(1);
 	}
     }
 
     /* runStartup closes fd */
-    rc = runStartup(fd);
+    rc = runStartup(fd, *argv);
 
     return rc;
 }
