@@ -49,8 +49,9 @@ IMAGESIZE=8000
 PRESCSIMODS="sd_mod"
 fstab="/etc/fstab"
 
+DYNAMIC_DEV=
 if [ -f /etc/udev/udev.conf ]; then
-    DYNAMIC_DEV="yes"
+    DYNAMIC_DEV="--movedev"
 fi
 
 vecho()
@@ -131,6 +132,10 @@ findmodule() {
 	modName=$(echo $modName | cut -b2-)
     fi
 
+    case "$MODULES " in
+        *"/$modName.ko "*) return ;;
+    esac
+
     if echo $builtins | egrep -q '(^| )'$modName'( |$)' ; then
         vecho "module $modName assumed to be built in"
 	return
@@ -194,9 +199,7 @@ findmodule() {
     fi
 
     # only need to add each module once
-    if ! echo $MODULES | grep -q "$fmPath" 2>/dev/null ; then
-	MODULES="$MODULES $fmPath"
-    fi
+    MODULES="$MODULES $fmPath"
 }
 
 inst() {
@@ -214,6 +217,16 @@ readlink() {
 
 findstoragedriver () {
     for device in $@ ; do
+        case " $handledevices " in
+            *" $device "*)
+                continue ;;
+            *) handleddevices="$handleddevices $device" ;;
+        esac
+        if [[ "$device" =~ "md[0-9]+" ]]; then
+            vecho "Found RAID component $device"
+            handleraid "$device"
+            continue
+        fi
         vecho "Looking for driver for device $device"
         sysfs=$(find /sys/block -name $device -type d)
         [ -z "$sysfs" ] && return
@@ -266,14 +279,30 @@ handleraid() {
 	    ;;
 	esac
     done
-    for dev in $devs; do
-        if [[ "$dev" =~ "md[0-9]+" ]]; then
-            handleraid $dev
-        else
-            findstoragedriver $dev
-        fi
-    done
+    findstoragedriver $devs
+    if [ "$start" = 1 ]; then
+        raiddevices="$raiddevices $1"
+    fi
     return $start
+}
+
+handlelvordev() {
+    local vg=`lvs --noheadings -o vg_name $1 2>/dev/null`
+    if [ -n "$vg" ]; then
+        vg=`echo $vg` # strip whitespace
+        case " $vg_list " in
+        *" $vg "*)
+            ;;
+        *)
+            vg_list="$vg_list $vg"
+            for device in `vgdisplay -v $vg 2>/dev/null | sed -n 's/PV Name//p'`; do
+                findstoragedriver ${device##/dev/}
+            done
+            ;;
+        esac
+    else
+        findstoragedriver ${1##/dev/}
+    fi
 }
 
 while [ $# -gt 0 ]; do
@@ -516,11 +545,24 @@ fi
 
 # check to see if we need to set up a loopback filesystem
 rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
+# check if it's root by label
+if echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
+    majmin=$(stat -c "%t:%T" /dev/root)
+    if [ -n "$majmin" ]; then
+        dev=$(find /sys/block -name dev | while read device ; do \
+	      echo "$majmin" | cmp -s $device && echo $device ; done)
+	if [ -n "$dev" ]; then
+            vecho "Found root device $dev for $rootdev"
+                rootdev=$dev
+	fi
+    fi
+fi
 if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
     if ! grep "$key" $fstab >> /dev/null; then
 	error "The root filesystem is on a $rootdev, but there is no magic entry in $fstab"
 	error "for this device. Consult the mkinitrd man page for more information"
+	error "loopback root."
 	exit 1
     fi
 
@@ -534,59 +576,10 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
 	basicmodules="$basicmodules -fat"
     fi
     basicmodules="$basicmodules -${loopFs}"
-# check if it's root by label
-elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
-    majmin=$(stat -c "%t:%T" /dev/root)
-    if [ -n "$majmin" ]; then
-	dev=""
-        dev=$(find /sys/block -name dev | while read device ; do \
-	      echo "$majmin" | cmp -s $device && echo $device ; done)
-	if [ -n "$dev" ]; then
-	    dev=${dev%%/dev}
-	    dev=${dev##*/}
-            vecho "Found root device /dev/$dev"
-	    if [[ "$dev" =~ "md[0-9]+" ]]; then
-	        handleraid $dev
-	    else
-	        findstoragedriver $dev
-	    fi
-	fi
-    fi
-    set +x
-# check if the root fs is on RAID
-elif [[ "$rootdev" =~ "/dev/md[0-9]+" ]]; then
-    vecho "Found RAID device $rootdev"
-    handleraid ${rootdev##*/}
-    if [ "$?" = "1" ]; then
-        raiddevices="$raiddevices ${rootdev##*/}"
-    fi
 # check if the root fs is on a logical volume
 # this check must be last
-elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
-    rawrootdev=$rootdev
-    rootdev=$(readlink $rootdev)
-    if echo $rootdev | grep -q /dev/mapper 2>/dev/null; then
-        root_vg=$(echo $rootdev | cut -d/ -f4 | cut -d- -f1)
-	root_lvm=1
-    fi
-    major=$(stat -c "%t" $rootdev)
-    [ "$major" != "58" ] || root_lvm=1
-    if [ "$root_lvm" = 1 ]; then
-        for device in $(lvdisplay -m $rawrootdev | awk '/Physical volume/ { print $3 }') ; do
-	    if [[ "$device" =~ "/dev/md[0-9]+" ]]; then
-                vecho "Found RAID component $device for $rawrootdev"
-	        handleraid ${device##*/}
-	        if [ "$?" = "1" ]; then
-	            raiddevices="$raiddevices ${device##*/}"
-	        fi
-	    else
-	        findstoragedriver ${device##*/}
-	    fi
-	done
-    fi
 else
-    error "Error identifying root devices."
-    exit 1
+    handlelvordev $rootdev
 fi
 
 rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
@@ -598,15 +591,11 @@ findmodule -${rootfs}
 
 # find the first swap dev which would get used for swsusp
 swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; }}' $fstab | head -n 1)
-if ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
-    swsuspdev=$(readlink $swsuspdev)
-    if echo $swsuspdev | grep -q /dev/mapper 2>/dev/null; then
-        swap_vg=$(echo $swsuspdev | cut -d/ -f4 | cut -d- -f1)
-	root_lvm=1
-    fi
+if ! echo $swsuspdev | cut -c1-6 | grep -q "LABEL=" ; then
+    handlelvordev $swsupdev
 fi
 
-if [ -n "$root_lvm" ]; then
+if [ -n "$vg_list" ]; then
     findmodule -dm-mod
     # DM requires all of these to be there in case someone used the
     # feature.  broken.  (#132001)
@@ -674,13 +663,16 @@ done
 
 # mknod'ing the devices instead of copying them works both with and
 # without devfs...
+mkdir $MNTIMAGE/dev/mapper
+
 mknod $MNTIMAGE/dev/console c 5 1
 mknod $MNTIMAGE/dev/null c 1 3
-mknod $MNTIMAGE/dev/zero c 1 5
 mknod $MNTIMAGE/dev/ram b 1 1
-mknod $MNTIMAGE/dev/systty c 4 0
 mknod $MNTIMAGE/dev/rtc c 10 135
+mknod $MNTIMAGE/dev/systty c 4 0
 mknod $MNTIMAGE/dev/tty c 5 0
+mknod $MNTIMAGE/dev/zero c 1 5
+
 for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 ; do
     mknod $MNTIMAGE/dev/tty$i c 4 $i
 done
@@ -688,8 +680,9 @@ for i in 0 1 2 3 ; do
     mknod $MNTIMAGE/dev/ttyS$i c 4 $(($i + 64))
 done
 
-# FIXME -- this won't work if you're using devfs
-if [ -n "$root_lvm" ]; then
+# FIXME -- this can really go poorly with clvm or duplicate vg names.
+# nash should do lvm probing for us and write its own configs.
+if [ -n "$vg_list" ]; then
     inst /sbin/lvm.static "$MNTIMAGE/bin/lvm"
     if [ -f /etc/lvm/lvm.conf ]; then
 	cp $verbose --parents /etc/lvm/lvm.conf $MNTIMAGE/
@@ -697,14 +690,15 @@ if [ -n "$root_lvm" ]; then
 fi
 
 echo -n >| $RCFILE
-emit "#!/bin/nash"
-emit
+cemit << EOF
+#!/bin/nash
 
-emit "setquiet"
-emit "echo Mounting proc filesystem"
-emit "mount -t proc /proc /proc"
-emit "echo Mounting sysfs filesystem"
-emit "mount -t sysfs /sys /sys"
+setquiet
+echo Mounting proc filesystem
+mount -t proc /proc /proc
+echo Mounting sysfs filesystem
+mount -t sysfs /sys /sys
+EOF
 
 if [ -n "$DYNAMIC_DEV" ]; then
     cemit <<EOF
@@ -716,29 +710,29 @@ mkdir /dev/mapper
 echo Creating initial device nodes
 mknod /dev/console c 5 1
 mknod /dev/null c 1 3
-mknod /dev/zero c 1 5
 mknod /dev/ram b 1 1
-mknod /dev/systty c 4 0
 mknod /dev/rtc c 10 135
+mknod /dev/systty c 4 0
 mknod /dev/tty c 5 0
+mknod /dev/zero c 1 5
 EOF
 
-# XXX really we need to openvt too, in case someting changes the
-# color palette and then changes vts on fbcon before gettys start.
-# (yay, fbcon bugs!)
-for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 ; do
-    emit "mknod /dev/tty$i c 4 $i"
-done
+    # XXX really we need to openvt too, in case someting changes the
+    # color palette and then changes vts on fbcon before gettys start.
+    # (yay, fbcon bugs!)
+    for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 ; do
+        emit "mknod /dev/tty$i c 4 $i"
+    done
 
-for i in 0 1 2 3 ; do
-    emit "mknod /dev/ttyS$i c 4 $(($i + 64))"
-done
+    for i in 0 1 2 3 ; do
+        emit "mknod /dev/ttyS$i c 4 $(($i + 64))"
+    done
 
-    cemit <<EOF
-echo -n "/sbin/hotplug" > /proc/sys/kernel/hotplug
-echo Creating block device nodes
-makedevs
-EOF
+    emit "echo Setting up hotplug."
+    emit "echo -n /sbin/hotplug > /proc/sys/kernel/hotplug"
+
+    emit "echo Creating block device nodes."
+    emit "mkblkdevs"
 fi
 
 for MODULE in $MODULES; do
@@ -759,9 +753,11 @@ for MODULE in $MODULES; do
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" ]; then
+	emit "echo Waiting 8 seconds for driver initialization."
 	emit "sleep 8"
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
+	emit "echo Waiting 2 seconds for driver initialization."
         emit "sleep 2"
         cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICE SCSIID WWPN SCSILUN FCPLUN; do
         cemit <<EOF 
@@ -773,11 +769,16 @@ EOF
     fi
 done
 
+if [ -n "$vg_list" ]; then
+    emit "echo Making device-mapper control node"
+    emit "mkdmnod"
+fi
+
 # HACK: module loading + device creation isn't necessarily synchronous...
 # this will make sure that we have all of our devices before trying
 # things like RAID or LVM
 if [ -n "$DYNAMIC_DEV" ]; then
-    emit "makedevs"
+    emit "mkblkdevs"
 fi
 
 if [ -n "$raiddevices" ]; then
@@ -787,9 +788,11 @@ if [ -n "$raiddevices" ]; then
     done
 fi
 
-if [ -z "$DYNAMIC_DEV" ]; then
-    emit "echo Creating block devices."
-    emit "mkdevices /dev"
+if [ -n "$vg_list" ]; then
+    emit "echo Scanning logical volumes"
+    emit "lvm vgscan --ignorelockingfailure"
+    emit "echo Activating logical volumes"
+    emit "lvm vgchange -ay --ignorelockingfailure $vg_list"
 fi
 
 if [ -n "$loopDev" ]; then
@@ -800,13 +803,6 @@ if [ -n "$loopDev" ]; then
     emit "mount -t $loopFs $loopDev /loopfs"
     emit "echo Setting up loopback device $rootdev"
     emit "losetup $rootdev /loopfs$loopFile"
-elif [ -n "$root_lvm" ]; then
-    emit "echo Making device-mapper control node"
-    emit "mkdmnod"
-    emit "echo Scanning logical volumes"
-    emit "lvm vgscan --ignorelockingfailure"
-    emit "echo Activating logical volumes"
-    emit "lvm vgchange -ay --ignorelockingfailure $root_vg $swap_vg"
 fi
 
 if [ -z "$noresume" ]; then
@@ -821,11 +817,7 @@ emit "echo Mounting root filesystem"
 emit "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot"
 
 emit "echo Switching to new root"
-if [ -n "$DYNAMIC_DEV" ]; then
-    emit "switchroot --movedev /sysroot"
-else
-    emit "switchroot /sysroot"
-fi
+emit "switchroot $DYNAMIC_DEV /sysroot"
 chmod +x $RCFILE
 
 (cd $MNTIMAGE; find . | cpio --quiet -c -o) >| $IMAGE || exit 1
