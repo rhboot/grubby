@@ -31,7 +31,7 @@ export MALLOC_PERTURB_=204
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=5.0.2
+VERSION=5.0.3
 
 compress=1
 allowmissing=""
@@ -550,7 +550,8 @@ if echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
     majmin=$(stat -c "%t:%T" /dev/root)
     if [ -n "$majmin" ]; then
         dev=$(find /sys/block -name dev | while read device ; do \
-	      echo "$majmin" | cmp -s $device && echo $device ; done)
+	      echo "$majmin" | cmp -s $device && echo $device ; done \
+	      | sed -e 's,.*/\([^/]\+\)/dev,\1,' )
 	if [ -n "$dev" ]; then
             vecho "Found root device $dev for $rootdev"
                 rootdev=$dev
