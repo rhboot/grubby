@@ -57,6 +57,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Sep 30 2005 Peter Jones <pjones@redhat.com> - 5.0.3-1
+- fix root dev discovery to give us "hda3" and such again, rather than
+  a full sysfs path
+
 * Thu Sep 29 2005 Peter Jones <pjones@redhat.com> - 5.0.2-1
 - add error and quiet printf functions
 - use them instead of testing quiet and typing stderr everywhere
