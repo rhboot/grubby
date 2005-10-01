@@ -50,6 +50,7 @@
 
 #include <asm/unistd.h>
 
+#include "name_to_dev_t.h"
 #include "mount_by_label.h"
 
 /* Need to tell loop.h what the actual dev_t type is. */
@@ -92,9 +93,6 @@
 #ifndef MNT_DETACH
 #define MNT_DETACH 0x2
 #endif
-
-extern dev_t name_to_dev_t(char *name);
-extern int display_uuid_cache(void);
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 
