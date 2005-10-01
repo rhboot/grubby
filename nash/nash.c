@@ -1,6 +1,6 @@
 /*
  * nash.c
- * 
+ *
  * Simple code to load modules, mount root, and get things going. Uses
  * dietlibc to keep things small.
  *
@@ -8,7 +8,7 @@
  * Jeremy Katz (katzj@redhat.com)
  * Peter Jones (pjones@redhat.com)
  *
- * Copyright 2002-2005 Red Hat Software 
+ * Copyright 2002-2005 Red Hat Software
  *
  * This software may be freely redistributed under the terms of the GNU
  * public license.
@@ -20,7 +20,7 @@
  */
 
 /* We internalize losetup, mount, raidautorun, and echo commands. Other
-   commands are run from the filesystem. Comments and blank lines work as 
+   commands are run from the filesystem. Comments and blank lines work as
    well, argument parsing is screwy. */
 
 #define _GNU_SOURCE 1
@@ -98,12 +98,14 @@ extern int display_uuid_cache(void);
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 
-int testing = 0, quiet = 0, reallyquiet = 0;
+static int testing = 0, quiet = 0, reallyquiet = 0;
 
-int qprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
-int eprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
+static int qprintf(const char *format, ...)
+    __attribute__((format(printf, 1, 2)));
+static int eprintf(const char *format, ...)
+    __attribute__((format(printf, 1, 2)));
 
-int
+static int
 qprintf(const char *format, ...)
 {
     va_list ap;
@@ -120,7 +122,7 @@ qprintf(const char *format, ...)
     return ret;
 }
 
-int
+static int
 eprintf(const char *format, ...)
 {
     va_list ap;
@@ -135,13 +137,15 @@ eprintf(const char *format, ...)
 
 #define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
 
-char * env[] = {
+static char * env[] = {
     "PATH=" PATH,
     "LVM_SUPPRESS_FD_WARNINGS=1",
     NULL
 };
 
-int smartmknod(char * device, mode_t mode, dev_t dev) {
+static int
+smartmknod(char * device, mode_t mode, dev_t dev)
+{
     char buf[256];
     char * end;
 
@@ -151,7 +155,7 @@ int smartmknod(char * device, mode_t mode, dev_t dev) {
     while (*end) {
 	if (*end == '/') {
 	    *end = '\0';
-	    if (access(buf, F_OK) && errno == ENOENT) 
+	    if (access(buf, F_OK) && errno == ENOENT)
 		mkdir(buf, 0755);
 	    *end = '/';
 	}
@@ -162,13 +166,17 @@ int smartmknod(char * device, mode_t mode, dev_t dev) {
     return mknod(device, mode, dev);
 }
 
-char * getArg(char * cmd, char * end, char ** arg) {
+static char *
+getArg(char * cmd, char * end, char ** arg)
+{
     char quote = '\0';
 
-    if (!cmd || cmd >= end) return NULL;
+    if (!cmd || cmd >= end)
+        return NULL;
 
     while (isspace(*cmd) && cmd < end) cmd++;
-    if (cmd >= end) return NULL;
+    if (cmd >= end)
+        return NULL;
 
     if (*cmd == '"')
 	cmd++, quote = '"';
@@ -206,7 +214,8 @@ char * getArg(char * cmd, char * end, char ** arg) {
 }
 
 /* taken from anaconda/isys/probe.c */
-static int readFD (int fd, char **buf)
+static int
+readFD (int fd, char **buf)
 {
     char *p;
     size_t size = 16384;
@@ -248,7 +257,9 @@ static int readFD (int fd, char **buf)
 #endif
 
 /* get the contents of the kernel command line from /proc/cmdline */
-static char * getKernelCmdLine(void) {
+static char *
+getKernelCmdLine(void)
+{
     int fd, i, errnum;
     static char * buf = NULL;
 
@@ -276,12 +287,15 @@ static char * getKernelCmdLine(void) {
 /* get the start of a kernel arg "arg".  returns everything after it
  * (useful for things like getting the args to init=).  so if you only
  * want one arg, you need to terminate it at the n */
-static char * getKernelArg(char * arg) {
+static char *
+getKernelArg(char * arg)
+{
     char * start, * cmdline;
     int len;
 
     cmdline = start = getKernelCmdLine();
-    if (start == NULL) return NULL;
+    if (start == NULL)
+        return NULL;
     while (*start) {
 	if (isspace(*start)) {
 	    start++;
@@ -303,7 +317,9 @@ static char * getKernelArg(char * arg) {
     return NULL;
 }
 
-int mountCommand(char * cmd, char * end) {
+static int
+mountCommand(char * cmd, char * end)
+{
     char * fsType = NULL;
     char * device;
     char * mntPoint;
@@ -364,7 +380,7 @@ int mountCommand(char * cmd, char * end) {
 	return 1;
     }
 
-    /* need to deal with options */ 
+    /* need to deal with options */
     if (options) {
 	char * end;
 	char * start = options;
@@ -465,10 +481,10 @@ int mountCommand(char * cmd, char * end) {
     }
 
     if (testing) {
-	printf("mount %s%s%s-t '%s' '%s' '%s' (%s%s%s%s%s%s%s)\n", 
-		options ? "-o '" : "",	
-		options ? options : "",	
-		options ? "\' " : "",	
+	printf("mount %s%s%s-t '%s' '%s' '%s' (%s%s%s%s%s%s%s)\n",
+		options ? "-o '" : "",
+		options ? options : "",
+		options ? "\' " : "",
 		fsType, device, mntPoint,
 		(flags & MS_RDONLY) ? "ro " : "",
 		(flags & MS_NOSUID) ? "nosuid " : "",
@@ -492,7 +508,9 @@ int mountCommand(char * cmd, char * end) {
     return rc;
 }
 
-int otherCommand(char * bin, char * cmd, char * end, int doFork) {
+static int
+otherCommand(char * bin, char * cmd, char * end, int doFork)
+{
     char ** args;
     char ** nextArg;
     int pid, wpid;
@@ -518,7 +536,7 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 
 	    strncpy(fullPath, pathStart, pathEnd - pathStart);
 	    fullPath[pathEnd - pathStart] = '/';
-	    strcpy(fullPath + (pathEnd - pathStart + 1), bin); 
+	    strcpy(fullPath + (pathEnd - pathStart + 1), bin);
 
 	    pathStart = pathEnd;
 	    if (*pathStart) pathStart++;
@@ -536,7 +554,7 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 	nextArg++;
 	cmd = getArg(cmd, end, nextArg);
     }
-	
+
     if (cmd) nextArg++;
     *nextArg = NULL;
 
@@ -596,7 +614,8 @@ int otherCommand(char * bin, char * cmd, char * end, int doFork) {
 }
 
 #ifdef DEBUG
-static int lsdir(char *thedir, char * prefix) {
+static int lsdir(char *thedir, char * prefix)
+{
     DIR * dir;
     struct dirent * entry;
     struct stat sb;
@@ -633,11 +652,13 @@ static int lsdir(char *thedir, char * prefix) {
         } else {
             printf("\n");
         }
-    }    
+    }
     return 0;
 }
 
-int catCommand(char * cmd, char * end) {
+static int
+catCommand(char * cmd, char * end)
+{
     char * file;
     char * buf;
     int fd, n;
@@ -659,7 +680,9 @@ int catCommand(char * cmd, char * end) {
     return 0;
 }
 
-int lsCommand(char * cmd, char * end) {
+static int
+lsCommand(char * cmd, char * end)
+{
     char * dir;
 
     if (!(cmd = getArg(cmd, end, &dir))) {
@@ -672,7 +695,9 @@ int lsCommand(char * cmd, char * end) {
 }
 #endif
 
-int execCommand(char * cmd, char * end) {
+static int
+execCommand(char * cmd, char * end)
+{
     char * bin;
 
     if (!(cmd = getArg(cmd, end, &bin))) {
@@ -683,7 +708,9 @@ int execCommand(char * cmd, char * end) {
     return otherCommand(bin, cmd, end, 0);
 }
 
-int losetupCommand(char * cmd, char * end) {
+static int
+losetupCommand(char * cmd, char * end)
+{
     char * device;
     char * file;
     int fd;
@@ -734,7 +761,7 @@ int losetupCommand(char * cmd, char * end) {
 	memset(&loopInfo, 0, sizeof(loopInfo));
 	strcpy(loopInfo.lo_name, file);
 
-	if (ioctl(dev, LOOP_SET_STATUS, &loopInfo)) 
+	if (ioctl(dev, LOOP_SET_STATUS, &loopInfo))
 	    eprintf("losetup: LOOP_SET_STATUS failed: %s\n", strerror(errno));
 
 	close(dev);
@@ -744,7 +771,9 @@ int losetupCommand(char * cmd, char * end) {
 }
 
 #define RAID_MAJOR 9
-int raidautorunCommand(char * cmd, char * end) {
+static int
+raidautorunCommand(char * cmd, char * end)
+{
     char * device;
     int fd;
 
@@ -791,7 +820,9 @@ int raidautorunCommand(char * cmd, char * end) {
 }
 
 /* remove all files/directories below dirName -- don't cross mountpoints */
-int recursiveRemove(char * dirName) {
+static int
+recursiveRemove(char * dirName)
+{
     struct stat sb,rb;
     DIR * dir;
     struct dirent * d;
@@ -860,9 +891,11 @@ int recursiveRemove(char * dirName) {
 /* 2.6 magic not-pivot-root but kind of similar stuff.
  * This is based on code from klibc/utils/run_init.c
  */
-int switchrootCommand(char * cmd, char * end) {
+static int
+switchrootCommand(char * cmd, char * end)
+{
     char * new;
-    const char * initprogs[] = { "/sbin/init", "/etc/init", 
+    const char * initprogs[] = { "/sbin/init", "/etc/init",
                                  "/bin/init", "/bin/sh", NULL };
     char * init, * cmdline = NULL;
     char ** initargs;
@@ -967,7 +1000,7 @@ int switchrootCommand(char * cmd, char * end) {
              * On x86_64, the kernel adds a magic command line parameter
              * *after* everything you pass.  Bash doesn't know what "console="
              * means, so it exits, init gets killed, etc, etc.  Bad news.
-             * 
+             *
              * Apparently being removed "soon", but for now, nash needs to
              * special case it.
              */
@@ -994,13 +1027,19 @@ int switchrootCommand(char * cmd, char * end) {
     return 1;
 }
 
-int isEchoQuiet(int fd) {
-    if (!reallyquiet) return 0;
-    if (fd != 1) return 0;
+static int
+isEchoQuiet(int fd)
+{
+    if (!reallyquiet)
+        return 0;
+    if (fd != 1)
+        return 0;
     return 1;
 }
 
-int echoCommand(char * cmd, char * end) {
+static int
+echoCommand(char * cmd, char * end)
+{
     char * args[256];
     char ** nextArg = args;
     int outFd = 1;
@@ -1050,7 +1089,9 @@ int echoCommand(char * cmd, char * end) {
     return 0;
 }
 
-int umountCommand(char * cmd, char * end) {
+static int
+umountCommand(char * cmd, char * end) 
+{
     char * path;
 
     if (!(cmd = getArg(cmd, end, &path))) {
@@ -1071,7 +1112,9 @@ int umountCommand(char * cmd, char * end) {
     return 0;
 }
 
-int mkpathbyspec(char * spec, char * path) {
+static int
+mkpathbyspec(char * spec, char * path)
+{
     int major, minor;
 
     if (!spec)
@@ -1115,7 +1158,9 @@ int mkpathbyspec(char * spec, char * path) {
 }
 
 /* 2.6 magic swsusp stuff */
-int resumeCommand(char * cmd, char * end) {
+static int
+resumeCommand(char * cmd, char * end)
+{
     char * resumedev = NULL;
     char * resume = NULL;
     int fd;
@@ -1134,7 +1179,7 @@ int resumeCommand(char * cmd, char * end) {
 
     if (strstr(getKernelCmdLine(), "noresume")) {
         qprintf("noresume passed, not resuming...\n");
-        return 0; 
+        return 0;
     }
 
     resumedev = getKernelArg("resume");
@@ -1170,7 +1215,7 @@ int resumeCommand(char * cmd, char * end) {
     printf("Resuming from %s.\n", resumedev);
     fflush(stdout);
     fd = open("/sys/power/resume", O_WRONLY);
-    memset(buf, 20, '\0');
+    memset(buf, '\0', 20);
     snprintf(buf, 20, "%d:%d", major(sb.st_rdev), minor(sb.st_rdev));
     write(fd, buf, 20);
     close(fd);
@@ -1179,7 +1224,9 @@ int resumeCommand(char * cmd, char * end) {
     return 0;
 }
 
-int mkrootdevCommand(char * cmd, char * end) {
+static int
+mkrootdevCommand(char * cmd, char * end)
+{
     char * path;
     char *root, * chptr;
     int devNum = 0;
@@ -1216,7 +1263,7 @@ int mkrootdevCommand(char * cmd, char * end) {
 
     fd = open(real_root_dev, O_RDONLY, 0);
     if (fd < 0) {
-	eprintf("mkrootdev: failed to open %s: %s\n", real_root_dev, 
+	eprintf("mkrootdev: failed to open %s: %s\n", real_root_dev,
                 strerror(errno));
 	return 1;
     }
@@ -1247,7 +1294,7 @@ int mkrootdevCommand(char * cmd, char * end) {
 	devNum = name_to_dev_t(root);
 
     if (smartmknod(path, S_IFBLK | 0700, devNum)) {
-	eprintf("mkrootdev: mknod %s 0x%08x failed: %s\n", path, devNum, 
+	eprintf("mkrootdev: mknod %s 0x%08x failed: %s\n", path, devNum,
                 strerror(errno));
 	return 1;
     }
@@ -1255,7 +1302,9 @@ int mkrootdevCommand(char * cmd, char * end) {
     return 0;
 }
 
-int mkdirCommand(char * cmd, char * end) {
+static int
+mkdirCommand(char * cmd, char * end)
+{
     char * dir;
     int ignoreExists = 0;
 
@@ -1281,7 +1330,9 @@ int mkdirCommand(char * cmd, char * end) {
     return 0;
 }
 
-int accessCommand(char * cmd, char * end) {
+static int
+accessCommand(char * cmd, char * end)
+{
     char * permStr;
     int perms = 0;
     char * file = NULL;
@@ -1315,7 +1366,9 @@ int accessCommand(char * cmd, char * end) {
     return 0;
 }
 
-int sleepCommand(char * cmd, char * end) {
+static int
+sleepCommand(char * cmd, char * end)
+{
     char *delaystr;
     int delay;
 
@@ -1330,7 +1383,9 @@ int sleepCommand(char * cmd, char * end) {
     return 0;
 }
 
-int readlinkCommand(char * cmd, char * end) {
+static int
+readlinkCommand(char * cmd, char * end)
+{
     char * path;
     char * buf, * respath, * fullpath;
     struct stat sb;
@@ -1350,7 +1405,7 @@ int readlinkCommand(char * cmd, char * end) {
         printf("%s\n", path);
         return 0;
     }
-    
+
     buf = calloc(512, sizeof (char));
     if (readlink(path, buf, 512) == -1) {
 	eprintf("error readlink %s: %s\n", path, strerror(errno));
@@ -1363,8 +1418,8 @@ int readlinkCommand(char * cmd, char * end) {
         printf("%s\n", buf);
         free(buf);
         return 0;
-    } 
-   
+    }
+
     /* nope, need to handle the relative symlink case too */
     respath = strrchr(path, '/');
     if (respath) {
@@ -1391,7 +1446,9 @@ int readlinkCommand(char * cmd, char * end) {
     return rc;
 }
 
-int doFind(char * dirName, char * name) {
+static int
+doFind(char * dirName, char * name)
+{
     struct stat sb;
     DIR * dir;
     struct dirent * d;
@@ -1439,7 +1496,9 @@ int doFind(char * dirName, char * name) {
     return 0;
 }
 
-int findCommand(char * cmd, char * end) {
+static int 
+findCommand(char * cmd, char * end)
+{
     char * dir;
     char * name;
 
@@ -1459,7 +1518,9 @@ int findCommand(char * cmd, char * end) {
     return doFind(dir, name);
 }
 
-int findlodevCommand(char * cmd, char * end) {
+static int
+findlodevCommand(char * cmd, char * end)
+{
     char devName[20];
     int devNum;
     int fd;
@@ -1476,7 +1537,8 @@ int findlodevCommand(char * cmd, char * end) {
 
     for (devNum = 0; devNum < 256; devNum++) {
 	sprintf(devName, "/dev/loop%s%d", separator, devNum);
-	if ((fd = open(devName, O_RDONLY)) < 0) return 0;
+	if ((fd = open(devName, O_RDONLY)) < 0)
+            return 0;
 
 	if (ioctl(fd, LOOP_GET_STATUS, &loopInfo)) {
 	    close(fd);
@@ -1490,7 +1552,9 @@ int findlodevCommand(char * cmd, char * end) {
     return 0;
 }
 
-int mknodCommand(char * cmd, char * end) {
+static int
+mknodCommand(char * cmd, char * end)
+{
     char * path, * type;
     char * majorStr, * minorStr;
     int major;
@@ -1536,7 +1600,9 @@ int mknodCommand(char * cmd, char * end) {
     return 0;
 }
 
-static int getDevNumFromProc(char * file, char * device) {
+static int
+getDevNumFromProc(char * file, char * device)
+{
     char buf[32768], line[4096];
     char * start, *end;
     int num;
@@ -1570,7 +1636,9 @@ static int getDevNumFromProc(char * file, char * device) {
     return -1;
 }
 
-int mkDMNodCommand(char * cmd, char * end) {
+static int
+mkDMNodCommand(char * cmd, char * end)
+{
     int major = getDevNumFromProc("/proc/devices", "misc");
     int minor = getDevNumFromProc("/proc/misc", "device-mapper");
 
@@ -1584,27 +1652,28 @@ int mkDMNodCommand(char * cmd, char * end) {
         if (stat("/dev/mapper/control", &sb) == 0) {
             if (S_ISCHR(sb.st_mode) && (sb.st_rdev == makedev(major, minor)))
                 return 0;
-        } 
+        }
 
         unlink("/dev/mapper/control");
     }
 
-    if (smartmknod("/dev/mapper/control", S_IFCHR | 0600, 
+    if (smartmknod("/dev/mapper/control", S_IFCHR | 0600,
                    makedev(major, minor))) {
         eprintf("failed to create /dev/mapper/control\n");
         return 1;
     }
-    
+
     return 0;
 }
 
-static int parse_sysfs_devnum(const char *path, dev_t *dev)
+static int
+parse_sysfs_devnum(const char *path, dev_t *dev)
 {
     char *first = NULL, *second;
     int major, minor;
     int fd, len = strlen(path);
     char devname[len + 5];
-    
+
     sprintf(devname, "%s/dev", path);
     fd = open(devname, O_RDONLY);
     if (fd < 0) {
@@ -1630,7 +1699,8 @@ static int parse_sysfs_devnum(const char *path, dev_t *dev)
     return 0;
 }
 
-static void sysfs_blkdev_probe(const char *dirname, const char *name)
+static void
+sysfs_blkdev_probe(const char *dirname, const char *name)
 {
     char *path = NULL, *devpath = NULL;
     dev_t dev = 0;
@@ -1667,7 +1737,8 @@ static void sysfs_blkdev_probe(const char *dirname, const char *name)
     free(path);
 }
 
-static int mkblkdevsCommand(char * cmd, char * end)
+static int
+mkblkdevsCommand(char * cmd, char * end)
 {
     DIR *dir;
     struct dirent *dent;
@@ -1690,7 +1761,9 @@ static int mkblkdevsCommand(char * cmd, char * end)
     return 1;
 }
 
-int setQuietCommand(char * cmd, char * end) {
+static int
+setQuietCommand(char * cmd, char * end)
+{
     char *quietcmd;
 
     quietcmd = getKernelArg("quiet");
@@ -1704,7 +1777,9 @@ int setQuietCommand(char * cmd, char * end) {
     return 0;
 }
 
-int runStartup(int fd, char *name) {
+static int
+runStartup(int fd, char *name)
+{
     char *contents;
     int i;
     char * start, * end;
@@ -1815,7 +1890,7 @@ int main(int argc, char **argv) {
     int force = 0;
 
     name = strrchr(argv[0], '/');
-    if (!name) 
+    if (!name)
 	name = argv[0];
     else
 	name++;
