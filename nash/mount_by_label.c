@@ -269,7 +269,7 @@ get_spec_by_uuid(const char *s, int * major, int * minor) {
 
  bad_uuid:
 	fprintf(stderr, _("mount: bad UUID"));
-	return 0;
+	return NULL;
 }
 
 char *
@@ -277,7 +277,9 @@ get_spec_by_volume_label(const char *s, int * major, int * minor) {
 	return get_spec_by_x(VOL, s, major, minor);
 }
 
-int display_uuid_cache(void) {
+int
+display_uuid_cache(void)
+{
 	struct uuidCache_s * u;
 	size_t i;
 
