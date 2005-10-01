@@ -5,7 +5,10 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-static dev_t try_name(char *name, int part)
+#include "name_to_dev_t.h"
+
+static dev_t
+try_name(char *name, int part)
 {
 	char path[64];
 	char buf[32];
@@ -81,7 +84,8 @@ fail:
  *	first.
  */
 
-dev_t name_to_dev_t(char *name)
+dev_t
+name_to_dev_t(char *name)
 {
 	char s[32];
 	char *p;
