@@ -305,7 +305,7 @@ getKernelArg(char * arg)
 	if (strncmp(start, arg, len) == 0) {
             if (start[len] == '=')
                 return start + len + 1;
-            if (start[len] == ' ' || start[len] == '\t')
+            if (!start[len] || isspace(start[len]))
                 return start + len;
         }
 	while (*++start && !isspace(*start))
@@ -493,7 +493,7 @@ mountCommand(char * cmd, char * end)
 		(flags & MS_NOATIME) ? "noatime " : ""
 	    );
     } else {
-	if (mount(device, mntPoint, fsType, flags, options)) {
+	if (mount(device, mntPoint, fsType, flags, options) < 0) {
 	    eprintf("mount: error %s mounting %s on %s as %s\n",
                     strerror(errno), device, mntPoint, fsType);
 	    rc = 1;
@@ -924,29 +924,35 @@ switchrootCommand(char * cmd, char * end)
 
     if (moveDev) {
         i = 1;
-        mount("/dev", "./dev", NULL, MS_MOVE, NULL);
+        if (mount("/dev", "./dev", NULL, MS_MOVE, NULL) < 0)
+            eprintf("switchroot: moving /dev failed: %s\n",
+                    strerror(errno));
     }
 
     if ((fd = open("./dev/console", O_RDWR)) < 0) {
         eprintf("ERROR opening /dev/console: %s\n", strerror(errno));
-        fd = 0;
-    }
-
-    if (dup2(fd, 0) != 0) eprintf("error dup2'ing fd of %d to 0: %s\n", fd,
-            strerror(errno));
-    if (dup2(fd, 1) != 0) eprintf("error dup2'ing fd of %d to 1: %s\n", fd,
-            strerror(errno));
-    if (dup2(fd, 2) != 0) eprintf("error dup2'ing fd of %d to 2: %s\n", fd,
-            strerror(errno));
-    if (fd > 2)
+        eprintf("Trying to use fd 0 instead.\n");
+        fd = dup2(0, 3);
+        close(0);
+    } else {
+        dup2(fd, 3);
         close(fd);
+        close(0);
+        fd = 3;
+        dup2(fd, 0);
+    }
+    close(1);
+    dup2(fd, 1);
+    close(2);
+    dup2(fd, 2);
+    close(fd);
 
     recursiveRemove("/");
 
     fd = open("/", O_RDONLY);
     for (; umounts[i] != NULL; i++) {
         qprintf("unmounting old %s\n", umounts[i]);
-        if (umount2(umounts[i], MNT_DETACH)) {
+        if (umount2(umounts[i], MNT_DETACH) < 0) {
             eprintf("ERROR unmounting old %s: %s\n",umounts[i],strerror(errno));
             eprintf("forcing unmount of %s\n", umounts[i]);
             umount2(umounts[i], MNT_FORCE);
@@ -954,7 +960,7 @@ switchrootCommand(char * cmd, char * end)
     }
     i=0;
 
-    if (mount(".", "/", NULL, MS_MOVE, NULL)) {
+    if (mount(".", "/", NULL, MS_MOVE, NULL) < 0) {
         eprintf("switchroot: mount failed: %s\n", strerror(errno));
         close(fd);
         return 1;
@@ -1102,7 +1108,7 @@ umountCommand(char * cmd, char * end)
 	return 1;
     }
 
-    if (umount(path)) {
+    if (umount(path) < 0) {
 	eprintf("umount %s failed: %s\n", path, strerror(errno));
 	return 1;
     }
