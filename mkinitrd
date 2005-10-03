@@ -694,9 +694,9 @@ echo -n >| $RCFILE
 cemit << EOF
 #!/bin/nash
 
+mount -t proc /proc /proc
 setquiet
 echo Mounting proc filesystem
-mount -t proc /proc /proc
 echo Mounting sysfs filesystem
 mount -t sysfs /sys /sys
 EOF
