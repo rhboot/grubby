@@ -57,6 +57,14 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Oct  7 2005 Peter Jones <pjones@redhat.com> - 5.0.4-1
+- split switchroot into setuproot and switchroot, with presetuproot in
+  between
+- make preswitchroot and setuproot execute through symlinks, so they may
+  be replaced by a second initramfs image
+- add logic to mount filesystems specified in /etc/fstab.sys during setuproot
+- general code cleanups
+
 * Fri Sep 30 2005 Peter Jones <pjones@redhat.com> - 5.0.3-1
 - fix root dev discovery to give us "hda3" and such again, rather than
   a full sysfs path
