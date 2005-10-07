@@ -1065,6 +1065,11 @@ switchrootCommand(char * cmd, char * end)
         return 1;
     }
 
+    /* this has to happen before we unmount /proc */
+    init = getKernelArg("init");
+    if (init == NULL)
+        cmdline = getKernelCmdLine();
+
     fd = open("/", O_RDONLY);
     for (; umounts[i] != NULL; i++) {
         qprintf("unmounting old %s\n", umounts[i]);
@@ -1112,10 +1117,6 @@ switchrootCommand(char * cmd, char * end)
     close(2);
     dup2(fd, 2);
     close(fd);
-
-    init = getKernelArg("init");
-    if (init == NULL)
-        cmdline = getKernelCmdLine();
 
     if (init == NULL) {
         for (i = 0; initprogs[i] != NULL; i++) {
