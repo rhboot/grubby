@@ -931,23 +931,8 @@ recursiveRemove(char * dirName)
 static int
 setuprootCommand(char *cmd, char *end)
 {
-    /*  Don't try to unmount the old "/", there's no way to do it. */
-    struct {
-	char *source;
-	char *target;
-	char *type;
-	int flags;
-	void *data;
-    } fstab[] = {
-	{ "/proc", "./proc", "proc", 0, NULL },
-	{ "/sys", "./sys", "sysfs", 0, NULL },
-	{ "/dev/pts", "./dev/pts", "devpts", 0, "gid=5,mode=620" },
-	{ "/dev/shm", "./dev/shm", "tmpfs", 0, NULL },
-	{ "/selinux", "/selinux", "selinuxfs", 0, NULL },
-	{ NULL, }
-    };
     FILE *fp;
-    int i = 0, moveDev;
+    int moveDev;
     char *new;
 
     qprintf("Setting up new root fs\n");
@@ -1025,6 +1010,22 @@ setuprootCommand(char *cmd, char *end)
 	    endmntent(fp);
 #if 0
 	} else {
+	    struct {
+		char *source;
+		char *target;
+		char *type;
+		int flags;
+		void *data;
+	    } fstab[] = {
+		{ "/proc", "./proc", "proc", 0, NULL },
+		{ "/sys", "./sys", "sysfs", 0, NULL },
+		{ "/dev/pts", "./dev/pts", "devpts", 0, "gid=5,mode=620" },
+		{ "/dev/shm", "./dev/shm", "tmpfs", 0, NULL },
+		{ "/selinux", "/selinux", "selinuxfs", 0, NULL },
+		{ NULL, }
+	    };
+            int i = 0;
+
 	    qprintf("no fstab.sys, mounting internal defaults\n");
 	    for (; fstab[i].source != NULL; i++) {
 		if (mount(fstab[i].source, fstab[i].target, fstab[i].type,
