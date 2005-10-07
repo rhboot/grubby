@@ -1937,6 +1937,38 @@ runStartup(int fd, char *name)
     char * start, * end;
     char * chptr;
     int rc;
+    struct {
+        char *name;
+        int (*fp)(char *cmd, char *end);
+    } handlers[] = {
+	{ "mount", mountCommand },
+	{ "losetup", losetupCommand },
+	{ "echo", echoCommand },
+	{ "raidautorun", raidautorunCommand },
+	{ "nash-setuproot", setuprootCommand },
+	{ "nash-switchroot", switchrootCommand },
+	{ "mkrootdev", mkrootdevCommand },
+	{ "umount", umountCommand },
+	{ "exec", execCommand },
+	{ "mkdir", mkdirCommand },
+	{ "access", accessCommand },
+	{ "find", findCommand },
+	{ "findlodev", findlodevCommand },
+	{ "showlabels", display_uuid_cache },
+	{ "mkblkdevs", mkblkdevsCommand },
+	{ "sleep", sleepCommand },
+	{ "mknod", mknodCommand },
+	{ "mkdmnod", mkDMNodCommand },
+	{ "readlink", readlinkCommand },
+	{ "setquiet", setQuietCommand },
+	{ "resume", resumeCommand },
+	{ "ln", lnCommand },
+#ifdef DEBUG
+	{ "cat", catCommand },
+	{ "ls", lsCommand },
+#endif
+	{ NULL, },
+    }, *handler;
 
     i = readFD(fd, &contents);
 
@@ -1977,57 +2009,13 @@ runStartup(int fd, char *name)
 	chptr = start;
 	while (chptr < end && !isspace(*chptr)) chptr++;
 
-	if (!strncmp(start, "mount", MAX(5, chptr - start)))
-	    rc = mountCommand(chptr, end);
-	else if (!strncmp(start, "losetup", MAX(7, chptr - start)))
-	    rc = losetupCommand(chptr, end);
-	else if (!strncmp(start, "echo", MAX(4, chptr - start)))
-	    rc = echoCommand(chptr, end);
-	else if (!strncmp(start, "raidautorun", MAX(11, chptr - start)))
-	    rc = raidautorunCommand(chptr, end);
-        else if (!strncmp(start, "nash-setuproot", MAX(14, chptr - start)))
-            rc = setuprootCommand(chptr, end);
-        else if (!strncmp(start, "nash-switchroot", MAX(15, chptr - start)))
-            rc = switchrootCommand(chptr, end);
-	else if (!strncmp(start, "mkrootdev", MAX(9, chptr - start)))
-	    rc = mkrootdevCommand(chptr, end);
-	else if (!strncmp(start, "umount", MAX(6, chptr - start)))
-	    rc = umountCommand(chptr, end);
-	else if (!strncmp(start, "exec", MAX(4, chptr - start)))
-	    rc = execCommand(chptr, end);
-	else if (!strncmp(start, "mkdir", MAX(5, chptr - start)))
-	    rc = mkdirCommand(chptr, end);
-	else if (!strncmp(start, "access", MAX(6, chptr - start)))
-	    rc = accessCommand(chptr, end);
-	else if (!strncmp(start, "find", MAX(4, chptr - start)))
-	    rc = findCommand(chptr, end);
-	else if (!strncmp(start, "findlodev", MAX(7, chptr - start)))
-	    rc = findlodevCommand(chptr, end);
-	else if (!strncmp(start, "showlabels", MAX(10, chptr-start)))
-	    rc = display_uuid_cache();
-	else if (!strncmp(start, "mkblkdevs", MAX(9, chptr-start)))
-	    rc = mkblkdevsCommand(chptr, end);
-	else if (!strncmp(start, "sleep", MAX(5, chptr-start)))
-	    rc = sleepCommand(chptr, end);
-	else if (!strncmp(start, "mknod", MAX(5, chptr-start)))
-	    rc = mknodCommand(chptr, end);
-        else if (!strncmp(start, "mkdmnod", MAX(7, chptr-start)))
-            rc = mkDMNodCommand(chptr, end);
-        else if (!strncmp(start, "readlink", MAX(8, chptr-start)))
-            rc = readlinkCommand(chptr, end);
-        else if (!strncmp(start, "setquiet", MAX(8, chptr-start)))
-            rc = setQuietCommand(chptr, end);
-        else if (!strncmp(start, "resume", MAX(6, chptr-start)))
-            rc = resumeCommand(chptr, end);
-        else if (!strncmp(start, "ln", MAX(2, chptr-start)))
-            rc = lnCommand(chptr, end);
-#ifdef DEBUG
-        else if (!strncmp(start, "cat", MAX(3, chptr-start)))
-            rc = catCommand(chptr, end);
-        else if (!strncmp(start, "ls", MAX(2, chptr-start)))
-            rc = lsCommand(chptr, end);
-#endif
-	else {
+        for (handler = &handlers[0]; handler->name; handler++) {
+	    if (!strncmp(start, handler->name, strlen(handler->name))) {
+		rc = (handler->fp)(chptr, end);
+                break;
+            }
+	}
+	if (handler->name == NULL) {
 	    *chptr = '\0';
 	    rc = otherCommand(start, chptr + 1, end, 1);
 	}

@@ -278,7 +278,7 @@ get_spec_by_volume_label(const char *s, int * major, int * minor) {
 }
 
 int
-display_uuid_cache(void)
+display_uuid_cache(char *cmd, char *end)
 {
 	struct uuidCache_s * u;
 	size_t i;
