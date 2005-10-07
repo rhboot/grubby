@@ -47,6 +47,7 @@
 #include <sys/ioctl.h>
 #include <sys/reboot.h>
 #include <termios.h>
+#include <mntent.h>
 
 #include <asm/unistd.h>
 
@@ -580,11 +581,14 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
     } else {
 	if (!doFork || !(pid = fork())) {
 	    /* child */
+	    int errnum;
+
 	    dup2(stdoutFd, 1);
 	    execve(args[0], args, env);
+	    errnum = errno; /* so we'll have it after printf */
 	    eprintf("ERROR: failed in exec of %s: %s\n", args[0],
-                    strerror(errno));
-	    return 1;
+		    strerror(errnum));
+	    return errnum;
 	}
 
 	close(stdoutFd);
@@ -600,12 +604,51 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
 		continue;
 
             if (!WIFEXITED(status) || WEXITSTATUS(status)) {
+#if 0
                 eprintf("ERROR: %s exited abnormally with value %d (pid %d)\n",
                     args[0], WEXITSTATUS(status), pid);
-		return 1;
+#endif
+		return WEXITSTATUS(status);
 	    }
 	    break;
         }
+    }
+
+    return 0;
+}
+
+static int
+lnCommand(char *cmd, char *end)
+{
+    char *oldpath, *newpath;
+    int symbolic = 0, rc;
+
+    if (!(cmd = getArg(cmd, end, &oldpath))) {
+	eprintf("ln: argument expected\n");
+	return 1;
+    }
+
+    if (!strcmp(cmd, "-s")) {
+	symbolic = 1;
+	if (!(cmd = getArg(cmd, end, &oldpath))) {
+	    eprintf("ln: argument expected\n");
+	    return 1;
+	}
+    }
+
+    if (!(cmd = getArg(cmd, end, &newpath))) {
+	eprintf("ln: argument expected\n");
+	return 1;
+    }
+
+    if (symbolic)
+	rc = symlink(oldpath, newpath);
+    else
+	rc = link(oldpath, newpath);
+
+    if (rc > 0) {
+	eprintf("ln: error: %s\n", strerror(errno));
+	return 1;
     }
 
     return 0;
@@ -885,22 +928,29 @@ recursiveRemove(char * dirName)
     return 0;
 }
 
-#define MAX_INIT_ARGS 32
-/* 2.6 magic not-pivot-root but kind of similar stuff.
- * This is based on code from klibc/utils/run_init.c
- */
 static int
-switchrootCommand(char * cmd, char * end)
+setuprootCommand(char *cmd, char *end)
 {
-    char * new;
-    const char * initprogs[] = { "/sbin/init", "/etc/init",
-                                 "/bin/init", "/bin/sh", NULL };
-    char * init, * cmdline = NULL;
-    char ** initargs;
     /*  Don't try to unmount the old "/", there's no way to do it. */
-    const char * umounts[] = { "/dev", "/proc", "/sys", NULL };
-    int fd, i = 0;
-    int moveDev = 0;
+    struct {
+	char *source;
+	char *target;
+	char *type;
+	int flags;
+	void *data;
+    } fstab[] = {
+	{ "/proc", "./proc", "proc", 0, NULL },
+	{ "/sys", "./sys", "sysfs", 0, NULL },
+	{ "/dev/pts", "./dev/pts", "devpts", 0, "gid=5,mode=620" },
+	{ "/dev/shm", "./dev/shm", "tmpfs", 0, NULL },
+	{ "/selinux", "/selinux", "selinuxfs", 0, NULL },
+	{ NULL, }
+    };
+    FILE *fp;
+    int i = 0, moveDev;
+    char *new;
+
+    qprintf("Setting up new root fs\n");
 
     cmd = getArg(cmd, end, &new);
     if (cmd && !strcmp(new, "--movedev")) {
@@ -909,27 +959,140 @@ switchrootCommand(char * cmd, char * end)
     }
 
     if (!cmd) {
-	eprintf("switchroot: new root mount point expected\n");
+	eprintf("setuproot: new root mount point expected\n");
 	return 1;
     }
 
     if (chdir(new)) {
-        eprintf("switchroot: chdir(%s) failed: %s\n", new, strerror(errno));
+	eprintf("setuproot: chdir(%s) failed: %s\n", new, strerror(errno));
+	return 1;
+    }
+
+    if (moveDev) {
+	if (mount("/dev", "./dev", NULL, MS_BIND, NULL) < 0)
+	    eprintf("setuproot: moving /dev failed: %s\n",
+		    strerror(errno));
+    }
+
+    if (!getKernelArg("nomnt")) {
+	fp = setmntent("./etc/fstab.sys", "r");
+	if (fp)
+	    qprintf("using fstab.sys from mounted FS\n");
+	else {
+	    fp = setmntent("/etc/fstab.sys", "r");
+	    if (fp)
+		qprintf("using fstab.sys from initrd\n");
+	}
+	if (fp) {
+	    struct mntent *mnt;
+
+	    while((mnt = getmntent(fp))) {
+		char *start = NULL, *end;
+		char *target = NULL;
+		struct stat sb;
+
+		qprintf("mounting %s\n", mnt->mnt_dir);
+		if (asprintf(&target, ".%s", mnt->mnt_dir) < 0) {
+		    eprintf("setuproot: out of memory while mounting %s\n",
+			    mnt->mnt_dir);
+		    continue;
+		}
+
+		if (stat(target, &sb) < 0) {
+		    free(target);
+		    target = NULL;
+		    continue;
+		}
+
+		if (asprintf(&start, "-o %s -t %s %s .%s\n",
+			mnt->mnt_opts, mnt->mnt_type, mnt->mnt_fsname,
+			mnt->mnt_dir) < 0) {
+		    eprintf("setuproot: out of memory while mounting %s\n",
+			    mnt->mnt_dir);
+		    continue;
+		}
+	    
+		end = start + 1;
+		while (*end && (*end != '\n')) end++;
+		/* end points to the \n at the end of the command */
+
+		if (mountCommand(start, end) != 0)
+		    eprintf("setuproot: mount returned error\n");
+
+		free(start);
+		start = NULL;
+	    }
+	    endmntent(fp);
+	} else {
+	    qprintf("no fstab.sys, mounting internal defaults\n");
+	    for (; fstab[i].source != NULL; i++) {
+		if (mount(fstab[i].source, fstab[i].target, fstab[i].type,
+			    fstab[i].flags, fstab[i].data) < 0)
+		    eprintf("setuproot: error mounting %s: %s\n",
+			    fstab[i].source, strerror(errno));
+	    }
+	}
+    }
+
+    chdir("/");
+    return 0;
+}
+
+#define MAX_INIT_ARGS 32
+static int
+switchrootCommand(char * cmd, char * end)
+{
+    /*  Don't try to unmount the old "/", there's no way to do it. */
+    const char * umounts[] = { "/dev", "/proc", "/sys", NULL };
+    const char *initprogs[] = { "/sbin/init", "/etc/init",
+                                "/bin/init", "/bin/sh", NULL };
+    char *init, **initargs;
+    char *cmdline = NULL;
+    char *new;
+    int fd, i = 0;
+
+    cmd = getArg(cmd, end, &new);
+    if (cmd && !strcmp(new, "--movedev")) {
+        i = 1;
+        cmd = getArg(cmd, end, &new);
+    }
+
+    if (!new) {
+        eprintf("switchroot: error: setuproot failed\n");
         return 1;
     }
 
-    init = getKernelArg("init");
-    if (init == NULL)
-        cmdline = getKernelCmdLine();
+    fd = open("/", O_RDONLY);
+    for (; umounts[i] != NULL; i++) {
+        qprintf("unmounting old %s\n", umounts[i]);
+        if (umount2(umounts[i], MNT_DETACH) < 0) {
+            eprintf("ERROR unmounting old %s: %s\n",umounts[i],strerror(errno));
+            eprintf("forcing unmount of %s\n", umounts[i]);
+            umount2(umounts[i], MNT_FORCE);
+        }
+    }
+    i=0;
 
-    if (moveDev) {
-        i = 1;
-        if (mount("/dev", "./dev", NULL, MS_MOVE, NULL) < 0)
-            eprintf("switchroot: moving /dev failed: %s\n",
-                    strerror(errno));
+    chdir(new);
+
+    recursiveRemove("/");
+
+    if (mount(new, "/", NULL, MS_MOVE, NULL) < 0) {
+        eprintf("switchroot: mount failed: %s\n", strerror(errno));
+        close(fd);
+        return 1;
     }
 
-    if ((fd = open("./dev/console", O_RDWR)) < 0) {
+    if (chroot(".") || chdir("/")) {
+        eprintf("switchroot: chroot() failed: %s\n", strerror(errno));
+        close(fd);
+        return 1;
+    }
+
+    /* release the old "/" */
+    close(fd);
+
+    if ((fd = open("/dev/console", O_RDWR)) < 0) {
         eprintf("ERROR opening /dev/console: %s\n", strerror(errno));
         eprintf("Trying to use fd 0 instead.\n");
         fd = dup2(0, 3);
@@ -947,43 +1110,19 @@ switchrootCommand(char * cmd, char * end)
     dup2(fd, 2);
     close(fd);
 
-    recursiveRemove("/");
-
-    fd = open("/", O_RDONLY);
-    for (; umounts[i] != NULL; i++) {
-        qprintf("unmounting old %s\n", umounts[i]);
-        if (umount2(umounts[i], MNT_DETACH) < 0) {
-            eprintf("ERROR unmounting old %s: %s\n",umounts[i],strerror(errno));
-            eprintf("forcing unmount of %s\n", umounts[i]);
-            umount2(umounts[i], MNT_FORCE);
-        }
-    }
-    i=0;
-
-    if (mount(".", "/", NULL, MS_MOVE, NULL) < 0) {
-        eprintf("switchroot: mount failed: %s\n", strerror(errno));
-        close(fd);
-        return 1;
-    }
-
-    if (chroot(".") || chdir("/")) {
-        eprintf("switchroot: chroot() failed: %s\n", strerror(errno));
-        close(fd);
-        return 1;
-    }
-
-    /* release the old "/" */
-    close(fd);
+    init = getKernelArg("init");
+    if (init == NULL)
+        cmdline = getKernelCmdLine();
 
     if (init == NULL) {
-        int j;
-        for (j = 0; initprogs[j] != NULL; j++) {
-            if (!access(initprogs[j], X_OK)) {
-                init = strdup(initprogs[j]);
+        for (i = 0; initprogs[i] != NULL; i++) {
+            if (!access(initprogs[i], X_OK)) {
+                init = strdup(initprogs[i]);
                 break;
             }
         }
     }
+    i = 0;
 
     initargs = (char **)calloc(MAX_INIT_ARGS+1, sizeof (char *));
     if (cmdline && init) {
@@ -1027,6 +1166,7 @@ switchrootCommand(char * cmd, char * end)
         eprintf("WARNING: can't access %s\n", initargs[0]);
     }
     execv(initargs[0], initargs);
+
     eprintf("exec of init (%s) failed!!!: %s\n", initargs[0], strerror(errno));
     return 1;
 }
@@ -1681,7 +1821,9 @@ parse_sysfs_devnum(const char *path, dev_t *dev)
     sprintf(devname, "%s/dev", path);
     fd = open(devname, O_RDONLY);
     if (fd < 0) {
-        // eprintf("open on %s failed: %s\n", devname, strerror(errno));
+#if 0
+        eprintf("open on %s failed: %s\n", devname, strerror(errno));
+#endif
         return -1;
     }
 
@@ -1713,7 +1855,9 @@ sysfs_blkdev_probe(const char *dirname, const char *name)
     struct dirent *dent;
 
     asprintf(&path, "%s/%s", dirname, name);
-    //qprintf("Testing %s for block device.\n", path);
+#if 0
+    qprintf("Testing %s for block device.\n", path);
+#endif
 
     ret = parse_sysfs_devnum(path, &dev);
     if (ret < 0) {
@@ -1773,6 +1917,10 @@ setQuietCommand(char * cmd, char * end)
     quietcmd = getKernelArg("quiet");
     if (quietcmd)
         reallyquiet = 1;
+
+    quietcmd = getKernelArg("noquiet");
+    if (quietcmd)
+        reallyquiet = 0;
 
     /* reallyquiet may be set elsewhere */
     if (reallyquiet)
@@ -1837,7 +1985,9 @@ runStartup(int fd, char *name)
 	    rc = echoCommand(chptr, end);
 	else if (!strncmp(start, "raidautorun", MAX(11, chptr - start)))
 	    rc = raidautorunCommand(chptr, end);
-        else if (!strncmp(start, "switchroot", MAX(10, chptr - start)))
+        else if (!strncmp(start, "nash-setuproot", MAX(14, chptr - start)))
+            rc = setuprootCommand(chptr, end);
+        else if (!strncmp(start, "nash-switchroot", MAX(15, chptr - start)))
             rc = switchrootCommand(chptr, end);
 	else if (!strncmp(start, "mkrootdev", MAX(9, chptr - start)))
 	    rc = mkrootdevCommand(chptr, end);
@@ -1869,6 +2019,8 @@ runStartup(int fd, char *name)
             rc = setQuietCommand(chptr, end);
         else if (!strncmp(start, "resume", MAX(6, chptr-start)))
             rc = resumeCommand(chptr, end);
+        else if (!strncmp(start, "ln", MAX(2, chptr-start)))
+            rc = lnCommand(chptr, end);
 #ifdef DEBUG
         else if (!strncmp(start, "cat", MAX(3, chptr-start)))
             rc = catCommand(chptr, end);
@@ -1906,6 +2058,37 @@ int main(int argc, char **argv) {
         execv(argv[0], argv);
         eprintf("ERROR: exec of udev failed!\n");
         exit(1);
+    }
+    if (!strcmp(name, "setuproot") ||
+            !strcmp(name, "switchroot") ||
+            !strcmp(name, "preswitchroot")) {
+        int i, len = 0;
+        char *start, *end;
+
+        for (i = 1; i < argc; i++)
+            len += strlen(argv[i]) + 1;
+        len += 2;
+
+        start = calloc(len, sizeof (char));
+        for (i = 1; i < argc; i++) {
+            if (i > 1)
+                strcat(start, " ");
+            strcat(start, argv[i]);
+        }
+        strcat(start, "\n");
+
+	end = start + 1;
+	while (*end && (*end != '\n')) end++;
+	/* end points to the \n at the end of the command */
+
+        if (!strcmp(name, "setuproot"))
+            rc = setuprootCommand(start, end);
+        else if (!strcmp(name, "preswitchroot"))
+            rc = 0;
+        else if (!strcmp(name, "switchroot"))
+            rc = switchrootCommand(start, end);
+
+        exit(rc);
     }
 
     testing = (getppid() != 0) && (getppid() != 1);
