@@ -646,9 +646,15 @@ mkdir -p $MNTIMAGE/sys
 mkdir -p $MNTIMAGE/sysroot
 ln -s bin $MNTIMAGE/sbin
 
+if [ -e /etc/fstab.sys ]; then
+    inst /etc/fstab.sys "$MNTIMAGE/etc/fstab.sys"
+fi
 inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
+ln -s /sbin/nash $MNTIMAGE/sbin/setuproot
+ln -s /sbin/nash $MNTIMAGE/sbin/preswitchroot
+ln -s /sbin/nash $MNTIMAGE/sbin/switchroot
 
 if [ -n "$DYNAMIC_DEV" ]; then
     ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
@@ -817,8 +823,15 @@ rootdev=/dev/root
 emit "echo Mounting root filesystem"
 emit "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot"
 
-emit "echo Switching to new root"
-emit "switchroot $DYNAMIC_DEV /sysroot"
+emit "echo Setting up root fs"
+emit "setuproot $DYNAMIC_DEV /sysroot"
+
+emit "echo Running preswitchroot"
+emit "preswitchroot /sysroot"
+
+emit "echo Switching to new root and running init"
+emit "exec switchroot $DYNAMIC_DEV /sysroot"
+
 chmod +x $RCFILE
 
 (cd $MNTIMAGE; find . | cpio --quiet -c -o) >| $IMAGE || exit 1
