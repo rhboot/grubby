@@ -1023,6 +1023,7 @@ setuprootCommand(char *cmd, char *end)
 		start = NULL;
 	    }
 	    endmntent(fp);
+#if 0
 	} else {
 	    qprintf("no fstab.sys, mounting internal defaults\n");
 	    for (; fstab[i].source != NULL; i++) {
@@ -1031,6 +1032,7 @@ setuprootCommand(char *cmd, char *end)
 		    eprintf("setuproot: error mounting %s: %s\n",
 			    fstab[i].source, strerror(errno));
 	    }
+#endif
 	}
     }
 
