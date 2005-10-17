@@ -1057,7 +1057,6 @@ setuprootCommand(char *cmd, char *end)
 		start = NULL;
 	    }
 	    endmntent(fp);
-#if 0
 	} else {
 	    struct {
 		char *source;
@@ -1068,9 +1067,11 @@ setuprootCommand(char *cmd, char *end)
 	    } fstab[] = {
 		{ "/proc", "./proc", "proc", 0, NULL },
 		{ "/sys", "./sys", "sysfs", 0, NULL },
+#if 0
 		{ "/dev/pts", "./dev/pts", "devpts", 0, "gid=5,mode=620" },
 		{ "/dev/shm", "./dev/shm", "tmpfs", 0, NULL },
 		{ "/selinux", "/selinux", "selinuxfs", 0, NULL },
+#endif
 		{ NULL, }
 	    };
             int i = 0;
@@ -1082,7 +1083,6 @@ setuprootCommand(char *cmd, char *end)
 		    eprintf("setuproot: error mounting %s: %s\n",
 			    fstab[i].source, strerror(errno));
 	    }
-#endif
 	}
     }
 
@@ -2143,7 +2143,7 @@ int main(int argc, char **argv) {
     while (argc && **argv == '-') {
 	if (!strcmp(*argv, "--forcequiet")) {
 	    force = 1;
-            quiet = 1;
+	    quiet = 1;
 	    argv++, argc--;
 	    testing = 0;
 	} else if (!strcmp(*argv, "--force")) {
