@@ -134,7 +134,7 @@ eprintf(const char *format, ...)
     return ret;
 }
 
-#define PATH "/usr/bin:/bin:/sbin:/usr/sbin:/"
+#define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
 static char * env[] = {
     "PATH=" PATH,
     "LVM_SUPPRESS_FD_WARNINGS=1",
@@ -2142,7 +2142,12 @@ int main(int argc, char **argv) {
     argv++, argc--;
 
     while (argc && **argv == '-') {
-	if (!strcmp(*argv, "--force")) {
+	if (!strcmp(*argv, "--forcerq")) {
+	    force = 1;
+	    reallyquiet = 1;
+	    argv++, argc--;
+	    testing = 0;
+	} else if (!strcmp(*argv, "--force")) {
 	    force = 1;
 	    argv++, argc--;
 	    testing = 0;
