@@ -2142,9 +2142,9 @@ int main(int argc, char **argv) {
     argv++, argc--;
 
     while (argc && **argv == '-') {
-	if (!strcmp(*argv, "--forcerq")) {
+	if (!strcmp(*argv, "--forcequiet")) {
 	    force = 1;
-	    reallyquiet = 1;
+            quiet = 1;
 	    argv++, argc--;
 	    testing = 0;
 	} else if (!strcmp(*argv, "--force")) {
