@@ -134,13 +134,13 @@ eprintf(const char *format, ...)
     return ret;
 }
 
-#define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
-
+#define PATH "/usr/bin:/bin:/sbin:/usr/sbin:/"
 static char * env[] = {
     "PATH=" PATH,
     "LVM_SUPPRESS_FD_WARNINGS=1",
     NULL
 };
+static char sysPath[] = PATH;
 
 static int
 smartmknod(char * device, mode_t mode, dev_t dev)
@@ -163,6 +163,54 @@ smartmknod(char * device, mode_t mode, dev_t dev)
     }
 
     return mknod(device, mode, dev);
+}
+
+static int
+searchPath(char *bin, char **resolved)
+{
+    char *fullPath = NULL;
+    char *pathStart;
+    char *pathEnd;
+    int rc;
+
+    if (!strchr(bin, '/')) {
+	pathStart = sysPath;
+	while (*pathStart) {
+            char pec;
+	    pathEnd = strchr(pathStart, ':');
+
+	    if (!pathEnd)
+                pathEnd = pathStart + strlen(pathStart);
+
+            pec = *pathEnd;
+            *pathEnd = '\0';
+            
+            rc = asprintf(&fullPath, "%s/%s", pathStart, bin);
+            if (!fullPath) {
+                int errnum = errno;
+                eprintf("error searching path: %s\n", strerror(errnum));
+                return -errnum;
+            }
+
+            *pathEnd = pec;
+	    pathStart = pathEnd;
+	    if (*pathStart)
+                pathStart++;
+
+	    if (!access(fullPath, X_OK)) {
+		*resolved = fullPath;
+                return 0;
+	    }
+            free(fullPath);
+	}
+    }
+
+    if (!access(bin, X_OK)) {
+        *resolved = strdup(bin);
+        if (*resolved)
+            return 0;
+    }
+    return -errno;
 }
 
 static char *
@@ -360,13 +408,36 @@ mountCommand(char * cmd, char * end)
     }
 
     if (!cmd) {
-	eprintf("mount: missing device\n");
+	eprintf("mount: missing device or mountpoint\n");
 	return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &mntPoint))) {
-	eprintf("mount: missing mount point\n");
-	return 1;
+        struct mntent *mnt;
+        FILE *fstab;
+
+        fstab = fopen("/fstab", "r");
+        do {
+            if (!fstab || !(mnt = getmntent(fstab))) {
+	        eprintf("mount: missing mount point\n");
+        	return 1;
+            }
+            if (!strcmp(mnt->mnt_dir, device)) {
+                device = mnt->mnt_fsname;
+                mntPoint = mnt->mnt_dir;
+
+                if (!strcmp(mnt->mnt_type, "bind")) {
+                    flags |= MS_BIND;
+                    fsType = "none";
+                } else
+                    fsType = mnt->mnt_type;
+
+                options = mnt->mnt_opts;
+                break;
+            }
+        } while(1);
+
+        fclose(fstab);
     }
 
     if (!fsType) {
@@ -374,7 +445,7 @@ mountCommand(char * cmd, char * end)
 	return 1;
     }
 
-    if (cmd < end) {
+    if (cmd && cmd < end) {
 	eprintf("mount: unexpected arguments\n");
 	return 1;
     }
@@ -514,37 +585,17 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
     char ** nextArg;
     int pid, wpid;
     int status;
-    char fullPath[255];
-    static const char * sysPath = PATH;
-    const char * pathStart;
-    const char * pathEnd;
     char * stdoutFile = NULL;
-    int stdoutFd = 0;
+    int stdoutFd = 1;
 
     args = (char **)calloc(128, sizeof (char *));
     if (!args)
         return 1;
     nextArg = args;
 
-    if (!strchr(bin, '/')) {
-	pathStart = sysPath;
-	while (*pathStart) {
-	    pathEnd = strchr(pathStart, ':');
-
-	    if (!pathEnd) pathEnd = pathStart + strlen(pathStart);
-
-	    strncpy(fullPath, pathStart, pathEnd - pathStart);
-	    fullPath[pathEnd - pathStart] = '/';
-	    strcpy(fullPath + (pathEnd - pathStart + 1), bin);
-
-	    pathStart = pathEnd;
-	    if (*pathStart) pathStart++;
-
-	    if (!access(fullPath, X_OK)) {
-		bin = fullPath;
-		break;
-	    }
-	}
+    if (access(bin, X_OK)) {
+        eprintf("failed to execute %s: %s\n", bin, strerror(errno));
+        return 1;
     }
 
     *nextArg = strdup(bin);
@@ -591,7 +642,8 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
 	    return errnum;
 	}
 
-	close(stdoutFd);
+	if (stdoutFd != 1)
+		close(stdoutFd);
 
 	for (;;) {
 	    wpid = wait4(-1, &status, 0, NULL);
@@ -608,7 +660,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
                 eprintf("ERROR: %s exited abnormally with value %d (pid %d)\n",
                     args[0], WEXITSTATUS(status), pid);
 #endif
-		return WEXITSTATUS(status);
+                return 1;
 	    }
 	    break;
         }
@@ -737,16 +789,21 @@ lsCommand(char * cmd, char * end)
 #endif
 
 static int
-execCommand(char * cmd, char * end)
+execCommand(char *cmd, char *end)
 {
-    char * bin;
+    char *bin, *fullPath = NULL;
+    int rc;
 
     if (!(cmd = getArg(cmd, end, &bin))) {
 	eprintf("exec: argument expected\n");
 	return 1;
     }
+    rc = searchPath(bin, &fullPath);
+    if (rc < 0)
+        return 1;
 
-    return otherCommand(bin, cmd, end, 0);
+    rc = otherCommand(fullPath, cmd, end, 0);
+    return rc == -ENOENT ? 1 : rc;
 }
 
 static int
@@ -932,32 +989,24 @@ static int
 setuprootCommand(char *cmd, char *end)
 {
     FILE *fp;
-    int moveDev;
     char *new;
 
     qprintf("Setting up new root fs\n");
 
     cmd = getArg(cmd, end, &new);
-    if (cmd && !strcmp(new, "--movedev")) {
-        moveDev = 1;
-        cmd = getArg(cmd, end, &new);
+    if (cmd) {
+        eprintf("setuproot: unexpected arguments\n");
+        return 1;
     }
-
-    if (!cmd) {
-	eprintf("setuproot: new root mount point expected\n");
-	return 1;
-    }
+    new = "/sysroot";
 
     if (chdir(new)) {
 	eprintf("setuproot: chdir(%s) failed: %s\n", new, strerror(errno));
 	return 1;
     }
 
-    if (moveDev) {
-	if (mount("/dev", "./dev", NULL, MS_BIND, NULL) < 0)
-	    eprintf("setuproot: moving /dev failed: %s\n",
-		    strerror(errno));
-    }
+    if (mount("/dev", "./dev", NULL, MS_BIND, NULL) < 0)
+	eprintf("setuproot: moving /dev failed: %s\n", strerror(errno));
 
     if (!getKernelArg("nomnt")) {
 	fp = setmntent("./etc/fstab.sys", "r");
@@ -1055,15 +1104,11 @@ switchrootCommand(char * cmd, char * end)
     int fd, i = 0;
 
     cmd = getArg(cmd, end, &new);
-    if (cmd && !strcmp(new, "--movedev")) {
-        i = 1;
-        cmd = getArg(cmd, end, &new);
-    }
-
-    if (!new) {
-        eprintf("switchroot: error: setuproot failed\n");
+    if (cmd) {
+        eprintf("switchroot: unexpected arguments\n");
         return 1;
     }
+    new = "/sysroot";
 
     /* this has to happen before we unmount /proc */
     init = getKernelArg("init");
@@ -1085,6 +1130,7 @@ switchrootCommand(char * cmd, char * end)
 
     recursiveRemove("/");
 
+    printf("remounting %s\n", new);
     if (mount(new, "/", NULL, MS_MOVE, NULL) < 0) {
         eprintf("switchroot: mount failed: %s\n", strerror(errno));
         close(fd);
@@ -1373,76 +1419,90 @@ resumeCommand(char * cmd, char * end)
 }
 
 static int
-mkrootdevCommand(char * cmd, char * end)
+mkrootdevCommand(char *cmd, char *end)
 {
-    char * path;
-    char *root, * chptr;
-    int devNum = 0;
-    int fd;
-    int i;
-    char *buf;
-    const char real_root_dev[] = "/proc/sys/kernel/real-root-dev";
-
-    if (!(cmd = getArg(cmd, end, &path))) {
-	eprintf("mkrootdev: path expected\n");
-	return 1;
-    }
-
-    if (cmd < end) {
-	eprintf("mkrootdev: unexpected arguments\n");
-	return 1;
-    }
+    char *chptr = NULL, *root;
+    int i, devNum;
+    FILE *fstab;
+    struct mntent mnt = {
+        .mnt_fsname = "/dev/root",
+        .mnt_dir = "/sysroot",
+        .mnt_type = NULL,
+        .mnt_opts = NULL,
+        .mnt_freq = 0,
+        .mnt_passno = 0
+    };
 
     root = getKernelArg("root");
-
     if (root) {
-	chptr = root;
-	while (*chptr && !isspace(*chptr)) chptr++;
-	*chptr = '\0';
+        chptr = root;
+        while (*chptr && !isspace(*chptr))
+            chptr++;
+        *chptr = '\0';
+        chptr = NULL;
     }
 
-    if (root && !access(root, R_OK)) {
-        if (!symlink(root, "/dev/root"))
-            return 0;
+    i = 0;
+    while ((cmd = getArg(cmd, end, &chptr))) {
+        if (!strcmp(chptr, "-t")) {
+            cmd = getArg(cmd, end, &mnt.mnt_type);
+            if (!cmd) {
+                eprintf("mkrootdev: expected fs type\n");
+                return 1;
+            }
+        } else if (!strcmp(chptr, "-o")) {
+            cmd = getArg(cmd, end, &mnt.mnt_opts);
+            if (!cmd) {
+                eprintf("mkrootdev: expected device name\n");
+                return 1;
+            }
+        } else if (root) {
+            if (i) {
+	        eprintf("mkrootdev: unexpected arguments\n");
+                eprintf("cmd: %p end: %p\n", cmd, end);
+                eprintf("cmd: %s\n", cmd);
+	        return 1;
+            }
+            /* if we get here, we got root from the kernel command line,
+               so we don't _really_ care that there wasn't one on the
+               mkrootdev command line. */
+            i++;
+        } else {
+            root = chptr;
+            i++;
+        }
+    }
+    if (!root) {
+        eprintf("mkrootdev: expected device name\n");
+        return 1;
     }
 
-    if ((i = mkpathbyspec(root, path)) != -1)
+    if (!mnt.mnt_type) {
+        eprintf("mkrootdev: expected fs type\n");
+        return 1;
+    }
+    if (!mnt.mnt_opts) {
+        eprintf("mkrootdev: expected fs options\n");
+        return 1;
+    }
+
+    umask(0122);
+    fstab = fopen("/fstab", "w+");
+    if (!fstab) {
+        eprintf("mkrootdev: could not create fstab: %s\n", strerror(errno));
+        return 1;
+    }
+    addmntent(fstab, &mnt);
+    fclose(fstab);
+
+    if ((i = mkpathbyspec(root, "/dev/root")) != -1)
         return i;
 
-    fd = open(real_root_dev, O_RDONLY, 0);
-    if (fd < 0) {
-	eprintf("mkrootdev: failed to open %s: %s\n", real_root_dev,
-                strerror(errno));
-	return 1;
-    }
-
-    i = readFD(fd, &buf);
-    if (i < 0) {
-	eprintf("mkrootdev: failed to read from real-root-dev: %s\n",
-                strerror(errno));
-	close(fd);
-	return 1;
-    }
-
-    close(fd);
-    if (i == 0)
-        buf[i] = '\0';
-    else
-        buf[i - 1] = '\0';
-
-    devNum = atoi(buf);
-    if (devNum < 0) {
-	eprintf("mkrootdev: bad device %s\n", buf);
-	free(buf);
-	return 1;
-    }
-    free(buf);
-
-    if (!devNum && root)
+    if (root)
 	devNum = name_to_dev_t(root);
 
-    if (smartmknod(path, S_IFBLK | 0700, devNum)) {
-	eprintf("mkrootdev: mknod %s 0x%08x failed: %s\n", path, devNum,
+    if (smartmknod("/dev/root", S_IFBLK | 0700, devNum)) {
+	eprintf("mkrootdev: mknod /dev/root 0x%08x failed: %s\n", devNum,
                 strerror(errno));
 	return 1;
     }
@@ -1615,13 +1675,13 @@ doFind(char * dirName, char * name)
 	strcat(strBuf, "/");
 	strcat(strBuf, d->d_name);
 
-	if (!strcmp(d->d_name, name))
-	    printf("%s\n", strBuf);
-
 	if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) {
 	    errno = 0;
 	    continue;
 	}
+
+	if (!name || !strcmp(d->d_name, name))
+	    printf("%s\n", strBuf);
 
 	if (lstat(strBuf, &sb)) {
 	    eprintf("failed to stat %s: %s\n", strBuf, strerror(errno));
@@ -1648,19 +1708,20 @@ static int
 findCommand(char * cmd, char * end)
 {
     char * dir;
-    char * name;
+    char * name = NULL;
 
     cmd = getArg(cmd, end, &dir);
     if (cmd) cmd = getArg(cmd, end, &name);
-    if (cmd && strcmp(name, "-name")) {
-	eprintf("usage: find [path] -name [file]\n");
-	return 1;
-    }
-
-    if (cmd) cmd = getArg(cmd, end, &name);
-    if (!cmd) {
-	eprintf("usage: find [path] -name [file]\n");
-	return 1;
+    if (cmd) {
+	if (strcmp(name, "-name")) {
+	    eprintf("usage: find [path] -name [file]\n");
+	    return 1;
+	}
+    	if (cmd) cmd = getArg(cmd, end, &name);
+	if (!cmd && !name) {
+	    eprintf("usage: find [path] -name [file]\n");
+	    return 1;
+	}
     }
 
     return doFind(dir, name);
@@ -1933,6 +1994,52 @@ setQuietCommand(char * cmd, char * end)
     return 0;
 }
 
+struct commandHandler {
+    char *name;
+    int (*fp)(char *cmd, char *end);
+};
+
+static const struct commandHandler handlers[] = {
+    { "mount", mountCommand },
+    { "losetup", losetupCommand },
+    { "echo", echoCommand },
+    { "raidautorun", raidautorunCommand },
+    { "umount", umountCommand },
+    { "exec", execCommand },
+    { "mkdir", mkdirCommand },
+    { "access", accessCommand },
+    { "find", findCommand },
+    { "findlodev", findlodevCommand },
+    { "showlabels", display_uuid_cache },
+    { "sleep", sleepCommand },
+    { "mknod", mknodCommand },
+    { "mkdmnod", mkDMNodCommand },
+    { "readlink", readlinkCommand },
+    { "setquiet", setQuietCommand },
+    { "ln", lnCommand },
+    { "mkblkdevs", mkblkdevsCommand },
+    { "resume", resumeCommand },
+    { "mkrootdev", mkrootdevCommand },
+    { "setuproot", setuprootCommand },
+    { "switchroot", switchrootCommand },
+#ifdef DEBUG
+    { "cat", catCommand },
+    { "ls", lsCommand },
+#endif
+    { NULL, },
+};
+
+static const struct commandHandler *
+getCommandHandler(const char *name)
+{
+    const struct commandHandler *handler = NULL;
+
+    for (handler = &handlers[0]; handler->name; handler++)
+        if (!strncmp(name, handler->name, strlen(handler->name)))
+            return handler;
+    return handler;
+}
+
 static int
 runStartup(int fd, char *name)
 {
@@ -1941,38 +2048,7 @@ runStartup(int fd, char *name)
     char * start, * end;
     char * chptr;
     int rc;
-    struct {
-        char *name;
-        int (*fp)(char *cmd, char *end);
-    } handlers[] = {
-	{ "mount", mountCommand },
-	{ "losetup", losetupCommand },
-	{ "echo", echoCommand },
-	{ "raidautorun", raidautorunCommand },
-	{ "nash-setuproot", setuprootCommand },
-	{ "nash-switchroot", switchrootCommand },
-	{ "mkrootdev", mkrootdevCommand },
-	{ "umount", umountCommand },
-	{ "exec", execCommand },
-	{ "mkdir", mkdirCommand },
-	{ "access", accessCommand },
-	{ "find", findCommand },
-	{ "findlodev", findlodevCommand },
-	{ "showlabels", display_uuid_cache },
-	{ "mkblkdevs", mkblkdevsCommand },
-	{ "sleep", sleepCommand },
-	{ "mknod", mknodCommand },
-	{ "mkdmnod", mkDMNodCommand },
-	{ "readlink", readlinkCommand },
-	{ "setquiet", setQuietCommand },
-	{ "resume", resumeCommand },
-	{ "ln", lnCommand },
-#ifdef DEBUG
-	{ "cat", catCommand },
-	{ "ls", lsCommand },
-#endif
-	{ NULL, },
-    }, *handler;
+    const struct commandHandler *handler;
 
     i = readFD(fd, &contents);
 
@@ -2013,17 +2089,27 @@ runStartup(int fd, char *name)
 	chptr = start;
 	while (chptr < end && !isspace(*chptr)) chptr++;
 
-        for (handler = &handlers[0]; handler->name; handler++) {
-	    if (!strncmp(start, handler->name, strlen(handler->name))) {
-		rc = (handler->fp)(chptr, end);
-                break;
-            }
-	}
-	if (handler->name == NULL) {
-	    *chptr = '\0';
-	    rc = otherCommand(start, chptr + 1, end, 1);
-	}
+        i = 0;
+        rc = 1;
+        *(chptr++) = '\0';
+        if (strncmp(start, "nash-", 5))  {
+            char *fullPath = NULL;
+            rc = searchPath(start, &fullPath);
+            if (rc >= 0) {
+	        rc = otherCommand(fullPath, chptr, end, 1);
+                free(fullPath);
+            } else
+                i = 1;
+        } else {
+            start += 5;
+            i = 1;
+        }
 
+        if (i == 1) {
+            handler = getCommandHandler(start);
+            if (handler->name != NULL)
+                rc = (handler->fp)(chptr, end);
+        }
 	start = end + 1;
     }
 
@@ -2050,37 +2136,6 @@ int main(int argc, char **argv) {
         execv(argv[0], argv);
         eprintf("ERROR: exec of udev failed!\n");
         exit(1);
-    }
-    if (!strcmp(name, "setuproot") ||
-            !strcmp(name, "switchroot") ||
-            !strcmp(name, "preswitchroot")) {
-        int i, len = 0;
-        char *start, *end;
-
-        for (i = 1; i < argc; i++)
-            len += strlen(argv[i]) + 1;
-        len += 2;
-
-        start = calloc(len, sizeof (char));
-        for (i = 1; i < argc; i++) {
-            if (i > 1)
-                strcat(start, " ");
-            strcat(start, argv[i]);
-        }
-        strcat(start, "\n");
-
-	end = start + 1;
-	while (*end && (*end != '\n')) end++;
-	/* end points to the \n at the end of the command */
-
-        if (!strcmp(name, "setuproot"))
-            rc = setuprootCommand(start, end);
-        else if (!strcmp(name, "preswitchroot"))
-            rc = 0;
-        else if (!strcmp(name, "switchroot"))
-            rc = switchrootCommand(start, end);
-
-        exit(rc);
     }
 
     testing = (getppid() != 0) && (getppid() != 1);

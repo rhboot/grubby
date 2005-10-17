@@ -31,7 +31,17 @@ export MALLOC_PERTURB_=204
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=5.0.4
+VERSION=5.0.5
+
+PROBE="yes"
+MODULES=""
+PREMODS=""
+
+[ -e /etc/sysconfig/mkinitrd ] && . /etc/sysconfig/mkinitrd
+
+CONFMODS="$MODULES"
+MODULES=""
+
 
 compress=1
 allowmissing=""
@@ -39,7 +49,6 @@ target=""
 kernel=""
 force=""
 verbose=""
-MODULES=""
 img_vers=""
 builtins=""
 modulefile=/etc/modules.conf
@@ -49,10 +58,7 @@ IMAGESIZE=8000
 PRESCSIMODS="sd_mod"
 fstab="/etc/fstab"
 
-DYNAMIC_DEV=
-if [ -f /etc/udev/udev.conf ]; then
-    DYNAMIC_DEV="--movedev"
-fi
+vg_list=""
 
 vecho()
 {
@@ -82,9 +88,11 @@ usage () {
     fi
 
     $cmd "usage: `basename $0` [--version] [--help] [-v] [-f] [--preload <module>]"
-    $cmd "       [--omit-scsi-modules] [--omit-raid-modules] [--omit-lvm-modules]"
-    $cmd "       [--with=<module>] [--image-version] [--fstab=<fstab>] [--nocompress]"
-    $cmd "       [--builtin=<module>] <initrd-image> <kernel-version>"
+    $cmd "       [--force-ide-probe] [--force-scsi-probe | --omit-scsi-modules]"
+    $cmd "       [--image-version] [--force-scsi-probe | --omit-raid-modules]"
+    $cmd "       [--with=<module>] [--force-lvm-probe | --omit-lvm-modules]"
+    $cmd "       [--builtin=<module>] "
+    $cmd "       [--fstab=<fstab>] [--nocompress] <initrd-image> <kernel-version>"
     $cmd ""
     $cmd "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)"
 
@@ -111,6 +119,15 @@ moduledep() {
                 /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
                 END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
     [ -n "$deps" ] && vecho ":$deps" || vecho
+}
+
+findone() {
+    echo nash-find "$@" | /sbin/nash --force --quiet \
+	| /bin/awk '{ print $1; exit; }'
+}
+
+findall() {
+    echo nash-find "$@" | /sbin/nash --force --quiet
 }
 
 findmodule() {
@@ -162,22 +179,17 @@ findmodule() {
     fi
 
     for modExt in o.gz o ko ; do
-	if [ -d /lib/modules/$kernel/updates ]; then
-	    fmPath=`(cd /lib/modules/$kernel/updates; echo find . -name $modName.$modExt -type f | /sbin/nash --quiet) | /bin/awk {'print $1; exit;'}`
-	fi
-
-	if [ -f /lib/modules/$kernel/updates/$fmPath ]; then
-	    fmPath=updates/$fmPath
-	    break
-	fi
-
-	fmPath=`(cd /lib/modules/$kernel; echo find . -name $modName.$modExt -type f | /sbin/nash --quiet) | /bin/awk {'print $1; exit;'}`
-	if [ -f /lib/modules/$kernel/$fmPath ]; then
-	    break
-	fi
+	for modDir in /lib/modules/$kernel/updates /lib/modules/$kernel ; do
+	    if [ -d $modDir ]; then
+		fmPath=$(findone $modDir -name $modName.$modExt)
+	        if [ -f "$fmPath" ]; then
+		    break 2
+	        fi
+	    fi
+        done
     done
 
-    if [ ! -f /lib/modules/$kernel/$fmPath ]; then
+    if [ ! -f $fmPath ]; then
 	if [ -n "$skiperrors" ]; then
 	    return
 	fi
@@ -212,7 +224,11 @@ inst() {
 }
 
 readlink() {
-    echo readlink "$1" | /sbin/nash --quiet
+    echo nash-readlink "$1" | /sbin/nash --force --quiet
+}
+
+access() {
+    echo nash-access -w $t | /sbin/nash --force --quiet
 }
 
 findstoragedriver () {
@@ -228,7 +244,7 @@ findstoragedriver () {
             continue
         fi
         vecho "Looking for driver for device $device"
-        sysfs=$(find /sys/block -name $device -type d)
+        sysfs=$(findone /sys/block -name $device -type d)
         [ -z "$sysfs" ] && return
         pushd $sysfs >/dev/null 2>&1
         while [ ! -L device ]; do
@@ -370,21 +386,30 @@ while [ $# -gt 0 ]; do
 	    fi
 	    PREMODS="$PREMODS $modname"
 	    ;;
+	--force-scsi-probe)
+	    forcescsi=1
+	    ;;
 	--omit-scsi-modules)
 	    PRESCSIMODS=""
-	    noscsi=1;
+	    noscsi=1
+	    ;;
+	--force-raid-probe)
+	    forceraid=1
 	    ;;
 	--omit-raid-modules)
-	    noraid=1;
+	    noraid=1
+	    ;;
+	--force-lvm-probe)
+	    forcelvm=1
 	    ;;
 	--omit-lvm-modules)
 	    nolvm=1
 	    ;;
+        --force-ide-probe)
+            forceide=1
+            ;;
 	--image-version)
 	    img_vers=yes
-	    ;;
-	--noudev)
-	    DYNAMIC_DEV=
 	    ;;
 	--allow-missing)
 	    allowmissing=yes
@@ -422,6 +447,21 @@ if [ -z "$force" -a -f $target ]; then
     exit 1
 fi
 
+if [ -n "$forcescsi" -a -n "$noscsi" ]; then
+    error "Can't both force scsi probe and omit scsi modules"
+    exit 1
+fi
+
+if [ -n "$forceraid" -a -n "$noraid" ]; then
+    error "Can't both force raid probe and omit raid modules"
+    exit 1
+fi
+
+if [ -n "$forcelvm" -a -n "$nolvm" ]; then
+    error "Can't both force LVM probe and omit LVM modules"
+    exit 1
+fi
+
 if [ ! -d /lib/modules/$kernel ]; then
     error 'No modules available for kernel "'${kernel}'".'
     exit 1
@@ -439,7 +479,7 @@ modulefile=/etc/modprobe.conf
 TMPDIR=""
 for t in /tmp /var/tmp /root ${PWD}; do
     if [ ! -d $t ]; then continue; fi
-    if ! echo access -w $t | /sbin/nash --quiet; then continue; fi
+    if ! access -w $t ; then continue; fi
 
     fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
     if [ "$fs" != "tmpfs" ]; then
@@ -462,7 +502,7 @@ for n in $PREMODS; do
 done
 
 needusb=""
-if [ -n "$withusb" ]; then
+if [ -n "$withusb" -a "x$PROBE" == "xyes" ]; then
     # If / or /boot is on a USB device include the driver. With root by
     # label we could still get some odd behaviors
     for fs in / /boot ; do
@@ -480,7 +520,7 @@ if [ -n "$withusb" ]; then
     done
 fi
 
-if [ -n "$needusb" ]; then
+if [ -n "$needusb" -a "x$PROBE" == "xyes" ]; then
     drivers=$(awk '/^alias[[:space:]]+usb-controller[0-9]* / { print $3}' < $modulefile)
     if [ -n "$drivers" ]; then
 	for driver in $drivers; do
@@ -492,7 +532,7 @@ if [ -n "$needusb" ]; then
     fi
 fi
 
-if [ -z "$noscsi" ]; then
+if [ -n "$forcescsi" -o -z "$noscsi" -a "x$PROBE" == "xyes" ]; then
     if [ ! -f $modulefile ]; then
         modulefile=/etc/conf.modules
     fi
@@ -516,100 +556,106 @@ fi
 
 # If we have ide devices and module ide, do the right thing
 ide=/proc/ide/ide*
-if [ -n "$ide" ]; then
+if [ -n "$forceide" -o -n "$ide" -a "x$PROBE" == "xyes" ]; then
     findmodule -ide-disk
 fi
 
-# If we use LVM, include lvm-mod
-if [ -z "$nolvm" ]; then
-    if [ -f /proc/lvm/global  ]; then
-        if  grep -q '^VG:' /proc/lvm/global ; then
-	    findmodule -dm-mod
-        fi
-    fi
-
-    if [ -x /sbin/dmsetup -a -e /dev/mapper/control ]; then
-	dmout=$(/sbin/dmsetup ls 2>/dev/null)
-	if [ "$dmout" != "No devices found" -a "$dmout" != "" ]; then
-	    findmodule -dm-mod
-	fi
-    fi
-fi
-
 # If we have dasd devices, include the necessary modules (S/390)
-if [ -d /proc/dasd ]; then
+if [ "x$PROBE" == "xyes" -a -d /proc/dasd ]; then
     findmodule -dasd_mod
     findmodule -dasd_eckd_mod
     findmodule -dasd_fba_mod
 fi
 
-# check to see if we need to set up a loopback filesystem
-rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
-# check if it's root by label
-if echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
-    majmin=$(stat -c "%t:%T" /dev/root)
-    if [ -n "$majmin" ]; then
-        dev=$(find /sys/block -name dev | while read device ; do \
-	      echo "$majmin" | cmp -s $device && echo $device ; done \
-	      | sed -e 's,.*/\([^/]\+\)/dev,\1,' )
-	if [ -n "$dev" ]; then
-            vecho "Found root device $dev for $rootdev"
+if [ "x$PROBE" == "xyes" ]; then
+    # check to see if we need to set up a loopback filesystem
+    rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
+    # check if it's root by label
+    if echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
+        majmin=$(stat -c "%t:%T" /dev/root)
+        if [ -n "$majmin" ]; then
+            dev=$(findall /sys/block -name dev | while read device ; do \
+	          echo "$majmin" | cmp -s $device && echo $device ; done \
+	          | sed -e 's,.*/\([^/]\+\)/dev,\1,' )
+	    if [ -n "$dev" ]; then
+                vecho "Found root device $dev for $rootdev"
                 rootdev=$dev
+	    fi
+        fi
+    fi
+    if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
+        key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
+        if ! grep "$key" $fstab >> /dev/null; then
+	    error "The root filesystem is on a $rootdev, but there is no magic entry in $fstab"
+	    error "for this device. Consult the mkinitrd man page for more information"
+	    error "loopback root."
+	    exit 1
+        fi
+
+        line=$(grep "$key" $fstab)
+        loopDev=$(echo $line | awk '{print $3}')
+        loopFs=$(echo $line | awk '{print $4}')
+        loopFile=$(echo $line | awk '{print $5}')
+
+        basicmodules="$basicmodules -loop"
+        if [ "$loopFs" = "vfat" -o "$loopFs" = "msdos" ]; then
+	    basicmodules="$basicmodules -fat"
+        fi
+        basicmodules="$basicmodules -${loopFs}"
+    # check if the root fs is on a logical volume
+    # this check must be last
+    else
+        handlelvordev $rootdev
+    fi
+
+    rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
+    rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab\
+               | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
+                     -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
+
+    # in case the root filesystem is modular
+    findmodule -${rootfs}
+
+    # find the first swap dev which would get used for swsusp
+    swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; }}' $fstab \
+                | head -n 1)
+    if ! echo $swsuspdev | cut -c1-6 | grep -q "LABEL=" ; then
+        handlelvordev $swsupdev
+    fi
+fi
+
+# If we use LVM or dm-based raid, include dm-mod
+# XXX: dm not really supported yet.
+testdm=""
+[ -n "$vg_list" ] && testdm="yes"
+[ -n "$forceraid" -o -n "$forcelvm" ] && testdm="yes"
+[ "x$PROBE" == "xyes" -a \
+  -n "$(test -z \"$nolvm\" -o -z \"$noraid\")" ] && testdm="yes"
+
+if [ -n "$testdm" ]; then
+    if [ -x /sbin/dmsetup -a -e /dev/mapper/control ]; then
+	dmout=$(/sbin/dmsetup ls 2>/dev/null)
+	if [ "$dmout" != "No devices found" -a "$dmout" != "" ]; then
+	    findmodule -dm-mod
+
+            # DM requires all of these to be there in case someone used the
+            # feature.  broken.  (#132001)
+            findmodule -dm-mirror
+            findmodule -dm-zero
+            findmodule -dm-snapshot
 	fi
     fi
-fi
-if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
-    key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
-    if ! grep "$key" $fstab >> /dev/null; then
-	error "The root filesystem is on a $rootdev, but there is no magic entry in $fstab"
-	error "for this device. Consult the mkinitrd man page for more information"
-	error "loopback root."
-	exit 1
-    fi
-
-    line=$(grep "$key" $fstab)
-    loopDev=$(echo $line | awk '{print $3}')
-    loopFs=$(echo $line | awk '{print $4}')
-    loopFile=$(echo $line | awk '{print $5}')
-
-    basicmodules="$basicmodules -loop"
-    if [ "$loopFs" = "vfat" -o "$loopFs" = "msdos" ]; then
-	basicmodules="$basicmodules -fat"
-    fi
-    basicmodules="$basicmodules -${loopFs}"
-# check if the root fs is on a logical volume
-# this check must be last
-else
-    handlelvordev $rootdev
-fi
-
-rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
-rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab \
-    | sed -e 's/\(^rw,\|rw,$\)//' -e 's/,rw,/,/' -e 's/^rw$/ro/')
-
-# in case the root filesystem is modular
-findmodule -${rootfs}
-
-# find the first swap dev which would get used for swsusp
-swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; }}' $fstab | head -n 1)
-if ! echo $swsuspdev | cut -c1-6 | grep -q "LABEL=" ; then
-    handlelvordev $swsupdev
-fi
-
-if [ -n "$vg_list" ]; then
-    findmodule -dm-mod
-    # DM requires all of these to be there in case someone used the
-    # feature.  broken.  (#132001)
-    findmodule -dm-mirror
-    findmodule -dm-zero
-    findmodule -dm-snapshot
 fi
 
 for n in $basicmodules; do
     findmodule $n
 done
 
-vecho "Using modules: $MODULES"
+for n in $CONFMODS; do
+    findmodule $n
+done
+
+vecho "Using modules:$MODULES"
 
 MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
 IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
@@ -652,19 +698,13 @@ fi
 inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
-ln -s /sbin/nash $MNTIMAGE/sbin/setuproot
-ln -s /sbin/nash $MNTIMAGE/sbin/preswitchroot
-ln -s /sbin/nash $MNTIMAGE/sbin/switchroot
-
-if [ -n "$DYNAMIC_DEV" ]; then
-    ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
-fi
+ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
 
 for MODULE in $MODULES; do
     if [ -x /usr/bin/strip ]; then
-	/usr/bin/strip -g $verbose /lib/modules/$kernel/$MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
+	/usr/bin/strip -g $verbose $MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
     else
-	cp $verbose -a /lib/modules/$kernel/$MODULE $MNTIMAGE/lib
+	cp $verbose -a $MODULE $MNTIMAGE/lib
     fi
 done
 
@@ -705,10 +745,6 @@ setquiet
 echo Mounting proc filesystem
 echo Mounting sysfs filesystem
 mount -t sysfs /sys /sys
-EOF
-
-if [ -n "$DYNAMIC_DEV" ]; then
-    cemit <<EOF
 echo Creating /dev
 mount -o mode=0755 -t tmpfs /dev /dev
 mkdir /dev/pts
@@ -724,23 +760,22 @@ mknod /dev/tty c 5 0
 mknod /dev/zero c 1 5
 EOF
 
-    # XXX really we need to openvt too, in case someting changes the
-    # color palette and then changes vts on fbcon before gettys start.
-    # (yay, fbcon bugs!)
-    for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 ; do
-        emit "mknod /dev/tty$i c 4 $i"
-    done
+# XXX really we need to openvt too, in case someting changes the
+# color palette and then changes vts on fbcon before gettys start.
+# (yay, fbcon bugs!)
+for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 ; do
+    emit "mknod /dev/tty$i c 4 $i"
+done
 
-    for i in 0 1 2 3 ; do
-        emit "mknod /dev/ttyS$i c 4 $(($i + 64))"
-    done
+for i in 0 1 2 3 ; do
+    emit "mknod /dev/ttyS$i c 4 $(($i + 64))"
+done
 
-    emit "echo Setting up hotplug."
-    emit "echo -n /sbin/hotplug > /proc/sys/kernel/hotplug"
+emit "echo Setting up hotplug."
+emit "echo -n /sbin/hotplug > /proc/sys/kernel/hotplug"
 
-    emit "echo Creating block device nodes."
-    emit "mkblkdevs"
-fi
+emit "echo Creating block device nodes."
+emit "mkblkdevs"
 
 for MODULE in $MODULES; do
     text=""
@@ -784,9 +819,7 @@ fi
 # HACK: module loading + device creation isn't necessarily synchronous...
 # this will make sure that we have all of our devices before trying
 # things like RAID or LVM
-if [ -n "$DYNAMIC_DEV" ]; then
-    emit "mkblkdevs"
-fi
+emit "mkblkdevs"
 
 if [ -n "$raiddevices" ]; then
     for dev in $raiddevices; do
@@ -817,24 +850,22 @@ if [ -z "$noresume" ]; then
 fi
 
 emit "echo Creating root device."
-emit "mkrootdev /dev/root"
+# mkrootdev does "echo /dev/root /sysroot ext3 defaults,ro 0 0 >/fstab"
+emit "mkrootdev -t $rootfs -o $rootopts $rootdev"
 rootdev=/dev/root
 
-emit "echo Mounting root filesystem"
-emit "mount -o $rootopts --ro -t $rootfs $rootdev /sysroot"
+emit "echo Mounting root filesystem."
+emit "mount /sysroot"
 
-emit "echo Setting up root fs"
-emit "setuproot $DYNAMIC_DEV /sysroot"
+emit "echo Setting up other filesystems."
+emit "setuproot"
 
-emit "echo Running preswitchroot"
-emit "preswitchroot /sysroot"
-
-emit "echo Switching to new root and running init"
-emit "exec switchroot $DYNAMIC_DEV /sysroot"
+emit "echo Switching to new root and running init."
+emit "switchroot"
 
 chmod +x $RCFILE
 
-(cd $MNTIMAGE; find . | cpio --quiet -c -o) >| $IMAGE || exit 1
+(cd $MNTIMAGE; findall . | cpio --quiet -c -o) >| $IMAGE || exit 1
 
 if [ -n "$compress" ]; then
     gzip -9 < $IMAGE >| $target || rc=1
