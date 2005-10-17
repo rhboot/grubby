@@ -57,6 +57,19 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Oct 17 2005 Peter Jones <pjones@redhat.com> - 5.0.5-1
+- make PROBE, MODULES, and PREMODS load defaults from a config file
+- get rid of support for not using a dynamic /dev
+- add options to force device probes (for when PROBE is "no")
+- consolidate some duplicate code paths
+- make nash's otherCommand check PATH first and use what it finds there for
+  any commands it needs to run, unless the command starts with "nash-",
+  in which case the internal version is used unconditionally
+- remove the symlink hack for setuproot/preswitchroot/switchroot
+- wrap all the nash commands in mkinitrd with shell functions and use the
+  "nash-" varient.
+- rework root fs creation so Jeremy can use the otherCommand feature
+
 * Fri Oct  7 2005 Peter Jones <pjones@redhat.com> - 5.0.4-1
 - split switchroot into setuproot and switchroot, with presetuproot in
   between
