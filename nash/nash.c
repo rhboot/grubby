@@ -1130,7 +1130,6 @@ switchrootCommand(char * cmd, char * end)
 
     recursiveRemove("/");
 
-    printf("remounting %s\n", new);
     if (mount(new, "/", NULL, MS_MOVE, NULL) < 0) {
         eprintf("switchroot: mount failed: %s\n", strerror(errno));
         close(fd);
