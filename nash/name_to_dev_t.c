@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #include "name_to_dev_t.h"
 
@@ -18,6 +19,7 @@ try_name(char *name, int part)
 	int len;
 	int fd;
 	unsigned int maj, min;
+	struct stat sb;
 
 	/* read device number from .../dev */
 
@@ -58,6 +60,11 @@ try_name(char *name, int part)
 	if (part < range)
 		return res + part;
 fail:
+	sprintf(path, "/dev/%s", name);
+	if (!stat(path, &sb)) {
+		if (S_ISBLK(sb.st_mode))
+			return sb.st_rdev;
+	}
 	return 0;
 }
 
@@ -115,6 +122,11 @@ name_to_dev_t(char *name)
 	if (strcmp(name, "nfs") == 0)
 		return makedev(0, 255);
 #endif
+	if (strchr(name, '/')) {
+		res = try_name(name, 1);
+		if (res)
+			return res;
+	}
 
 	if (strlen(name) > 31)
 		return 0;
