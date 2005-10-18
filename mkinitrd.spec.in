@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Oct 18 2005 <pjones@redhat.com> - 5.0.6-1
+- make lvm work again
+
 * Mon Oct 17 2005 Peter Jones <pjones@redhat.com> - 5.0.5-1
 - make PROBE, MODULES, and PREMODS load defaults from a config file
 - get rid of support for not using a dynamic /dev
