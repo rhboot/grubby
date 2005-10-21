@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Oct 21 2005 Jeremy Katz <katzj@redhat.com> - 5.0.7-1
+- fix new-kernel-pkg --multiboot=
+
 * Tue Oct 18 2005 <pjones@redhat.com> - 5.0.6-1
 - make lvm work again
 
