@@ -1434,10 +1434,14 @@ mkrootdevCommand(char *cmd, char *end)
 
     root = getKernelArg("root");
     if (root) {
+        char c;
         chptr = root;
         while (*chptr && !isspace(*chptr))
             chptr++;
+        c = *chptr;
         *chptr = '\0';
+        root = strdupa(root);
+        *chptr = c;
         chptr = NULL;
     }
 
