@@ -57,6 +57,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Oct 21 2005 Peter Jones <pjones@redhat.com> - 5.0.8-1
+- don't clobber cmdline in mkrootdev (fixes runlevel selection)
+
 * Fri Oct 21 2005 Jeremy Katz <katzj@redhat.com> - 5.0.7-1
 - fix new-kernel-pkg --multiboot=
 
