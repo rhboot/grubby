@@ -274,7 +274,7 @@ while [ $# -gt 0 ]; do
 
 	--multiboot*)
 	    if echo $1 |grep '=' >/dev/null; then
-		mbkernel=`echo $1 | sed's/^--multiboot=//'`
+		mbkernel=`echo $1 | sed 's/^--multiboot=//'`
 	    else
 		# can't really support having an optional second arg here
 		# sorry!
