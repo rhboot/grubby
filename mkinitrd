@@ -32,7 +32,7 @@ export MALLOC_PERTURB_=204
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=5.0.8
+VERSION=5.0.9
 
 PROBE="yes"
 MODULES=""
