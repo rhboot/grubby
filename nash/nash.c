@@ -53,6 +53,7 @@
 
 #include "name_to_dev_t.h"
 #include "mount_by_label.h"
+#include "dm.h"
 
 /* Need to tell loop.h what the actual dev_t type is. */
 #undef dev_t
@@ -99,10 +100,71 @@
 
 static int testing = 0, quiet = 0, reallyquiet = 0;
 
+#if 0 /* not just yet */
+static int qprintf(const char *format, ...)
+    __attribute__((format(printf, 1, 2)))
+    __attribute__((deprecated));
+static int eprintf(const char *format, ...)
+    __attribute__((format(printf, 1, 2)))
+    __attribute__((deprecated));
+#else
 static int qprintf(const char *format, ...)
     __attribute__((format(printf, 1, 2)));
 static int eprintf(const char *format, ...)
     __attribute__((format(printf, 1, 2)));
+#endif
+
+int nashLoggerV(const nash_log_level level, const char *format, va_list ap)
+    __attribute__((format(printf, 2, 0)));
+#if 0 /* currently in dm.h */
+int nashLogger(const nash_log_level level, const char *format, ...)
+    __attribute__((format(printf, 2, 3)));
+#endif
+
+int 
+nashLoggerV(const nash_log_level level, const char *format, va_list ap)
+{
+    FILE *output;
+    va_list apc;
+    int ret;
+
+    switch (level) {
+        case NOTICE:
+            output = stdout;
+            if (quiet)
+                return 0;
+            break;
+        case WARNING:
+            output = stderr;
+            if (quiet)
+                return 0;
+            break;
+        case ERROR:
+        default:
+            output = stderr;
+            break;
+    }
+
+    va_copy(apc, ap);
+    ret = vfprintf(output, format, apc);
+    va_end(apc);
+
+    fflush(output);
+    return ret;
+}
+
+int
+nashLogger(const nash_log_level level, const char *format, ...)
+{
+    va_list ap;
+    int ret;
+
+    va_start(ap, format);
+    ret = nashLoggerV(level, format, ap);
+    va_end(ap);
+
+    return ret;
+}
 
 static int
 qprintf(const char *format, ...)
@@ -110,14 +172,10 @@ qprintf(const char *format, ...)
     va_list ap;
     int ret;
 
-    if (quiet)
-        return 0;
-
     va_start(ap, format);
-    ret = vprintf(format, ap);
+    ret = nashLoggerV(NOTICE, format, ap);
     va_end(ap);
 
-    fflush(stdout);
     return ret;
 }
 
@@ -128,7 +186,7 @@ eprintf(const char *format, ...)
     int ret;
 
     va_start(ap, format);
-    ret = vfprintf(stderr, format, ap);
+    ret = nashLoggerV(ERROR, format, ap);
     va_end(ap);
 
     return ret;
@@ -1849,6 +1907,79 @@ getDevNumFromProc(char * file, char * device)
 }
 
 static int
+dmCommand(char *cmd, char *end)
+{
+    char *action = NULL;
+    char *name = NULL;
+
+    cmd = getArg(cmd, end, &action);
+    if (!cmd)
+        goto usage;
+
+    cmd = getArg(cmd, end, &name);
+    if (!cmd)
+        goto usage;
+
+    if (!strcmp(action, "create")) {
+        long long start, length;
+        char *type = NULL, *params = NULL;
+        char *c = NULL;
+
+        cmd = getArg(cmd, end, &params);
+        if (!cmd)
+            goto usage;
+        errno = 0;
+        start = strtoll(params, NULL, 0);
+        if (errno)
+            goto usage;
+
+        cmd = getArg(cmd, end, &params);
+        if (!cmd)
+            goto usage;
+        errno = 0;
+        length = strtoll(params, NULL, 0);
+        if (errno)
+            goto usage;
+
+        cmd = getArg(cmd, end, &type);
+        if (!cmd)
+            goto usage;
+
+        params = cmd;
+        c = strchr(params, '\n');
+        if (c)
+            *c = '\0';
+        if (nashDmCreate(name, start, length, type, params))
+            return 0;
+        if (c)
+            *c = '\n';
+        return 1;
+    } else if (!strcmp(action, "remove")) {
+        if (nashDmRemove(name))
+            return 0;
+        return 1;
+    } else if (!strcmp(action, "partadd")) {
+        if (nashDmCreatePartitions(name))
+            return 0;
+        return 1;
+#if 0 /* not yet */
+    } else if (!strcmp(action, "partdel")) {
+        if (nashDmRemovePartitions(name))
+            return 0;
+        return 1;
+#endif
+    }
+usage:
+    eprintf("usage: dm create name start length type PARAMS...\n");
+    eprintf("       dm remove name\n");
+    eprintf("       dm partadd path\n");
+#if 0 /* not yet */
+    eprintf("       dm partdel path\n");
+#endif
+    return 1;
+}
+
+static int
 mkDMNodCommand(char * cmd, char * end)
 {
     int major = getDevNumFromProc("/proc/devices", "misc");
@@ -2007,6 +2138,7 @@ static const struct commandHandler handlers[] = {
 #ifdef DEBUG
     { "cat", catCommand },
 #endif
+    { "dm", dmCommand },
     { "echo", echoCommand },
     { "exec", execCommand },
     { "find", findCommand },
@@ -2067,8 +2199,11 @@ runStartup(int fd, char *name)
     while (*start) {
 	while (isspace(*start) && *start && (*start != '\n')) start++;
 
-	if (*start == '#')
+	if (*start == '#') {
 	    while (*start && (*start != '\n')) start++;
+	    if (*start == '\n')
+		start++;
+	}
 
 	if (*start == '\n') {
 	    start++;
