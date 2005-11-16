@@ -1,18 +1,21 @@
-CFLAGS=-Wall -Werror -DVERSION=\"$(VERSION)\" -g  -D_FORTIFY_SOURCE=2
+CFLAGS=-Wall -Werror -DVERSION=\"$(VERSION)\" -g -D_FORTIFY_SOURCE=2
+
 VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
 
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
 
-STATIC=-static
+LIBS=-ldevmapper -lselinux -lsepol -lparted -luuid
+
+LDFLAGS=$(CFLAGS) -static
 
 mandir=usr/share/man
 
-nash: nash.o mount_by_label.o name_to_dev_t.o
-	$(CC) $(STATIC) -g $(LDFLAGS) -o $@ $^
+nash: nash.o mount_by_label.o name_to_dev_t.o dm.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 clean:
-	rm -f nash $(MINILIBC) *.o
+	rm -f nash $(MINILIBC) *.o *.a
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
