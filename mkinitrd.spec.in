@@ -62,7 +62,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-% Thu Nov 17 2005 Peter Jones <pjones@redhat.com> - 5.0.10-1
+* Thu Nov 17 2005 Peter Jones <pjones@redhat.com> - 5.0.10-1
 - don't set up dmraids that aren't active in the initrd
 
 * Wed Nov 16 2005 Peter Jones <pjones@redhat.com> - 5.0.9-1
