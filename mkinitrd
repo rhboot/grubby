@@ -651,7 +651,7 @@ if [ -n "$testdm" ]; then
 	fi
     fi
     if [ -x /sbin/dmraid -a -z "$nodmraid" ]; then
-        for raid in $(/sbin/dmraid -s -craidname) ; do
+        for raid in $(/sbin/dmraid -s -craidname | grep -vi "no raid disks" 2>/dev/null ) ; do
             if /sbin/dmsetup table $raid >/dev/null 2>&1 ;then
                 DMRAIDS="$DMRAIDS $raid"
             fi
