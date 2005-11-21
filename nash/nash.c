@@ -51,6 +51,7 @@
 
 #include <asm/unistd.h>
 
+#include "nash.h"
 #include "name_to_dev_t.h"
 #include "mount_by_label.h"
 #include "dm.h"
@@ -199,6 +200,94 @@ static char * env[] = {
     NULL
 };
 static char sysPath[] = PATH;
+
+static int
+makeFdCoe(int fd)
+{
+    int rc;
+    long flags;
+
+    rc = fcntl(fd, F_GETFD, &flags);
+    if (rc < 0)
+        return rc;
+
+    flags |= FD_CLOEXEC;
+
+    rc = fcntl(fd, F_SETFD, &flags);
+    return rc;
+}
+
+int
+coeOpen(const char *path, int flags, ...)
+{
+    int fd, rc, mode = 0;
+    long errnum;
+
+    if (flags & O_CREAT) {
+        va_list arg;
+        va_start(arg, flags);
+        mode = va_arg(arg, int);
+        va_end(arg);
+    }
+
+    fd = open(path, flags);
+    if (fd < 0)
+        return fd;
+
+    rc = makeFdCoe(fd);
+    if (rc < 0) {
+        errnum = errno;
+        close(fd);
+        errno = errnum;
+        return rc;
+    }
+
+    return fd;
+}
+
+FILE *
+coeFopen(const char *path, const char *mode)
+{
+    FILE *f;
+    int rc;
+    long errnum;
+
+    f = fopen(path, mode);
+    if (!f)
+        return f;
+
+    rc = makeFdCoe(fileno(f));
+    if (rc < 0) {
+        errnum = errno;
+        fclose(f);
+        errno = errnum;
+        return NULL;
+    }
+
+    return f;
+}
+
+DIR *
+coeOpendir(const char *name)
+{
+    DIR *d;
+    int rc;
+    long errnum;
+
+    d = opendir(name);
+    if (!d)
+        return d;
+
+    rc = makeFdCoe(dirfd(d));
+    if (rc < 0) {
+        errnum = errno;
+        closedir(d);
+        errno = errnum;
+        return NULL;
+    }
+
+    return d;
+}
 
 static int
 smartmknod(char * device, mode_t mode, dev_t dev)
@@ -371,7 +460,7 @@ getKernelCmdLine(void)
     if (buf)
         return buf;
 
-    fd = open("/proc/cmdline", O_RDONLY, 0);
+    fd = coeOpen("/proc/cmdline", O_RDONLY);
     if (fd < 0) {
 	eprintf("getKernelCmdLine: failed to open /proc/cmdline: %s\n",
                 strerror(errno));
@@ -474,11 +563,16 @@ mountCommand(char * cmd, char * end)
         struct mntent *mnt;
         FILE *fstab;
 
-        fstab = fopen("/fstab", "r");
+        fstab = coeFopen("/fstab", "r");
+        if (!fstab) {
+	    eprintf("mount: missing mount point\n");
+            return 1;
+        }
         do {
-            if (!fstab || !(mnt = getmntent(fstab))) {
+            if (!(mnt = getmntent(fstab))) {
 	        eprintf("mount: missing mount point\n");
-        	return 1;
+                fclose(fstab);
+                return 1;
             }
             if (!strcmp(mnt->mnt_dir, device)) {
                 device = mnt->mnt_fsname;
@@ -772,7 +866,7 @@ static int lsdir(char *thedir, char * prefix)
     struct stat sb;
     char * fn;
 
-    if (!(dir = opendir(thedir))) {
+    if (!(dir = coeOpendir(thedir))) {
         eprintf("error opening %s: %s\n", thedir, strerror(errno));
         return 1;
     }
@@ -819,7 +913,7 @@ catCommand(char * cmd, char * end)
 	return 1;
     }
 
-    if ((fd = open(file, O_RDONLY)) < 0) {
+    if ((fd = coeOpen(file, O_RDONLY)) < 0) {
         eprintf("cat: error opening %s: %s\n", file, strerror(errno));
         return 1;
     }
@@ -891,13 +985,13 @@ losetupCommand(char * cmd, char * end)
     if (testing) {
 	printf("losetup '%s' '%s'\n", device, file);
     } else {
-	dev = open(device, O_RDWR, 0);
+	dev = coeOpen(device, O_RDWR);
 	if (dev < 0) {
 	    eprintf("losetup: failed to open %s: %s\n", device,strerror(errno));
 	    return 1;
 	}
 
-	fd = open(file, O_RDWR, 0);
+	fd = coeOpen(file, O_RDWR);
 	if (fd < 0) {
 	    eprintf("losetup: failed to open %s: %s\n", file, strerror(errno));
 	    close(dev);
@@ -959,13 +1053,13 @@ raidautorunCommand(char * cmd, char * end)
         }
     }
 
-    fd = open(device, O_RDWR, 0);
+    fd = coeOpen(device, O_RDWR);
     if (fd < 0) {
 	eprintf("raidautorun: failed to open %s: %s\n", device,strerror(errno));
 	return 1;
     }
 
-    if (ioctl(fd, RAID_AUTORUN, 0)) {
+    if (ioctl(fd, RAID_AUTORUN)) {
 	eprintf("raidautorun: RAID_AUTORUN failed: %s\n", strerror(errno));
 	close(fd);
 	return 1;
@@ -984,13 +1078,14 @@ recursiveRemove(char * dirName)
     struct dirent * d;
     char * strBuf = alloca(strlen(dirName) + 1024);
 
-    if (!(dir = opendir(dirName))) {
+    if (!(dir = coeOpendir(dirName))) {
 	eprintf("error opening %s: %s\n", dirName, strerror(errno));
 	return 0;
     }
 
     if (fstat(dirfd(dir),&rb)) {
 	eprintf("unable to stat %s: %s\n", dirName, strerror(errno));
+        closedir(dir);
 	return 0;
     }
 
@@ -1173,7 +1268,7 @@ switchrootCommand(char * cmd, char * end)
     if (init == NULL)
         cmdline = getKernelCmdLine();
 
-    fd = open("/", O_RDONLY);
+    fd = coeOpen("/", O_RDONLY);
     for (; umounts[i] != NULL; i++) {
         qprintf("unmounting old %s\n", umounts[i]);
         if (umount2(umounts[i], MNT_DETACH) < 0) {
@@ -1203,7 +1298,7 @@ switchrootCommand(char * cmd, char * end)
     /* release the old "/" */
     close(fd);
 
-    if ((fd = open("/dev/console", O_RDWR)) < 0) {
+    if ((fd = coeOpen("/dev/console", O_RDWR)) < 0) {
         eprintf("ERROR opening /dev/console: %s\n", strerror(errno));
         eprintf("Trying to use fd 0 instead.\n");
         fd = dup2(0, 3);
@@ -1314,7 +1409,7 @@ echoCommand(char * cmd, char * end)
     length += num + 1;
 
     if ((nextArg - args >= 2) && !strcmp(*(nextArg - 2), ">")) {
-	outFd = open(*(nextArg - 1), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	outFd = coeOpen(*(nextArg - 1), O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (outFd < 0) {
 	    eprintf("echo: cannot open %s for write: %s\n", *(nextArg - 1),
                     strerror(errno));
@@ -1448,24 +1543,31 @@ resumeCommand(char * cmd, char * end)
         return 1;
     }
 
-    if ((fd = open(resumedev, O_RDONLY)) < 0)
+    if ((fd = coeOpen(resumedev, O_RDONLY)) < 0)
         return 1;
-    if (lseek(fd, getpagesize() - 10, SEEK_SET) != getpagesize() - 10)
+    if (lseek(fd, getpagesize() - 10, SEEK_SET) != getpagesize() - 10) {
+        close(fd);
         return 1;
-    if (read(fd, &buf, 6) != 6)
+    }
+    if (read(fd, &buf, 6) != 6) {
+        close(fd);
         return 1;
+    }
     if (strncmp(buf, "S1SUSP", 6) && strncmp(buf, "S2SUSP", 6)) {
         qprintf("No suspend signature on swap, not resuming.\n");
+        close(fd);
         return 1;
     }
 
-    if (fstat(fd, &sb))
+    if (fstat(fd, &sb)) {
+        close(fd);
         return 1;
+    }
     close(fd);
 
     printf("Resuming from %s.\n", resumedev);
     fflush(stdout);
-    fd = open("/sys/power/resume", O_WRONLY);
+    fd = coeOpen("/sys/power/resume", O_WRONLY);
     memset(buf, '\0', 20);
     snprintf(buf, 20, "%d:%d", major(sb.st_rdev), minor(sb.st_rdev));
     write(fd, buf, 20);
@@ -1548,7 +1650,7 @@ mkrootdevCommand(char *cmd, char *end)
     }
 
     umask(0122);
-    fstab = fopen("/fstab", "w+");
+    fstab = coeFopen("/fstab", "w+");
     if (!fstab) {
         eprintf("mkrootdev: could not create fstab: %s\n", strerror(errno));
         return 1;
@@ -1723,7 +1825,7 @@ doFind(char * dirName, char * name)
     struct dirent * d;
     char * strBuf = alloca(strlen(dirName) + 1024);
 
-    if (!(dir = opendir(dirName))) {
+    if (!(dir = coeOpendir(dirName))) {
 	eprintf("error opening %s: %s\n", dirName, strerror(errno));
 	return 0;
     }
@@ -1807,7 +1909,7 @@ findlodevCommand(char * cmd, char * end)
 
     for (devNum = 0; devNum < 256; devNum++) {
 	sprintf(devName, "/dev/loop%s%d", separator, devNum);
-	if ((fd = open(devName, O_RDONLY)) < 0)
+	if ((fd = coeOpen(devName, O_RDONLY)) < 0)
             return 0;
 
 	if (ioctl(fd, LOOP_GET_STATUS, &loopInfo)) {
@@ -1878,7 +1980,7 @@ getDevNumFromProc(char * file, char * device)
     int num;
     int fd;
 
-    if ((fd = open(file, O_RDONLY)) == -1) {
+    if ((fd = coeOpen(file, O_RDONLY)) == -1) {
         eprintf("can't open file %s: %s\n", file, strerror(errno));
         return -1;
     }
@@ -2018,7 +2120,7 @@ parse_sysfs_devnum(const char *path, dev_t *dev)
     char devname[len + 5];
 
     sprintf(devname, "%s/dev", path);
-    fd = open(devname, O_RDONLY);
+    fd = coeOpen(devname, O_RDONLY);
     if (fd < 0) {
 #if 0
         eprintf("open on %s failed: %s\n", devname, strerror(errno));
@@ -2069,7 +2171,7 @@ sysfs_blkdev_probe(const char *dirname, const char *name)
     smartmknod(devpath, S_IFBLK | 0700, dev);
     free(devpath);
 
-    dir = opendir(path);
+    dir = coeOpendir(path);
     if (dir == NULL) {
         free(path);
         return;
@@ -2081,6 +2183,7 @@ sysfs_blkdev_probe(const char *dirname, const char *name)
 
         sysfs_blkdev_probe(path, dent->d_name);
     }
+    closedir(dir);
     free(path);
 }
 
@@ -2095,7 +2198,7 @@ mkblkdevsCommand(char * cmd, char * end)
 	return 1;
     }
 
-    dir = opendir("/sys/block");
+    dir = coeOpendir("/sys/block");
     if (dir == NULL)
         return -1;
 
@@ -2105,6 +2208,7 @@ mkblkdevsCommand(char * cmd, char * end)
 
         sysfs_blkdev_probe("/sys/block", dent->d_name);
     }
+    closedir(dir);
     return 1;
 }
 
@@ -2191,6 +2295,7 @@ runStartup(int fd, char *name)
 
     if (i < 0) {
         eprintf("Failed to read startup file %s", name);
+        close(fd);
         return 1;
     }
     close(fd);
@@ -2312,7 +2417,7 @@ int main(int argc, char **argv) {
     qprintf("Red Hat nash version %s starting\n", VERSION);
 
     if (*argv) {
-	fd = open(*argv, O_RDONLY, 0);
+	fd = coeOpen(*argv, O_RDONLY, 0);
 	if (fd < 0) {
 	    eprintf("nash: cannot open %s: %s\n", *argv, strerror(errno));
 	    exit(1);

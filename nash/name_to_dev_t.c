@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include "nash.h"
 #include "name_to_dev_t.h"
 
 static dev_t
@@ -24,7 +25,7 @@ try_name(char *name, int part)
 	/* read device number from .../dev */
 
 	sprintf(path, "/sys/block/%s/dev", name);
-	fd = open(path, O_RDONLY);
+	fd = coeOpen(path, O_RDONLY);
 	if (fd < 0)
 		goto fail;
 	len = read(fd, buf, 32);
@@ -44,7 +45,7 @@ try_name(char *name, int part)
 
 	/* otherwise read range from .../range */
 	snprintf(path, 64, "/sys/block/%s/range", name);
-	fd = open(path, O_RDONLY);
+	fd = coeOpen(path, O_RDONLY);
 	if (fd < 0)
 		goto fail;
 	len = read(fd, buf, 32);

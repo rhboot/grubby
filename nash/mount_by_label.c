@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include "nash.h"
 #include "linux_fs.h"
 #include "mount_by_label.h"
 
@@ -49,7 +50,7 @@ get_label_uuid(const char *device, char **label, char *uuid) {
 	struct ext2_super_block e2sb;
 	struct xfs_super_block xfsb;
 
-	fd = open(device, O_RDONLY);
+	fd = coeOpen(device, O_RDONLY);
 	if (fd < 0)
 		return rv;
 
@@ -111,7 +112,7 @@ uuidcache_init(void) {
 	if (uuidCache)
 		return;
 
-	procpt = fopen(PROC_PARTITIONS, "r");
+	procpt = coeFopen(PROC_PARTITIONS, "r");
 	if (!procpt) {
 		static int warn = 0;
 		if (!warn++)
