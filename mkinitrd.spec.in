@@ -8,12 +8,12 @@ Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 Prereq: dev
 Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm2
-Requires: filesystem >= 2.1.0, cpio, device-mapper, dmraid
+Requires: filesystem >= 2.1.0, cpio, device-mapper
 BuildRequires: popt
 BuildRequires: e2fsprogs-devel parted-devel
 BuildRequires: device-mapper libselinux-devel libsepol-devel
 %ifnarch s390 s390x
-Requires: dmraid device-mapper
+Requires: dmraid
 %endif
 %ifarch ppc
 Requires: ppc64-utils >= 0.3-1
@@ -62,6 +62,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Sat Nov 26 2005 Peter Jones <pjones@redhat.com> - 5.0.12-1
+- Fix buildreq/req for dmraid on s390
+- Typo fix from Alexandre Oliva
+
 * Mon Nov 21 2005 Peter Jones <pjones@redhat.com> - 5.0.11-1
 - audit for open()s without appropriate closes()
 - make new functions coeOpen(), coeFopen(), and coeOpendir().  These behave
