@@ -625,7 +625,7 @@ if [ "x$PROBE" == "xyes" ]; then
     swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; }}' $fstab \
                 | head -n 1)
     if ! echo $swsuspdev | cut -c1-6 | grep -q "LABEL=" ; then
-        handlelvordev $swsupdev
+        handlelvordev $swsuspdev
     fi
 fi
 
