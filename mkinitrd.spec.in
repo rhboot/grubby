@@ -62,6 +62,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Dec  5 2005 Peter Jones <pjones@redhat.com> - 5.0.13-1
+- Updates for gcc 4.1
+
 * Sat Nov 26 2005 Peter Jones <pjones@redhat.com> - 5.0.12-1
 - Fix buildreq/req for dmraid on s390
 - Typo fix from Alexandre Oliva
