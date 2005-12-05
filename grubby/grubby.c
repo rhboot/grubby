@@ -15,6 +15,7 @@
    Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
    02111-1307 USA.  */
 
+#define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -260,7 +261,6 @@ struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index);
 struct singleEntry * findEntryByPath(struct grubConfig * cfg, 
 				     const char * path, const char * prefix,
 				     int * index);
-static char * strndup(char * from, int len);
 static int readFile(int fd, char ** bufPtr);
 static void lineInit(struct singleLine * line);
 static void lineFree(struct singleLine * line);
@@ -269,16 +269,6 @@ static int lineWrite(FILE * out, struct singleLine * line,
 static int getNextLine(char ** bufPtr, struct singleLine * line,
 		       struct configFileInfo * cfi);
 static char * getRootSpecifier(char * str);
-
-static char * strndup(char * from, int len) {
-    char * to;
-
-    to = malloc(len + 1);
-    strncpy(to, from, len);
-    to[len] = '\0';
-
-    return to;
-}
 
 static char * sdupprintf(const char *format, ...)
 #ifdef __GNUC__

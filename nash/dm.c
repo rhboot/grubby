@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include <libdevmapper.h>
 #include <parted/parted.h>
