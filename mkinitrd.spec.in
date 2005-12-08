@@ -62,6 +62,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Dec  7 2005 Peter Jones <pjones@redhat.com> - 5.0.14-1
+- Remove vestigial loopback support.
+- Remove email addresses from man pages (which still need some work)
+
 * Mon Dec  5 2005 Peter Jones <pjones@redhat.com> - 5.0.13-1
 - Updates for gcc 4.1
 

@@ -1891,40 +1891,6 @@ findCommand(char * cmd, char * end)
 }
 
 static int
-findlodevCommand(char * cmd, char * end)
-{
-    char devName[20];
-    int devNum;
-    int fd;
-    struct loop_info loopInfo;
-    char separator[2] = "";
-
-    if (*end != '\n') {
-	eprintf("usage: findlodev\n");
-	return 1;
-    }
-
-    if (!access("/dev/.devfsd", X_OK))
-	strcpy(separator, "/");
-
-    for (devNum = 0; devNum < 256; devNum++) {
-	sprintf(devName, "/dev/loop%s%d", separator, devNum);
-	if ((fd = coeOpen(devName, O_RDONLY)) < 0)
-            return 0;
-
-	if (ioctl(fd, LOOP_GET_STATUS, &loopInfo)) {
-	    close(fd);
-	    printf("%s\n", devName);
-	    return 0;
-	}
-
-	close(fd);
-    }
-
-    return 0;
-}
-
-static int
 mknodCommand(char * cmd, char * end)
 {
     char * path, * type;
@@ -2246,7 +2212,6 @@ static const struct commandHandler handlers[] = {
     { "echo", echoCommand },
     { "exec", execCommand },
     { "find", findCommand },
-    { "findlodev", findlodevCommand },
     { "mkblkdevs", mkblkdevsCommand },
     { "mkdir", mkdirCommand },
     { "mkdmnod", mkDMNodCommand },

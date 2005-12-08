@@ -32,7 +32,7 @@ export MALLOC_PERTURB_=204
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=5.0.13
+VERSION=5.0.14
 
 PROBE="yes"
 MODULES=""
@@ -573,7 +573,6 @@ if [ "x$PROBE" == "xyes" -a -d /proc/dasd ]; then
 fi
 
 if [ "x$PROBE" == "xyes" ]; then
-    # check to see if we need to set up a loopback filesystem
     rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
     # check if it's root by label
     if echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
@@ -588,30 +587,7 @@ if [ "x$PROBE" == "xyes" ]; then
 	    fi
         fi
     fi
-    if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
-        key="^# $(echo $rootdev | cut -d/ -f3 | tr '[a-z]' '[A-Z]'):"
-        if ! grep "$key" $fstab >> /dev/null; then
-	    error "The root filesystem is on a $rootdev, but there is no magic entry in $fstab"
-	    error "for this device. Consult the mkinitrd man page for more information"
-	    error "loopback root."
-	    exit 1
-        fi
-
-        line=$(grep "$key" $fstab)
-        loopDev=$(echo $line | awk '{print $3}')
-        loopFs=$(echo $line | awk '{print $4}')
-        loopFile=$(echo $line | awk '{print $5}')
-
-        basicmodules="$basicmodules -loop"
-        if [ "$loopFs" = "vfat" -o "$loopFs" = "msdos" ]; then
-	    basicmodules="$basicmodules -fat"
-        fi
-        basicmodules="$basicmodules -${loopFs}"
-    # check if the root fs is on a logical volume
-    # this check must be last
-    else
-        handlelvordev $rootdev
-    fi
+    handlelvordev $rootdev
 
     rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
     rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab\
@@ -707,7 +683,6 @@ mkdir -p $MNTIMAGE/lib
 mkdir -p $MNTIMAGE/bin
 mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
-mkdir -p $MNTIMAGE/loopfs
 mkdir -p $MNTIMAGE/proc
 mkdir -p $MNTIMAGE/sys
 mkdir -p $MNTIMAGE/sysroot
@@ -856,16 +831,6 @@ if [ -n "$vg_list" ]; then
     emit "lvm vgscan --ignorelockingfailure"
     emit "echo Activating logical volumes"
     emit "lvm vgchange -ay --ignorelockingfailure $vg_list"
-fi
-
-if [ -n "$loopDev" ]; then
-    mkdir /initrd
-    cp -a $loopDev $MNTIMAGE/dev
-    cp -a $rootdev $MNTIMAGE/dev
-    emit "echo Mounting device containing loopback root filesystem."
-    emit "mount -t $loopFs $loopDev /loopfs"
-    emit "echo Setting up loopback device $rootdev"
-    emit "losetup $rootdev /loopfs$loopFile"
 fi
 
 if [ -z "$noresume" ]; then
