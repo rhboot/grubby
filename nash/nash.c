@@ -1298,18 +1298,20 @@ switchrootCommand(char * cmd, char * end)
     /* release the old "/" */
     close(fd);
 
-    if ((fd = coeOpen("/dev/console", O_RDWR)) < 0) {
+    close(3);
+    if ((fd = open("/dev/console", O_RDWR)) < 0) {
         eprintf("ERROR opening /dev/console: %s\n", strerror(errno));
         eprintf("Trying to use fd 0 instead.\n");
         fd = dup2(0, 3);
-        close(0);
     } else {
-        dup2(fd, 3);
-        close(fd);
-        close(0);
-        fd = 3;
-        dup2(fd, 0);
+        if (fd != 3) {
+            dup2(fd, 3);
+            close(fd);
+            fd = 3;
+        }
     }
+    close(0);
+    dup2(fd, 0);
     close(1);
     dup2(fd, 1);
     close(2);

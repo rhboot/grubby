@@ -62,6 +62,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Dec 19 2005 Peter Jones <pjones@redhat.com> - 5.0.15-1
+- Don't open init's console with close-on-exec
+
 * Wed Dec  7 2005 Peter Jones <pjones@redhat.com> - 5.0.14-1
 - Remove vestigial loopback support.
 - Remove email addresses from man pages (which still need some work)
