@@ -1059,7 +1059,7 @@ raidautorunCommand(char * cmd, char * end)
 	return 1;
     }
 
-    if (ioctl(fd, RAID_AUTORUN)) {
+    if (ioctl(fd, RAID_AUTORUN, 0)) {
 	eprintf("raidautorun: RAID_AUTORUN failed: %s\n", strerror(errno));
 	close(fd);
 	return 1;
