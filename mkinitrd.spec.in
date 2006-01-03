@@ -62,6 +62,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Jan  3 2005 Peter Jones <pjones@redhat.com> - 5.0.16-1
+- Hopefully fix raid autorun with a patch from Paul Flinders.
+
 * Mon Dec 19 2005 Peter Jones <pjones@redhat.com> - 5.0.15-1
 - Don't open init's console with close-on-exec
 
