@@ -55,6 +55,7 @@ nashDmCreate(char *name, long long start, long long length,
     dm_task_add_target(task, start, length, type, params);
 
     rc = dm_task_run(task);
+    dm_task_update_nodes();
     dm_task_destroy(task);
 
     if (rc < 0)
@@ -76,6 +77,7 @@ nashDmRemove(char *name)
     dm_task_set_name(task, name);
 
     rc = dm_task_run(task);
+    dm_task_update_nodes();
     dm_task_destroy(task);
 
     if (rc < 0)
