@@ -1,8 +1,8 @@
 /*
  * dm.c - backend library for partition table scanning on dm devices
  * 
- * Copyright 2005 Peter M. Jones
- * Copyright 2005 Red Hat, Inc.
+ * Copyright 2005,2006 Peter M. Jones
+ * Copyright 2005,2006 Red Hat, Inc.
  * 
  * vim:ts=8:sw=4:sts=4:et
  *
@@ -39,8 +39,38 @@ int nashDefaultLogger(nash_log_level level, char *format, ...)
 int nashLogger(const nash_log_level, const char *format, ...)
     __attribute__ ((weak, alias("nashDefaultLogger")));
 
+char *
+nashDmGetUUID(const char *name)
+{
+    struct dm_task *task;
+    struct dm_info info;
+    char *ret = NULL;
+    const char *uuid = NULL;
+
+    task = dm_task_create(DM_DEVICE_INFO);
+    if (!task)
+        return NULL;
+
+    dm_task_set_name(task, name);
+    dm_task_run(task);
+
+    dm_task_get_info(task, &info);
+    if (!info.exists) {
+        dm_task_destroy(task);
+        return NULL;
+    }
+
+    uuid = dm_task_get_uuid(task);
+    if (uuid && uuid[0] != '\0')
+        ret = strdup(uuid);
+
+    dm_task_destroy(task);
+
+    return ret;
+}
+
 int
-nashDmCreate(char *name, long long start, long long length,
+nashDmCreate(char *name, char *uuid, long long start, long long length,
         char *type, char *params)
 {
     struct dm_task *task;
@@ -51,6 +81,8 @@ nashDmCreate(char *name, long long start, long long length,
         return 0;
 
     dm_task_set_name(task, name);
+    if (uuid)
+        dm_task_set_uuid(task, uuid);
 
     dm_task_add_target(task, start, length, type, params);
 
@@ -128,6 +160,7 @@ nashDmCreatePartitions(char *path)
     char *namestart;
     int nparts = 0;
     struct stat sb;
+    char *parent_uuid;
 
     if (stat(path, &sb) < 0 || !S_ISBLK(sb.st_mode))
         return nparts;
@@ -137,6 +170,8 @@ nashDmCreatePartitions(char *path)
         goto out;
     if (!*namestart)
         goto out;
+
+    parent_uuid = nashDmGetUUID(namestart);
 
     ped_exception_set_handler(nashPartedExceptionHandler);
 
@@ -157,6 +192,7 @@ nashDmCreatePartitions(char *path)
             int i;
             char *name = NULL;
             char *table = NULL;
+            char *uuid = NULL;
 
             i = asprintf(&name, "%s%d", namestart, part->num);
             if (i < 0)
@@ -169,9 +205,19 @@ nashDmCreatePartitions(char *path)
                 continue;
             }
 
-            nparts += nashDmCreate(name, 0, part->geom.length,
+            if (parent_uuid) {
+                i = asprintf(&uuid, "%s-partition%d", parent_uuid, part->num);
+                if (i < 0) {
+                    free(name);
+                    free(table);
+                    continue;
+                }
+            }
+
+            nparts += nashDmCreate(name, uuid, 0, part->geom.length,
                     "linear", table);
 
+            free(uuid);
             free(table);
             free(name);
         }
@@ -185,6 +231,9 @@ out:
 
     if (dev)
         ped_device_destroy(dev);
+
+    if (parent_uuid)
+        free(parent_uuid);
 
     nashPartedError = 0;
     return nparts;

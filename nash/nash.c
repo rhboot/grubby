@@ -1994,10 +1994,26 @@ dmCommand(char *cmd, char *end)
         long long start, length;
         char *type = NULL, *params = NULL;
         char *c = NULL;
+        char *uuid = NULL;
 
-        cmd = getArg(cmd, end, &params);
+        cmd = getArg(cmd, end, &uuid);
         if (!cmd)
             goto usage;
+
+        if (!strcmp(uuid, "--uuid")) {
+            if (!(cmd = getArg(cmd, end, &uuid))) {
+                eprintf("dm create: missing uuid argument\n");
+                return 1;
+            }
+
+            cmd = getArg(cmd, end, &params);
+            if (!cmd)
+                goto usage;
+        } else {
+            params = uuid;
+            uuid = NULL;
+        }
+
         errno = 0;
         start = strtoll(params, NULL, 0);
         if (errno)
@@ -2019,7 +2035,7 @@ dmCommand(char *cmd, char *end)
         c = strchr(params, '\n');
         if (c)
             *c = '\0';
-        if (nashDmCreate(name, start, length, type, params))
+        if (nashDmCreate(name, uuid, start, length, type, params))
             return 0;
         if (c)
             *c = '\n';
@@ -2031,6 +2047,15 @@ dmCommand(char *cmd, char *end)
     } else if (!strcmp(action, "partadd")) {
         if (nashDmCreatePartitions(name))
             return 0;
+        return 1;
+    } else if (!strcmp(action, "get_uuid")) {
+        char *uuid = nashDmGetUUID(name);
+
+        if (uuid) {
+            printf("%s\n", uuid);
+            free(uuid);
+            return 0;
+        }
         return 1;
 #if 0 /* not yet */
     } else if (!strcmp(action, "partdel")) {

@@ -20,8 +20,11 @@ typedef enum {
 extern int nashLogger(const nash_log_level level, const char *format, ...)
     __attribute__((format(printf, 2, 3)));
 
+extern char *
+nashDmGetUUID(const char *name);
+
 extern int
-nashDmCreate(char *name, long long start, long long length,
+nashDmCreate(char *name, char *uuid, long long start, long long length,
         char *type, char *params);
 
 extern int
