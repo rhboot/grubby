@@ -132,6 +132,10 @@ findall() {
     echo nash-find "$@" | /sbin/nash --force --quiet
 }
 
+dm_get_uuid() {
+    echo dm get_uuid "$1" | /sbin/nash --force --quiet
+}
+
 findmodule() {
     skiperrors=""
 
@@ -668,7 +672,12 @@ emitdmraid()
 {
     for x in $DMRAIDS ; do
         vecho "Adding DMRAID $x"
-        emit dm create $x $(/sbin/dmsetup table $x)
+        UUID=$(dm_get_uuid $x)
+        if [ -n "$UUID" ]; then
+            emit dm create $x --uuid "$UUID" $(/sbin/dmsetup table $x)
+        else
+            emit dm create $x $(/sbin/dmsetup table $x)
+        fi
         emit dm partadd /dev/mapper/$x
     done
 }
