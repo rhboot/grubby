@@ -62,6 +62,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Jan 31 2006 Peter Jones <pjones@redhat.com> - 5.0.18-1
+- make mkinitrd discover dm uuids
+- add uuid support to nash's "dm create" and "dm partadd"
+- add nash command "dm get_uuid $NAME"
+- add support for renamed dm raids
+
 * Tue Jan  3 2006 Peter Jones <pjones@redhat.com> - 5.0.17-1
 - fix dm operations to create/remove device nodes during each change.
 
