@@ -10,9 +10,8 @@ Prereq: dev
 Requires: /bin/sh, /sbin/insmod.static, /sbin/losetup
 Requires: fileutils, grep, mount, gzip, tar, mktemp >= 1.5-5, findutils, lvm2
 Requires: filesystem >= 2.1.0, cpio, device-mapper, initscripts >= 8.22-1
-Requires: e2fsprogs, e2fsprogs-devel
-BuildRequires: popt
-BuildRequires: e2fsprogs-devel parted-devel
+Requires: e2fsprogs
+BuildRequires: popt e2fsprogs-devel parted-devel
 BuildRequires: device-mapper libselinux-devel libsepol-devel
 %ifnarch s390 s390x
 Requires: dmraid
@@ -64,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Feb  2 2006 Peter Jones <pjones@redhat.com> - 5.0.20-1
+- fix really dumb spec file mistake
+
 * Thu Feb  2 2006 Peter Jones <pjones@redhat.com> - 5.0.19-1
 - mkinitrd: get resolve_dm_name() and get_numeric_dev() from initscripts
   instead of a private copy
