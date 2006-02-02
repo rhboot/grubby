@@ -64,7 +64,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Thu Feb  2 2006 Peter Jones <pjones@redhat.com> - 5.0.20-1
+* Thu Feb  2 2006 Peter Jones <pjones@redhat.com> - 5.0.19-1
 - mkinitrd: get resolve_dm_name() and get_numeric_dev() from initscripts
   instead of a private copy
 - add block.[ch]:
@@ -80,9 +80,6 @@ rm -rf $RPM_BUILD_ROOT
 - dm.c: add dm_finish(), which does dm_task_destroy() and then library cleanup
   (solves an fd leak)
 - remove linux_fs.h, mount_by_label.[ch], name_to_dev_t.[ch]
-
-* Tue Jan 31 2006 Peter Jones <pjones@redhat.com> - 5.0.19-1
-- use initscripts' copy of dmraid functions
 
 * Tue Jan 31 2006 Peter Jones <pjones@redhat.com> - 5.0.18-1
 - make mkinitrd discover dm uuids
