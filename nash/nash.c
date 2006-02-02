@@ -51,9 +51,8 @@
 
 #include <asm/unistd.h>
 
-#include "nash.h"
-#include "name_to_dev_t.h"
-#include "mount_by_label.h"
+#include "lib.h"
+#include "block.h"
 #include "dm.h"
 
 /* Need to tell loop.h what the actual dev_t type is. */
@@ -99,100 +98,6 @@
 
 #define MAX(a, b) ((a) > (b) ? a : b)
 
-static int testing = 0, quiet = 0, reallyquiet = 0;
-
-#if 0 /* not just yet */
-static int qprintf(const char *format, ...)
-    __attribute__((format(printf, 1, 2)))
-    __attribute__((deprecated));
-static int eprintf(const char *format, ...)
-    __attribute__((format(printf, 1, 2)))
-    __attribute__((deprecated));
-#else
-static int qprintf(const char *format, ...)
-    __attribute__((format(printf, 1, 2)));
-static int eprintf(const char *format, ...)
-    __attribute__((format(printf, 1, 2)));
-#endif
-
-int nashLoggerV(const nash_log_level level, const char *format, va_list ap)
-    __attribute__((format(printf, 2, 0)));
-#if 0 /* currently in dm.h */
-int nashLogger(const nash_log_level level, const char *format, ...)
-    __attribute__((format(printf, 2, 3)));
-#endif
-
-int 
-nashLoggerV(const nash_log_level level, const char *format, va_list ap)
-{
-    FILE *output;
-    va_list apc;
-    int ret;
-
-    switch (level) {
-        case NOTICE:
-            output = stdout;
-            if (quiet)
-                return 0;
-            break;
-        case WARNING:
-            output = stderr;
-            if (quiet)
-                return 0;
-            break;
-        case ERROR:
-        default:
-            output = stderr;
-            break;
-    }
-
-    va_copy(apc, ap);
-    ret = vfprintf(output, format, apc);
-    va_end(apc);
-
-    fflush(output);
-    return ret;
-}
-
-int
-nashLogger(const nash_log_level level, const char *format, ...)
-{
-    va_list ap;
-    int ret;
-
-    va_start(ap, format);
-    ret = nashLoggerV(level, format, ap);
-    va_end(ap);
-
-    return ret;
-}
-
-static int
-qprintf(const char *format, ...)
-{
-    va_list ap;
-    int ret;
-
-    va_start(ap, format);
-    ret = nashLoggerV(NOTICE, format, ap);
-    va_end(ap);
-
-    return ret;
-}
-
-static int
-eprintf(const char *format, ...)
-{
-    va_list ap;
-    int ret;
-
-    va_start(ap, format);
-    ret = nashLoggerV(ERROR, format, ap);
-    va_end(ap);
-
-    return ret;
-}
-
 #define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
 static char * env[] = {
     "PATH=" PATH,
@@ -200,117 +105,6 @@ static char * env[] = {
     NULL
 };
 static char sysPath[] = PATH;
-
-static int
-makeFdCoe(int fd)
-{
-    int rc;
-    long flags;
-
-    rc = fcntl(fd, F_GETFD, &flags);
-    if (rc < 0)
-        return rc;
-
-    flags |= FD_CLOEXEC;
-
-    rc = fcntl(fd, F_SETFD, &flags);
-    return rc;
-}
-
-int
-coeOpen(const char *path, int flags, ...)
-{
-    int fd, rc, mode = 0;
-    long errnum;
-
-    if (flags & O_CREAT) {
-        va_list arg;
-        va_start(arg, flags);
-        mode = va_arg(arg, int);
-        va_end(arg);
-    }
-
-    fd = open(path, flags);
-    if (fd < 0)
-        return fd;
-
-    rc = makeFdCoe(fd);
-    if (rc < 0) {
-        errnum = errno;
-        close(fd);
-        errno = errnum;
-        return rc;
-    }
-
-    return fd;
-}
-
-FILE *
-coeFopen(const char *path, const char *mode)
-{
-    FILE *f;
-    int rc;
-    long errnum;
-
-    f = fopen(path, mode);
-    if (!f)
-        return f;
-
-    rc = makeFdCoe(fileno(f));
-    if (rc < 0) {
-        errnum = errno;
-        fclose(f);
-        errno = errnum;
-        return NULL;
-    }
-
-    return f;
-}
-
-DIR *
-coeOpendir(const char *name)
-{
-    DIR *d;
-    int rc;
-    long errnum;
-
-    d = opendir(name);
-    if (!d)
-        return d;
-
-    rc = makeFdCoe(dirfd(d));
-    if (rc < 0) {
-        errnum = errno;
-        closedir(d);
-        errno = errnum;
-        return NULL;
-    }
-
-    return d;
-}
-
-static int
-smartmknod(char * device, mode_t mode, dev_t dev)
-{
-    char buf[256];
-    char * end;
-
-    strncpy(buf, device, 256);
-
-    end = buf;
-    while (*end) {
-	if (*end == '/') {
-	    *end = '\0';
-	    if (access(buf, F_OK) && errno == ENOENT)
-		mkdir(buf, 0755);
-	    *end = '/';
-	}
-
-	end++;
-    }
-
-    return mknod(device, mode, dev);
-}
 
 static int
 searchPath(char *bin, char **resolved)
@@ -407,42 +201,6 @@ getArg(char * cmd, char * end, char ** arg)
     return cmd;
 }
 
-/* taken from anaconda/isys/probe.c */
-static int
-readFD (int fd, char **buf)
-{
-    char *p;
-    size_t size = 16384;
-    int s, filesize;
-
-    *buf = calloc (16384, sizeof (char));
-    if (*buf == 0) {
-	eprintf("calloc failed: %s\n", strerror(errno));
-	return -1;
-    }
-
-    filesize = 0;
-    do {
-	p = &(*buf) [filesize];
-	s = read (fd, p, 16384);
-	if (s < 0)
-	    break;
-	filesize += s;
-	/* only exit for empty reads */
-	if (s == 0)
-	    break;
-	size += s;
-	*buf = realloc (*buf, size);
-    } while (1);
-
-    if (filesize == 0 && s < 0) {
-	free (*buf);
-	*buf = NULL;
-	return -1;
-    }
-
-    return filesize;
-}
 
 #ifdef __powerpc__
 #define CMDLINESIZE 256
@@ -515,43 +273,40 @@ static int
 mountCommand(char * cmd, char * end)
 {
     char * fsType = NULL;
-    char * device;
+    char * device, *spec;
     char * mntPoint;
-    char * deviceDir = NULL;
     char * options = NULL;
-    int mustRemove = 0;
-    int mustRemoveDir = 0;
     int rc = 0;
     int flags = MS_MGC_VAL;
     char * newOpts;
 
-    cmd = getArg(cmd, end, &device);
+    cmd = getArg(cmd, end, &spec);
     if (!cmd) {
 	eprintf(
             "usage: mount [--ro] [-o <opts>] -t <type> <device> <mntpoint>\n");
 	return 1;
     }
 
-    while (cmd && *device == '-') {
-	if (!strcmp(device, "--ro")) {
+    while (cmd && *spec == '-') {
+	if (!strcmp(spec, "--ro")) {
 	    flags |= MS_RDONLY;
-        } else if (!strcmp(device, "--bind")) {
+        } else if (!strcmp(spec, "--bind")) {
             flags = MS_BIND;
             fsType = "none";
-	} else if (!strcmp(device, "-o")) {
+	} else if (!strcmp(spec, "-o")) {
 	    cmd = getArg(cmd, end, &options);
 	    if (!cmd) {
 		eprintf("mount: -o requires arguments\n");
 		return 1;
 	    }
-	} else if (!strcmp(device, "-t")) {
+	} else if (!strcmp(spec, "-t")) {
 	    if (!(cmd = getArg(cmd, end, &fsType))) {
 		eprintf("mount: missing filesystem type\n");
 		return 1;
 	    }
 	}
 
-	cmd = getArg(cmd, end, &device);
+	cmd = getArg(cmd, end, &spec);
     }
 
     if (!cmd) {
@@ -574,8 +329,8 @@ mountCommand(char * cmd, char * end)
                 fclose(fstab);
                 return 1;
             }
-            if (!strcmp(mnt->mnt_dir, device)) {
-                device = mnt->mnt_fsname;
+            if (!strcmp(mnt->mnt_dir, spec)) {
+                spec = mnt->mnt_fsname;
                 mntPoint = mnt->mnt_dir;
 
                 if (!strcmp(mnt->mnt_type, "bind")) {
@@ -663,43 +418,10 @@ mountCommand(char * cmd, char * end)
 	options = newOpts;
     }
 
-    if (!strncmp("LABEL=", device, 6)) {
-	int major, minor;
-	char * devName;
-	char * ptr;
-	int i;
-
-	devName = get_spec_by_volume_label(device + 6, &major, &minor);
-
-	if (devName) {
-	    device = devName;
-	    if (access(device, F_OK)) {
-	        ptr = device;
-		i = 0;
-		while (*ptr)
-		    if (*ptr++ == '/')
-			i++;
-		if (i > 2) {
-		    deviceDir = alloca(strlen(device) + 1);
-		    strcpy(deviceDir, device);
-		    ptr = deviceDir + (strlen(device) - 1);
-		    while (*ptr != '/')
-			*ptr-- = '\0';
-		    if (mkdir(deviceDir, 0644)) {
-		        eprintf("mkdir: cannot create directory %s: %s\n",
-                                deviceDir, strerror(errno));
-		    } else {
-		      mustRemoveDir = 1;
-		    }
-		}
-		if (smartmknod(device, S_IFBLK | 0600, makedev(major, minor))) {
-		    printf("mount: cannot create device %s (%d,%d)\n",
-			   device, major, minor);
-		    return 1;
-		}
-		mustRemove = 1;
-	    }
-	}
+    device = getpathbyspec(spec);
+    if (!device) {
+        eprintf("mount: could not find filesystem '%s'\n", spec);
+        return 1;
     }
 
     if (testing) {
@@ -723,9 +445,7 @@ mountCommand(char * cmd, char * end)
 	    rc = 1;
 	}
     }
-
-    if (mustRemove) unlink(device);
-    if (mustRemoveDir) rmdir(deviceDir);
+    free(device);
 
     return rc;
 }
@@ -1460,51 +1180,6 @@ umountCommand(char * cmd, char * end)
     return 0;
 }
 
-static int
-mkpathbyspec(char * spec, char * path)
-{
-    int major, minor;
-
-    if (!spec)
-        return -1;
-
-    if (!strncmp(spec, "LABEL=", 6)) {
-	if (get_spec_by_volume_label(spec + 6, &major, &minor)) {
-	    if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
-		eprintf("mkdev: cannot create device %s (%d,%d)\n",
-		       path, major, minor);
-		return 1;
-	    }
-
-            qprintf("created path for %s: %d/%d\n", spec, major, minor);
-	    return 0;
-	}
-
-        eprintf("label %s not found\n", spec + 6);
-	return 1;
-    }
-
-    if (!strncmp(spec, "UUID=", 5)) {
-        if (get_spec_by_uuid(spec+5, &major, &minor)) {
-            if (smartmknod(path, S_IFBLK | 0600, makedev(major, minor))) {
-                eprintf("mkdev: cannot create device %s (%d,%d)\n",
-                       path, major, minor);
-                return 1;
-            }
-
-            return 0;
-        }
-
-        eprintf("mkdev: UUID %s not found\n", spec+5);
-        return 1;
-
-    }
-#if 0
-    qprintf("mkdev: '%s' is not a UUID or LABEL spec\n", spec);
-#endif
-    return -1;
-}
-
 /* 2.6 magic swsusp stuff */
 static int
 resumeCommand(char * cmd, char * end)
@@ -1537,8 +1212,11 @@ resumeCommand(char * cmd, char * end)
 
     qprintf("Trying to resume from %s\n", resumedev);
 
-    if (mkpathbyspec(resumedev, "/dev/swsuspresume") == 0)
-        resumedev = strdup("/dev/swsuspresume");
+    resume = getpathbyspec(resumedev);
+    if (resume) {
+        resumedev = strdupa(resume);
+        free(resume);
+    }
 
     if (access(resumedev, R_OK)) {
         eprintf("Unable to access resume device (%s)\n", resumedev);
@@ -1583,7 +1261,7 @@ static int
 mkrootdevCommand(char *cmd, char *end)
 {
     char *chptr = NULL, *root;
-    int i, devNum;
+    int i;
     FILE *fstab;
     struct mntent mnt = {
         .mnt_fsname = "/dev/root",
@@ -1660,19 +1338,7 @@ mkrootdevCommand(char *cmd, char *end)
     addmntent(fstab, &mnt);
     fclose(fstab);
 
-    if ((i = mkpathbyspec(root, "/dev/root")) != -1)
-        return i;
-
-    if (root)
-	devNum = name_to_dev_t(root);
-
-    if (smartmknod("/dev/root", S_IFBLK | 0700, devNum)) {
-	eprintf("mkrootdev: mknod /dev/root 0x%08x failed: %s\n", devNum,
-                strerror(errno));
-	return 1;
-    }
-
-    return 0;
+    return mkpathbyspec(root, "/dev/root") < 0 ? 1 : 0;
 }
 
 static int
@@ -2105,103 +1771,14 @@ mkDMNodCommand(char * cmd, char * end)
 }
 
 static int
-parse_sysfs_devnum(const char *path, dev_t *dev)
-{
-    char *first = NULL, *second;
-    int major, minor;
-    int fd, len = strlen(path);
-    char devname[len + 5];
-
-    sprintf(devname, "%s/dev", path);
-    fd = coeOpen(devname, O_RDONLY);
-    if (fd < 0) {
-#if 0
-        eprintf("open on %s failed: %s\n", devname, strerror(errno));
-#endif
-        return -1;
-    }
-
-    len = readFD(fd, &first);
-
-    close(fd);
-
-    second = strchr(first, ':');
-    *second++ = '\0';
-
-    errno = 0;
-    major = strtol(first, NULL, 10);
-
-    errno = 0;
-    minor = strtol(second, NULL, 10);
-    free(first);
-
-    *dev = makedev(major, minor);
-    return 0;
-}
-
-static void
-sysfs_blkdev_probe(const char *dirname, const char *name)
-{
-    char *path = NULL, *devpath = NULL;
-    dev_t dev = 0;
-    int ret;
-    DIR *dir;
-    struct dirent *dent;
-
-    asprintf(&path, "%s/%s", dirname, name);
-#if 0
-    qprintf("Testing %s for block device.\n", path);
-#endif
-
-    ret = parse_sysfs_devnum(path, &dev);
-    if (ret < 0) {
-        free(path);
-        return;
-    }
-
-    asprintf(&devpath, "/dev/%s", name);
-
-    smartmknod(devpath, S_IFBLK | 0700, dev);
-    free(devpath);
-
-    dir = coeOpendir(path);
-    if (dir == NULL) {
-        free(path);
-        return;
-    }
-
-    for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
-        if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
-            continue;
-
-        sysfs_blkdev_probe(path, dent->d_name);
-    }
-    closedir(dir);
-    free(path);
-}
-
-static int
 mkblkdevsCommand(char * cmd, char * end)
 {
-    DIR *dir;
-    struct dirent *dent;
-
     if (cmd < end) {
 	eprintf("mkblkdevs: unexpected arguments\n");
 	return 1;
     }
 
-    dir = coeOpendir("/sys/block");
-    if (dir == NULL)
-        return -1;
-
-    for (dent = readdir(dir); dent != NULL; dent = readdir(dir)) {
-        if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
-            continue;
-
-        sysfs_blkdev_probe("/sys/block", dent->d_name);
-    }
-    closedir(dir);
+    sysfs_blkdev_probe("/sys/block");
     return 1;
 }
 
@@ -2255,7 +1832,6 @@ static const struct commandHandler handlers[] = {
     { "resume", resumeCommand },
     { "setquiet", setQuietCommand },
     { "setuproot", setuprootCommand },
-    { "showlabels", display_uuid_cache },
     { "sleep", sleepCommand },
     { "switchroot", switchrootCommand },
     { "umount", umountCommand },

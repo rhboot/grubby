@@ -7,8 +7,10 @@ Group: System Environment/Base
 Source: mkinitrd-%{version}.tar.bz2
 ExclusiveOs: Linux
 Prereq: dev
-Requires: e2fsprogs, /bin/sh, fileutils, grep, mount, gzip, tar, /sbin/insmod.static, /sbin/losetup, mktemp >= 1.5-5, findutils, lvm2
-Requires: filesystem >= 2.1.0, cpio, device-mapper
+Requires: /bin/sh, /sbin/insmod.static, /sbin/losetup
+Requires: fileutils, grep, mount, gzip, tar, mktemp >= 1.5-5, findutils, lvm2
+Requires: filesystem >= 2.1.0, cpio, device-mapper, initscripts >= 8.22-1
+Requires: e2fsprogs, e2fsprogs-devel
 BuildRequires: popt
 BuildRequires: e2fsprogs-devel parted-devel
 BuildRequires: device-mapper libselinux-devel libsepol-devel
@@ -62,6 +64,26 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Feb  2 2006 Peter Jones <pjones@redhat.com> - 5.0.20-1
+- mkinitrd: get resolve_dm_name() and get_numeric_dev() from initscripts
+  instead of a private copy
+- add block.[ch]:
+  - move parse_sysfs_devnum(), sysfs_blkdev_probe(), and
+    mkpathbyspec() from nash.c
+  - add label/uuid/name lookups for block devices using libblkid
+- add lib.[ch]:
+  - move makeFdCoe(), coeOpen(), coeFopen(), coeOpendir(), readFD(),
+    nashLoggerV(), nashLogger(), qprintf(), eprintf(), smartmknod(),
+    testing, quiet, reallyquiet from nash.c
+  - move nashDefaultLogger(), from dm.c
+  - move log enums and declarations from dm.h
+- dm.c: add dm_finish(), which does dm_task_destroy() and then library cleanup
+  (solves an fd leak)
+- remove linux_fs.h, mount_by_label.[ch], name_to_dev_t.[ch]
+
+* Tue Jan 31 2006 Peter Jones <pjones@redhat.com> - 5.0.19-1
+- use initscripts' copy of dmraid functions
+
 * Tue Jan 31 2006 Peter Jones <pjones@redhat.com> - 5.0.18-1
 - make mkinitrd discover dm uuids
 - add uuid support to nash's "dm create" and "dm partadd"

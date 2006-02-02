@@ -1,24 +1,22 @@
 /*
  * dm.h - backend library for partition table scanning on dm devices
- * 
- * Copyright 2005 Peter M. Jones
- * Copyright 2005 Red Hat, Inc.
- * 
- * vim:ts=8:sw=4:sts=4:et
  *
+ * Peter Jones (pjones@redhat.com)
+ *
+ * Copyright 2005,2006 Red Hat, Inc.
+ *
+ * This software may be freely redistributed under the terms of the GNU
+ * public license.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *
+ * vim:ts=8:sw=4:sts=4:et
  */
 
 #ifndef NASH_DM_H
 #define NASH_DM_H 1
-
-typedef enum {
-    NOTICE,
-    WARNING,
-    ERROR,
-} nash_log_level;
-
-extern int nashLogger(const nash_log_level level, const char *format, ...)
-    __attribute__((format(printf, 2, 3)));
 
 extern char *
 nashDmGetUUID(const char *name);

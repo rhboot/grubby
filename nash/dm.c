@@ -1,11 +1,18 @@
 /*
  * dm.c - backend library for partition table scanning on dm devices
- * 
- * Copyright 2005,2006 Peter M. Jones
+  *
+ * Peter Jones (pjones@redhat.com)
+ *
  * Copyright 2005,2006 Red Hat, Inc.
+ *
+ * This software may be freely redistributed under the terms of the GNU
+ * public license.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  * 
  * vim:ts=8:sw=4:sts=4:et
- *
  */
 
 #define _GNU_SOURCE 1
@@ -20,24 +27,16 @@
 #include <parted/parted.h>
 
 #include "dm.h"
+#include "lib.h"
 
-/* XXX this should be nash-wide, not just in dm.c.  FIXME when we move
-   to libnash.a */
-int nashDefaultLogger(nash_log_level level, char *format, ...)
+static void
+dm_finish(struct dm_task *task)
 {
-    int ret;
-    va_list ap;
-
-    va_start(ap, format);
-    ret = vprintf(format, ap);
-    va_end(ap);
-
-    fflush(stdout);
-    return ret;
+    if (task)
+        dm_task_destroy(task);
+    dm_lib_release();
+    dm_lib_exit();
 }
-
-int nashLogger(const nash_log_level, const char *format, ...)
-    __attribute__ ((weak, alias("nashDefaultLogger")));
 
 char *
 nashDmGetUUID(const char *name)
@@ -56,7 +55,7 @@ nashDmGetUUID(const char *name)
 
     dm_task_get_info(task, &info);
     if (!info.exists) {
-        dm_task_destroy(task);
+        dm_finish(task);
         return NULL;
     }
 
@@ -64,7 +63,7 @@ nashDmGetUUID(const char *name)
     if (uuid && uuid[0] != '\0')
         ret = strdup(uuid);
 
-    dm_task_destroy(task);
+    dm_finish(task);
 
     return ret;
 }
@@ -87,8 +86,7 @@ nashDmCreate(char *name, char *uuid, long long start, long long length,
     dm_task_add_target(task, start, length, type, params);
 
     rc = dm_task_run(task);
-    dm_task_update_nodes();
-    dm_task_destroy(task);
+    dm_finish(task);
 
     if (rc < 0)
         return 0;
@@ -109,8 +107,7 @@ nashDmRemove(char *name)
     dm_task_set_name(task, name);
 
     rc = dm_task_run(task);
-    dm_task_update_nodes();
-    dm_task_destroy(task);
+    dm_finish(task);
 
     if (rc < 0)
         return 0;
