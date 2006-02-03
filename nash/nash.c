@@ -280,8 +280,7 @@ mountCommand(char * cmd, char * end)
     int flags = MS_MGC_VAL;
     char * newOpts;
 
-    cmd = getArg(cmd, end, &spec);
-    if (!cmd) {
+    if (!(cmd = getArg(cmd, end, &spec))) {
 	eprintf(
             "usage: mount [--ro] [-o <opts>] -t <type> <device> <mntpoint>\n");
 	return 1;
@@ -1566,17 +1565,19 @@ findCommand(char * cmd, char * end)
     char * name = NULL;
 
     cmd = getArg(cmd, end, &dir);
-    if (cmd) cmd = getArg(cmd, end, &name);
-    if (cmd) {
-	if (strcmp(name, "-name")) {
-	    eprintf("usage: find [path] -name [file]\n");
-	    return 1;
-	}
-    	if (cmd) cmd = getArg(cmd, end, &name);
-	if (!cmd && !name) {
-	    eprintf("usage: find [path] -name [file]\n");
-	    return 1;
-	}
+    if (!cmd) {
+        dir = strdupa(".");
+    } else {
+        if (cmd) {
+            if (!(cmd = getArg(cmd, end, &name)) || strcmp(name, "-name")) {
+                eprintf("usage: find [path [-name file]]\n");
+                return 1;
+            }
+            if (!(cmd = getArg(cmd, end, &name))) {
+                eprintf("usage: find [path [-name file]]\n");
+                return 1;
+            }
+        }
     }
 
     return doFind(dir, name);
@@ -1869,7 +1870,7 @@ getCommandHandler(const char *name)
     const struct commandHandler *handler = NULL;
 
     for (handler = &handlers[0]; handler->name; handler++)
-        if (!strncmp(name, handler->name, strlen(handler->name)))
+        if (!strcmp(name, handler->name))
             return handler;
     return handler;
 }
