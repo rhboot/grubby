@@ -1509,7 +1509,7 @@ readlinkCommand(char * cmd, char * end)
 }
 
 static int
-doFind(char * dirName, char * name)
+doFind(char * dirName, char * name, mode_t mask)
 {
     struct stat sb;
     DIR * dir;
@@ -1534,17 +1534,19 @@ doFind(char * dirName, char * name)
 	    continue;
 	}
 
-	if (!name || !strcmp(d->d_name, name))
-	    printf("%s\n", strBuf);
-
 	if (lstat(strBuf, &sb)) {
 	    eprintf("failed to stat %s: %s\n", strBuf, strerror(errno));
 	    errno = 0;
 	    continue;
 	}
 
+	if (!name || !strcmp(d->d_name, name)) {
+            if (mask == 0 || (sb.st_mode & mask) == mask)
+	        printf("%s\n", strBuf);
+        }
+
 	if (S_ISDIR(sb.st_mode))
-	    doFind(strBuf, name);
+	    doFind(strBuf, name, mask);
     }
 
     if (errno) {
@@ -1563,24 +1565,40 @@ findCommand(char * cmd, char * end)
 {
     char * dir;
     char * name = NULL;
+    char * type = NULL;
+    mode_t mode = 0;
 
-    cmd = getArg(cmd, end, &dir);
-    if (!cmd) {
+    if (!(cmd = getArg(cmd, end, &dir))) {
         dir = strdupa(".");
     } else {
-        if (cmd) {
-            if (!(cmd = getArg(cmd, end, &name)) || strcmp(name, "-name")) {
-                eprintf("usage: find [path [-name file]]\n");
-                return 1;
+        if (!strcmp(dir, "-type")) {
+            char *t;
+            if (!cmd)
+                goto error;
+            if (!(cmd = getArg(cmd, end, &type)))
+                goto error;
+            for (t=type; t && *t; t++) {
+                if (*t != 'd') {
+                    eprintf("find: error: unknown type '%c'\n", *t);
+                    goto error;
+                }
             }
-            if (!(cmd = getArg(cmd, end, &name))) {
-                eprintf("usage: find [path [-name file]]\n");
-                return 1;
-            }
+            mode = S_IFDIR;
+            if (!(cmd = getArg(cmd, end, &dir)))
+                dir = strdup(".");
+        }
+        if (cmd && *cmd != '\0') {
+            if (!(cmd = getArg(cmd, end, &name)) || strcmp(name, "-name"))
+                goto error;
+            if (!(cmd = getArg(cmd, end, &name)))
+                goto error;
         }
     }
 
-    return doFind(dir, name);
+    return doFind(dir, name, mode);
+error:
+    eprintf("usage: find [-type type] [path [-name file]]\n");
+    return 1;
 }
 
 static int

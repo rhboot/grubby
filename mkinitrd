@@ -34,7 +34,7 @@ export PATH
 
 . /etc/rc.d/init.d/functions
 
-VERSION=5.0.20
+VERSION=5.0.21
 
 PROBE="yes"
 MODULES=""
@@ -252,7 +252,7 @@ findstoragedriver () {
             continue
         fi
         vecho "Looking for driver for device $device"
-        sysfs=$(findone /sys/block -name $device -type d)
+        sysfs=$(findone -type d /sys/block -name $device)
         [ -z "$sysfs" ] && return
         pushd $sysfs >/dev/null 2>&1
         while [ ! -L device ]; do

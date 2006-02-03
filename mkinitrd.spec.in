@@ -63,6 +63,15 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Feb  3 2006 Peter Jones <pjones@redhat.com> - 5.0.21-1
+- add "mount -o bind" support and "mount --move" support (#109366, patch
+  from Kasper Dupont)
+- add resolveDevice command, which cases down device labels.
+- remove "findlodev" from the documentation (#178587)
+- fix nash command name parsing bug (#178587)
+- fix "find" argument parsing (#178587)
+- add "find" handling for "-type d"
+
 * Thu Feb  2 2006 Peter Jones <pjones@redhat.com> - 5.0.20-1
 - fix really dumb spec file mistake
 - fix devno detection for /dev/root
