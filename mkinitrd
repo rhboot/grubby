@@ -582,7 +582,7 @@ if [ "x$PROBE" == "xyes" ]; then
     rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
     # check if it's root by label
     if echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
-        majmin=$(get_numeric_dev hex /dev/root)
+        majmin=$(get_numeric_dev dec /dev/root)
         if [ -n "$majmin" ]; then
             dev=$(findall /sys/block -name dev | while read device ; do \
 	          echo "$majmin" | cmp -s $device && echo $device ; done \
@@ -616,8 +616,8 @@ fi
 testdm=""
 [ -n "$vg_list" ] && testdm="yes"
 [ -n "$forceraid" -o -n "$forcelvm" ] && testdm="yes"
-[ "x$PROBE" == "xyes" -a \
-  -n "$(test -z \"$nolvm\" -o -z \"$noraid\")" ] && testdm="yes"
+[ -z "$nolvm" -o -z "$noraid" ] && testdm="yes"
+[ "x$PROBE" != "xyes" ] && testdm=""
 
 if [ -n "$testdm" ]; then
     if [ -x /sbin/dmsetup -a -e /dev/mapper/control ]; then
