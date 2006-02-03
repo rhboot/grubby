@@ -293,6 +293,9 @@ mountCommand(char * cmd, char * end)
         } else if (!strcmp(spec, "--bind")) {
             flags = MS_BIND;
             fsType = "none";
+        } else if (!strcmp(spec, "--move")) {
+            flags = MS_MOVE;
+            fsType = "none";
 	} else if (!strcmp(spec, "-o")) {
 	    cmd = getArg(cmd, end, &options);
 	    if (!cmd) {
@@ -404,6 +407,8 @@ mountCommand(char * cmd, char * end)
 		flags &= ~MS_NOATIME;
 	    else if (!strcmp(start, "remount"))
 		flags |= MS_REMOUNT;
+            else if (!strcmp(start, "bind"))
+                flags |= MS_BIND;
 	    else if (!strcmp(start, "defaults"))
 		;
 	    else {
@@ -1180,6 +1185,25 @@ umountCommand(char * cmd, char * end)
     return 0;
 }
 
+static int
+resolveDeviceCommand(char *cmd, char *end)
+{
+    char *spec = NULL;
+    char *device = NULL;
+
+    if (!(cmd = getArg(cmd, end, &spec))) {
+        eprintf("resolveDevice: device spec expected\n");
+        return 1;
+    }
+
+    device = getpathbyspec(spec);
+    if (device) {
+        printf("%s\n", device);
+        return 0;
+    }
+    return 1;
+}
+
 /* 2.6 magic swsusp stuff */
 static int
 resumeCommand(char * cmd, char * end)
@@ -1830,6 +1854,7 @@ static const struct commandHandler handlers[] = {
     { "raidautorun", raidautorunCommand },
     { "readlink", readlinkCommand },
     { "resume", resumeCommand },
+    { "resolveDevice", resolveDeviceCommand },
     { "setquiet", setQuietCommand },
     { "setuproot", setuprootCommand },
     { "sleep", sleepCommand },
