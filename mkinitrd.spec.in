@@ -65,6 +65,8 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Thu Feb  2 2006 Peter Jones <pjones@redhat.com> - 5.0.20-1
 - fix really dumb spec file mistake
+- fix devno detection for /dev/root
+- fix testdm check
 
 * Thu Feb  2 2006 Peter Jones <pjones@redhat.com> - 5.0.19-1
 - mkinitrd: get resolve_dm_name() and get_numeric_dev() from initscripts
