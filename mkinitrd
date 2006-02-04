@@ -294,7 +294,7 @@ handleraid() {
 	    findmodule multipath
 	    start=1
 	    ;;
-	raid[01456])
+	raid[01456] | raid10)
 	    findmodule $level
 	    start=1
 	    ;;
