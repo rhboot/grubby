@@ -162,7 +162,8 @@ getArg(char * cmd, char * end, char ** arg)
     if (!cmd || cmd >= end)
         return NULL;
 
-    while (isspace(*cmd) && cmd < end) cmd++;
+    while (isspace(*cmd) && cmd < end)
+        cmd++;
     if (cmd >= end)
         return NULL;
 
@@ -175,7 +176,8 @@ getArg(char * cmd, char * end, char ** arg)
         *arg = cmd;
 
         /* This doesn't support \ escapes */
-        while (cmd < end && *cmd != quote) cmd++;
+        while (cmd < end && *cmd != quote)
+            cmd++;
 
         if (cmd == end) {
             eprintf("error: quote mismatch for %s\n", *arg);
@@ -186,7 +188,8 @@ getArg(char * cmd, char * end, char ** arg)
         cmd++;
     } else {
         *arg = cmd;
-        while (!isspace(*cmd) && cmd < end) cmd++;
+        while (!isspace(*cmd) && cmd < end)
+            cmd++;
         *cmd = '\0';
         if (**arg == '$')
             *arg = getenv(*arg+1);
@@ -196,7 +199,8 @@ getArg(char * cmd, char * end, char ** arg)
 
     cmd++;
 
-    while (isspace(*cmd)) cmd++;
+    while (isspace(*cmd))
+        cmd++;
 
     return cmd;
 }
@@ -481,7 +485,8 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
         cmd = getArg(cmd, end, nextArg);
     }
 
-    if (cmd) nextArg++;
+    if (cmd)
+        nextArg++;
     *nextArg = NULL;
 
     /* if the next-to-last arg is a >, redirect the output properly */
@@ -722,7 +727,7 @@ losetupCommand(char * cmd, char * end)
             return 1;
         }
 
-        if (ioctl(dev, LOOP_SET_FD, (long) fd)) {
+        if (ioctl(dev, LOOP_SET_FD, (long)fd)) {
             eprintf("losetup: LOOP_SET_FD failed for fd %d: %s\n", fd,
                     strerror(errno));
             close(dev);
@@ -924,7 +929,8 @@ setuprootCommand(char *cmd, char *end)
                 }
 
                 end = start + 1;
-                while (*end && (*end != '\n')) end++;
+                while (*end && (*end != '\n'))
+                    end++;
                 /* end points to the \n at the end of the command */
 
                 if (mountCommand(start, end) != 0)
@@ -1065,7 +1071,8 @@ switchrootCommand(char * cmd, char * end)
 
         start = chptr = cmdline;
         for (; (i < MAX_INIT_ARGS) && (*start != '\0'); i++) {
-            while (*chptr && !isspace(*chptr)) chptr++;
+            while (*chptr && !isspace(*chptr))
+                chptr++;
             if (*chptr != '\0') *(chptr++) = '\0';
             /*
              * On x86_64, the kernel adds a magic command line parameter
@@ -1148,14 +1155,18 @@ echoCommand(char * cmd, char * end)
     string = (char *)calloc(length, sizeof (char));
     *string = '\0';
     for (i = 0; i < num;i ++) {
-        if (i) strcat(string, " ");
+        if (i)
+            strcat(string, " ");
         strncat(string, args[i], strlen(args[i]));
     }
 
-    if (newline) strcat(string, "\n");
-    if (!isEchoQuiet(outFd)) write(outFd, string, strlen(string));
+    if (newline)
+        strcat(string, "\n");
+    if (!isEchoQuiet(outFd))
+        write(outFd, string, strlen(string));
 
-    if (outFd != 1) close(outFd);
+    if (outFd != 1)
+        close(outFd);
     free(string);
 
     return 0;
@@ -1400,7 +1411,8 @@ accessCommand(char * cmd, char * end)
     char * file = NULL;
 
     cmd = getArg(cmd, end, &permStr);
-    if (cmd) cmd = getArg(cmd, end, &file);
+    if (cmd)
+        cmd = getArg(cmd, end, &file);
 
     if (!cmd || *permStr != '-') {
         eprintf("usage: access -[perm] file\n");
@@ -1914,10 +1926,12 @@ runStartup(int fd, char *name)
 
     start = contents;
     while (*start) {
-        while (isspace(*start) && *start && (*start != '\n')) start++;
+        while (isspace(*start) && *start && (*start != '\n'))
+            start++;
 
         if (*start == '#') {
-            while (*start && (*start != '\n')) start++;
+            while (*start && (*start != '\n'))
+                start++;
             if (*start == '\n')
                 start++;
         }
@@ -1934,7 +1948,8 @@ runStartup(int fd, char *name)
 
         /* start points to the beginning of the command */
         end = start + 1;
-        while (*end && (*end != '\n')) end++;
+        while (*end && (*end != '\n'))
+            end++;
         if (!*end) {
             eprintf("(last line in %s missing newline -- skipping)\n", name);
             start = end;
@@ -1944,7 +1959,8 @@ runStartup(int fd, char *name)
         /* end points to the \n at the end of the command */
 
         chptr = start;
-        while (chptr < end && !isspace(*chptr)) chptr++;
+        while (chptr < end && !isspace(*chptr))
+            chptr++;
 
         i = 0;
         rc = 1;
