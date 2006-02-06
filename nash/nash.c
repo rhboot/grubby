@@ -205,13 +205,6 @@ getArg(char * cmd, char * end, char ** arg)
     return cmd;
 }
 
-
-#ifdef __powerpc__
-#define CMDLINESIZE 256
-#else
-#define CMDLINESIZE 1024
-#endif
-
 /* get the contents of the kernel command line from /proc/cmdline */
 static char *
 getKernelCmdLine(void)
