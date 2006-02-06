@@ -125,28 +125,28 @@ readFD (int fd, char **buf)
 
     *buf = calloc (16384, sizeof (char));
     if (*buf == 0) {
-	eprintf("calloc failed: %s\n", strerror(errno));
-	return -1;
+        eprintf("calloc failed: %s\n", strerror(errno));
+        return -1;
     }
 
     filesize = 0;
     do {
-	p = &(*buf) [filesize];
-	s = read (fd, p, 16384);
-	if (s < 0)
-	    break;
-	filesize += s;
-	/* only exit for empty reads */
-	if (s == 0)
-	    break;
-	size += s;
-	*buf = realloc (*buf, size);
+        p = &(*buf) [filesize];
+        s = read (fd, p, 16384);
+        if (s < 0)
+            break;
+        filesize += s;
+        /* only exit for empty reads */
+        if (s == 0)
+            break;
+        size += s;
+        *buf = realloc (*buf, size);
     } while (1);
 
     if (filesize == 0 && s < 0) {
-	free (*buf);
-	*buf = NULL;
-	return -1;
+        free (*buf);
+        *buf = NULL;
+        return -1;
     }
 
     return filesize;
@@ -249,14 +249,14 @@ smartmknod(char * device, mode_t mode, dev_t dev)
 
     end = buf;
     while (*end) {
-	if (*end == '/') {
-	    *end = '\0';
-	    if (access(buf, F_OK) && errno == ENOENT)
-		mkdir(buf, 0755);
-	    *end = '/';
-	}
+        if (*end == '/') {
+            *end = '\0';
+            if (access(buf, F_OK) && errno == ENOENT)
+                mkdir(buf, 0755);
+            *end = '/';
+        }
 
-	end++;
+        end++;
     }
 
     return mknod(device, mode, dev);

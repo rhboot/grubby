@@ -11,7 +11,7 @@
  * Copyright 2002-2005 Red Hat Software
  *
  * This software may be freely redistributed under the terms of the GNU
- * public license.
+ * General Public License, version 2.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
@@ -115,12 +115,12 @@ searchPath(char *bin, char **resolved)
     int rc;
 
     if (!strchr(bin, '/')) {
-	pathStart = sysPath;
-	while (*pathStart) {
+        pathStart = sysPath;
+        while (*pathStart) {
             char pec;
-	    pathEnd = strchr(pathStart, ':');
+            pathEnd = strchr(pathStart, ':');
 
-	    if (!pathEnd)
+            if (!pathEnd)
                 pathEnd = pathStart + strlen(pathStart);
 
             pec = *pathEnd;
@@ -134,16 +134,16 @@ searchPath(char *bin, char **resolved)
             }
 
             *pathEnd = pec;
-	    pathStart = pathEnd;
-	    if (*pathStart)
+            pathStart = pathEnd;
+            if (*pathStart)
                 pathStart++;
 
-	    if (!access(fullPath, X_OK)) {
-		*resolved = fullPath;
+            if (!access(fullPath, X_OK)) {
+                *resolved = fullPath;
                 return 0;
-	    }
+            }
             free(fullPath);
-	}
+        }
     }
 
     if (!access(bin, X_OK)) {
@@ -167,28 +167,28 @@ getArg(char * cmd, char * end, char ** arg)
         return NULL;
 
     if (*cmd == '"')
-	cmd++, quote = '"';
+        cmd++, quote = '"';
     else if (*cmd == '\'')
-	cmd++, quote = '\'';
+        cmd++, quote = '\'';
 
     if (quote) {
-	*arg = cmd;
+        *arg = cmd;
 
-	/* This doesn't support \ escapes */
-	while (cmd < end && *cmd != quote) cmd++;
+        /* This doesn't support \ escapes */
+        while (cmd < end && *cmd != quote) cmd++;
 
-	if (cmd == end) {
-	    eprintf("error: quote mismatch for %s\n", *arg);
-	    return NULL;
-	}
+        if (cmd == end) {
+            eprintf("error: quote mismatch for %s\n", *arg);
+            return NULL;
+        }
 
-	*cmd = '\0';
-	cmd++;
+        *cmd = '\0';
+        cmd++;
     } else {
-	*arg = cmd;
-	while (!isspace(*cmd) && cmd < end) cmd++;
-	*cmd = '\0';
-	if (**arg == '$')
+        *arg = cmd;
+        while (!isspace(*cmd) && cmd < end) cmd++;
+        *cmd = '\0';
+        if (**arg == '$')
             *arg = getenv(*arg+1);
         if (*arg == NULL)
             *arg = "";
@@ -220,18 +220,18 @@ getKernelCmdLine(void)
 
     fd = coeOpen("/proc/cmdline", O_RDONLY);
     if (fd < 0) {
-	eprintf("getKernelCmdLine: failed to open /proc/cmdline: %s\n",
+        eprintf("getKernelCmdLine: failed to open /proc/cmdline: %s\n",
                 strerror(errno));
-	return NULL;
+        return NULL;
     }
 
     i = readFD(fd, &buf);
     errnum = errno;
     close(fd);
     if (i < 0) {
-	eprintf("getKernelCmdLine: failed to read /proc/cmdline: %s\n",
+        eprintf("getKernelCmdLine: failed to read /proc/cmdline: %s\n",
                 strerror(errnum));
-	return NULL;
+        return NULL;
     }
     return buf;
 }
@@ -249,21 +249,21 @@ getKernelArg(char * arg)
     if (start == NULL)
         return NULL;
     while (*start) {
-	if (isspace(*start)) {
-	    start++;
-	    continue;
-	}
+        if (isspace(*start)) {
+            start++;
+            continue;
+        }
         len = strlen(arg);
         /* don't return if it's some other arg that just starts like
            this one */
-	if (strncmp(start, arg, len) == 0) {
+        if (strncmp(start, arg, len) == 0) {
             if (start[len] == '=')
                 return start + len + 1;
             if (!start[len] || isspace(start[len]))
                 return start + len;
         }
-	while (*++start && !isspace(*start))
-	    ;
+        while (*++start && !isspace(*start))
+            ;
     }
 
     return NULL;
@@ -281,39 +281,39 @@ mountCommand(char * cmd, char * end)
     char * newOpts;
 
     if (!(cmd = getArg(cmd, end, &spec))) {
-	eprintf(
+        eprintf(
             "usage: mount [--ro] [-o <opts>] -t <type> <device> <mntpoint>\n");
-	return 1;
+        return 1;
     }
 
     while (cmd && *spec == '-') {
-	if (!strcmp(spec, "--ro")) {
-	    flags |= MS_RDONLY;
+        if (!strcmp(spec, "--ro")) {
+            flags |= MS_RDONLY;
         } else if (!strcmp(spec, "--bind")) {
             flags = MS_BIND;
             fsType = "none";
         } else if (!strcmp(spec, "--move")) {
             flags = MS_MOVE;
             fsType = "none";
-	} else if (!strcmp(spec, "-o")) {
-	    cmd = getArg(cmd, end, &options);
-	    if (!cmd) {
-		eprintf("mount: -o requires arguments\n");
-		return 1;
-	    }
-	} else if (!strcmp(spec, "-t")) {
-	    if (!(cmd = getArg(cmd, end, &fsType))) {
-		eprintf("mount: missing filesystem type\n");
-		return 1;
-	    }
-	}
+        } else if (!strcmp(spec, "-o")) {
+            cmd = getArg(cmd, end, &options);
+            if (!cmd) {
+                eprintf("mount: -o requires arguments\n");
+                return 1;
+            }
+        } else if (!strcmp(spec, "-t")) {
+            if (!(cmd = getArg(cmd, end, &fsType))) {
+                eprintf("mount: missing filesystem type\n");
+                return 1;
+            }
+        }
 
-	cmd = getArg(cmd, end, &spec);
+        cmd = getArg(cmd, end, &spec);
     }
 
     if (!cmd) {
-	eprintf("mount: missing device or mountpoint\n");
-	return 1;
+        eprintf("mount: missing device or mountpoint\n");
+        return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &mntPoint))) {
@@ -322,12 +322,12 @@ mountCommand(char * cmd, char * end)
 
         fstab = coeFopen("/fstab", "r");
         if (!fstab) {
-	    eprintf("mount: missing mount point\n");
+            eprintf("mount: missing mount point\n");
             return 1;
         }
         do {
             if (!(mnt = getmntent(fstab))) {
-	        eprintf("mount: missing mount point\n");
+                eprintf("mount: missing mount point\n");
                 fclose(fstab);
                 return 1;
             }
@@ -350,76 +350,76 @@ mountCommand(char * cmd, char * end)
     }
 
     if (!fsType) {
-	eprintf("mount: filesystem type expected\n");
-	return 1;
+        eprintf("mount: filesystem type expected\n");
+        return 1;
     }
 
     if (cmd && cmd < end) {
-	eprintf("mount: unexpected arguments\n");
-	return 1;
+        eprintf("mount: unexpected arguments\n");
+        return 1;
     }
 
     /* need to deal with options */
     if (options) {
-	char * end;
-	char * start = options;
+        char * end;
+        char * start = options;
 
-	newOpts = alloca(strlen(options) + 1);
-	*newOpts = '\0';
+        newOpts = alloca(strlen(options) + 1);
+        *newOpts = '\0';
 
-	while (*start) {
-	    end = strchr(start, ',');
-	    if (!end) {
-		end = start + strlen(start);
-	    } else {
-		*end = '\0';
-		end++;
-	    }
+        while (*start) {
+            end = strchr(start, ',');
+            if (!end) {
+                end = start + strlen(start);
+            } else {
+                *end = '\0';
+                end++;
+            }
 
-	    if (!strcmp(start, "ro"))
-		flags |= MS_RDONLY;
-	    else if (!strcmp(start, "rw"))
-		flags &= ~MS_RDONLY;
-	    else if (!strcmp(start, "nosuid"))
-		flags |= MS_NOSUID;
-	    else if (!strcmp(start, "suid"))
-		flags &= ~MS_NOSUID;
-	    else if (!strcmp(start, "nodev"))
-		flags |= MS_NODEV;
-	    else if (!strcmp(start, "dev"))
-		flags &= ~MS_NODEV;
-	    else if (!strcmp(start, "noexec"))
-		flags |= MS_NOEXEC;
-	    else if (!strcmp(start, "exec"))
-		flags &= ~MS_NOEXEC;
-	    else if (!strcmp(start, "sync"))
-		flags |= MS_SYNCHRONOUS;
-	    else if (!strcmp(start, "async"))
-		flags &= ~MS_SYNCHRONOUS;
-	    else if (!strcmp(start, "nodiratime"))
-		flags |= MS_NODIRATIME;
-	    else if (!strcmp(start, "diratime"))
-		flags &= ~MS_NODIRATIME;
-	    else if (!strcmp(start, "noatime"))
-		flags |= MS_NOATIME;
-	    else if (!strcmp(start, "atime"))
-		flags &= ~MS_NOATIME;
-	    else if (!strcmp(start, "remount"))
-		flags |= MS_REMOUNT;
+            if (!strcmp(start, "ro"))
+                flags |= MS_RDONLY;
+            else if (!strcmp(start, "rw"))
+                flags &= ~MS_RDONLY;
+            else if (!strcmp(start, "nosuid"))
+                flags |= MS_NOSUID;
+            else if (!strcmp(start, "suid"))
+                flags &= ~MS_NOSUID;
+            else if (!strcmp(start, "nodev"))
+                flags |= MS_NODEV;
+            else if (!strcmp(start, "dev"))
+                flags &= ~MS_NODEV;
+            else if (!strcmp(start, "noexec"))
+                flags |= MS_NOEXEC;
+            else if (!strcmp(start, "exec"))
+                flags &= ~MS_NOEXEC;
+            else if (!strcmp(start, "sync"))
+                flags |= MS_SYNCHRONOUS;
+            else if (!strcmp(start, "async"))
+                flags &= ~MS_SYNCHRONOUS;
+            else if (!strcmp(start, "nodiratime"))
+                flags |= MS_NODIRATIME;
+            else if (!strcmp(start, "diratime"))
+                flags &= ~MS_NODIRATIME;
+            else if (!strcmp(start, "noatime"))
+                flags |= MS_NOATIME;
+            else if (!strcmp(start, "atime"))
+                flags &= ~MS_NOATIME;
+            else if (!strcmp(start, "remount"))
+                flags |= MS_REMOUNT;
             else if (!strcmp(start, "bind"))
                 flags |= MS_BIND;
-	    else if (!strcmp(start, "defaults"))
-		;
-	    else {
-		if (*newOpts)
-		    strcat(newOpts, ",");
-		strcat(newOpts, start);
-	    }
+            else if (!strcmp(start, "defaults"))
+                ;
+            else {
+                if (*newOpts)
+                    strcat(newOpts, ",");
+                strcat(newOpts, start);
+            }
 
-	    start = end;
-	}
+            start = end;
+        }
 
-	options = newOpts;
+        options = newOpts;
     }
 
     device = getpathbyspec(spec);
@@ -429,25 +429,25 @@ mountCommand(char * cmd, char * end)
     }
 
     if (testing) {
-	printf("mount %s%s%s-t '%s' '%s' '%s' (%s%s%s%s%s%s%s)\n",
-		options ? "-o '" : "",
-		options ? options : "",
-		options ? "\' " : "",
-		fsType, device, mntPoint,
-		(flags & MS_RDONLY) ? "ro " : "",
-		(flags & MS_NOSUID) ? "nosuid " : "",
-		(flags & MS_NODEV) ? "nodev " : "",
-		(flags & MS_NOEXEC) ? "noexec " : "",
-		(flags & MS_SYNCHRONOUS) ? "sync " : "",
-		(flags & MS_REMOUNT) ? "remount " : "",
-		(flags & MS_NOATIME) ? "noatime " : ""
-	    );
+        printf("mount %s%s%s-t '%s' '%s' '%s' (%s%s%s%s%s%s%s)\n",
+                options ? "-o '" : "",
+                options ? options : "",
+                options ? "\' " : "",
+                fsType, device, mntPoint,
+                (flags & MS_RDONLY) ? "ro " : "",
+                (flags & MS_NOSUID) ? "nosuid " : "",
+                (flags & MS_NODEV) ? "nodev " : "",
+                (flags & MS_NOEXEC) ? "noexec " : "",
+                (flags & MS_SYNCHRONOUS) ? "sync " : "",
+                (flags & MS_REMOUNT) ? "remount " : "",
+                (flags & MS_NOATIME) ? "noatime " : ""
+            );
     } else {
-	if (mount(device, mntPoint, fsType, flags, options) < 0) {
-	    eprintf("mount: error %s mounting %s on %s as %s\n",
+        if (mount(device, mntPoint, fsType, flags, options) < 0) {
+            eprintf("mount: error %s mounting %s on %s as %s\n",
                     strerror(errno), device, mntPoint, fsType);
-	    rc = 1;
-	}
+            rc = 1;
+        }
     }
     free(device);
 
@@ -477,8 +477,8 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
     *nextArg = strdup(bin);
 
     while (cmd && cmd < end) {
-	nextArg++;
-	cmd = getArg(cmd, end, nextArg);
+        nextArg++;
+        cmd = getArg(cmd, end, nextArg);
     }
 
     if (cmd) nextArg++;
@@ -486,50 +486,50 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
 
     /* if the next-to-last arg is a >, redirect the output properly */
     if (((nextArg - args) >= 2) && !strcmp(*(nextArg - 2), ">")) {
-	stdoutFile = *(nextArg - 1);
-	*(nextArg - 2) = NULL;
+        stdoutFile = *(nextArg - 1);
+        *(nextArg - 2) = NULL;
 
-	stdoutFd = open(stdoutFile, O_CREAT | O_RDWR | O_TRUNC, 0600);
-	if (stdoutFd < 0) {
-	    eprintf("nash: failed to open %s: %s\n", stdoutFile,
+        stdoutFd = open(stdoutFile, O_CREAT | O_RDWR | O_TRUNC, 0600);
+        if (stdoutFd < 0) {
+            eprintf("nash: failed to open %s: %s\n", stdoutFile,
                     strerror(errno));
-	    return 1;
-	}
+            return 1;
+        }
     }
 
     if (testing) {
-	printf("%s ", bin);
-	nextArg = args + 1;
-	while (*nextArg)
-	    printf(" '%s'", *nextArg++);
-	if (stdoutFile)
-	    printf(" (> %s)", stdoutFile);
-	printf("\n");
+        printf("%s ", bin);
+        nextArg = args + 1;
+        while (*nextArg)
+            printf(" '%s'", *nextArg++);
+        if (stdoutFile)
+            printf(" (> %s)", stdoutFile);
+        printf("\n");
     } else {
-	if (!doFork || !(pid = fork())) {
-	    /* child */
-	    int errnum;
+        if (!doFork || !(pid = fork())) {
+            /* child */
+            int errnum;
 
-	    dup2(stdoutFd, 1);
-	    execve(args[0], args, env);
-	    errnum = errno; /* so we'll have it after printf */
-	    eprintf("ERROR: failed in exec of %s: %s\n", args[0],
-		    strerror(errnum));
-	    return errnum;
-	}
+            dup2(stdoutFd, 1);
+            execve(args[0], args, env);
+            errnum = errno; /* so we'll have it after printf */
+            eprintf("ERROR: failed in exec of %s: %s\n", args[0],
+                    strerror(errnum));
+            return errnum;
+        }
 
-	if (stdoutFd != 1)
-		close(stdoutFd);
+        if (stdoutFd != 1)
+                close(stdoutFd);
 
-	for (;;) {
-	    wpid = wait4(-1, &status, 0, NULL);
-	    if (wpid == -1) {
-	        eprintf("ERROR: Failed to wait for process %d: %s\n", wpid,
+        for (;;) {
+            wpid = wait4(-1, &status, 0, NULL);
+            if (wpid == -1) {
+                eprintf("ERROR: Failed to wait for process %d: %s\n", wpid,
                         strerror(errno));
-	    }
+            }
 
-	    if (wpid != pid)
-		continue;
+            if (wpid != pid)
+                continue;
 
             if (!WIFEXITED(status) || WEXITSTATUS(status)) {
 #if 0
@@ -537,8 +537,8 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
                     args[0], WEXITSTATUS(status), pid);
 #endif
                 return 1;
-	    }
-	    break;
+            }
+            break;
         }
     }
 
@@ -552,31 +552,31 @@ lnCommand(char *cmd, char *end)
     int symbolic = 0, rc;
 
     if (!(cmd = getArg(cmd, end, &oldpath))) {
-	eprintf("ln: argument expected\n");
-	return 1;
+        eprintf("ln: argument expected\n");
+        return 1;
     }
 
     if (!strcmp(cmd, "-s")) {
-	symbolic = 1;
-	if (!(cmd = getArg(cmd, end, &oldpath))) {
-	    eprintf("ln: argument expected\n");
-	    return 1;
-	}
+        symbolic = 1;
+        if (!(cmd = getArg(cmd, end, &oldpath))) {
+            eprintf("ln: argument expected\n");
+            return 1;
+        }
     }
 
     if (!(cmd = getArg(cmd, end, &newpath))) {
-	eprintf("ln: argument expected\n");
-	return 1;
+        eprintf("ln: argument expected\n");
+        return 1;
     }
 
     if (symbolic)
-	rc = symlink(oldpath, newpath);
+        rc = symlink(oldpath, newpath);
     else
-	rc = link(oldpath, newpath);
+        rc = link(oldpath, newpath);
 
     if (rc > 0) {
-	eprintf("ln: error: %s\n", strerror(errno));
-	return 1;
+        eprintf("ln: error: %s\n", strerror(errno));
+        return 1;
     }
 
     return 0;
@@ -633,8 +633,8 @@ catCommand(char * cmd, char * end)
     int fd, n;
 
     if (!(cmd = getArg(cmd, end, &file))) {
-	eprintf("cat: argument expected\n");
-	return 1;
+        eprintf("cat: argument expected\n");
+        return 1;
     }
 
     if ((fd = coeOpen(file, O_RDONLY)) < 0) {
@@ -655,8 +655,8 @@ lsCommand(char * cmd, char * end)
     char * dir;
 
     if (!(cmd = getArg(cmd, end, &dir))) {
-	eprintf("ls: argument expected\n");
-	return 1;
+        eprintf("ls: argument expected\n");
+        return 1;
     }
 
     lsdir(dir, "");
@@ -671,8 +671,8 @@ execCommand(char *cmd, char *end)
     int rc;
 
     if (!(cmd = getArg(cmd, end, &bin))) {
-	eprintf("exec: argument expected\n");
-	return 1;
+        eprintf("exec: argument expected\n");
+        return 1;
     }
     rc = searchPath(bin, &fullPath);
     if (rc < 0)
@@ -692,53 +692,53 @@ losetupCommand(char * cmd, char * end)
     int dev;
 
     if (!(cmd = getArg(cmd, end, &device))) {
-	eprintf("losetup: missing device\n");
-	return 1;
+        eprintf("losetup: missing device\n");
+        return 1;
     }
 
     if (!(cmd = getArg(cmd, end, &file))) {
-	eprintf("losetup: missing file\n");
-	return 1;
+        eprintf("losetup: missing file\n");
+        return 1;
     }
 
     if (cmd < end) {
-	eprintf("losetup: unexpected arguments\n");
-	return 1;
+        eprintf("losetup: unexpected arguments\n");
+        return 1;
     }
 
     if (testing) {
-	printf("losetup '%s' '%s'\n", device, file);
+        printf("losetup '%s' '%s'\n", device, file);
     } else {
-	dev = coeOpen(device, O_RDWR);
-	if (dev < 0) {
-	    eprintf("losetup: failed to open %s: %s\n", device,strerror(errno));
-	    return 1;
-	}
+        dev = coeOpen(device, O_RDWR);
+        if (dev < 0) {
+            eprintf("losetup: failed to open %s: %s\n", device,strerror(errno));
+            return 1;
+        }
 
-	fd = coeOpen(file, O_RDWR);
-	if (fd < 0) {
-	    eprintf("losetup: failed to open %s: %s\n", file, strerror(errno));
-	    close(dev);
-	    return 1;
-	}
+        fd = coeOpen(file, O_RDWR);
+        if (fd < 0) {
+            eprintf("losetup: failed to open %s: %s\n", file, strerror(errno));
+            close(dev);
+            return 1;
+        }
 
-	if (ioctl(dev, LOOP_SET_FD, (long) fd)) {
-	    eprintf("losetup: LOOP_SET_FD failed for fd %d: %s\n", fd,
+        if (ioctl(dev, LOOP_SET_FD, (long) fd)) {
+            eprintf("losetup: LOOP_SET_FD failed for fd %d: %s\n", fd,
                     strerror(errno));
-	    close(dev);
-	    close(fd);
-	    return 1;
-	}
+            close(dev);
+            close(fd);
+            return 1;
+        }
 
-	close(fd);
+        close(fd);
 
-	memset(&loopInfo, 0, sizeof(loopInfo));
-	strcpy(loopInfo.lo_name, file);
+        memset(&loopInfo, 0, sizeof(loopInfo));
+        strcpy(loopInfo.lo_name, file);
 
-	if (ioctl(dev, LOOP_SET_STATUS, &loopInfo))
-	    eprintf("losetup: LOOP_SET_STATUS failed: %s\n", strerror(errno));
+        if (ioctl(dev, LOOP_SET_STATUS, &loopInfo))
+            eprintf("losetup: LOOP_SET_STATUS failed: %s\n", strerror(errno));
 
-	close(dev);
+        close(dev);
     }
 
     return 0;
@@ -752,13 +752,13 @@ raidautorunCommand(char * cmd, char * end)
     int fd;
 
     if (!(cmd = getArg(cmd, end, &device))) {
-	eprintf("raidautorun: raid device expected as first argument\n");
-	return 1;
+        eprintf("raidautorun: raid device expected as first argument\n");
+        return 1;
     }
 
     if (cmd < end) {
-	eprintf("raidautorun: unexpected arguments\n");
-	return 1;
+        eprintf("raidautorun: unexpected arguments\n");
+        return 1;
     }
 
     /* with udev, the raid devices don't exist until they get started.
@@ -779,14 +779,14 @@ raidautorunCommand(char * cmd, char * end)
 
     fd = coeOpen(device, O_RDWR);
     if (fd < 0) {
-	eprintf("raidautorun: failed to open %s: %s\n", device,strerror(errno));
-	return 1;
+        eprintf("raidautorun: failed to open %s: %s\n", device,strerror(errno));
+        return 1;
     }
 
     if (ioctl(fd, RAID_AUTORUN, 0)) {
-	eprintf("raidautorun: RAID_AUTORUN failed: %s\n", strerror(errno));
-	close(fd);
-	return 1;
+        eprintf("raidautorun: RAID_AUTORUN failed: %s\n", strerror(errno));
+        close(fd);
+        return 1;
     }
 
     close(fd);
@@ -803,58 +803,58 @@ recursiveRemove(char * dirName)
     char * strBuf = alloca(strlen(dirName) + 1024);
 
     if (!(dir = coeOpendir(dirName))) {
-	eprintf("error opening %s: %s\n", dirName, strerror(errno));
-	return 0;
+        eprintf("error opening %s: %s\n", dirName, strerror(errno));
+        return 0;
     }
 
     if (fstat(dirfd(dir),&rb)) {
-	eprintf("unable to stat %s: %s\n", dirName, strerror(errno));
+        eprintf("unable to stat %s: %s\n", dirName, strerror(errno));
         closedir(dir);
-	return 0;
+        return 0;
     }
 
     errno = 0;
     while ((d = readdir(dir))) {
-	errno = 0;
+        errno = 0;
 
-	if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) {
-	    errno = 0;
-	    continue;
-	}
+        if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) {
+            errno = 0;
+            continue;
+        }
 
-	strcpy(strBuf, dirName);
-	strcat(strBuf, "/");
-	strcat(strBuf, d->d_name);
+        strcpy(strBuf, dirName);
+        strcat(strBuf, "/");
+        strcat(strBuf, d->d_name);
 
-	if (lstat(strBuf, &sb)) {
-	    eprintf("failed to stat %s: %s\n", strBuf, strerror(errno));
-	    errno = 0;
-	    continue;
-	}
+        if (lstat(strBuf, &sb)) {
+            eprintf("failed to stat %s: %s\n", strBuf, strerror(errno));
+            errno = 0;
+            continue;
+        }
 
-	/* only descend into subdirectories if device is same as dir */
-	if (S_ISDIR(sb.st_mode)) {
-	    if (sb.st_dev == rb.st_dev) {
-	        recursiveRemove(strBuf);
-	        if (rmdir(strBuf))
-		    eprintf("failed to rmdir %s: %s\n", strBuf,
+        /* only descend into subdirectories if device is same as dir */
+        if (S_ISDIR(sb.st_mode)) {
+            if (sb.st_dev == rb.st_dev) {
+                recursiveRemove(strBuf);
+                if (rmdir(strBuf))
+                    eprintf("failed to rmdir %s: %s\n", strBuf,
                             strerror(errno));
-	    }
-	    errno = 0;
-	    continue;
-	}
+            }
+            errno = 0;
+            continue;
+        }
 
-	if (unlink(strBuf)) {
-	    eprintf("failed to remove %s: %s\n", strBuf, strerror(errno));
-	    errno = 0;
-	    continue;
-	}
+        if (unlink(strBuf)) {
+            eprintf("failed to remove %s: %s\n", strBuf, strerror(errno));
+            errno = 0;
+            continue;
+        }
     }
 
     if (errno) {
-	closedir(dir);
-	eprintf("error reading from %s: %s\n", dirName, strerror(errno));
-	return 1;
+        closedir(dir);
+        eprintf("error reading from %s: %s\n", dirName, strerror(errno));
+        return 1;
     }
 
     closedir(dir);
@@ -878,89 +878,89 @@ setuprootCommand(char *cmd, char *end)
     new = "/sysroot";
 
     if (chdir(new)) {
-	eprintf("setuproot: chdir(%s) failed: %s\n", new, strerror(errno));
-	return 1;
+        eprintf("setuproot: chdir(%s) failed: %s\n", new, strerror(errno));
+        return 1;
     }
 
     if (mount("/dev", "./dev", NULL, MS_BIND, NULL) < 0)
-	eprintf("setuproot: moving /dev failed: %s\n", strerror(errno));
+        eprintf("setuproot: moving /dev failed: %s\n", strerror(errno));
 
     if (!getKernelArg("nomnt")) {
-	fp = setmntent("./etc/fstab.sys", "r");
-	if (fp)
-	    qprintf("using fstab.sys from mounted FS\n");
-	else {
-	    fp = setmntent("/etc/fstab.sys", "r");
-	    if (fp)
-		qprintf("using fstab.sys from initrd\n");
-	}
-	if (fp) {
-	    struct mntent *mnt;
+        fp = setmntent("./etc/fstab.sys", "r");
+        if (fp)
+            qprintf("using fstab.sys from mounted FS\n");
+        else {
+            fp = setmntent("/etc/fstab.sys", "r");
+            if (fp)
+                qprintf("using fstab.sys from initrd\n");
+        }
+        if (fp) {
+            struct mntent *mnt;
 
-	    while((mnt = getmntent(fp))) {
-		char *start = NULL, *end;
-		char *target = NULL;
-		struct stat sb;
+            while((mnt = getmntent(fp))) {
+                char *start = NULL, *end;
+                char *target = NULL;
+                struct stat sb;
 
-		qprintf("mounting %s\n", mnt->mnt_dir);
-		if (asprintf(&target, ".%s", mnt->mnt_dir) < 0) {
-		    eprintf("setuproot: out of memory while mounting %s\n",
-			    mnt->mnt_dir);
-		    continue;
-		}
+                qprintf("mounting %s\n", mnt->mnt_dir);
+                if (asprintf(&target, ".%s", mnt->mnt_dir) < 0) {
+                    eprintf("setuproot: out of memory while mounting %s\n",
+                            mnt->mnt_dir);
+                    continue;
+                }
 
-		if (stat(target, &sb) < 0) {
-		    free(target);
-		    target = NULL;
-		    continue;
-		}
+                if (stat(target, &sb) < 0) {
+                    free(target);
+                    target = NULL;
+                    continue;
+                }
 
-		if (asprintf(&start, "-o %s -t %s %s .%s\n",
-			mnt->mnt_opts, mnt->mnt_type, mnt->mnt_fsname,
-			mnt->mnt_dir) < 0) {
-		    eprintf("setuproot: out of memory while mounting %s\n",
-			    mnt->mnt_dir);
-		    continue;
-		}
-	    
-		end = start + 1;
-		while (*end && (*end != '\n')) end++;
-		/* end points to the \n at the end of the command */
+                if (asprintf(&start, "-o %s -t %s %s .%s\n",
+                        mnt->mnt_opts, mnt->mnt_type, mnt->mnt_fsname,
+                        mnt->mnt_dir) < 0) {
+                    eprintf("setuproot: out of memory while mounting %s\n",
+                            mnt->mnt_dir);
+                    continue;
+                }
+            
+                end = start + 1;
+                while (*end && (*end != '\n')) end++;
+                /* end points to the \n at the end of the command */
 
-		if (mountCommand(start, end) != 0)
-		    eprintf("setuproot: mount returned error\n");
+                if (mountCommand(start, end) != 0)
+                    eprintf("setuproot: mount returned error\n");
 
-		free(start);
-		start = NULL;
-	    }
-	    endmntent(fp);
-	} else {
-	    struct {
-		char *source;
-		char *target;
-		char *type;
-		int flags;
-		void *data;
-	    } fstab[] = {
-		{ "/proc", "./proc", "proc", 0, NULL },
-		{ "/sys", "./sys", "sysfs", 0, NULL },
+                free(start);
+                start = NULL;
+            }
+            endmntent(fp);
+        } else {
+            struct {
+                char *source;
+                char *target;
+                char *type;
+                int flags;
+                void *data;
+            } fstab[] = {
+                { "/proc", "./proc", "proc", 0, NULL },
+                { "/sys", "./sys", "sysfs", 0, NULL },
 #if 0
-		{ "/dev/pts", "./dev/pts", "devpts", 0, "gid=5,mode=620" },
-		{ "/dev/shm", "./dev/shm", "tmpfs", 0, NULL },
-		{ "/selinux", "/selinux", "selinuxfs", 0, NULL },
+                { "/dev/pts", "./dev/pts", "devpts", 0, "gid=5,mode=620" },
+                { "/dev/shm", "./dev/shm", "tmpfs", 0, NULL },
+                { "/selinux", "/selinux", "selinuxfs", 0, NULL },
 #endif
-		{ NULL, }
-	    };
+                { NULL, }
+            };
             int i = 0;
 
-	    qprintf("no fstab.sys, mounting internal defaults\n");
-	    for (; fstab[i].source != NULL; i++) {
-		if (mount(fstab[i].source, fstab[i].target, fstab[i].type,
-			    fstab[i].flags, fstab[i].data) < 0)
-		    eprintf("setuproot: error mounting %s: %s\n",
-			    fstab[i].source, strerror(errno));
-	    }
-	}
+            qprintf("no fstab.sys, mounting internal defaults\n");
+            for (; fstab[i].source != NULL; i++) {
+                if (mount(fstab[i].source, fstab[i].target, fstab[i].type,
+                            fstab[i].flags, fstab[i].data) < 0)
+                    eprintf("setuproot: error mounting %s: %s\n",
+                            fstab[i].source, strerror(errno));
+            }
+        }
     }
 
     chdir("/");
@@ -1135,20 +1135,20 @@ echoCommand(char * cmd, char * end)
     length += num + 1;
 
     if ((nextArg - args >= 2) && !strcmp(*(nextArg - 2), ">")) {
-	outFd = coeOpen(*(nextArg - 1), O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (outFd < 0) {
-	    eprintf("echo: cannot open %s for write: %s\n", *(nextArg - 1),
+        outFd = coeOpen(*(nextArg - 1), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (outFd < 0) {
+            eprintf("echo: cannot open %s for write: %s\n", *(nextArg - 1),
                     strerror(errno));
-	    return 1;
-	}
+            return 1;
+        }
 
         newline = 0;
-	num -= 2;
+        num -= 2;
     }
     string = (char *)calloc(length, sizeof (char));
     *string = '\0';
     for (i = 0; i < num;i ++) {
-	if (i) strcat(string, " ");
+        if (i) strcat(string, " ");
         strncat(string, args[i], strlen(args[i]));
     }
 
@@ -1167,18 +1167,18 @@ umountCommand(char * cmd, char * end)
     char * path;
 
     if (!(cmd = getArg(cmd, end, &path))) {
-	eprintf("umount: path expected\n");
-	return 1;
+        eprintf("umount: path expected\n");
+        return 1;
     }
 
     if (cmd < end) {
-	eprintf("umount: unexpected arguments\n");
-	return 1;
+        eprintf("umount: unexpected arguments\n");
+        return 1;
     }
 
     if (umount(path) < 0) {
-	eprintf("umount %s failed: %s\n", path, strerror(errno));
-	return 1;
+        eprintf("umount %s failed: %s\n", path, strerror(errno));
+        return 1;
     }
 
     return 0;
@@ -1214,8 +1214,8 @@ resumeCommand(char * cmd, char * end)
     char buf[25];
 
     if (!(cmd = getArg(cmd, end, &resume))) {
-	eprintf("resume: resume device expected\n");
-	return 1;
+        eprintf("resume: resume device expected\n");
+        return 1;
     }
 
     if (access("/sys/power/resume", W_OK)) {
@@ -1324,10 +1324,10 @@ mkrootdevCommand(char *cmd, char *end)
             }
         } else if (root) {
             if (i) {
-	        eprintf("mkrootdev: unexpected arguments\n");
+                eprintf("mkrootdev: unexpected arguments\n");
                 eprintf("cmd: %p end: %p\n", cmd, end);
                 eprintf("cmd: %s\n", cmd);
-	        return 1;
+                return 1;
             }
             /* if we get here, we got root from the kernel command line,
                so we don't _really_ care that there wasn't one on the
@@ -1373,20 +1373,20 @@ mkdirCommand(char * cmd, char * end)
     cmd = getArg(cmd, end, &dir);
 
     if (cmd && !strcmp(dir, "-p")) {
-	ignoreExists = 1;
-	cmd = getArg(cmd, end, &dir);
+        ignoreExists = 1;
+        cmd = getArg(cmd, end, &dir);
     }
 
     if (!cmd) {
-	eprintf("mkdir: directory expected\n");
-	return 1;
+        eprintf("mkdir: directory expected\n");
+        return 1;
     }
 
     if (mkdir(dir, 0755)) {
-	if (!ignoreExists && errno == EEXIST) {
-	    eprintf("mkdir: failed to create %s: %s\n", dir, strerror(errno));
-	    return 1;
-	}
+        if (!ignoreExists && errno == EEXIST) {
+            eprintf("mkdir: failed to create %s: %s\n", dir, strerror(errno));
+            return 1;
+        }
     }
 
     return 0;
@@ -1403,27 +1403,27 @@ accessCommand(char * cmd, char * end)
     if (cmd) cmd = getArg(cmd, end, &file);
 
     if (!cmd || *permStr != '-') {
-	eprintf("usage: access -[perm] file\n");
-	return 1;
+        eprintf("usage: access -[perm] file\n");
+        return 1;
     }
 
     permStr++;
     while (*permStr) {
         switch (*permStr) {
-	    case 'r': perms |= R_OK; break;
-	    case 'w': perms |= W_OK; break;
-	    case 'x': perms |= X_OK; break;
-	    case 'f': perms |= F_OK; break;
-	    default:
-	        eprintf("perms must be -[r][w][x][f]\n");
-	        return 1;
-	}
+            case 'r': perms |= R_OK; break;
+            case 'w': perms |= W_OK; break;
+            case 'x': perms |= X_OK; break;
+            case 'f': perms |= F_OK; break;
+            default:
+                eprintf("perms must be -[r][w][x][f]\n");
+                return 1;
+        }
 
-	permStr++;
+        permStr++;
     }
 
     if ((file == NULL) || (access(file, perms)))
-	return 1;
+        return 1;
 
     return 0;
 }
@@ -1435,8 +1435,8 @@ sleepCommand(char * cmd, char * end)
     int delay;
 
     if (!(cmd = getArg(cmd, end, &delaystr))) {
-	eprintf("sleep: delay expected\n");
-	return 1;
+        eprintf("sleep: delay expected\n");
+        return 1;
     }
 
     delay = atoi(delaystr);
@@ -1470,9 +1470,9 @@ readlinkCommand(char * cmd, char * end)
 
     buf = calloc(512, sizeof (char));
     if (readlink(path, buf, 512) == -1) {
-	eprintf("error readlink %s: %s\n", path, strerror(errno));
+        eprintf("error readlink %s: %s\n", path, strerror(errno));
         free(buf);
-	return 1;
+        return 1;
     }
 
     /* symlink is absolute */
@@ -1517,42 +1517,42 @@ doFind(char * dirName, char * name, mode_t mask)
     char * strBuf = alloca(strlen(dirName) + 1024);
 
     if (!(dir = coeOpendir(dirName))) {
-	eprintf("error opening %s: %s\n", dirName, strerror(errno));
-	return 0;
+        eprintf("error opening %s: %s\n", dirName, strerror(errno));
+        return 0;
     }
 
     errno = 0;
     while ((d = readdir(dir))) {
-	errno = 0;
+        errno = 0;
 
-	strcpy(strBuf, dirName);
-	strcat(strBuf, "/");
-	strcat(strBuf, d->d_name);
+        strcpy(strBuf, dirName);
+        strcat(strBuf, "/");
+        strcat(strBuf, d->d_name);
 
-	if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) {
-	    errno = 0;
-	    continue;
-	}
-
-	if (lstat(strBuf, &sb)) {
-	    eprintf("failed to stat %s: %s\n", strBuf, strerror(errno));
-	    errno = 0;
-	    continue;
-	}
-
-	if (!name || !strcmp(d->d_name, name)) {
-            if (mask == 0 || (sb.st_mode & mask) == mask)
-	        printf("%s\n", strBuf);
+        if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) {
+            errno = 0;
+            continue;
         }
 
-	if (S_ISDIR(sb.st_mode))
-	    doFind(strBuf, name, mask);
+        if (lstat(strBuf, &sb)) {
+            eprintf("failed to stat %s: %s\n", strBuf, strerror(errno));
+            errno = 0;
+            continue;
+        }
+
+        if (!name || !strcmp(d->d_name, name)) {
+            if (mask == 0 || (sb.st_mode & mask) == mask)
+                printf("%s\n", strBuf);
+        }
+
+        if (S_ISDIR(sb.st_mode))
+            doFind(strBuf, name, mask);
     }
 
     if (errno) {
-	closedir(dir);
-	eprintf("error reading from %s: %s\n", dirName, strerror(errno));
-	return 1;
+        closedir(dir);
+        eprintf("error reading from %s: %s\n", dirName, strerror(errno));
+        return 1;
     }
 
     closedir(dir);
@@ -1616,34 +1616,34 @@ mknodCommand(char * cmd, char * end)
     cmd = getArg(cmd, end, &majorStr);
     cmd = getArg(cmd, end, &minorStr);
     if (!minorStr) {
-	eprintf("mknod: usage mknod <path> [c|b] <major> <minor>\n");
-	return 1;
+        eprintf("mknod: usage mknod <path> [c|b] <major> <minor>\n");
+        return 1;
     }
 
     if (!strcmp(type, "b")) {
-	mode = S_IFBLK;
+        mode = S_IFBLK;
     } else if (!strcmp(type, "c")) {
-	mode = S_IFCHR;
+        mode = S_IFCHR;
     } else {
-	eprintf("mknod: invalid type\n");
-	return 1;
+        eprintf("mknod: invalid type\n");
+        return 1;
     }
 
     major = strtol(majorStr, &chptr, 10);
     if (*chptr) {
-	eprintf("invalid major number\n");
-	return 1;
+        eprintf("invalid major number\n");
+        return 1;
     }
 
     minor = strtol(minorStr, &chptr, 10);
     if (*chptr) {
-	eprintf("invalid minor number\n");
-	return 1;
+        eprintf("invalid minor number\n");
+        return 1;
     }
 
     if (smartmknod(path, mode | 0600, makedev(major, minor))) {
-	eprintf("mknod: failed to create %s: %s\n", path, strerror(errno));
-	return 1;
+        eprintf("mknod: failed to create %s: %s\n", path, strerror(errno));
+        return 1;
     }
 
     return 0;
@@ -1817,8 +1817,8 @@ static int
 mkblkdevsCommand(char * cmd, char * end)
 {
     if (cmd < end) {
-	eprintf("mkblkdevs: unexpected arguments\n");
-	return 1;
+        eprintf("mkblkdevs: unexpected arguments\n");
+        return 1;
     }
 
     sysfs_blkdev_probe("/sys/block");
@@ -1914,37 +1914,37 @@ runStartup(int fd, char *name)
 
     start = contents;
     while (*start) {
-	while (isspace(*start) && *start && (*start != '\n')) start++;
+        while (isspace(*start) && *start && (*start != '\n')) start++;
 
-	if (*start == '#') {
-	    while (*start && (*start != '\n')) start++;
-	    if (*start == '\n')
-		start++;
-	}
+        if (*start == '#') {
+            while (*start && (*start != '\n')) start++;
+            if (*start == '\n')
+                start++;
+        }
 
-	if (*start == '\n') {
-	    start++;
-	    continue;
-	}
+        if (*start == '\n') {
+            start++;
+            continue;
+        }
 
-	if (!*start) {
-	    eprintf("(last line in %s is empty)\n", name);
-	    continue;
-	}
+        if (!*start) {
+            eprintf("(last line in %s is empty)\n", name);
+            continue;
+        }
 
-	/* start points to the beginning of the command */
-	end = start + 1;
-	while (*end && (*end != '\n')) end++;
-	if (!*end) {
-	    eprintf("(last line in %s missing newline -- skipping)\n", name);
-	    start = end;
-	    continue;
-	}
+        /* start points to the beginning of the command */
+        end = start + 1;
+        while (*end && (*end != '\n')) end++;
+        if (!*end) {
+            eprintf("(last line in %s missing newline -- skipping)\n", name);
+            start = end;
+            continue;
+        }
 
-	/* end points to the \n at the end of the command */
+        /* end points to the \n at the end of the command */
 
-	chptr = start;
-	while (chptr < end && !isspace(*chptr)) chptr++;
+        chptr = start;
+        while (chptr < end && !isspace(*chptr)) chptr++;
 
         i = 0;
         rc = 1;
@@ -1953,7 +1953,7 @@ runStartup(int fd, char *name)
             char *fullPath = NULL;
             rc = searchPath(start, &fullPath);
             if (rc >= 0) {
-	        rc = otherCommand(fullPath, chptr, end, 1);
+                rc = otherCommand(fullPath, chptr, end, 1);
                 free(fullPath);
             } else
                 i = 1;
@@ -1967,7 +1967,7 @@ runStartup(int fd, char *name)
             if (handler->name != NULL)
                 rc = (handler->fp)(chptr, end);
         }
-	start = end + 1;
+        start = end + 1;
     }
 
     free(contents);
@@ -1982,12 +1982,12 @@ int main(int argc, char **argv) {
 
     name = strrchr(argv[0], '/');
     if (!name)
-	name = argv[0];
+        name = argv[0];
     else
-	name++;
+        name++;
 
     if (!strcmp(name, "modprobe"))
-	exit(0);
+        exit(0);
     if (!strcmp(name, "hotplug")) {
         argv[0] = strdup("/sbin/udev");
         execv(argv[0], argv);
@@ -1999,41 +1999,41 @@ int main(int argc, char **argv) {
     argv++, argc--;
 
     while (argc && **argv == '-') {
-	if (!strcmp(*argv, "--forcequiet")) {
-	    force = 1;
-	    quiet = 1;
-	    argv++, argc--;
-	    testing = 0;
-	} else if (!strcmp(*argv, "--force")) {
-	    force = 1;
-	    argv++, argc--;
-	    testing = 0;
-	} else if (!strcmp(*argv, "--quiet")) {
-	    quiet = 1;
-	    argv++, argc--;
+        if (!strcmp(*argv, "--forcequiet")) {
+            force = 1;
+            quiet = 1;
+            argv++, argc--;
+            testing = 0;
+        } else if (!strcmp(*argv, "--force")) {
+            force = 1;
+            argv++, argc--;
+            testing = 0;
+        } else if (!strcmp(*argv, "--quiet")) {
+            quiet = 1;
+            argv++, argc--;
         } else if (!strcmp(*argv, "--reallyquiet")) {
             reallyquiet = 1;
             argv++, argc--;
-	} else {
-	    eprintf("unknown argument %s\n", *argv);
-	    return 1;
-	}
+        } else {
+            eprintf("unknown argument %s\n", *argv);
+            return 1;
+        }
     }
 
     if (force)
         qprintf("(forcing normal run)\n");
 
     if (testing)
-	qprintf("(running in test mode).\n");
+        qprintf("(running in test mode).\n");
 
     qprintf("Red Hat nash version %s starting\n", VERSION);
 
     if (*argv) {
-	fd = coeOpen(*argv, O_RDONLY, 0);
-	if (fd < 0) {
-	    eprintf("nash: cannot open %s: %s\n", *argv, strerror(errno));
-	    exit(1);
-	}
+        fd = coeOpen(*argv, O_RDONLY, 0);
+        if (fd < 0) {
+            eprintf("nash: cannot open %s: %s\n", *argv, strerror(errno));
+            exit(1);
+        }
     }
 
     /* runStartup closes fd */
