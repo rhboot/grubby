@@ -167,7 +167,7 @@ int nashDefaultLogger(nash_log_level level, char *format, ...)
     return ret;
 }
 
-int 
+int
 nashLoggerV(const nash_log_level level, const char *format, va_list ap)
 {
     FILE *output;

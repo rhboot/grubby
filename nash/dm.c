@@ -11,7 +11,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- * 
+ *
  * vim:ts=8:sw=4:sts=4:et
  */
 
@@ -173,12 +173,12 @@ nashDmCreatePartitions(char *path)
     ped_exception_set_handler(nashPartedExceptionHandler);
 
     dev = ped_device_get(path);
-    if (!dev || nashPartedError) 
-        goto out; 
+    if (!dev || nashPartedError)
+        goto out;
 
     if (!ped_device_open(dev))
         goto out;
-    
+
     disk = ped_disk_new(dev);
     if (!disk || nashPartedError)
         goto out;

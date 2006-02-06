@@ -120,7 +120,7 @@ block_sysfs_get_top(bdev_iter iter)
     return iter;
 }
 
-static void 
+static void
 block_sysfs_iterate_destroy(bdev_iter iter)
 {
     if (!iter)
@@ -351,7 +351,7 @@ mkpathbyspec(char *spec, char *path)
 {
     char *existing = getpathbyspec(spec);
     struct stat sb;
-    
+
     if (!existing || stat(existing, &sb) < 0 || !S_ISBLK(sb.st_mode))
         return -1;
 

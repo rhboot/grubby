@@ -125,7 +125,7 @@ searchPath(char *bin, char **resolved)
 
             pec = *pathEnd;
             *pathEnd = '\0';
-            
+
             rc = asprintf(&fullPath, "%s/%s", pathStart, bin);
             if (!fullPath) {
                 int errnum = errno;
@@ -922,7 +922,7 @@ setuprootCommand(char *cmd, char *end)
                             mnt->mnt_dir);
                     continue;
                 }
-            
+
                 end = start + 1;
                 while (*end && (*end != '\n')) end++;
                 /* end points to the \n at the end of the command */
@@ -1162,7 +1162,7 @@ echoCommand(char * cmd, char * end)
 }
 
 static int
-umountCommand(char * cmd, char * end) 
+umountCommand(char * cmd, char * end)
 {
     char * path;
 
@@ -1560,7 +1560,7 @@ doFind(char * dirName, char * name, mode_t mask)
     return 0;
 }
 
-static int 
+static int
 findCommand(char * cmd, char * end)
 {
     char * dir;
