@@ -191,7 +191,7 @@ nashDmCreatePartitions(char *path)
             char *table = NULL;
             char *uuid = NULL;
 
-            i = asprintf(&name, "%s%d", namestart, part->num);
+            i = asprintf(&name, "%sp%d", namestart, part->num);
             if (i < 0)
                 continue;
 
