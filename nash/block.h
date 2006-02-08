@@ -29,4 +29,6 @@ extern void sysfs_blkdev_probe(const char *dirname);
 extern char *getpathbyspec(char * spec);
 extern int mkpathbyspec(char *spec, char *path);
 
+extern int block_disable_partitions(const char *devname);
+
 #endif /* NASH_BLOCK_H */

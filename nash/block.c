@@ -19,6 +19,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -27,6 +28,8 @@
 #include <stdlib.h>
 
 #include <blkid/blkid.h>
+
+#include <linux/blkpg.h>
 
 #include "lib.h"
 #include "block.h"
@@ -356,6 +359,46 @@ mkpathbyspec(char *spec, char *path)
         return -1;
 
     return smartmknod(path, S_IFBLK | 0700, sb.st_rdev);
+}
+
+static int
+block_disable_partition(int fd, int partno)
+{
+    struct blkpg_partition part = {
+        .pno = partno,
+    };
+    struct blkpg_ioctl_arg io = {
+        .op = BLKPG_DEL_PARTITION,
+        .datalen = sizeof(part),
+        .data = &part,
+    };
+    int ret;
+
+    ret = ioctl(fd, BLKPG, &io);
+    if (ret < 0)
+        return 0;
+    return 1;
+}
+
+int
+block_disable_partitions(const char *devname)
+{
+    int fd;
+    int partno;
+    char path[256];
+    int ret = 0;
+
+    snprintf(path, 255, "/dev/%s", devname);
+    fd = open(path, O_RDWR);
+    if (fd < 0)
+        return fd;
+
+    for (partno = 1; partno <= 256; partno++) {
+        path[0]='\0';
+        snprintf(path, 255, "/dev/%s%d", devname, partno);
+        ret += block_disable_partition(fd, partno);
+    }
+    return ret ? ret : -1;
 }
 
 #if 0
