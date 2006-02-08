@@ -1831,6 +1831,22 @@ mkblkdevsCommand(char * cmd, char * end)
 }
 
 static int
+rmpartsCommand(char *cmd, char *end)
+{
+    char *devname = NULL;
+
+    cmd = getArg(cmd, end, &devname);
+    if (!cmd) {
+        printf("usage: rmparts hda\n");
+        return 1;
+    }
+
+    if (block_remove_partitions(devname) < 1)
+        return 1;
+    return 0;
+}
+
+static int
 setQuietCommand(char * cmd, char * end)
 {
     char *quietcmd;
@@ -1879,6 +1895,7 @@ static const struct commandHandler handlers[] = {
     { "readlink", readlinkCommand },
     { "resume", resumeCommand },
     { "resolveDevice", resolveDeviceCommand },
+    { "rmparts", rmpartsCommand },
     { "setquiet", setQuietCommand },
     { "setuproot", setuprootCommand },
     { "sleep", sleepCommand },
