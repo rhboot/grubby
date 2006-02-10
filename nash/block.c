@@ -254,6 +254,24 @@ block_sysfs_next(bdev_iter iter, bdev *dev)
     return 0;
 }
 
+char *
+block_find_device_by_devno(dev_t devno)
+{
+    bdev_iter biter;
+    bdev dev = NULL;
+    char *path = NULL;
+
+    biter = block_sysfs_iterate_begin("/sys/block");
+    while (block_sysfs_next(biter, &dev) >= 0) {
+        if (dev->devno == devno) {
+            path = strdup(strrchr(dev->dev_path, '/')+1);
+            break;
+        }
+    }
+    block_sysfs_iterate_end(&biter);
+    return path;
+}
+
 static char *
 block_find_fs_by_keyvalue(const char *key, const char *value)
 {
@@ -261,7 +279,6 @@ block_find_fs_by_keyvalue(const char *key, const char *value)
     bdev dev = NULL;
     blkid_dev bdev = NULL;
     char *name;
-
 
     biter = block_sysfs_iterate_begin("/sys/block");
     while(block_sysfs_next(biter, &dev) >= 0) {

@@ -23,6 +23,7 @@ extern void block_finish(void);
 extern char *block_find_fs_by_label(const char *label);
 extern char *block_find_fs_by_uuid(const char *uuid);
 extern char *block_find_fs_by_name(const char *name);
+extern char *block_find_device_by_devno(dev_t devno);
 
 extern void sysfs_blkdev_probe(const char *dirname);
 
