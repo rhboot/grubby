@@ -261,3 +261,46 @@ smartmknod(char * device, mode_t mode, dev_t dev)
 
     return mknod(device, mode, dev);
 }
+
+int
+getDevNumFromProc(char * file, char * device)
+{
+    char buf[32768], line[4096];
+    char * start, *end;
+    int num;
+    int fd;
+
+    if ((fd = coeOpen(file, O_RDONLY)) == -1) {
+        eprintf("can't open file %s: %s\n", file, strerror(errno));
+        return -1;
+    }
+
+    num = read(fd, buf, sizeof(buf));
+    if (num < 1) {
+        close(fd);
+        eprintf("failed to read %s: %s\n", file, strerror(errno));
+        return -1;
+    }
+    buf[num] = '\0';
+    close(fd);
+
+    start = buf;
+    end = strchr(start, '\n');
+    while (start && end) {
+        *end++ = '\0';
+        if ((sscanf(start, "%d %s", &num, line)) == 2) {
+            if (!strncmp(device, line, strlen(device)))
+                return num;
+        }
+        start = end;
+        end = strchr(start, '\n');
+    }
+    return -1;
+}
+
+int
+stringsort(const void *v0, const void *v1)
+{
+    const char * const *s0=v0, * const *s1=v1;
+    return strcoll(*s0, *s1);
+}

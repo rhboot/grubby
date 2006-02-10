@@ -63,4 +63,8 @@ extern int nashLogger(const nash_log_level level, const char *format, ...)
 
 extern int smartmknod(char * device, mode_t mode, dev_t dev);
 
+extern int getDevNumFromProc(char * file, char * device);
+
+extern int stringsort(const void *v0, const void *v1);
+
 #endif /* NASH_LIB_H */
