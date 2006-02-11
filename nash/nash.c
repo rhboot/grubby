@@ -1866,7 +1866,6 @@ rmpartsCommand(char *cmd, char *end)
     return 0;
 }
 
-#if 0
 static int
 networkCommand(char *cmd, char *end)
 {
@@ -1886,7 +1885,6 @@ networkCommand(char *cmd, char *end)
     free(ncmd);
     return rc;
 }
-#endif
 
 static int
 setQuietCommand(char * cmd, char * end)
@@ -1928,9 +1926,7 @@ static const struct commandHandler handlers[] = {
     { "mknod", mknodCommand },
     { "mkrootdev", mkrootdevCommand },
     { "mount", mountCommand },
-#if 0
     { "network", networkCommand },
-#endif
     { "losetup", losetupCommand },
     { "ln", lnCommand },
 #ifdef DEBUG

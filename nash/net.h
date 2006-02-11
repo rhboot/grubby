@@ -1,5 +1,5 @@
-#ifndef ISYSNET_H
-#define ISYSNET_H
+#ifndef NASHNET_H
+#define NASHNET_H
 
 /* type definitions so that the kernel-ish includes can be shared */
 #ifndef uint8_t
@@ -19,24 +19,6 @@ typedef uint32_t u32;
 typedef uint16_t u16;
 typedef uint8_t u8;
 
-/* #include "ethtool-copy.h" */
-#include <linux/ethtool.h>
-
-/* returns 1 for link, 0 for no link, -1 for unknown */
-int get_link_status(char *ifname);
-
-typedef enum ethtool_speed_t { ETHTOOL_SPEED_UNSPEC = -1, 
-                               ETHTOOL_SPEED_10 = SPEED_10, 
-                               ETHTOOL_SPEED_100 = SPEED_100,
-                               ETHTOOL_SPEED_1000 = SPEED_1000 } ethtool_speed;
-typedef enum ethtool_duplex_t { ETHTOOL_DUPLEX_UNSPEC = -1, 
-                                ETHTOOL_DUPLEX_HALF = DUPLEX_HALF,
-                                ETHTOOL_DUPLEX_FULL = DUPLEX_FULL } ethtool_duplex;
-
-/* set ethtool settings */
-int setEthtoolSettings(char * dev, ethtool_speed speed, ethtool_duplex duplex);
-
-/* get the ip address of an interface */
-char *getIPAddr(char *ifname);
+int nashNetworkCommand(char * cmd);
 
 #endif
