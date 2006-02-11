@@ -40,6 +40,8 @@ PROBE="yes"
 MODULES=""
 PREMODS=""
 DMRAIDS=""
+MPATHS=""
+
 
 [ -e /etc/sysconfig/mkinitrd ] && . /etc/sysconfig/mkinitrd
 
@@ -220,6 +222,32 @@ findmodule() {
 
     # only need to add each module once
     MODULES="$MODULES $fmPath"
+}
+
+finddmmods() {
+    line=$(/sbin/dmsetup table "$1" 2>/dev/null)
+    [ -z "$line" ] && return 1
+    type=$(echo "$line" | awk '{ print $3 }')
+    [ -z "$type" ] && return 1
+    case "$type" in
+    mirror)
+        findmodule -dm-mirror
+        ;;
+    emc)
+        findmodule -dm-emc
+        findmodule -dm-round-robin
+        ;;
+    multipath)
+        findmodule -dm-multipath
+        findmodule -dm-round-robin
+        ;;
+    crypt)
+        findmodule -dm-crypt
+        ;;
+    zero)
+        findmodule -dm-zero
+        ;;
+    esac
 }
 
 inst() {
@@ -675,7 +703,7 @@ if [ -n "$testdm" ]; then
 	fi
     fi
     if [ -x /sbin/dmraid -a -z "$nodmraid" ]; then
-        for raid in $(/sbin/dmraid -s -craidname | grep -vi "no raid disks" 2>/dev/null ) ; do
+        for raid in $(/sbin/dmraid -s -craidname 2>/dev/null | grep -vi "no raid disks" ) ; do
             dmname=$(resolve_dm_name $raid)
             if [ -n "$dmname" ]; then
                 DMRAIDS="$DMRAIDS $dmname"
@@ -691,6 +719,8 @@ done
 for n in $CONFMODS; do
     findmodule $n
 done
+
+finddmmods
 
 vecho "Using modules:$MODULES"
 
@@ -713,17 +743,32 @@ emit()
     echo $NONL "$@" >> $RCFILE
 }
 
-emitdmraid()
+emitdm()
 {
-    for x in $DMRAIDS ; do
-        vecho "Adding dmraid \"$x\""
-        UUID=$(dm_get_uuid $x)
-        if [ -n "$UUID" ]; then
-            emit dm create $x --uuid "$UUID" $(/sbin/dmsetup table $x)
-        else
-            emit dm create $x $(/sbin/dmsetup table $x)
-        fi
-        emit dm partadd /dev/mapper/$x
+    vecho "Adding dm map \"$1\""
+    UUID=$(dm_get_uuid "$1")
+    if [ -n "$UUID" ]; then
+        UUID="--uuid $UUID"
+    fi
+    emit dm create "$1" $UUID $(/sbin/dmsetup table "$1")
+}
+
+emitdms()
+{
+    [ -z "$MPATHS" -a -z "$DMRAIDS" ] && return 0
+    echo dm order $MPATHS $DMRAIDS | nash --force --quiet | \
+            while read ACTION NAME ; do
+        case $ACTION in
+        rmparts)
+            emit rmparts "$NAME"
+            ;;
+        create)
+            emitdm "$NAME"
+            ;;
+        part)
+            emit dm partadd "$NAME"
+            ;;
+        esac
     done
 }
 
@@ -876,7 +921,7 @@ fi
 # things like RAID or LVM
 emit "mkblkdevs"
 
-emitdmraid
+emitdms
 
 if [ -n "$raiddevices" ]; then
     for dev in $raiddevices; do
