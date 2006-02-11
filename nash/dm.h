@@ -36,4 +36,16 @@ extern int
 nashDmRemovePartitions(char *name);
 #endif
 
+extern int
+dm_list_sorted(char **names);
+
+extern int
+nashDmHasParts(const char *name);
+
+extern void
+nashDmFreeTree(void);
+
+extern void
+dm_cleanup(void);
+
 #endif /* NASH_DM_H */

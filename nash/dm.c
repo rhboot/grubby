@@ -22,49 +22,140 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <search.h>
 
 #include <libdevmapper.h>
 #include <parted/parted.h>
 
 #include "dm.h"
 #include "lib.h"
+#include "block.h"
 
-static void
-dm_finish(struct dm_task *task)
+void
+dm_cleanup(void)
 {
-    if (task)
-        dm_task_destroy(task);
-    dm_lib_release();
     dm_lib_exit();
+}
+
+static inline int
+nashDmTaskNew(int type, const char *name, struct dm_task **task)
+{
+    int ret;
+
+    *task = dm_task_create(type);
+    if (!*task)
+        return 1;
+    if (name)
+        dm_task_set_name(*task, name);
+    ret = dm_task_run(*task);
+    if (ret < 0) {
+        dm_task_destroy(*task);
+        *task = NULL;
+    }
+    return ret;
+}
+
+static inline int
+nashDmGetInfo(const char *name, struct dm_task **task, struct dm_info *info)
+{
+    int ret;
+
+    ret = nashDmTaskNew(DM_DEVICE_INFO, name, task);
+    if (ret < 0)
+        return ret;
+
+    ret = dm_task_get_info(*task, info);
+    if (ret < 0 || !info->exists) {
+        dm_task_destroy(*task);
+        *task = NULL;
+        return 1;
+    }
+    return 0;
+}
+
+static char *
+nashDmGetType(const char *name)
+{
+    void *next = NULL;
+    char *type = NULL;
+    int ret;
+
+    struct dm_task *task;
+
+    ret = nashDmTaskNew(DM_DEVICE_TABLE, name, &task);
+    if (ret < 0)
+        return NULL;
+
+    ret = -1;
+    do {
+        u_int64_t start, length;
+        char *params;
+        char *tmp = NULL;
+
+        next = dm_get_next_target(task, next, &start, &length, &tmp, &params);
+        if (!type) {
+            type = strdup(tmp);
+        }
+    } while (next);
+
+    dm_task_destroy(task);
+    task = NULL;
+    return type;
 }
 
 char *
 nashDmGetUUID(const char *name)
 {
+    char *uuid = NULL;
     struct dm_task *task;
     struct dm_info info;
-    char *ret = NULL;
-    const char *uuid = NULL;
+
+    if (!nashDmGetInfo(name, &task, &info)) {
+        uuid = (char *)dm_task_get_uuid(task);
+        if (uuid)
+            uuid = strdup(uuid);
+    }
+    dm_task_destroy(task);
+
+    return uuid;
+}
+
+static dev_t
+nashDmGetDev(const char *name)
+{
+    struct dm_task *task;
+    struct dm_info info;
+    dev_t ret = 0;
 
     task = dm_task_create(DM_DEVICE_INFO);
     if (!task)
-        return NULL;
+        return 0;
 
     dm_task_set_name(task, name);
     dm_task_run(task);
 
     dm_task_get_info(task, &info);
     if (!info.exists) {
-        dm_finish(task);
-        return NULL;
+        dm_task_destroy(task);
+        return 0;
     }
 
-    uuid = dm_task_get_uuid(task);
-    if (uuid && uuid[0] != '\0')
-        ret = strdup(uuid);
+    ret = makedev(info.major, info.minor);
+    dm_task_destroy(task);
 
-    dm_finish(task);
+    return ret;
+}
 
+static int
+nashDmMapExists(char *name)
+{
+    struct dm_task *task;
+    struct dm_info info;
+    int ret = 0;
+
+    if (!nashDmGetInfo(name, &task, &info) && info.exists)
+        ret = 1;
+    dm_task_destroy(task);
     return ret;
 }
 
@@ -74,6 +165,9 @@ nashDmCreate(char *name, char *uuid, long long start, long long length,
 {
     struct dm_task *task;
     int rc;
+
+    if (nashDmMapExists(name))
+        return 1;
 
     task = dm_task_create(DM_DEVICE_CREATE);
     if (!task)
@@ -86,7 +180,7 @@ nashDmCreate(char *name, char *uuid, long long start, long long length,
     dm_task_add_target(task, start, length, type, params);
 
     rc = dm_task_run(task);
-    dm_finish(task);
+    dm_task_destroy(task);
 
     if (rc < 0)
         return 0;
@@ -107,7 +201,7 @@ nashDmRemove(char *name)
     dm_task_set_name(task, name);
 
     rc = dm_task_run(task);
-    dm_finish(task);
+    dm_task_destroy(task);
 
     if (rc < 0)
         return 0;
@@ -116,6 +210,7 @@ nashDmRemove(char *name)
 }
 
 static int nashPartedError = 0;
+static int nashPartedErrorDisplay = 1;
 
 static PedExceptionOption
 nashPartedExceptionHandler(PedException *ex)
@@ -136,7 +231,10 @@ nashPartedExceptionHandler(PedException *ex)
             nashPartedError = 1;
             break;
     }
-    nashLogger(level, ex->message);
+    if (nashPartedErrorDisplay) {
+        nashLogger(level, ex->message);
+        fprintf(stderr, "\n");
+    }
     switch (ex->options) {
         case PED_EXCEPTION_OK:
         case PED_EXCEPTION_CANCEL:
@@ -236,11 +334,405 @@ out:
     return nparts;
 }
 
-#if 0 /* notyet */
-extern int
-nashDmRemovePartitions(char *name)
+/* ok, this whole data structure pretty much just sucks ass. */
+struct dm_iter_object {
+    char *name;
+    dev_t devno;
+    char *type;
+
+    int position;
+    int visited;
+
+    struct dm_iter_object **deps;
+    int ndeps;
+};
+
+static int
+dm_iter_object_namesort(const void *ov0, const void *ov1)
 {
+    const struct dm_iter_object *o0 = *(void **)ov0, *o1 = *(void **)ov1;
 
+    if (!o0 || !o1)
+        return (o0 ? 1 : 0) - (o1 ? 1 : 0);
+    return strcmp(o0->name, o1->name);
 }
-#endif
 
+static int
+dm_iter_object_devsort(const void *ov0, const void *ov1)
+{
+    const struct dm_iter_object *o0 = *(void **)ov0, *o1 = *(void **)ov1;
+    return o1->devno - o0->devno;
+}
+
+struct dm_iter {
+    union {
+        struct dm_iter_object **objects;
+        char **names;
+    };
+    char **prune_names;
+    size_t nobjs;
+    int i;
+};
+
+static struct dm_iter *
+dm_iter_begin(char **names)
+{
+    struct dm_iter *iter;
+    struct dm_names *dmnames;
+    int i = 0, j = 0;
+    unsigned int next = 0;
+    struct dm_task *task;
+
+    iter = calloc(1, sizeof (struct dm_iter));
+    iter->names = calloc(i+1, sizeof (void *));
+
+    if (names && *names)
+        iter->prune_names = names;
+
+    task = dm_task_create(DM_DEVICE_LIST);
+    if (!task) {
+        free(iter->names);
+        free(iter);
+        return NULL;
+    }
+    dm_task_run(task);
+    dmnames = dm_task_get_names(task);
+    do {
+        dmnames = (void *)dmnames + next;
+
+        iter->names = realloc(iter->names, sizeof (void *) * (i+1));
+        iter->names[i++] = strdup(dmnames->name);
+
+        next = dmnames->next;
+    } while (next);
+    iter->nobjs = i;
+
+    dm_task_destroy(task);
+    for (i = 0; i < iter->nobjs; i++) {
+        struct dm_iter_object *obj = calloc(1, sizeof (struct dm_iter_object));
+
+        obj->name = iter->names[i];
+        obj->devno = nashDmGetDev(obj->name);
+        obj->type = nashDmGetType(obj->name);
+        obj->position = i;
+
+        iter->objects[i] = obj;
+    }
+    qsort(iter->objects, i, sizeof (struct dm_iter_object *),
+            dm_iter_object_devsort);
+
+    for (i = 0; i < iter->nobjs; i++) {
+        struct dm_iter_object *obj = iter->objects[i];
+        struct dm_deps *deps;
+        struct dm_task *task;
+
+        nashDmTaskNew(DM_DEVICE_DEPS, obj->name, &task);
+
+        deps = dm_task_get_deps(task);
+
+        obj->deps = calloc(1, sizeof (struct dm_iter_object *));
+        obj->deps[0] = NULL;
+        obj->ndeps = deps->count;
+        for (j = 0; j < obj->ndeps; j++) {
+            struct dm_iter_object **depp;
+            struct dm_iter_object dummy = {
+                .devno = deps->device[j]
+            };
+            struct dm_iter_object *dummyp = &dummy;
+
+            obj->deps = realloc(obj->deps,
+                sizeof (struct dm_iter_object *) * (j+1));
+            depp = bsearch(&dummyp, iter->objects, iter->nobjs,
+                sizeof (struct dm_iter_object *), dm_iter_object_devsort);
+            if (!depp) {
+                obj->ndeps--;
+                j--;
+                continue;
+            }
+            obj->deps[j] = *depp;
+        }
+        qsort(obj->deps, obj->ndeps, sizeof (struct dm_iter_object *),
+                dm_iter_object_devsort);
+    }
+
+    return iter;
+}
+
+static inline void
+dm_iter_reset(struct dm_iter *iter)
+{
+    int i;
+
+    for (i = 0; i < iter->nobjs; i++) {
+        iter->objects[i]->visited = 0;
+    }
+}
+
+static inline void
+_dm_iter_destroy(struct dm_iter **iterp)
+{
+    int i;
+    struct dm_iter *iter = *iterp;
+
+    if (!iter)
+        return;
+
+    for (i = 0; i < iter->nobjs; i++) {
+        struct dm_iter_object *obj;
+
+        obj = iter->objects[i];
+        free(obj->name);
+        free(obj->type);
+        free(obj->deps);
+        free(obj);
+    }
+
+    free(iter->names);
+    free(iter);
+    *iterp = NULL;
+}
+
+#define dm_iter_destroy(_i) _dm_iter_destroy(&(_i))
+
+static inline struct dm_iter_object *
+_dm_iter_next(struct dm_iter *iter, struct dm_iter_object *obj, int descend)
+{
+    int i;
+    if (obj->visited)
+        return NULL;
+    if (obj->ndeps == 0) {
+        obj->visited = 1;
+        return obj;
+    }
+    if (descend) {
+        for (i = 0; i < obj->ndeps; i++) {
+            struct dm_iter_object *dep;
+
+            dep = obj->deps[i];
+
+            if (dep->visited)
+                continue;
+            return _dm_iter_next(iter, dep, 0);
+        }
+    }
+    obj->visited = 1;
+    return obj;
+}
+
+static struct dm_iter_object *
+dm_iter_next(struct dm_iter *iter, int descend)
+{
+    int i, j;
+
+    if (iter->prune_names) {
+        for (i = 0; iter->prune_names[i]; i++) {
+            struct dm_iter_object dummy = {
+                .name = iter->prune_names[i],
+            };
+            struct dm_iter_object *dummyp = &dummy;
+            struct dm_iter_object **objp, *obj;
+
+            objp = lfind(&dummyp, iter->objects, &(iter->nobjs),
+                    sizeof (struct dm_iter_object *), dm_iter_object_namesort);
+            if (!objp)
+                continue;
+            obj = _dm_iter_next(iter, *objp, descend);
+            if (obj)
+                return obj;
+        }
+        return NULL;
+    }
+    for (i = 0; i < iter->nobjs; i++) {
+        struct dm_iter_object *obj = iter->objects[i];
+        int visit = 1;
+
+        if (obj->visited)
+            continue;
+        if (obj->ndeps == 0) {
+            obj->visited = 1;
+            return obj;
+        }
+        if (descend) {
+            for (j = 0; j < obj->ndeps; j++) {
+                struct dm_iter_object *dep = obj->deps[j];
+
+                if (!dep->visited) {
+                    visit = 0;
+                    break;
+                }
+            }
+        }
+        if (visit) {
+            obj->visited = 1;
+            return obj;
+        }
+    }
+    return NULL;
+}
+
+static void
+dm_print_rmparts(const char *name)
+{
+    static int major;
+    struct dm_task *task;
+    struct dm_deps *deps;
+    int ret, i;
+
+    if (!major)
+        major = getDevNumFromProc("/proc/devices", "device-mapper");
+    if (!major)
+        return;
+
+    ret = nashDmTaskNew(DM_DEVICE_DEPS, name, &task);
+    if (ret < 0)
+        return;
+
+    deps = dm_task_get_deps(task);
+    if (!deps) {
+        dm_task_destroy(task);
+        return;
+    }
+
+    for (i=0; i < deps->count; i++) {
+        if (major(deps->device[i]) != major) {
+            char *path = block_find_device_by_devno(deps->device[i]);
+            if (path)
+                printf("rmparts %s\n", path);
+        }
+    }
+    dm_task_destroy(task);
+}
+
+static int
+dm_has_submap(const struct dm_iter_object const *parent, PedGeometry *geom)
+{
+    int nonlinear = 0;
+    int haspart = 0;
+
+    /* this is a bit of a hack */
+    struct dm_tree *tree;
+    struct dm_tree_node *pnode, *cnode;
+    void *handle = NULL;
+    struct dm_iter *iter;
+    struct dm_iter_object *obj;
+
+    tree = dm_tree_create();
+
+    iter = dm_iter_begin(NULL);
+    if (!iter)
+        return 0;
+    while ((obj = dm_iter_next(iter, 1)))
+        dm_tree_add_dev(tree, major(obj->devno), minor(obj->devno));
+
+    pnode = dm_tree_find_node(tree, major(parent->devno), minor(parent->devno));
+    
+    while ((cnode = dm_tree_next_child(&handle, pnode, 1))) {
+        void *next = NULL;
+        struct dm_task *task;
+        int ret;
+
+        //printf("testing %s\n", dm_tree_node_get_name(cnode));
+        ret = nashDmTaskNew(DM_DEVICE_TABLE, dm_tree_node_get_name(cnode),
+                &task);
+        if (ret < 0)
+            continue;
+
+        do {
+            u_int64_t start, length;
+            char *type, *params;
+
+            next = dm_get_next_target(task, next, &start, &length,
+                    &type, &params);
+            if (!type || !params)
+                continue;
+            if (strcmp(type, "linear")) {
+                nonlinear++;
+                continue;
+            }
+            params += strcspn(params, "\t ");
+            params += strspn(params, "\t ");
+            start = strtoll(params, NULL, 10);
+
+            //printf("geom->start: %"PRIu64" geom->length: %"PRIu64"\n", 
+            //        geom->start, geom->length);
+            //printf("start: %"PRIu64" length: %"PRIu64"\n", start, length);
+            if (start == geom->start && length == geom->end)
+                haspart++;
+        } while (next);
+    }
+    dm_tree_free(tree);
+
+    if (!nonlinear && haspart)
+        return 1;
+    return 0;
+}
+
+static int
+dm_should_partition(const struct dm_iter_object const *obj)
+{
+    PedDevice *dev;
+    PedDisk *disk;
+    PedPartition *part;
+    char *path = NULL;
+    int ret = 0;
+    int open = 0;
+    int display = nashPartedErrorDisplay;
+
+    asprintf(&path, "/dev/mapper/%s", obj->name);
+    ped_exception_set_handler(nashPartedExceptionHandler);
+    nashPartedErrorDisplay = 0;
+
+    dev = ped_device_get(path);
+    if (!dev || nashPartedError)
+        goto out;
+
+    if (!ped_device_open(dev))
+        goto out;
+    open = 1;
+
+    disk = ped_disk_new(dev);
+    if (!disk || nashPartedError)
+        goto out;
+
+    part = ped_disk_next_partition(disk, NULL);
+    if (!part || nashPartedError)
+        goto out;
+    while (part) {
+        part = ped_disk_next_partition(disk, part);
+        if (!ped_partition_is_active(part))
+            continue;
+        if (dm_has_submap(obj, &part->geom))
+            ret = 1;
+    }
+out:
+    if (disk)
+        ped_disk_destroy(disk);
+    if (open)
+        ped_device_close(dev);
+    nashPartedErrorDisplay = display;
+    nashPartedError = 0;
+    return ret;
+}
+
+int
+dm_list_sorted(char **names)
+{
+    struct dm_iter *iter;
+    struct dm_iter_object *obj;
+    char **newnames;
+
+    iter = dm_iter_begin(names);
+    if (!iter)
+        return 1;
+
+    newnames = calloc(1, sizeof (char *));
+    while ((obj = dm_iter_next(iter, 1))) {
+        dm_print_rmparts(obj->name);
+        printf("create %s\n", obj->name);
+        if (dm_should_partition(obj))
+            printf("part %s\n", obj->name);
+    }
+
+    dm_iter_destroy(iter);
+    return 0;
+}
