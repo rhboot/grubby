@@ -63,6 +63,17 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Sat Feb 11 2006 Peter Jones <pjones@redhat.com> - 5.0.22-1
+- formatting cleanups
+- prefix partition number with "p" for partitions on dmraid
+- add support for disabling partitions which overlap with partitions on
+  dm devices.
+- add multipath support
+- fix dm creation ordering and partition detection
+- add "network" command (katzj)
+- add nfsroot support (katzj)
+- add iscsi support (katzj)
+
 * Tue Feb  3 2006 Peter Jones <pjones@redhat.com> - 5.0.21-1
 - add "mount -o bind" support and "mount --move" support (#109366, patch
   from Kasper Dupont)
