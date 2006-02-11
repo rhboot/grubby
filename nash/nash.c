@@ -54,6 +54,9 @@
 #include "lib.h"
 #include "block.h"
 #include "dm.h"
+#include "net.h"
+#define HAVE_NFS 1
+#include "sundries.h"
 
 /* Need to tell loop.h what the actual dev_t type is. */
 #undef dev_t
@@ -419,7 +422,12 @@ mountCommand(char * cmd, char * end)
         options = newOpts;
     }
 
-    device = getpathbyspec(spec);
+    if (!strncmp(fsType, "nfs", 3)) {
+        device = spec;
+    } else {
+        device = getpathbyspec(spec);
+    }
+
     if (!device) {
         eprintf("mount: could not find filesystem '%s'\n", spec);
         return 1;
@@ -440,6 +448,15 @@ mountCommand(char * cmd, char * end)
                 (flags & MS_NOATIME) ? "noatime " : ""
             );
     } else {
+        if (!strncmp(fsType, "nfs", 3)) {
+            char * foo = NULL;
+            if (nfsmount(device, mntPoint, &flags, &foo, &options, 0)) {
+                eprintf("nfsmount: error %s mounting %s on %s as %s\n",
+                        strerror(errno), device, mntPoint, fsType);
+                free(device);
+                return 1;
+            }
+        }
         if (mount(device, mntPoint, fsType, flags, options) < 0) {
             eprintf("mount: error %s mounting %s on %s as %s\n",
                     strerror(errno), device, mntPoint, fsType);
@@ -1355,6 +1372,10 @@ mkrootdevCommand(char *cmd, char *end)
         eprintf("mkrootdev: expected fs options\n");
         return 1;
     }
+    /* nfs can't use /dev/root */
+    if (!strncmp(mnt.mnt_type, "nfs", 3)) {
+        mnt.mnt_fsname = strdup(root);
+    }
 
     umask(0122);
     fstab = coeFopen("/fstab", "w+");
@@ -1365,6 +1386,7 @@ mkrootdevCommand(char *cmd, char *end)
     addmntent(fstab, &mnt);
     fclose(fstab);
 
+    if (!strncmp(mnt.mnt_type, "nfs", 3)) return 0;    
     return mkpathbyspec(root, "/dev/root") < 0 ? 1 : 0;
 }
 
@@ -1841,9 +1863,31 @@ rmpartsCommand(char *cmd, char *end)
         return 1;
     }
 
+#if 0
     if (block_remove_partitions(devname) < 1)
         return 1;
+#endif
     return 0;
+}
+
+static int
+networkCommand(char *cmd, char *end)
+{
+    char * ncmd = cmd;
+    int rc;
+    int len = 9; /* "network " */
+
+    /* popt expects to get network --args here */
+    if (!cmd || cmd >= end)
+        return 1;
+    while (*ncmd && (*ncmd++ != '\n')) len++;
+    
+    ncmd = malloc(len);
+    ncmd = memset(ncmd, 0, len);
+    snprintf(ncmd, len, "network %s", cmd);
+    rc = nashNetworkCommand(ncmd);
+    free(ncmd);
+    return rc;
 }
 
 static int
@@ -1886,6 +1930,7 @@ static const struct commandHandler handlers[] = {
     { "mknod", mknodCommand },
     { "mkrootdev", mkrootdevCommand },
     { "mount", mountCommand },
+    { "network", networkCommand },
     { "losetup", losetupCommand },
     { "ln", lnCommand },
 #ifdef DEBUG

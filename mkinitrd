@@ -241,7 +241,7 @@ access() {
 
 findstoragedriver () {
     for device in $@ ; do
-        case " $handledevices " in
+        case " $handleddevices " in
             *" $device "*)
                 continue ;;
             *) handleddevices="$handleddevices $device" ;;
@@ -265,6 +265,21 @@ findstoragedriver () {
             cd ..
         done
         modalias=$(cat modalias)
+        for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
+            findmodule ${driver%%.ko}
+        done
+        popd >/dev/null 2>&1
+    done
+}
+
+findnetdriver() {
+    for device in $@ ; do
+        case " $handleddevices " in
+            *" $device "*)
+                continue ;;
+            *) handleddevices="$handleddevices $device" ;;
+        esac
+        modalias=$(cat /sys/class/net/$device/device/modalias)
         for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
             findmodule ${driver%%.ko}
         done
@@ -327,6 +342,26 @@ handlelvordev() {
     else
         findstoragedriver ${1##/dev/}
     fi
+}
+
+handlenetdev() {
+    local dev=$1
+
+    if [ ! -f /etc/sysconfig/network-scripts/ifcfg-$dev ]; then
+	error "unable to find network device configuration for $dev"
+    fi
+    source /etc/sysconfig/network-scripts/ifcfg-$dev
+    [ -n  "$BOOTPROTO" ] || error "bootproto not specified for $dev"
+
+    findnetdriver $dev
+    [ -n "$IPADDR" ] && IPSTR="$IPSTR --ip $IPADDR"
+    [ -n "$NETMASK" ] && IPSTR="$IPSTR --netmask $NETMASK"
+    [ -n "$GATEWAY" ] && IPSTR="$IPSTR --gateway $GATEWAY"
+    [ -n "$ETHTOOL_OPTS" ] && IPSTR="$IPSTR --ethtool \"$ETHTOOL_OPTS\""
+    [ -n "$MTU" ] && IPSTR="$IPSTR --mtu $MTU"
+    # FIXME: need to do DNS
+
+    network="network --device $dev --bootproto $BOOTPROTO $IPSTR"
 }
 
 while [ $# -gt 0 ]; do
@@ -579,9 +614,24 @@ if [ "x$PROBE" == "xyes" -a -d /proc/dasd ]; then
 fi
 
 if [ "x$PROBE" == "xyes" ]; then
+    rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
+    rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab\
+               | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
+                     -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
+
+    # in case the root filesystem is modular
+    findmodule -${rootfs}
+
     rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
+    # check if it's nfsroot
+    if [ "$rootfs" == "nfs" ]; then
+	remote=$(echo $rootdev | cut -d : -f 1)
+	# FIXME: this doesn't handle ips properly
+	remoteip=$(host $remote | cut -d ' ' -f 4) 
+	netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`	
+	handlenetdev $netdev
     # check if it's root by label
-    if echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
+    elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
         majmin=$(get_numeric_dev dec /dev/root)
         if [ -n "$majmin" ]; then
             dev=$(findall /sys/block -name dev | while read device ; do \
@@ -593,15 +643,7 @@ if [ "x$PROBE" == "xyes" ]; then
 	    fi
         fi
     fi
-    handlelvordev $rootdev
-
-    rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
-    rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab\
-               | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
-                     -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
-
-    # in case the root filesystem is modular
-    findmodule -${rootfs}
+    [ "$rootfs" != "nfs" ] && handlelvordev $rootdev
 
     # find the first swap dev which would get used for swsusp
     swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; }}' $fstab \
@@ -824,6 +866,11 @@ if [ -n "$vg_list" ]; then
     emit "mkdmnod"
 fi
 
+if [ -n "$network" ]; then
+    emit "echo Bringing up $netdev"
+    emit $network
+fi
+
 # HACK: module loading + device creation isn't necessarily synchronous...
 # this will make sure that we have all of our devices before trying
 # things like RAID or LVM
@@ -845,7 +892,7 @@ if [ -n "$vg_list" ]; then
     emit "lvm vgchange -ay --ignorelockingfailure $vg_list"
 fi
 
-if [ -z "$noresume" ]; then
+if [ -z "$noresume" -a -n "$swsuspdev" ]; then
     emit "resume $swsuspdev"
 fi
 

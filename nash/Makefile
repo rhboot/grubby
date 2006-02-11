@@ -5,13 +5,13 @@ VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
 
-LIBS=-ldevmapper -lselinux -lsepol -lparted -lblkid -luuid
+LIBS=-ldevmapper -lselinux -lsepol -lparted -lblkid -luuid -lpopt -lpump -lresolv
 
 LDFLAGS=$(CFLAGS) -static
 
 mandir=usr/share/man
 
-nash: lib.o dm.o block.o nash.o
+nash: lib.o dm.o block.o linkdetect.o nash.o network.o nfsmount.o nfsmount_clnt.o nfsmount_xdr.o dns.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 clean:
