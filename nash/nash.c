@@ -1679,42 +1679,6 @@ mknodCommand(char * cmd, char * end)
 }
 
 static int
-getDevNumFromProc(char * file, char * device)
-{
-    char buf[32768], line[4096];
-    char * start, *end;
-    int num;
-    int fd;
-
-    if ((fd = coeOpen(file, O_RDONLY)) == -1) {
-        eprintf("can't open file %s: %s\n", file, strerror(errno));
-        return -1;
-    }
-
-    num = read(fd, buf, sizeof(buf));
-    if (num < 1) {
-        close(fd);
-        eprintf("failed to read %s: %s\n", file, strerror(errno));
-        return -1;
-    }
-    buf[num] = '\0';
-    close(fd);
-
-    start = buf;
-    end = strchr(start, '\n');
-    while (start && end) {
-        *end++ = '\0';
-        if ((sscanf(start, "%d %s", &num, line)) == 2) {
-            if (!strncmp(device, line, strlen(device)))
-                return num;
-        }
-        start = end;
-        end = strchr(start, '\n');
-    }
-    return -1;
-}
-
-static int
 dmCommand(char *cmd, char *end)
 {
     char *action = NULL;
@@ -1724,15 +1688,15 @@ dmCommand(char *cmd, char *end)
     if (!cmd)
         goto usage;
 
-    cmd = getArg(cmd, end, &name);
-    if (!cmd)
-        goto usage;
-
     if (!strcmp(action, "create")) {
         long long start, length;
         char *type = NULL, *params = NULL;
         char *c = NULL;
         char *uuid = NULL;
+        
+        cmd = getArg(cmd, end, &name);
+        if (!cmd)
+            goto usage;
 
         cmd = getArg(cmd, end, &uuid);
         if (!cmd)
@@ -1779,36 +1743,68 @@ dmCommand(char *cmd, char *end)
             *c = '\n';
         return 1;
     } else if (!strcmp(action, "remove")) {
+        cmd = getArg(cmd, end, &name);
+        if (!cmd)
+            goto usage;
+
         if (nashDmRemove(name))
             return 0;
-        return 1;
     } else if (!strcmp(action, "partadd")) {
+        cmd = getArg(cmd, end, &name);
+        if (!cmd)
+            goto usage;
+
         if (nashDmCreatePartitions(name))
             return 0;
         return 1;
     } else if (!strcmp(action, "get_uuid")) {
-        char *uuid = nashDmGetUUID(name);
+        char *uuid;
 
+        cmd = getArg(cmd, end, &name);
+        if (!cmd)
+            goto usage;
+
+        uuid = nashDmGetUUID(name);
         if (uuid) {
             printf("%s\n", uuid);
             free(uuid);
             return 0;
         }
         return 1;
-#if 0 /* not yet */
-    } else if (!strcmp(action, "partdel")) {
-        if (nashDmRemovePartitions(name))
+    } else if (!strcmp(action, "list")) {
+        char **names = NULL;
+        int m = 0, n = 0;
+
+        names = calloc(m+1, sizeof (char *));
+        while((cmd = getArg(cmd, end, &name))) {
+            names = realloc(names, sizeof (char *) * (m+2));
+            names[m++] = strdupa(name);
+            names[m] = NULL;
+        }
+
+        qsort(names, m, sizeof (char *), stringsort);
+        /* it's too bad qsort doesn't dedupe... */
+        for (n = 0; n < m-1; n++) {
+            if (!strcmp(*(names+n), *(names+n+1))) {
+                memmove(names+(n*sizeof(char *)), names+((n+1) * sizeof (char *)), (m - n) * sizeof (char *));
+                m--; n--;
+            }
+        }
+
+        n = dm_list_sorted(names);
+        if (names)
+            free(names);
+        if (n)
             return 0;
         return 1;
-#endif
     }
 usage:
-    eprintf("usage: dm create name start length type PARAMS...\n");
-    eprintf("       dm remove name\n");
-    eprintf("       dm partadd path\n");
-#if 0 /* not yet */
-    eprintf("       dm partdel path\n");
-#endif
+    eprintf("usage: dm create name start length type PARAMS...\n"
+            "       dm remove name\n"
+            "       dm partadd path\n"
+            "       dm get_uuid path\n"
+            "       dm list [name0] [name1] [...] [nameN]\n"
+            );
     return 1;
 }
 
