@@ -525,6 +525,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
             /* child */
             int errnum;
 
+            dm_cleanup(); /* ARRGH */
             dup2(stdoutFd, 1);
             execve(args[0], args, env);
             errnum = errno; /* so we'll have it after printf */
@@ -1110,6 +1111,7 @@ switchrootCommand(char * cmd, char * end)
     if (access(initargs[0], X_OK)) {
         eprintf("WARNING: can't access %s\n", initargs[0]);
     }
+    dm_cleanup(); /* ARRGH */
     execv(initargs[0], initargs);
 
     eprintf("exec of init (%s) failed!!!: %s\n", initargs[0], strerror(errno));
@@ -1863,13 +1865,12 @@ rmpartsCommand(char *cmd, char *end)
         return 1;
     }
 
-#if 0
-    if (block_remove_partitions(devname) < 1)
+    if (block_disable_partitions(devname) < 1)
         return 1;
-#endif
     return 0;
 }
 
+#if 0
 static int
 networkCommand(char *cmd, char *end)
 {
@@ -1889,6 +1890,7 @@ networkCommand(char *cmd, char *end)
     free(ncmd);
     return rc;
 }
+#endif
 
 static int
 setQuietCommand(char * cmd, char * end)
@@ -1930,7 +1932,9 @@ static const struct commandHandler handlers[] = {
     { "mknod", mknodCommand },
     { "mkrootdev", mkrootdevCommand },
     { "mount", mountCommand },
+#if 0
     { "network", networkCommand },
+#endif
     { "losetup", losetupCommand },
     { "ln", lnCommand },
 #ifdef DEBUG
@@ -2060,6 +2064,7 @@ int main(int argc, char **argv) {
     if (!strcmp(name, "modprobe"))
         exit(0);
     if (!strcmp(name, "hotplug")) {
+        dm_cleanup(); /* ARRGH */
         argv[0] = strdup("/sbin/udev");
         execv(argv[0], argv);
         eprintf("ERROR: exec of udev failed!\n");
