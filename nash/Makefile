@@ -11,7 +11,8 @@ LDFLAGS=$(CFLAGS) -static
 
 mandir=usr/share/man
 
-nash: lib.o dm.o block.o linkdetect.o nash.o network.o nfsmount.o nfsmount_clnt.o nfsmount_xdr.o dns.o
+nash: lib.o dm.o block.o linkdetect.o nash.o network.o \
+		nfsmount.o nfsmount_clnt.o nfsmount_xdr.o dns.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 clean:
