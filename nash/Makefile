@@ -7,16 +7,21 @@ ARCH := $(patsubst sparc%,sparc,$(ARCH))
 
 LIBS=-ldevmapper -lselinux -lsepol -lparted -lblkid -luuid -lpopt -lpump -lresolv
 
-LDFLAGS=$(CFLAGS) -static
+LDFLAGS=$(CFLAGS)
 
 mandir=usr/share/man
 
-nash: lib.o dm.o block.o linkdetect.o nash.o network.o \
-		nfsmount.o nfsmount_clnt.o nfsmount_xdr.o dns.o
+OBJECTS=lib.o dm.o block.o linkdetect.o nash.o network.o nfsmount.o \
+	nfsmount_clnt.o nfsmount_xdr.o dns.o
+
+nash: $(OBJECTS)
+	$(CC) $(LDFLAGS) -static -o $@ $^ $(LIBS)
+
+debug: $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 clean:
-	rm -f nash $(MINILIBC) *.o *.a
+	rm -f nash debug *.o *.a
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
