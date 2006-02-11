@@ -1458,6 +1458,19 @@ accessCommand(char * cmd, char * end)
 }
 
 static int
+showLabelsCommand(char *cmd, char *end)
+{
+    char *new = NULL;
+    cmd = getArg(cmd, end, &new);
+    if (cmd) {
+        eprintf("showlabels: unexpected arguments\n");
+        return 1;
+    }
+    block_show_labels();
+    return 0;
+}
+
+static int
 sleepCommand(char * cmd, char * end)
 {
     char *delaystr;
@@ -1939,6 +1952,7 @@ static const struct commandHandler handlers[] = {
     { "rmparts", rmpartsCommand },
     { "setquiet", setQuietCommand },
     { "setuproot", setuprootCommand },
+    { "showlabels", showLabelsCommand },
     { "sleep", sleepCommand },
     { "switchroot", switchrootCommand },
     { "umount", umountCommand },

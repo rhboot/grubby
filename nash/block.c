@@ -338,6 +338,47 @@ block_find_fs_by_name(const char *name)
 }
 
 void
+block_show_labels(void)
+{
+    bdev_iter biter;
+    bdev dev = NULL;
+    blkid_dev bdev = NULL;
+
+    block_init();
+    biter = block_sysfs_iterate_begin("/sys/block");
+    while(block_sysfs_next(biter, &dev) >= 0) {
+        blkid_tag_iterate titer;
+        const char *type, *data;
+        char *label=NULL, *uuid=NULL;
+
+        bdev = blkid_get_dev(cache, dev->dev_path, BLKID_DEV_NORMAL);
+        if (!bdev)
+            continue;
+        titer = blkid_tag_iterate_begin(bdev);
+        while(blkid_tag_next(titer, &type, &data) >= 0) {
+            if (!strcmp(type, "LABEL"))
+                label = strdup(data);
+            if (!strcmp(type, "UUID"))
+                uuid = strdup(data);
+        }
+        blkid_tag_iterate_end(titer);
+        if (label) {
+            printf("%s %s ", dev->dev_path, label);
+            free(label);
+        }
+        if (uuid) {
+            printf("%s", uuid);
+            free(uuid);
+        }
+        if (label)
+            printf("\n");
+    }
+    block_sysfs_iterate_end(&biter);
+
+    block_finish();
+}
+
+void
 sysfs_blkdev_probe(const char *dirname)
 {
     bdev_iter iter;
