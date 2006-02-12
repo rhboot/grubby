@@ -775,6 +775,21 @@ hotplugCommand(char *cmd, char *end)
     return 0;
 }
 
+static int
+killplugCommand(char *cmd, char *end)
+{
+    char *new;
+    cmd = getArg(cmd, end, &new);
+    if (cmd) {
+        eprintf("killplug: unexpected arguments\n");
+        return 1;
+    }
+
+    kill_hotplug();
+    return 0;
+}
+
+
 #define RAID_MAJOR 9
 static int
 raidautorunCommand(char * cmd, char * end)
@@ -1957,6 +1972,7 @@ static const struct commandHandler handlers[] = {
     { "mount", mountCommand },
     { "network", networkCommand },
     { "hotplug", hotplugCommand },
+    { "killplug", killplugCommand },
     { "losetup", losetupCommand },
     { "ln", lnCommand },
 #ifdef DEBUG
@@ -1998,13 +2014,10 @@ runStartup(int fd, char *name)
     const struct commandHandler *handler;
 
     i = readFD(fd, &contents);
-
     if (i < 0) {
         eprintf("Failed to read startup file %s", name);
-        close(fd);
         return 1;
     }
-    close(fd);
 
     start = contents;
     while (*start) {
@@ -2132,5 +2145,6 @@ int main(int argc, char **argv) {
     /* runStartup closes fd */
     rc = runStartup(fd, *argv);
 
+    kill_hotplug();
     return rc;
 }
