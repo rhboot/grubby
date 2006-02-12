@@ -63,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* XXX Feb XX 2006 Peter Jones <pjones@redhat.com> - XXXXXXXX
+- basic hotplug handler and firmware loader
+
 * Sat Feb 11 2006 Peter Jones <pjones@redhat.com> - 5.0.22-1
 - formatting cleanups
 - prefix partition number with "p" for partitions on dmraid
