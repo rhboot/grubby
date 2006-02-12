@@ -52,6 +52,7 @@
 #include <asm/unistd.h>
 
 #include "lib.h"
+#include "hotplug.h"
 #include "block.h"
 #include "dm.h"
 #include "net.h"
@@ -1112,6 +1113,7 @@ switchrootCommand(char * cmd, char * end)
         eprintf("WARNING: can't access %s\n", initargs[0]);
     }
     dm_cleanup(); /* ARRGH */
+    kill_hotplug();
     execv(initargs[0], initargs);
 
     eprintf("exec of init (%s) failed!!!: %s\n", initargs[0], strerror(errno));
@@ -2067,14 +2069,8 @@ int main(int argc, char **argv) {
     else
         name++;
 
-    if (!strcmp(name, "modprobe"))
+    if (!strcmp(name, "modprobe")) {
         exit(0);
-    if (!strcmp(name, "hotplug")) {
-        dm_cleanup(); /* ARRGH */
-        argv[0] = strdup("/sbin/udev");
-        execv(argv[0], argv);
-        eprintf("ERROR: exec of udev failed!\n");
-        exit(1);
     }
 
     testing = (getppid() != 0) && (getppid() != 1);
@@ -2117,6 +2113,8 @@ int main(int argc, char **argv) {
             exit(1);
         }
     }
+
+    init_hotplug();
 
     /* runStartup closes fd */
     rc = runStartup(fd, *argv);
