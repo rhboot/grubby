@@ -761,6 +761,20 @@ losetupCommand(char * cmd, char * end)
     return 0;
 }
 
+static int
+hotplugCommand(char *cmd, char *end)
+{
+    char *new;
+    cmd = getArg(cmd, end, &new);
+    if (cmd) {
+        eprintf("hotplug: unexpected arguments\n");
+        return 1;
+    }
+
+    init_hotplug();
+    return 0;
+}
+
 #define RAID_MAJOR 9
 static int
 raidautorunCommand(char * cmd, char * end)
@@ -1942,6 +1956,7 @@ static const struct commandHandler handlers[] = {
     { "mkrootdev", mkrootdevCommand },
     { "mount", mountCommand },
     { "network", networkCommand },
+    { "hotplug", hotplugCommand },
     { "losetup", losetupCommand },
     { "ln", lnCommand },
 #ifdef DEBUG
@@ -2113,8 +2128,6 @@ int main(int argc, char **argv) {
             exit(1);
         }
     }
-
-    init_hotplug();
 
     /* runStartup closes fd */
     rc = runStartup(fd, *argv);
