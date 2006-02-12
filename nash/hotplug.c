@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <sys/prctl.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
@@ -40,6 +41,10 @@
 
 #ifndef NETLINK_KOBJECT_UEVENT
 #define NETLINK_KOBJECT_UEVENT 15
+#endif
+
+#ifndef PR_SET_NAME
+#define PR_SET_NAME 15
 #endif
 
 static void
@@ -367,7 +372,6 @@ void
 kill_hotplug(void) {
     if (pipefd > 0) {
         write(pipefd, "die udev die", 13);
-        fsync(pipefd);
     }
     exit(0);
 }
@@ -420,9 +424,11 @@ daemonize(int pipefds[2])
     }
     close(pipefds[1]);
 
+    prctl(PR_SET_NAME, "nash-hotplug", 0, 0, 0);
+
 #ifndef FWDEBUG
     for (i = 0; i < getdtablesize(); i++) {
-        if (i != pipefds[1] && i != netlink)
+        if (i != pipefds[0] && i != netlink)
             close(i);
     }
 
@@ -447,8 +453,9 @@ daemonize(int pipefds[2])
     signal(SIGTTOU, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
-#endif
+#else
     signal(SIGINT, SIG_IGN);
+#endif
 
     i = coeOpen("/proc/self/oom_adj", O_RDWR);
     if (i >= 0) {
@@ -473,11 +480,12 @@ init_hotplug(void) {
 
     if (daemonize(filedes) < 0)
         return 1;
+    usleep(250000);
     return 0;
 }
 
 #ifdef FWDEBUG
-int main(void) {
+int main(int argc, char *argv[]) {
     putenv("MALLOC_PERTURB_=204");
     init_hotplug();
     while (sleep(86400) > 0)
