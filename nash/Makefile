@@ -5,7 +5,8 @@ VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' ../mkinitrd)
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
 
-LIBS=-ldevmapper -lselinux -lsepol -lparted -lblkid -luuid -lpopt -lpump -lresolv
+LIBS=-ldevmapper -lselinux -lsepol -lparted -lblkid -luuid -lpopt \
+	-lpump -lresolv
 
 LDFLAGS=$(CFLAGS)
 
@@ -17,11 +18,15 @@ OBJECTS=lib.o dm.o block.o linkdetect.o nash.o network.o nfsmount.o \
 nash: $(OBJECTS)
 	$(CC) $(LDFLAGS) -static -o $@ $^ $(LIBS)
 
-debug: $(OBJECTS)
+hotplug: hotplug.c lib.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -DFWDEBUG -o $@ $^
+
+debug:: hotplug
+debug:: $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 clean:
-	rm -f nash debug *.o *.a
+	rm -f hotplug nash debug *.o *.a
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
