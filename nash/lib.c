@@ -27,8 +27,9 @@
 #include <string.h>
 
 #include "lib.h"
+#include "hotplug.h"
 
-static int
+int
 makeFdCoe(int fd)
 {
     int rc;
@@ -304,3 +305,19 @@ stringsort(const void *v0, const void *v1)
     const char * const *s0=v0, * const *s1=v1;
     return strcoll(*s0, *s1);
 }
+
+static inline int 
+init_hotplug_stub(void)
+{
+    return -1;
+}
+int init_hotplug(void)
+    __attribute__ ((weak, alias ("init_hotplug_stub")));
+
+static inline void
+kill_hotplug_stub(void)
+{
+    ;    
+}
+void kill_hotplug(void)
+    __attribute__ ((weak, alias ("kill_hotplug_stub")));

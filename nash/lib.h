@@ -24,6 +24,7 @@
 #include <dirent.h>
 #include <stdio.h>
 
+extern int makeFdCoe(int fd);
 extern int coeOpen(const char *path, int flags, ...);
 extern FILE *coeFopen(const char *path, const char *mode);
 extern DIR *coeOpendir(const char *name);
