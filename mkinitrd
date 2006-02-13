@@ -34,7 +34,7 @@ export PATH
 
 . /etc/rc.d/init.d/functions
 
-VERSION=5.0.22
+VERSION=5.0.23
 
 PROBE="yes"
 MODULES=""
