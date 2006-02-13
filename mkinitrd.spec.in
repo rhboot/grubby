@@ -66,6 +66,9 @@ rm -rf $RPM_BUILD_ROOT
 * Mon Feb 13 2006 Peter Jones <pjones@redhat.com> - 5.0.23-1
 - add basic hotplug handler and firmware loader
 
+* Mon Feb 13 2006 Jesse Keating <jkeating@redhat.com> - 5.0.22-1.1
+- rebump for build order issues during double-long bump
+
 * Sat Feb 11 2006 Peter Jones <pjones@redhat.com> - 5.0.22-1
 - formatting cleanups
 - prefix partition number with "p" for partitions on dmraid
