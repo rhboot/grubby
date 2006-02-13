@@ -793,7 +793,6 @@ fi
 inst /sbin/nash "$MNTIMAGE/bin/nash"
 inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
-ln -s /sbin/nash $MNTIMAGE/sbin/hotplug
 
 for MODULE in $MODULES; do
     if [ -x /usr/bin/strip ]; then
@@ -807,20 +806,23 @@ done
 # without devfs...
 mkdir $MNTIMAGE/dev/mapper
 
-mknod $MNTIMAGE/dev/console c 5 1
-mknod $MNTIMAGE/dev/null c 1 3
-mknod $MNTIMAGE/dev/ram b 1 1
-mknod $MNTIMAGE/dev/rtc c 10 135
-mknod $MNTIMAGE/dev/systty c 4 0
-mknod $MNTIMAGE/dev/tty c 5 0
-mknod $MNTIMAGE/dev/zero c 1 5
+mknod $MNTIMAGE/dev/ram0 b 1 0
+mknod $MNTIMAGE/dev/ram1 b 1 1
+ln -sf $MNTIMAGE/dev/ram ram1
 
+mknod $MNTIMAGE/dev/null c 1 3
+mknod $MNTIMAGE/dev/zero c 1 5
+mknod $MNTIMAGE/dev/systty c 4 0
 for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 ; do
     mknod $MNTIMAGE/dev/tty$i c 4 $i
 done
 for i in 0 1 2 3 ; do
     mknod $MNTIMAGE/dev/ttyS$i c 4 $(($i + 64))
 done
+mknod $MNTIMAGE/dev/tty c 5 0
+mknod $MNTIMAGE/dev/console c 5 1
+mknod $MNTIMAGE/dev/ptmx c 5 2
+mknod $MNTIMAGE/dev/rtc c 10 135
 
 # FIXME -- this can really go poorly with clvm or duplicate vg names.
 # nash should do lvm probing for us and write its own configs.
@@ -843,16 +845,20 @@ mount -t sysfs /sys /sys
 echo Creating /dev
 mount -o mode=0755 -t tmpfs /dev /dev
 mkdir /dev/pts
+mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts
 mkdir /dev/shm
 mkdir /dev/mapper
 echo Creating initial device nodes
-mknod /dev/console c 5 1
-mknod /dev/null c 1 3
+mknod /dev/ram0 b 1 0
+mknod /dev/ram1 b 1 1
 mknod /dev/ram b 1 1
-mknod /dev/rtc c 10 135
+mknod /dev/null c 1 3
+mknod /dev/zero c 1 5
 mknod /dev/systty c 4 0
 mknod /dev/tty c 5 0
-mknod /dev/zero c 1 5
+mknod /dev/console c 5 1
+mknod /dev/ptmx c 5 2
+mknod /dev/rtc c 10 135
 EOF
 
 # XXX really we need to openvt too, in case someting changes the
@@ -867,7 +873,7 @@ for i in 0 1 2 3 ; do
 done
 
 emit "echo Setting up hotplug."
-emit "echo -n /sbin/hotplug > /proc/sys/kernel/hotplug"
+emit "hotplug"
 
 emit "echo Creating block device nodes."
 emit "mkblkdevs"
