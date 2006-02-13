@@ -13,9 +13,7 @@ LDFLAGS=$(CFLAGS)
 mandir=usr/share/man
 
 OBJECTS=lib.o dm.o block.o linkdetect.o nash.o network.o nfsmount.o \
-	nfsmount_clnt.o nfsmount_xdr.o dns.o
-# uncomment next line to get a hotplug loader built into nash.
-#OBJECTS+=hotplug.o
+	nfsmount_clnt.o nfsmount_xdr.o dns.o hotplug.o
 
 nash: $(OBJECTS)
 	$(CC) $(LDFLAGS) -static -o $@ $^ $(LIBS)
