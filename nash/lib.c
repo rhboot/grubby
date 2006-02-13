@@ -315,18 +315,18 @@ void udelay(long long usecs)
         .tv_sec = 0,
         .tv_nsec = 0,
     };
-    while (usecs >= 100000) {
-        req.tv_sec++;
-        usecs -= 100000;
-    }
-    req.tv_nsec = usecs * 100;
-        
     struct timespec rem = {
         .tv_sec = 0,
         .tv_nsec = 0,
     };
     struct timespec *reqp = &req, *remp = &rem;
 
+    while (usecs >= 100000) {
+        req.tv_sec++;
+        usecs -= 100000;
+    }
+    req.tv_nsec = usecs * 100;
+     
     while(nanosleep(reqp, remp) == -1 && errno == EINTR) {
         reqp = remp;
         remp = reqp == &req ? &rem : &req;
