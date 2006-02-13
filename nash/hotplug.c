@@ -269,13 +269,12 @@ handle_events(int exitfd, int nlfd)
     long prev = 0;
 
     FD_ZERO(&fds);
-    if (exitfd > 0) {
+    if (exitfd >= 0) {
         if (exitfd > nlfd)
             maxfd = exitfd;
         FD_SET(exitfd, &fds);
     }
     FD_SET(nlfd, &fds);
-
 
     do {
         fdcount = select(maxfd+1, &fds, NULL, NULL, NULL);
@@ -353,7 +352,7 @@ handle_events(int exitfd, int nlfd)
         }
 
 testexit:
-        if (exitfd > 0 && FD_ISSET(exitfd, &fds)) {
+        if (exitfd >= 0 && FD_ISSET(exitfd, &fds)) {
             char buf[9];
 
             read(exitfd, &buf, 13);
@@ -361,19 +360,22 @@ testexit:
                 doexit=1;
             continue;
         }
-        fprintf(stderr, "should never have gotten here!\n");
-        assert(0);
     } while (!doexit);
+    if (exitfd >= 0)
+        close(exitfd);
 }
 
-static int pipefd = -1;
+static int parentfd = -1;
+static int childfd = -1;
 
 void
 kill_hotplug(void) {
-    if (pipefd > 0) {
-        write(pipefd, "die udev die", 13);
+    if (parentfd > 0) {
+        write(parentfd, "die udev die", 13);
+        close(parentfd);
+        parentfd = -1;
+        childfd = -1;
     }
-    exit(0);
 }
 
 #ifdef FWDEBUG
@@ -384,7 +386,7 @@ kill_hotplug_signal(int signal) {
 #endif
 
 static int
-daemonize(int pipefds[2])
+daemonize(void)
 {
     int i;
     int netlink;
@@ -393,8 +395,7 @@ daemonize(int pipefds[2])
     netlink = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_KOBJECT_UEVENT);
     if (netlink < 0) {
         fprintf(stderr, "could not open netlink socket: %m\n");
-        close(pipefds[0]);
-        close(pipefds[1]);
+        close(parentfd);
         return -1;
     }
     makeFdCoe(netlink);
@@ -407,48 +408,46 @@ daemonize(int pipefds[2])
     if (bind(netlink, (struct sockaddr *)&sa, sizeof (sa)) < 0) {
         fprintf(stderr, "could not bind to netlink socket: %m\n");
         close(netlink);
-        close(pipefds[0]);
-        close(pipefds[1]);
+        close(parentfd);
         return -1;
     }
 
     if (fork() > 0) {
-        close(pipefds[0]);
+        /* parent */
         close(netlink);
 
-        pipefd = pipefds[1];
 #ifdef FWDEBUG
         signal(SIGINT, kill_hotplug_signal);
 #endif
+        usleep(250000);
         return 0;
     }
-    close(pipefds[1]);
+    /* child */
+
+    chdir("/");
+
+    close(0);
+    close(1);
+    close(2);
+    childfd = open(ptsname(parentfd), O_RDWR|O_NONBLOCK);
+    close(parentfd);
+    if (childfd != 0)
+        dup2(childfd, 0);
+    makeFdCoe(0);
+    dup2(childfd, 1);
+    makeFdCoe(1);
+    dup2(childfd, 2);
+    makeFdCoe(2);
 
     prctl(PR_SET_NAME, "nash-hotplug", 0, 0, 0);
 
 #ifndef FWDEBUG
-    for (i = 0; i < getdtablesize(); i++) {
-        if (i != pipefds[0] && i != netlink)
+    for (i = 2; i < getdtablesize(); i++) {
+        if (i != childfd && i != netlink)
             close(i);
     }
 
-    for (i = 0; i <= 2; i++) {
-        int fd;
-
-        close(i);
-        if (i == 0)
-            fd = coeOpen("/dev/zero", O_RDONLY);
-        else
-            fd = coeOpen("/dev/null", O_RDWR);
-        if (fd != i) {
-            dup2(fd, i);
-            close(fd);
-        }
-    }
-
     setsid();
-
-    chdir("/");
 
     signal(SIGTTOU, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
@@ -463,24 +462,28 @@ daemonize(int pipefds[2])
         close(i);
     }
 
-    handle_events(pipefds[0], netlink);
+    handle_events(childfd, netlink);
     exit(0);
 }
 
 int 
 init_hotplug(void) {
-    int filedes[2] = {-1,-1};
+    int ptm;
     
-    if (pipe(filedes) < 0) {
-        fprintf(stderr, "error: %m\n");
-        return 1;
-    }
-    makeFdCoe(filedes[0]);
-    makeFdCoe(filedes[1]);
+    if (parentfd != -1) {
+        if ((ptm = posix_openpt(O_RDWR|O_NOCTTY)) < 0) {
+            fprintf(stderr, "error: %m\n");
+            return 1;
+        }
+        parentfd = ptm;
+        grantpt(parentfd);
+        unlockpt(parentfd);
+        makeFdCoe(parentfd);
 
-    if (daemonize(filedes) < 0)
-        return 1;
-    usleep(250000);
+        /* child never returns from this, only parent */
+        if (daemonize() < 0)
+            return 1;
+    }
     return 0;
 }
 
