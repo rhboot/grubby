@@ -309,12 +309,18 @@ stringsort(const void *v0, const void *v1)
     return strcoll(*s0, *s1);
 }
 
-void udelay(int usecs)
+void udelay(long long usecs)
 {
     struct timespec req = {
         .tv_sec = 0,
-        .tv_nsec = 500000000,
+        .tv_nsec = 0,
     };
+    while (usecs >= 100000) {
+        req.tv_sec++;
+        usecs -= 100000;
+    }
+    req.tv_nsec = usecs * 100;
+        
     struct timespec rem = {
         .tv_sec = 0,
         .tv_nsec = 0,
