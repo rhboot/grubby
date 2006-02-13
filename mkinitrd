@@ -808,7 +808,7 @@ mkdir $MNTIMAGE/dev/mapper
 
 mknod $MNTIMAGE/dev/ram0 b 1 0
 mknod $MNTIMAGE/dev/ram1 b 1 1
-ln -sf $MNTIMAGE/dev/ram ram1
+ln -sf ram $MNTIMAGE/dev/ram1
 
 mknod $MNTIMAGE/dev/null c 1 3
 mknod $MNTIMAGE/dev/zero c 1 5
