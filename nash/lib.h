@@ -68,4 +68,6 @@ extern int getDevNumFromProc(char * file, char * device);
 
 extern int stringsort(const void *v0, const void *v1);
 
+extern void udelay(int usecs);
+
 #endif /* NASH_LIB_H */

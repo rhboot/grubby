@@ -25,7 +25,6 @@
 #include <sys/prctl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <time.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -47,26 +46,7 @@
 #define PR_SET_NAME 15
 #endif
 
-static inline void
-udelay(int usecs)
-{
-    struct timespec req = {
-        .tv_sec = 0,
-        .tv_nsec = usecs * 100,
-    };
-    struct timespec rem = {
-        .tv_sec = 0,
-        .tv_nsec = 0,
-    };
-
-    while (nanosleep(&req, &rem) < 0 && errno == EINTR) {
-        errno = 0;
-        req.tv_sec = rem.tv_sec;
-        rem.tv_sec = 0;
-        req.tv_nsec = rem.tv_nsec;
-        rem.tv_nsec = 0;
-    }
-}
+static pid_t ppid = -1;
 
 /* Set the 'loading' attribute for a firmware device.
  * 1 == currently loading
@@ -336,6 +316,8 @@ handle_events(int exitfd, int nlfd)
                     if (!strcmp(action, "add") && !strcmp(subsystem, "firmware")) {
                         state = HANDLE_FIRMWARE_ADD;
                         token=strdup(getenv("FIRMWARE"));
+                        if (ppid != -1)
+                            kill(ppid, SIGALRM);
                         load_firmware();
                     } else {
                         //fprintf(stderr, "unkown action %s %s\n", action, subsystem);
@@ -370,11 +352,13 @@ testexit:
             char buf[13];
 
             read(exitfd, &buf, 13);
-            if (!strcmp(buf, "die udev die"))
+            if (!strcmp(buf, "die udev die")) {
                 doexit=1;
-            if (!strcmp(buf, "set new root")) {
+            } else if (!strcmp(buf, "set new root")) {
                 chdir("/sysroot");
                 chroot("/sysroot");
+            } else if (!strcmp(buf, "great egress")) {
+                ppid = -1;
             }
             continue;
         }
@@ -386,11 +370,20 @@ testexit:
 static int parentfd = -1;
 static int childfd = -1;
 
+static int
+send_hotplug_message(char buf[13])
+{
+    if (parentfd > 0) {
+        write(parentfd, buf, 13);
+        return 1;
+    }
+    return 0;
+}
+
 void
 kill_hotplug(void)
 {
-    if (parentfd > 0) {
-        write(parentfd, "die udev die", 13);
+    if (send_hotplug_message("die udev die")) {
         close(parentfd);
         parentfd = -1;
         childfd = -1;
@@ -400,13 +393,19 @@ kill_hotplug(void)
 void
 move_hotplug(void) 
 {
-    if (parentfd > 0)
-        write(parentfd, "set new root", 13);
+    send_hotplug_message("set new root");
+}
+
+void
+notify_hotplug_of_exit(void)
+{
+    send_hotplug_message("great egress");
 }
 
 #ifdef FWDEBUG
 static void
-kill_hotplug_signal(int signal) {
+kill_hotplug_signal(int signal)
+{
     kill_hotplug();
 }
 #endif
@@ -438,6 +437,7 @@ daemonize(void)
         return -1;
     }
 
+    ppid = getpid();
     if (fork() > 0) {
         /* parent */
         close(netlink);

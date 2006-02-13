@@ -15,6 +15,8 @@
  * vim:ts=8:sw=4:sts=4:et
  */
 
+#define _GNU_SOURCE 1
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -25,6 +27,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "lib.h"
 #include "hotplug.h"
@@ -306,6 +309,25 @@ stringsort(const void *v0, const void *v1)
     return strcoll(*s0, *s1);
 }
 
+void udelay(int usecs)
+{
+    struct timespec req = {
+        .tv_sec = 0,
+        .tv_nsec = 500000000,
+    };
+    struct timespec rem = {
+        .tv_sec = 0,
+        .tv_nsec = 0,
+    };
+    struct timespec *reqp = &req, *remp = &rem;
+
+    while(nanosleep(reqp, remp) == -1 && errno == EINTR) {
+        reqp = remp;
+        remp = reqp == &req ? &rem : &req;
+        errno = 0;
+    }
+}
+
 static inline int
 init_hotplug_stub(void)
 {
@@ -329,3 +351,11 @@ move_hotplug_stub(void)
 }
 void move_hotplug(void)
     __attribute__ ((weak, alias ("move_hotplug_stub")));
+
+static inline void
+notify_hotplug_of_exit_stub(void)
+{
+    ;
+}
+void notify_hotplug_of_exit(void)
+    __attribute__ ((weak, alias ("notify_hotplug_of_exit_stub")));

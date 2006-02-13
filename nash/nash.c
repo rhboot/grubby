@@ -110,6 +110,8 @@ static char * env[] = {
 };
 static char sysPath[] = PATH;
 
+static pid_t ocPid = -1;
+
 static int
 searchPath(char *bin, char **resolved)
 {
@@ -472,7 +474,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
 {
     char ** args;
     char ** nextArg;
-    int pid, wpid;
+    int wpid;
     int status;
     char * stdoutFile = NULL;
     int stdoutFd = 1;
@@ -519,7 +521,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
             printf(" (> %s)", stdoutFile);
         printf("\n");
     } else {
-        if (!doFork || !(pid = fork())) {
+        if (!doFork || !(ocPid = fork())) {
             /* child */
             int errnum;
 
@@ -540,9 +542,10 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
                 eprintf("ERROR: Failed to wait for process %d: %m\n", wpid);
             }
 
-            if (wpid != pid)
+            if (wpid != ocPid)
                 continue;
 
+            ocPid = -1;
             if (!WIFEXITED(status) || WEXITSTATUS(status)) {
 #if 0
                 eprintf("ERROR: %s exited abnormally with value %d (pid %d)\n",
@@ -1047,6 +1050,7 @@ switchrootCommand(char * cmd, char * end)
 
     chdir(new);
     move_hotplug();
+    notify_hotplug_of_exit();
 
     recursiveRemove("/");
 
@@ -2078,6 +2082,16 @@ runStartup(int fd, char *name)
     return rc;
 }
 
+void delayOnSignal(int signum) {
+    if (ocPid != -1)
+        kill(ocPid, SIGSTOP);
+    udelay(500000);
+    if (ocPid != -1)
+        kill(ocPid, SIGCONT);
+
+    signal(signum, delayOnSignal);
+}
+
 int main(int argc, char **argv) {
     int fd = 0;
     char * name;
@@ -2134,6 +2148,8 @@ int main(int argc, char **argv) {
             exit(1);
         }
     }
+
+    signal(SIGALRM, delayOnSignal);
 
     /* runStartup closes fd */
     rc = runStartup(fd, *argv);
