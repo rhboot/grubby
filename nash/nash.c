@@ -1068,7 +1068,7 @@ switchrootCommand(char * cmd, char * end)
 
     close(3);
     if ((fd = open("/dev/console", O_RDWR)) < 0) {
-        eprintf("ERROR opening /dev/console: %m\n")
+        eprintf("ERROR opening /dev/console: %m\n");
         eprintf("Trying to use fd 0 instead.\n");
         fd = dup2(0, 3);
     } else {
