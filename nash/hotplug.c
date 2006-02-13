@@ -295,11 +295,8 @@ handle_events(int exitfd, int nlfd)
 
     do {
         fdcount = select(maxfd+1, &fds, NULL, NULL, NULL);
-        if (fdcount < 0) {
-            if (errno == EINVAL)
-                exit(1);
+        if (fdcount < 0)
             continue;
-        }
 
         if (FD_ISSET(nlfd, &fds)) {
             char *action = NULL, *subsystem = NULL, *seqnum = NULL;
@@ -453,6 +450,7 @@ daemonize(void)
     }
     /* child */
 
+    prctl(PR_SET_NAME, "nash-hotplug", 0, 0, 0);
     chdir("/");
 
     close(0);
@@ -467,9 +465,6 @@ daemonize(void)
     makeFdCoe(1);
     dup2(childfd, 2);
     makeFdCoe(2);
-
-    prctl(PR_SET_NAME, "nash-hotplug", 0, 0, 0);
-
 #ifndef FWDEBUG
     for (i = 2; i < getdtablesize(); i++) {
         if (i != childfd && i != netlink)
@@ -500,7 +495,7 @@ int
 init_hotplug(void) {
     int ptm;
     
-    if (parentfd != -1) {
+    if (parentfd == -1) {
         if ((ptm = posix_openpt(O_RDWR|O_NOCTTY)) < 0) {
             fprintf(stderr, "error: %m\n");
             return 1;
