@@ -47,7 +47,7 @@
 #define PR_SET_NAME 15
 #endif
 
-static void
+static inline void
 udelay(int usecs)
 {
     struct timespec req = {
@@ -73,8 +73,9 @@ udelay(int usecs)
  * 0 == done loading
  * -1 == error
  */
-static int
-set_loading(int fd, const char *device, int value) {
+static inline int
+set_loading(int fd, const char *device, int value)
+{
     char buf[10] = {'\0'};
     int rc;
 
@@ -83,7 +84,7 @@ set_loading(int fd, const char *device, int value) {
 
         snprintf(loading_path, sizeof(loading_path), "/sys/%s/loading", device);
         loading_path[sizeof(loading_path)-1] = '\0';
-        fd = coeOpen(loading_path, O_RDWR | O_NONBLOCK | O_SYNC );
+        fd = coeOpen(loading_path, O_RDWR | O_SYNC );
         if (fd < 0)
             return fd;
     }
@@ -95,7 +96,23 @@ set_loading(int fd, const char *device, int value) {
     return fd;
 }
 
-static int
+static inline int
+set_timeout(int value)
+{
+    char buf[10] = {'\0'};
+    int fd, rc;
+
+    fd = coeOpen("/sys/class/firmware/timeout", O_RDWR | O_SYNC);
+    if (fd < 0)
+        return fd;
+
+    if ((rc = snprintf(buf, 9, "%d", value)) < 0)
+        rc = write(fd, buf, strlen(buf) + 1);
+    close(fd);
+    return rc;
+}
+
+static inline int
 file_map(const char *filename, char **buf, size_t *bufsize)
 {
     struct stat stats;
@@ -123,7 +140,7 @@ file_map(const char *filename, char **buf, size_t *bufsize)
     return 0;
 }
 
-static void
+static inline void
 file_unmap(void *buf, size_t bufsize)
 {
     munmap(buf, bufsize);
@@ -353,11 +370,15 @@ handle_events(int exitfd, int nlfd)
 
 testexit:
         if (exitfd >= 0 && FD_ISSET(exitfd, &fds)) {
-            char buf[9];
+            char buf[13];
 
             read(exitfd, &buf, 13);
             if (!strcmp(buf, "die udev die"))
                 doexit=1;
+            if (!strcmp(buf, "set new root")) {
+                chdir("/sysroot");
+                chroot("/sysroot");
+            }
             continue;
         }
     } while (!doexit);
@@ -369,13 +390,21 @@ static int parentfd = -1;
 static int childfd = -1;
 
 void
-kill_hotplug(void) {
+kill_hotplug(void)
+{
     if (parentfd > 0) {
         write(parentfd, "die udev die", 13);
         close(parentfd);
         parentfd = -1;
         childfd = -1;
     }
+}
+
+void
+move_hotplug(void) 
+{
+    if (parentfd > 0)
+        write(parentfd, "set new root", 13);
 }
 
 #ifdef FWDEBUG
@@ -462,6 +491,7 @@ daemonize(void)
         close(i);
     }
 
+    set_timeout(10);
     handle_events(childfd, netlink);
     exit(0);
 }

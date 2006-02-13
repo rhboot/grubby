@@ -321,3 +321,11 @@ kill_hotplug_stub(void)
 }
 void kill_hotplug(void)
     __attribute__ ((weak, alias ("kill_hotplug_stub")));
+
+static inline void
+move_hotplug_stub(void)
+{
+    ;    
+}
+void move_hotplug(void)
+    __attribute__ ((weak, alias ("move_hotplug_stub")));

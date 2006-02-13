@@ -19,6 +19,7 @@
 #define NASH_HOTPLUG_H 1
 
 extern int init_hotplug(void);
+extern void move_hotplug(void);
 extern void kill_hotplug(void);
 
 #endif /* NASH_HOTPLUG_H */

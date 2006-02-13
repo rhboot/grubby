@@ -1048,6 +1048,7 @@ switchrootCommand(char * cmd, char * end)
     i=0;
 
     chdir(new);
+    move_hotplug();
 
     recursiveRemove("/");
 
@@ -1139,7 +1140,6 @@ switchrootCommand(char * cmd, char * end)
         eprintf("WARNING: can't access %s\n", initargs[0]);
     }
     dm_cleanup(); /* ARRGH */
-    kill_hotplug();
     execv(initargs[0], initargs);
 
     eprintf("exec of init (%s) failed!!!: %m\n", initargs[0]);
