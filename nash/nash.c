@@ -765,9 +765,7 @@ hotplugCommand(char *cmd, char *end)
         return 1;
     }
 
-    printf("starting hotplug\n");
     init_hotplug();
-    printf("started hotplug\n");
     return 0;
 }
 

@@ -306,7 +306,7 @@ stringsort(const void *v0, const void *v1)
     return strcoll(*s0, *s1);
 }
 
-static inline int 
+static inline int
 init_hotplug_stub(void)
 {
     return -1;
@@ -317,7 +317,7 @@ int init_hotplug(void)
 static inline void
 kill_hotplug_stub(void)
 {
-    ;    
+    ;
 }
 void kill_hotplug(void)
     __attribute__ ((weak, alias ("kill_hotplug_stub")));
@@ -325,7 +325,7 @@ void kill_hotplug(void)
 static inline void
 move_hotplug_stub(void)
 {
-    ;    
+    ;
 }
 void move_hotplug(void)
     __attribute__ ((weak, alias ("move_hotplug_stub")));
