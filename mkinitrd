@@ -756,7 +756,7 @@ emitdm()
 emitdms()
 {
     [ -z "$MPATHS" -a -z "$DMRAIDS" ] && return 0
-    echo dm order $MPATHS $DMRAIDS | nash --force --quiet | \
+    echo dm list $MPATHS $DMRAIDS | nash --force --quiet | \
             while read ACTION NAME ; do
         case $ACTION in
         rmparts)

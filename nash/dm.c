@@ -604,10 +604,49 @@ dm_print_rmparts(const char *name)
 }
 
 static int
-dm_has_submap(const struct dm_iter_object const *parent, PedGeometry *geom)
+open_part(const char *name, PedDevice **dev, PedDisk **disk)
+{
+    int open = 0;
+    char *path = NULL;
+
+    int display = nashPartedErrorDisplay;
+
+    asprintf(&path, "/dev/mapper/%s", name);
+    ped_exception_set_handler(nashPartedExceptionHandler);
+    nashPartedErrorDisplay = 0;
+
+    *dev = ped_device_get(path);
+    free(path);
+    if (!*dev || nashPartedError)
+        goto out;
+
+    if (!ped_device_open(*dev))
+        goto out;
+    open = 1;
+
+    *disk = ped_disk_new(*dev);
+    if (!*disk || nashPartedError)
+        goto out;
+
+    return 0;
+out:
+    if (*disk)
+        ped_disk_destroy(*disk);
+    *disk = NULL;
+    if (open)
+        ped_device_close(*dev);
+    *dev = NULL;
+    nashPartedErrorDisplay = display;
+    nashPartedError = 0;
+    return -1;
+}
+
+static int
+dm_submap_has_part(const struct dm_iter_object const *parent, PedGeometry *geom)
 {
     int nonlinear = 0;
     int haspart = 0;
+    int display = nashPartedErrorDisplay;
 
     /* this is a bit of a hack */
     struct dm_tree *tree;
@@ -640,6 +679,10 @@ dm_has_submap(const struct dm_iter_object const *parent, PedGeometry *geom)
         do {
             u_int64_t start, length;
             char *type, *params;
+            const char *name = NULL;
+            PedDevice *dev = NULL;
+            PedDisk *disk = NULL;
+            PedPartition *part = NULL;
 
             next = dm_get_next_target(task, next, &start, &length,
                     &type, &params);
@@ -649,20 +692,39 @@ dm_has_submap(const struct dm_iter_object const *parent, PedGeometry *geom)
                 nonlinear++;
                 continue;
             }
-            params += strcspn(params, "\t ");
-            params += strspn(params, "\t ");
-            start = strtoll(params, NULL, 10);
 
-            //printf("geom->start: %"PRIu64" geom->length: %"PRIu64"\n", 
-            //        geom->start, geom->length);
-            //printf("start: %"PRIu64" length: %"PRIu64"\n", start, length);
-            if (start == geom->start && length == geom->end)
-                haspart++;
+            name = dm_tree_node_get_name(cnode);
+            if (!name)
+                continue;
+            if (open_part(name, &dev, &disk) < 0)
+                continue;
+
+            part = ped_disk_next_partition(disk, NULL);
+            if (part && !nashPartedError) {
+                while (part)  {
+                    part = ped_disk_next_partition(disk, part);
+                    if (!part || nashPartedError)
+                        continue;
+                    if (!ped_partition_is_active(part))
+                        continue;
+                    if (geom->start == part->geom.start &&
+                            geom->end == part->geom.end)
+                        haspart = 1;
+                }
+            }
+
+            if (disk) {
+                ped_disk_destroy(disk);
+                ped_device_close(dev);
+            }
         } while (next);
     }
     dm_tree_free(tree);
 
-    if (!nonlinear && haspart)
+    nashPartedErrorDisplay = display;
+    nashPartedError = 0;
+
+    if (nonlinear || haspart)
         return 1;
     return 0;
 }
@@ -670,45 +732,37 @@ dm_has_submap(const struct dm_iter_object const *parent, PedGeometry *geom)
 static int
 dm_should_partition(const struct dm_iter_object const *obj)
 {
-    PedDevice *dev;
-    PedDisk *disk;
-    PedPartition *part;
-    char *path = NULL;
+    PedDevice *dev = NULL;
+    PedDisk *disk = NULL;
+    PedPartition *part = NULL;
     int ret = 0;
-    int open = 0;
     int display = nashPartedErrorDisplay;
 
-    asprintf(&path, "/dev/mapper/%s", obj->name);
     ped_exception_set_handler(nashPartedExceptionHandler);
     nashPartedErrorDisplay = 0;
 
-    dev = ped_device_get(path);
-    if (!dev || nashPartedError)
-        goto out;
-
-    if (!ped_device_open(dev))
-        goto out;
-    open = 1;
-
-    disk = ped_disk_new(dev);
-    if (!disk || nashPartedError)
+    if (open_part(obj->name, &dev, &disk) < 0)
         goto out;
 
     part = ped_disk_next_partition(disk, NULL);
     if (!part || nashPartedError)
         goto out;
+
+    ret = 1;
     while (part) {
         part = ped_disk_next_partition(disk, part);
+        if (!part || nashPartedError)
+            continue;
         if (!ped_partition_is_active(part))
             continue;
-        if (dm_has_submap(obj, &part->geom))
-            ret = 1;
+        if (dm_submap_has_part(obj, &part->geom))
+            ret = 0;
     }
 out:
-    if (disk)
+    if (disk) {
         ped_disk_destroy(disk);
-    if (open)
         ped_device_close(dev);
+    }
     nashPartedErrorDisplay = display;
     nashPartedError = 0;
     return ret;
