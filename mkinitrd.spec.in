@@ -83,7 +83,6 @@ rm -rf $RPM_BUILD_ROOT
 - fix dm creation ordering and partition detection
 - add "network" command (katzj)
 - add nfsroot support (katzj)
-- add iscsi support (katzj)
 - put "showlabels" back into nash
 
 * Tue Feb  3 2006 Peter Jones <pjones@redhat.com> - 5.0.21-1
