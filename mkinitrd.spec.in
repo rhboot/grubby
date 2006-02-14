@@ -63,6 +63,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Feb 13 2006 Peter Jones <pjones@redhat.com> - 5.0.24-1
+- use the right nash-dm command to get the device list
+- check if a subdevice has the same partition table, not if it starts
+  at the right place (fixes partition comparison on !mirror devices)
+
 * Mon Feb 13 2006 Peter Jones <pjones@redhat.com> - 5.0.23-1
 - add basic hotplug handler and firmware loader
 
