@@ -36,7 +36,7 @@ int
 makeFdCoe(int fd)
 {
     int rc;
-    long flags;
+    long flags = 0;
 
     rc = fcntl(fd, F_GETFD, &flags);
     if (rc < 0)
@@ -44,7 +44,7 @@ makeFdCoe(int fd)
 
     flags |= FD_CLOEXEC;
 
-    rc = fcntl(fd, F_SETFD, &flags);
+    rc = fcntl(fd, F_SETFD, flags);
     return rc;
 }
 
