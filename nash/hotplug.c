@@ -31,6 +31,7 @@
 #include <string.h>
 #include <assert.h>
 #include <signal.h>
+#include <termios.h>
 
 #include "hotplug.h"
 #include "lib.h"
@@ -47,6 +48,10 @@
 #endif
 
 static pid_t ppid = -1;
+
+static int parentfd = -1;
+static int childfd = -1;
+static int netlink = -1;
 
 /* Set the 'loading' attribute for a firmware device.
  * 1 == currently loading
@@ -249,10 +254,10 @@ get_netlink_msg(int fd, char **msg, char **path)
 }
 
 static void
-handle_events(int exitfd, int nlfd)
+handle_events(void)
 {
     fd_set fds;
-    int maxfd = nlfd;
+    int maxfd;
     int fdcount;
     int doexit = 0;
     typedef enum states {
@@ -265,26 +270,28 @@ handle_events(int exitfd, int nlfd)
     char *token;
     long prev = 0;
 
-    FD_ZERO(&fds);
-    if (exitfd >= 0) {
-        if (exitfd > nlfd)
-            maxfd = exitfd;
-        FD_SET(exitfd, &fds);
-    }
-    FD_SET(nlfd, &fds);
 
     do {
+        maxfd = netlink;
+        FD_ZERO(&fds);
+        if (childfd >= 0) {
+            if (childfd > netlink)
+                maxfd = childfd;
+            FD_SET(childfd, &fds);
+        }
+        FD_SET(netlink, &fds);
+
         fdcount = select(maxfd+1, &fds, NULL, NULL, NULL);
         if (fdcount < 0)
             continue;
 
-        if (FD_ISSET(nlfd, &fds)) {
+        if (FD_ISSET(netlink, &fds)) {
             char *action = NULL, *subsystem = NULL, *seqnum = NULL;
             long cur;
             char *msg = NULL, *path = NULL;
             int done = 0;
 
-            if (get_netlink_msg(nlfd, &msg, &path) < 0)
+            if (get_netlink_msg(netlink, &msg, &path) < 0)
                 goto testexit;
                 
             assert(msg);
@@ -348,33 +355,56 @@ handle_events(int exitfd, int nlfd)
         }
 
 testexit:
-        if (exitfd >= 0 && FD_ISSET(exitfd, &fds)) {
-            char buf[13];
+        if (childfd >= 0 && FD_ISSET(childfd, &fds)) {
+            char buf[32] = {'\0'};
+            size_t count = 0;
+            int tries = 0;
+            int rc;
 
-            read(exitfd, &buf, 13);
-            if (!strcmp(buf, "die udev die")) {
-                doexit=1;
-            } else if (!strcmp(buf, "set new root")) {
-                chdir("/sysroot");
-                chroot("/sysroot");
-            } else if (!strcmp(buf, "great egress")) {
-                ppid = -1;
+            while ((rc = read(childfd, buf+count, 13)) >= 0 && count+rc < 13) {
+                if (rc == 0)
+                    tries++;
+                else
+                    tries=0;
+                if (tries == 2) {
+                    eprintf("parent exited without telling us\n");
+                    close(childfd);
+                    childfd = -1;
+                    break;
+                }
+                count += rc;
             }
+            if (rc < 0)
+                eprintf("read didn't work: %m\n");
+            count = 0;
+            while (rc != count) {
+                if (!strncmp(buf + count, "die udev die", 13)) {
+                    count += 13;
+                    doexit=1;
+                } else if (!strncmp(buf + count, "set new root", 13)) {
+                    count += 13;
+                    chdir("/sysroot");
+                    chroot("/sysroot");
+                } else if (!strncmp(buf + count, "great egress", 13)) {
+                    count += 13;
+                    ppid = -1;
+                }
+            }
+            rc = 0;
             continue;
         }
     } while (!doexit);
-    if (exitfd >= 0)
-        close(exitfd);
+    if (childfd >= 0)
+        close(childfd);
 }
-
-static int parentfd = -1;
-static int childfd = -1;
 
 static int
 send_hotplug_message(char buf[13])
 {
     if (parentfd > 0) {
         write(parentfd, buf, 13);
+        fdatasync(parentfd);
+        tcdrain(parentfd);
         return 1;
     }
     return 0;
@@ -414,7 +444,6 @@ static int
 daemonize(void)
 {
     int i;
-    int netlink;
     struct sockaddr_nl sa;
 
     netlink = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_KOBJECT_UEVENT);
@@ -440,6 +469,7 @@ daemonize(void)
     ppid = getpid();
     if (fork() > 0) {
         /* parent */
+        close(childfd);
         close(netlink);
 
 #ifdef FWDEBUG
@@ -454,19 +484,38 @@ daemonize(void)
     chdir("/");
 
     close(0);
-    close(1);
-    close(2);
-    childfd = open(ptsname(parentfd), O_RDWR|O_NONBLOCK);
     close(parentfd);
     if (childfd != 0)
         dup2(childfd, 0);
     makeFdCoe(0);
+#if 0
+    close(1);
     dup2(childfd, 1);
     makeFdCoe(1);
+    close(2);
     dup2(childfd, 2);
     makeFdCoe(2);
+#else
+    close(1);
+    i = open("/dev/zero", O_RDWR);
+    if (i != 1) {
+        dup2(i, 1);
+        close(i);
+        i = 1;
+    }
+    makeFdCoe(i);
+
+    close(2);
+    i = open("/dev/zero", O_RDWR);
+    if (i != 2) {
+        dup2(i, 2);
+        close(i);
+        i = 2;
+    }
+    makeFdCoe(i);
+#endif
 #ifndef FWDEBUG
-    for (i = 2; i < getdtablesize(); i++) {
+    for (i = 3; i < getdtablesize(); i++) {
         if (i != childfd && i != netlink)
             close(i);
     }
@@ -487,23 +536,33 @@ daemonize(void)
     }
 
     set_timeout(10);
-    handle_events(childfd, netlink);
+    handle_events();
     exit(0);
 }
 
 int 
 init_hotplug(void) {
-    int ptm;
-    
     if (parentfd == -1) {
-        if ((ptm = posix_openpt(O_RDWR|O_NOCTTY)) < 0) {
-            fprintf(stderr, "error: %m\n");
-            return 1;
-        }
-        parentfd = ptm;
-        grantpt(parentfd);
-        unlockpt(parentfd);
+        int filedes[2] = {0,0};
+        long flags;
+
+        pipe(filedes);
+
+        childfd = filedes[0];
+        flags = 0;
+        makeFdCoe(childfd);
+        fcntl(childfd, F_GETFL, &flags);
+        flags |= O_SYNC;
+        flags &= ~O_NONBLOCK;
+        fcntl(childfd, F_SETFL, flags);
+
+        parentfd = filedes[1];
+        flags = 0;
         makeFdCoe(parentfd);
+        fcntl(parentfd, F_GETFL, &flags);
+        flags |= O_SYNC;
+        flags &= ~O_NONBLOCK;
+        fcntl(parentfd, F_SETFL, flags);
 
         /* child never returns from this, only parent */
         if (daemonize() < 0)
