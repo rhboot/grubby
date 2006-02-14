@@ -926,8 +926,6 @@ setuprootCommand(char *cmd, char *end)
 
     if (mount("/dev", "./dev", NULL, MS_BIND, NULL) < 0)
         eprintf("setuproot: moving /dev failed: %m\n");
-    if (mount("/dev/pts", "./dev/pts", NULL, MS_BIND, NULL) < 0)
-        eprintf("setuproot: moving /dev/pts failed: %m\n");
 
     if (!getKernelArg("nomnt")) {
         fp = setmntent("./etc/fstab.sys", "r");
@@ -1017,7 +1015,7 @@ static int
 switchrootCommand(char * cmd, char * end)
 {
     /*  Don't try to unmount the old "/", there's no way to do it. */
-    const char * umounts[] = { "/dev/pts", "/dev", "/proc", "/sys", NULL };
+    const char * umounts[] = { "/dev", "/proc", "/sys", NULL };
     const char *initprogs[] = { "/sbin/init", "/etc/init",
                                 "/bin/init", "/bin/sh", NULL };
     char *init, **initargs;
