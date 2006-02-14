@@ -114,8 +114,8 @@ nashDmGetUUID(const char *name)
         uuid = (char *)dm_task_get_uuid(task);
         if (uuid)
             uuid = strdup(uuid);
+        dm_task_destroy(task);
     }
-    dm_task_destroy(task);
 
     return uuid;
 }
@@ -136,7 +136,8 @@ nashDmGetDev(const char *name)
 
     dm_task_get_info(task, &info);
     if (!info.exists) {
-        dm_task_destroy(task);
+        if (task)
+            dm_task_destroy(task);
         return 0;
     }
 
@@ -151,12 +152,11 @@ nashDmMapExists(char *name)
 {
     struct dm_task *task;
     struct dm_info info;
-    int ret = 0;
 
-    if (!nashDmGetInfo(name, &task, &info) && info.exists)
-        ret = 1;
+    if (nashDmGetInfo(name, &task, &info))
+        return 0;
     dm_task_destroy(task);
-    return ret;
+    return 1;
 }
 
 int
