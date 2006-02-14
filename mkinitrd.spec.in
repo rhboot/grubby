@@ -63,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue Feb 14 2006 Peter Jones <pjones@redhat.com> - 5.0.25-1
+- rework hotplug control fds (#181515)
+
 * Tue Feb 14 2006 Peter Jones <pjones@redhat.com> - 5.0.24-1
 - use the right nash-dm command to get the device list
 - check if a subdevice has the same partition table, not if it starts
