@@ -166,9 +166,6 @@ block_sysfs_try_dir(bdev_iter iter, char *sysfs_path, bdev *dev)
     int ret;
     dev_t devno;
 
-    if (!strncmp(iter->dent->d_name, "fd", 2))
-        return -1;
-
     ret = parse_sysfs_devnum(sysfs_path, &devno);
     /* don't probe floppies */
     if (!strncmp(iter->dent->d_name, "fd", 2) && major(devno) == 2)
