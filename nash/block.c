@@ -164,7 +164,7 @@ static int
 block_sysfs_try_dir(bdev_iter iter, char *sysfs_path, bdev *dev)
 {
     int ret;
-    dev_t devno;
+    dev_t devno = 0;
 
     ret = parse_sysfs_devnum(sysfs_path, &devno);
     /* don't probe floppies */
