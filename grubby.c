@@ -27,7 +27,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "mount_by_label.h"
+#include "version.h"
+
+#include "block.h"
 
 #define _(A) (A)
 
@@ -909,7 +911,6 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     int i;
     struct stat sb, sb2;
     char * dev;
-    char * end;
     char * rootspec;
 
     line = entry->lines;
@@ -963,24 +964,19 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	}
     }
 
-    if (!strncmp(dev, "LABEL=", 6)) {
-	dev += 6;
-	
-	/* check which device has this label */
-	dev = get_spec_by_volume_label(dev, &i, &i);
-	if (!dev) return 0;
-    }
+    dev = getpathbyspec(dev);
+    if (!dev)
+        return 0;
 
-    if (*dev == '/') {
-	if (stat(dev, &sb)) 
-	    return 0;
-    } else {
-	sb.st_rdev = strtol(dev, &end, 16);
-	if (*end) return 0;
-    }
+    i = stat(dev, &sb);
+    free(dev);
+    if (i)
+	return 0;
+
     stat("/", &sb2);
 
-    if (sb.st_rdev != sb2.st_dev) return 0;
+    if (sb.st_rdev != sb2.st_dev)
+        return 0;
 
     return 1;
 }
