@@ -25,6 +25,8 @@
 
 #define _GNU_SOURCE 1
 
+#include "version.h"
+
 #include <ctype.h>
 #include <dirent.h>
 #include <errno.h>

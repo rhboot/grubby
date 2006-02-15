@@ -63,6 +63,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Feb 15 2006 Peter Jones <pjones@redhat.com> - 5.0.26-1
+- fix detection of floppy devices, don't probe them for labels
+- fix grubby to use the same label scanning code as nash
+- senseless rewriting of makefiles so that grubby can use nash's .o's, uh,
+  "more easily".
+
 * Tue Feb 14 2006 Peter Jones <pjones@redhat.com> - 5.0.25-1
 - rework hotplug control fds (#181515)
 

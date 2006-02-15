@@ -1,27 +1,11 @@
-VERSION=$(shell awk -F= '/^VERSION=/ { print $$2 }' mkinitrd)
-RELEASE=$(shell awk '/^Release:/ { print $$2 }' mkinitrd.spec.in)
-CVSTAG = r$(subst .,-,$(VERSION)-$(RELEASE))
-CVSROOT=$(shell cat CVS/Root)
 
-ARCH := $(patsubst i%86,i386,$(shell uname -m))
-ARCH := $(patsubst sparc%,sparc,$(ARCH))
-
+VERSION = $(shell awk -F= '/^VERSION=/ { print $$2 }' mkinitrd)
+RELEASE = $(shell awk '/^Release:/ { print $$2 }' mkinitrd.spec.in)
 SUBDIRS = nash grubby
 
-#ifeq ($(ARCH),sparc)
-#SUBDIRS += loadinitrd
-#endif
+include Makefile.inc
 
-#ifeq ($(ARCH),i386)
-#SUBDIRS += loadinitrd
-#endif
-
-mandir=usr/share/man
-
-all:
-	for n in $(SUBDIRS); do make -C $$n; done
-
-test:	all
+test: all
 	cd grubby; make test
 
 install:
@@ -35,9 +19,6 @@ install:
 	install -m755 installkernel $(BUILDROOT)/sbin/installkernel
 	chmod 755 $(BUILDROOT)/sbin/mkinitrd
 	install -m644 mkinitrd.8 $(BUILDROOT)/$(mandir)/man8/mkinitrd.8
-
-clean:
-	for n in $(SUBDIRS); do make -C $$n clean; done
 
 archive:
 	cvs tag -F $(CVSTAG) .

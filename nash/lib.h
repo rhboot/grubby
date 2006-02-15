@@ -18,7 +18,11 @@
 #ifndef NASH_LIB_H
 #define NASH_LIB_H 1
 
+#ifdef _GNU_SOURCE
+#define _GNU_SOURCE_DEFINED
+#else
 #define _GNU_SOURCE 1
+#endif
 
 #include <sys/types.h>
 #include <dirent.h>
@@ -69,5 +73,9 @@ extern int getDevNumFromProc(char * file, char * device);
 extern int stringsort(const void *v0, const void *v1);
 
 extern void udelay(long long usecs);
+
+#ifndef _GNU_SOURCE_DEFINED
+#undef _GNU_SOURCE
+#endif
 
 #endif /* NASH_LIB_H */
