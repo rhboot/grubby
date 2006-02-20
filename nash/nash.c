@@ -426,7 +426,7 @@ mountCommand(char * cmd, char * end)
     }
 
     if (!strncmp(fsType, "nfs", 3)) {
-        device = spec;
+        device = strdup(spec);
     } else {
         device = getpathbyspec(spec);
     }
