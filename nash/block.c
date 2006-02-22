@@ -394,7 +394,7 @@ sysfs_blkdev_probe(const char *dirname)
 }
 
 char *
-getpathbyspec(char * spec)
+getpathbyspec(const char * spec)
 {
     char *path;
 
@@ -411,7 +411,7 @@ getpathbyspec(char * spec)
 }
 
 int
-mkpathbyspec(char *spec, char *path)
+mkpathbyspec(const char *spec, const char *path)
 {
     char *existing = getpathbyspec(spec);
     struct stat sb;

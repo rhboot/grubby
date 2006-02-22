@@ -29,8 +29,8 @@ extern void block_show_labels(void);
 
 extern void sysfs_blkdev_probe(const char *dirname);
 
-extern char *getpathbyspec(char * spec);
-extern int mkpathbyspec(char *spec, char *path);
+extern char *getpathbyspec(const char * spec);
+extern int mkpathbyspec(const char *spec, const char *path);
 
 extern int block_disable_partitions(const char *devname);
 
