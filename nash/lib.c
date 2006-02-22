@@ -244,7 +244,7 @@ eprintf(const char *format, ...)
 }
 
 int
-smartmknod(char * device, mode_t mode, dev_t dev)
+smartmknod(const char * device, mode_t mode, dev_t dev)
 {
     char buf[256];
     char * end;
@@ -252,16 +252,20 @@ smartmknod(char * device, mode_t mode, dev_t dev)
     strncpy(buf, device, 256);
 
     end = buf;
-    while (*end) {
-        if (*end == '/') {
-            *end = '\0';
-            if (access(buf, F_OK) && errno == ENOENT)
-                mkdir(buf, 0755);
-            *end = '/';
-        }
+    do {
+        char tmp;
+
+        end = strchr(end, '/');
+        if (!end || !*end)
+            break;
 
         end++;
-    }
+        tmp = *end;
+        *end = '\0';
+        if (access(buf, F_OK) && errno == ENOENT)
+            mkdir(buf, 0755);
+        *end = tmp;
+    } while (1);
 
     return mknod(device, mode, dev);
 }

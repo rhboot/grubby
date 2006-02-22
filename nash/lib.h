@@ -66,7 +66,7 @@ extern int nashLogger(const nash_log_level level, const char *format, ...)
     __attribute__((format(printf, 2, 3)));
 
 
-extern int smartmknod(char * device, mode_t mode, dev_t dev);
+extern int smartmknod(const char * device, mode_t mode, dev_t dev);
 
 extern int getDevNumFromProc(char * file, char * device);
 
