@@ -270,7 +270,6 @@ handle_events(void)
     char *token;
     long prev = 0;
 
-
     do {
         maxfd = netlink;
         FD_ZERO(&fds);
@@ -469,7 +468,6 @@ daemonize(void)
     ppid = getpid();
     if (fork() > 0) {
         /* parent */
-        close(childfd);
         close(netlink);
 
 #ifdef FWDEBUG
