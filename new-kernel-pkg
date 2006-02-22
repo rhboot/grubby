@@ -127,10 +127,6 @@ install() {
     fi
 
     if [ -n "$mbkernel" ]; then
-	mb0="--add-multiboot=$mbkernel"
-	if [ -n "$mbargs" ]; then
-	    mb1="--mbargs=$mbargs"
-	fi
 	[ -n "$verbose" ] && echo "multiboot specified, not updating lilo.conf"
 	cfgLilo=""
     fi
@@ -145,17 +141,10 @@ install() {
 	else
 	    title="Red Hat Linux ($version)"
 	fi
-	if [ -z "$mb0" ]; then
-	    /sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version \
-		$INITRD --copy-default $makedefault --title "$title" \
-		--args="root=$rootdevice $kernargs" \
-		--remove-kernel="TITLE=$title"                 
-	else
-	    /sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version \
-		$INITRD --copy-default $makedefault "$mb0" "$mb1" \
-		--title "$title" --args="root=$rootdevice $kernargs" \
-		--remove-kernel="TITLE=$title"                 
-	fi
+	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD --copy-default $makedefault --title "$title" \
+	    ${mbkernel:+--mbkernel="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
+	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
