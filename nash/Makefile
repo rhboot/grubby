@@ -8,8 +8,6 @@ include ../Makefile.inc
 LIBS=-ldevmapper -lselinux -lsepol -lparted -lblkid -luuid -lpopt \
 	-lpump -lresolv
 
-nash::
-	echo $(OBJECTS)
 nash:: $(OBJECTS)
 	$(CC) $(LDFLAGS) -static -o $@ $^ $(LIBS)
 
