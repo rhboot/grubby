@@ -1813,7 +1813,7 @@ dmCommand(char *cmd, char *end)
         }
         return 1;
     } else if (!strcmp(action, "list")) {
-        char **names = NULL;
+        const char **names = NULL;
         int m = 0, n = 0;
 
         names = calloc(m+1, sizeof (char *));
