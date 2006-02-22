@@ -76,6 +76,8 @@ extern void udelay(long long usecs);
 
 #ifndef _GNU_SOURCE_DEFINED
 #undef _GNU_SOURCE
+#else
+#undef _GNU_SOURCE_DEFINED
 #endif
 
 #endif /* NASH_LIB_H */
