@@ -323,7 +323,7 @@ mountCommand(char * cmd, char * end)
         struct mntent *mnt;
         FILE *fstab;
 
-        fstab = coeFopen("/fstab", "r");
+        fstab = coeFopen("/etc/fstab", "r");
         if (!fstab) {
             eprintf("mount: missing mount point\n");
             return 1;
@@ -1409,7 +1409,7 @@ mkrootdevCommand(char *cmd, char *end)
     }
 
     umask(0122);
-    fstab = coeFopen("/fstab", "w+");
+    fstab = coeFopen("/etc/fstab", "w+");
     if (!fstab) {
         eprintf("mkrootdev: could not create fstab: %m\n");
         return 1;

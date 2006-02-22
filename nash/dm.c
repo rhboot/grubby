@@ -112,8 +112,12 @@ nashDmGetUUID(const char *name)
 
     if (!nashDmGetInfo(name, &task, &info)) {
         uuid = (char *)dm_task_get_uuid(task);
-        if (uuid)
-            uuid = strdup(uuid);
+        if (uuid) {
+            if (uuid[0] == '\0')
+                uuid = NULL;
+            else
+                uuid = strdup(uuid);
+        }
         dm_task_destroy(task);
     }
 
@@ -182,6 +186,8 @@ nashDmCreate(char *name, char *uuid, long long start, long long length,
     rc = dm_task_run(task);
     dm_task_destroy(task);
 
+    dm_task_update_nodes();
+
     if (rc < 0)
         return 0;
 
@@ -202,6 +208,8 @@ nashDmRemove(char *name)
 
     rc = dm_task_run(task);
     dm_task_destroy(task);
+
+    dm_task_update_nodes();
 
     if (rc < 0)
         return 0;
@@ -256,7 +264,13 @@ nashDmCreatePartitions(char *path)
     int nparts = 0;
     struct stat sb;
     char *parent_uuid;
+    char *newpath = NULL;
 
+    if (path[0] != '/') {
+        if (asprintf(&newpath, "/dev/mapper/%s", path) == -1)
+            return nparts;
+        path = newpath;
+    }
     if (stat(path, &sb) < 0 || !S_ISBLK(sb.st_mode))
         return nparts;
 
@@ -318,6 +332,8 @@ nashDmCreatePartitions(char *path)
         }
         part = ped_disk_next_partition(disk, part);
     }
+
+    dm_task_update_nodes();
 out:
     if (disk) {
         ped_disk_destroy(disk);
@@ -329,6 +345,9 @@ out:
 
     if (parent_uuid)
         free(parent_uuid);
+    
+    if (newpath)
+        free(newpath);
 
     nashPartedError = 0;
     return nparts;
