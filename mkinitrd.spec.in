@@ -63,6 +63,17 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Feb 22 2006 Peter Jones <pjones@redhat.com> - 5.0.27-1
+- Fix multiboot argument quoting in new-kernel-package (#182243)
+- Fix "netlink" fd error in hotplug initialization.
+- Fix directory creation in smartmknod()
+- Fix find command when it's not run alone (#181874, patch from Mark
+  McLoughlin)
+- Don't use 0-length uuids
+- Update /dev/mapper nodes more often
+- Allow dm partadd not to include the /dev/mapper path
+- Use /etc/fstab, not /fstab, so if you've got /sbin/mount it'll work
+
 * Wed Feb 15 2006 Peter Jones <pjones@redhat.com> - 5.0.26-1
 - fix detection of floppy devices, don't probe them for labels
 - fix grubby to use the same label scanning code as nash
