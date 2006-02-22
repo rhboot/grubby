@@ -127,9 +127,9 @@ install() {
     fi
 
     if [ -n "$mbkernel" ]; then
-	mb="--add-multiboot=$mbkernel"
+	mb0="--add-multiboot=$mbkernel"
 	if [ -n "$mbargs" ]; then
-	    mb="$mb --mbargs=$mbargs"
+	    mb1="--mbargs=$mbargs"
 	fi
 	[ -n "$verbose" ] && echo "multiboot specified, not updating lilo.conf"
 	cfgLilo=""
@@ -145,10 +145,17 @@ install() {
 	else
 	    title="Red Hat Linux ($version)"
 	fi
-	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD    \
-		     --copy-default $makedefault $mb --title "$title"	    \
-		     --args="root=$rootdevice $kernargs"	    \
-		     --remove-kernel="TITLE=$title"                 
+	if [ -z "$mb0" ]; then
+	    /sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version \
+		$INITRD --copy-default $makedefault --title "$title" \
+		--args="root=$rootdevice $kernargs" \
+		--remove-kernel="TITLE=$title"                 
+	else
+	    /sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version \
+		$INITRD --copy-default $makedefault "$mb0" "$mb1" \
+		--title "$title" --args="root=$rootdevice $kernargs" \
+		--remove-kernel="TITLE=$title"                 
+	fi
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
@@ -286,7 +293,7 @@ while [ $# -gt 0 ]; do
 	    if echo $1 |grep '=' >/dev/null; then
 		mbargs=`echo $1 | sed 's/^--mbargs=//'`
 	    else
-		mbargs=$2
+		mbargs="$2"
 		shift
 	    fi
 	    ;;
