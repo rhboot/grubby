@@ -5,7 +5,7 @@ OBJECTS = lib.o dm.o block.o linkdetect.o nash.o network.o nfsmount.o \
 
 include ../Makefile.inc
 
-LIBS=-ldevmapper -lselinux -lsepol -lparted -lblkid -luuid -lpopt \
+LIBS=-ldevmapper -lparted -lblkid -lselinux -lsepol -luuid -lpopt \
 	-lpump -lresolv
 
 nash:: $(OBJECTS)
