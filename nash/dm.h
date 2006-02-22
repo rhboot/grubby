@@ -37,7 +37,7 @@ nashDmRemovePartitions(char *name);
 #endif
 
 extern int
-dm_list_sorted(char **names);
+dm_list_sorted(const char **names);
 
 extern int
 nashDmHasParts(const char *name);

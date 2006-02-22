@@ -148,7 +148,7 @@ nashDmGetDev(const char *name)
 }
 
 static int
-nashDmMapExists(char *name)
+nashDmMapExists(const char *name)
 {
     struct dm_task *task;
     struct dm_info info;
@@ -336,7 +336,7 @@ out:
 
 /* ok, this whole data structure pretty much just sucks ass. */
 struct dm_iter_object {
-    char *name;
+    const char *name;
     dev_t devno;
     char *type;
 
@@ -369,13 +369,13 @@ struct dm_iter {
         struct dm_iter_object **objects;
         char **names;
     };
-    char **prune_names;
+    const char **prune_names;
     size_t nobjs;
     int i;
 };
 
 static struct dm_iter *
-dm_iter_begin(char **names)
+dm_iter_begin(const char **names)
 {
     struct dm_iter *iter;
     struct dm_names *dmnames;
@@ -481,7 +481,7 @@ _dm_iter_destroy(struct dm_iter **iterp)
         struct dm_iter_object *obj;
 
         obj = iter->objects[i];
-        free(obj->name);
+        free((char *)obj->name);
         free(obj->type);
         free(obj->deps);
         free(obj);
@@ -769,7 +769,7 @@ out:
 }
 
 int
-dm_list_sorted(char **names)
+dm_list_sorted(const char **names)
 {
     struct dm_iter *iter;
     struct dm_iter_object *obj;
