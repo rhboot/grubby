@@ -1657,8 +1657,8 @@ findCommand(char * cmd, char * end)
             if (!(cmd = getArg(cmd, end, &dir)))
                 dir = strdup(".");
         }
-        if (cmd && *cmd != '\0') {
-            if (!(cmd = getArg(cmd, end, &name)) || strcmp(name, "-name"))
+        if ((cmd = getArg(cmd, end, &name))) {
+            if (strcmp(name, "-name"))
                 goto error;
             if (!(cmd = getArg(cmd, end, &name)))
                 goto error;
