@@ -948,7 +948,7 @@ if [ -z "$noresume" -a -n "$swsuspdev" ]; then
 fi
 
 emit "echo Creating root device."
-# mkrootdev does "echo /dev/root /sysroot ext3 defaults,ro 0 0 >/fstab"
+# mkrootdev does "echo /dev/root /sysroot ext3 defaults,ro 0 0 >/etc/fstab"
 emit "mkrootdev -t $rootfs -o $rootopts $rootdev"
 rootdev=/dev/root
 
