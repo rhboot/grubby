@@ -36,6 +36,7 @@ extern int __real_open(const char *path, int flags, ...);
 extern FILE *__real_fopen(const char *path, const char *mode);
 extern DIR *__real_opendir(const char *name);
 extern int __real_socket(int domain, int type, int protocol);
+extern int __real_pipe(int filedes[2]);
 
 int
 setFdCoe(int fd, int enable)
@@ -148,6 +149,36 @@ __wrap_socket(int domain, int type, int protocol)
     }
 
     return fd;
+}
+
+int
+__wrap_pipe(int filedes[2])
+{
+    int rc;
+    int x;
+    int fds[2];
+
+    rc = __real_pipe(fds);
+    if (rc < 0)
+        return rc;
+
+    for (x = 0; x < 2; x++) {
+        int status;
+        int errnum;
+
+        status = setFdCoe(fds[x], 1);
+        if (status < 0) {
+            errnum = errno;
+            close(fds[0]);
+            close(fds[1]);
+            errno = errnum;
+            return status;
+        }
+    }
+    filedes[0] = fds[0];
+    filedes[1] = fds[1];
+
+    return rc;
 }
 
 int
