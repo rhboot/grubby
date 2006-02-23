@@ -35,6 +35,7 @@
 extern int __real_open(const char *path, int flags, ...);
 extern FILE *__real_fopen(const char *path, const char *mode);
 extern DIR *__real_opendir(const char *name);
+extern int __real_socket(int domain, int type, int protocol);
 
 int
 setFdCoe(int fd, int enable)
@@ -125,6 +126,28 @@ __wrap_opendir(const char *name)
     }
 
     return d;
+}
+
+int
+__wrap_socket(int domain, int type, int protocol)
+{
+    int fd;
+    int rc;
+    int errnum;
+
+    fd = __real_socket(domain, type, protocol);
+    if (fd < 0)
+        return fd;
+
+    rc = setFdCoe(fd, 1);
+    if (rc < 0) {
+        errnum = errno;
+        close(fd);
+        errno = errnum;
+        return rc;
+    }
+
+    return fd;
 }
 
 int

@@ -8,7 +8,7 @@ ARCH := $(patsubst ppc%,ppc,$(ARCH))
 
 CC = gcc
 CFLAGS ?= -Wall -Werror -g -D_FORTIFY_SOURCE=2
-LDFLAGS ?= $(CFLAGS) -Wl,--wrap,open,--wrap,fopen,--wrap,opendir
+LDFLAGS ?= $(CFLAGS) -Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket
 
 mandir = usr/share/man
 
