@@ -43,7 +43,7 @@ parse_sysfs_devnum(const char *path, dev_t *dev)
     char *devname;
 
     asprintf(&devname, "%s/dev", path);
-    fd = coeOpen(devname, O_RDONLY);
+    fd = open(devname, O_RDONLY);
     free(devname);
     if (fd < 0) {
         return -1;
@@ -151,7 +151,7 @@ block_sysfs_iterate_begin(const char *path)
 
     iter->dirname = strdup(dirpath);
 
-    iter->dir = coeOpendir(iter->dirname);
+    iter->dir = opendir(iter->dirname);
     if (iter->dir == NULL) {
         block_sysfs_iterate_destroy(iter);
         return NULL;
