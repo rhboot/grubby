@@ -5,7 +5,7 @@ OBJECTS = grubby.o
 include ../Makefile.inc
 
 CFLAGS := $(CFLAGS) -iquote../nash/ $(RPM_OPT_FLAGS)
-LDFLAGS := $(CFLAGS)
+LDFLAGS := $(CFLAGS) -Wl,--wrap,open,--wrap,fopen,--wrap,opendir
 
 LIBS = -lblkid -luuid -lpopt -ldevmapper -lselinux -lsepol
 
