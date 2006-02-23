@@ -614,12 +614,18 @@ if [ -n "$forcescsi" -o -z "$noscsi" -a "x$PROBE" == "xyes" ]; then
     if [ -f $modulefile ]; then
 	scsimodules=`grep "alias[[:space:]]\+scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
 
-	if [ -n "$scsimodules" ]; then
-	    for n in $PRESCSIMODS; do
-		findmodule $n
-	    done
+        if echo "$MODULES" | egrep -c -q 'scsi_mod|libata' ; then
+            dosdmod=1
+        fi
+        if [ -n "$scsimodules" -o -n "$dosdmod" ]; then
+            for n in $PRESCSIMODS ; do
+                findmodule $n
+            done
+        fi
+        unset dosdmod
 
-	    for n in $scsimodules; do
+	if [ -n "$scsimodules" ]; then
+            for n in $scsimodules; do
     # for now allow scsi modules to come from anywhere.  There are some
     # RAID controllers with drivers in block/
 		findmodule $n
