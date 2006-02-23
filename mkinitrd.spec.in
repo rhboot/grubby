@@ -73,6 +73,8 @@ rm -rf $RPM_BUILD_ROOT
 - Update /dev/mapper nodes more often
 - Allow dm partadd not to include the /dev/mapper path
 - Use /etc/fstab, not /fstab, so if you've got /sbin/mount it'll work
+- Bring in sd_mod if libata or scsi_mod is selected (#181983)
+- use -Wl,--wrap,open and __wrap_open() instead of coeOpen()
 
 * Wed Feb 15 2006 Peter Jones <pjones@redhat.com> - 5.0.26-1
 - fix detection of floppy devices, don't probe them for labels
