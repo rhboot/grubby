@@ -32,8 +32,12 @@
 #include "lib.h"
 #include "hotplug.h"
 
+extern int __real_open(const char *path, int flags, ...);
+extern FILE *__real_fopen(const char *path, const char *mode);
+extern DIR *__real_opendir(const char *name);
+
 int
-makeFdCoe(int fd)
+setFdCoe(int fd, int enable)
 {
     int rc;
     long flags = 0;
@@ -42,14 +46,17 @@ makeFdCoe(int fd)
     if (rc < 0)
         return rc;
 
-    flags |= FD_CLOEXEC;
+    if (enable)
+        flags |= FD_CLOEXEC;
+    else
+        flags &= ~FD_CLOEXEC;
 
     rc = fcntl(fd, F_SETFD, flags);
     return rc;
 }
 
 int
-coeOpen(const char *path, int flags, ...)
+__wrap_open(const char *path, int flags, ...)
 {
     int fd, rc, mode = 0;
     long errnum;
@@ -61,11 +68,11 @@ coeOpen(const char *path, int flags, ...)
         va_end(arg);
     }
 
-    fd = open(path, flags);
+    fd = __real_open(path, flags);
     if (fd < 0)
         return fd;
 
-    rc = makeFdCoe(fd);
+    rc = setFdCoe(fd, 1);
     if (rc < 0) {
         errnum = errno;
         close(fd);
@@ -77,17 +84,17 @@ coeOpen(const char *path, int flags, ...)
 }
 
 FILE *
-coeFopen(const char *path, const char *mode)
+__wrap_fopen(const char *path, const char *mode)
 {
     FILE *f;
     int rc;
     long errnum;
 
-    f = fopen(path, mode);
+    f = __real_fopen(path, mode);
     if (!f)
         return f;
 
-    rc = makeFdCoe(fileno(f));
+    rc = setFdCoe(fileno(f), 1);
     if (rc < 0) {
         errnum = errno;
         fclose(f);
@@ -99,17 +106,17 @@ coeFopen(const char *path, const char *mode)
 }
 
 DIR *
-coeOpendir(const char *name)
+__wrap_opendir(const char *name)
 {
     DIR *d;
     int rc;
     long errnum;
 
-    d = opendir(name);
+    d = __real_opendir(name);
     if (!d)
         return d;
 
-    rc = makeFdCoe(dirfd(d));
+    rc = setFdCoe(dirfd(d), 1);
     if (rc < 0) {
         errnum = errno;
         closedir(d);
@@ -278,7 +285,7 @@ getDevNumFromProc(char * file, char * device)
     int num;
     int fd;
 
-    if ((fd = coeOpen(file, O_RDONLY)) == -1) {
+    if ((fd = open(file, O_RDONLY)) == -1) {
         eprintf("can't open file %s: %s\n", file, strerror(errno));
         return -1;
     }
