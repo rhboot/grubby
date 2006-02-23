@@ -333,8 +333,9 @@ nashDmCreatePartitions(char *path)
         part = ped_disk_next_partition(disk, part);
     }
 
-    dm_task_update_nodes();
 out:
+    dm_task_update_nodes();
+
     if (disk) {
         ped_disk_destroy(disk);
         ped_device_close(dev);
