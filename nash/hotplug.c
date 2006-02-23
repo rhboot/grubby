@@ -69,7 +69,7 @@ set_loading(int fd, const char *device, int value)
 
         snprintf(loading_path, sizeof(loading_path), "/sys/%s/loading", device);
         loading_path[sizeof(loading_path)-1] = '\0';
-        fd = coeOpen(loading_path, O_RDWR | O_SYNC );
+        fd = open(loading_path, O_RDWR | O_SYNC );
         if (fd < 0)
             return fd;
     }
@@ -87,7 +87,7 @@ set_timeout(int value)
     char buf[10] = {'\0'};
     int fd, rc;
 
-    fd = coeOpen("/sys/class/firmware/timeout", O_RDWR | O_SYNC);
+    fd = open("/sys/class/firmware/timeout", O_RDWR | O_SYNC);
     if (fd < 0)
         return fd;
 
@@ -103,7 +103,7 @@ file_map(const char *filename, char **buf, size_t *bufsize)
     struct stat stats;
     int fd;
 
-    fd = coeOpen(filename, O_RDONLY);
+    fd = open(filename, O_RDONLY);
     if (fd < 0) {
         return -1;
     }
@@ -181,7 +181,7 @@ load_firmware(void)
     data[4] = '\0';
     strcat(data, devpath);
     strcat(data, "/data");
-    dfd = coeOpen(data, O_RDWR);
+    dfd = open(data, O_RDWR);
     if (dfd < 0) {
         fprintf(stderr, "failed to open %s\n", data);
         loading = -1;
@@ -451,7 +451,7 @@ daemonize(void)
         close(parentfd);
         return -1;
     }
-    makeFdCoe(netlink);
+    setFdCoe(netlink, 1);
 
     memset(&sa, '\0', sizeof (sa));
     sa.nl_family = AF_NETLINK;
@@ -485,14 +485,14 @@ daemonize(void)
     close(parentfd);
     if (childfd != 0)
         dup2(childfd, 0);
-    makeFdCoe(0);
+    setFdCoe(0, 1);
 #if 0
     close(1);
     dup2(childfd, 1);
-    makeFdCoe(1);
+    setFdCoe(1, 1);
     close(2);
     dup2(childfd, 2);
-    makeFdCoe(2);
+    setFdCoe(2, 1);
 #else
     close(1);
     i = open("/dev/zero", O_RDWR);
@@ -501,7 +501,7 @@ daemonize(void)
         close(i);
         i = 1;
     }
-    makeFdCoe(i);
+    setFdCoe(i, 1);
 
     close(2);
     i = open("/dev/zero", O_RDWR);
@@ -510,7 +510,7 @@ daemonize(void)
         close(i);
         i = 2;
     }
-    makeFdCoe(i);
+    setFdCoe(i, 1);
 #endif
 #ifndef FWDEBUG
     for (i = 3; i < getdtablesize(); i++) {
@@ -527,7 +527,7 @@ daemonize(void)
     signal(SIGINT, SIG_IGN);
 #endif
 
-    i = coeOpen("/proc/self/oom_adj", O_RDWR);
+    i = open("/proc/self/oom_adj", O_RDWR);
     if (i >= 0) {
         write(i, "-17", 3);
         close(i);
@@ -548,7 +548,7 @@ init_hotplug(void) {
 
         childfd = filedes[0];
         flags = 0;
-        makeFdCoe(childfd);
+        setFdCoe(childfd, 1);
         fcntl(childfd, F_GETFL, &flags);
         flags |= O_SYNC;
         flags &= ~O_NONBLOCK;
@@ -556,7 +556,7 @@ init_hotplug(void) {
 
         parentfd = filedes[1];
         flags = 0;
-        makeFdCoe(parentfd);
+        setFdCoe(parentfd, 1);
         fcntl(parentfd, F_GETFL, &flags);
         flags |= O_SYNC;
         flags &= ~O_NONBLOCK;
