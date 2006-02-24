@@ -31,7 +31,7 @@ extern void sysfs_blkdev_probe(const char *dirname);
 
 extern char *agetpathbyspec(const char * spec);
 #define getpathbyspec(_spec) ({         \
-        char *_ret0, *_ret1;            \
+        char *_ret0, *_ret1 = NULL;     \
         _ret0 = agetpathbyspec(_spec);  \
         if (_ret0) {                    \
             _ret1 = strdupa(_ret0);     \
