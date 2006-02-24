@@ -1,3 +1,5 @@
+TOPDIR ?= $(shell pwd)/../
+export TOPDIR
 
 TARGETS = nash
 OBJECTS = lib.o dm.o block.o linkdetect.o nash.o network.o nfsmount.o \

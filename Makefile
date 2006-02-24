@@ -1,6 +1,7 @@
 
-VERSION = $(shell awk -F= '/^VERSION=/ { print $$2 }' mkinitrd)
-RELEASE = $(shell awk '/^Release:/ { print $$2 }' mkinitrd.spec.in)
+TOPDIR = $(shell pwd)
+export TOPDIR
+
 SUBDIRS = nash grubby
 
 include Makefile.inc

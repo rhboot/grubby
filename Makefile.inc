@@ -1,6 +1,10 @@
-
 CVSTAG = r$(subst .,-,$(VERSION)-$(RELEASE))
 CVSROOT = $(shell cat CVS/Root)
+
+VERSION = $(shell awk -F= '/^VERSION=/ { print $$2 }' $(TOPDIR)/mkinitrd)
+export VERSION
+RELEASE = $(shell awk '/^Release:/ { print $$2 }' $(TOPDIR)/mkinitrd.spec.in)
+export RELEASE
 
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
@@ -15,14 +19,15 @@ mandir = usr/share/man
 
 all:: $(TARGETS) $(SUBDIRS)
 	
-.INTERMEDIATE:: version.h
-version.h:
+.INTERMEDIATE:: $(shell pwd)/version.h
+$(shell pwd)/version.h: $(TOPDIR)/mkinitrd
+	@echo making $(shell pwd)/version.h
 	@echo '#ifdef VERSION' > version.h
 	@echo '#undef VERSION' >> version.h
 	@echo '#endif' >> version.h
 	@echo '#define' VERSION \"$(VERSION)\" >> version.h
 
-$(TARGETS):: version.h
+$(TARGETS):: $(shell pwd)/version.h
 	for n in $(SUBDIRS); do make -C $$n all ; done
 
 .PHONY:: $(SUBDIRS)
