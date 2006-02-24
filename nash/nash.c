@@ -134,7 +134,7 @@ searchPath(char *bin, char **resolved)
             pec = *pathEnd;
             *pathEnd = '\0';
 
-            rc = asprintf(&fullPath, "%s/%s", pathStart, bin);
+            rc = asprintfa(&fullPath, "%s/%s", pathStart, bin);
             if (!fullPath) {
                 int errnum = errno;
                 eprintf("error searching path: %m\n");
@@ -147,10 +147,9 @@ searchPath(char *bin, char **resolved)
                 pathStart++;
 
             if (!access(fullPath, X_OK)) {
-                *resolved = fullPath;
+                *resolved = strdup(fullPath);
                 return 0;
             }
-            free(fullPath);
         }
     }
 
@@ -426,7 +425,7 @@ mountCommand(char * cmd, char * end)
     }
 
     if (!strncmp(fsType, "nfs", 3)) {
-        device = strdup(spec);
+        device = strdupa(spec);
     } else {
         device = getpathbyspec(spec);
     }
@@ -456,7 +455,6 @@ mountCommand(char * cmd, char * end)
             if (nfsmount(device, mntPoint, &flags, &foo, &options, 0)) {
                 eprintf("nfsmount: error mounting %s on %s as %s: %m\n",
                         device, mntPoint, fsType);
-                free(device);
                 return 1;
             }
         }
@@ -466,7 +464,6 @@ mountCommand(char * cmd, char * end)
             rc = 1;
         }
     }
-    free(device);
 
     return rc;
 }
@@ -697,6 +694,7 @@ execCommand(char *cmd, char *end)
         return 1;
 
     rc = otherCommand(fullPath, cmd, end, 0);
+    free(fullPath);
     return rc == -ENOENT ? 1 : rc;
 }
 
@@ -907,6 +905,40 @@ recursiveRemove(char * dirName)
     return 0;
 }
 
+static void
+mountMntEnt(const struct mntent *mnt)
+{
+    char *start = NULL, *end;
+    char *target = NULL;
+    struct stat sb;
+    
+    qprintf("mounting %s\n", mnt->mnt_dir);
+    if (asprintfa(&target, ".%s", mnt->mnt_dir) < 0) {
+        eprintf("setuproot: out of memory while mounting %s\n",
+                mnt->mnt_dir);
+        return;
+    }
+    
+    if (stat(target, &sb) < 0)
+        return;
+    
+    if (asprintf(&start, "-o %s -t %s %s .%s\n",
+            mnt->mnt_opts, mnt->mnt_type, mnt->mnt_fsname,
+            mnt->mnt_dir) < 0) {
+        eprintf("setuproot: out of memory while mounting %s\n",
+                mnt->mnt_dir);
+        return;
+    }
+    
+    end = start + 1;
+    while (*end && (*end != '\n'))
+        end++;
+    /* end points to the \n at the end of the command */
+    
+    if (mountCommand(start, end) != 0)
+        eprintf("setuproot: mount returned error\n");
+}
+
 static int
 setuprootCommand(char *cmd, char *end)
 {
@@ -942,43 +974,8 @@ setuprootCommand(char *cmd, char *end)
         if (fp) {
             struct mntent *mnt;
 
-            while((mnt = getmntent(fp))) {
-                char *start = NULL, *end;
-                char *target = NULL;
-                struct stat sb;
-
-                qprintf("mounting %s\n", mnt->mnt_dir);
-                if (asprintf(&target, ".%s", mnt->mnt_dir) < 0) {
-                    eprintf("setuproot: out of memory while mounting %s\n",
-                            mnt->mnt_dir);
-                    continue;
-                }
-
-                if (stat(target, &sb) < 0) {
-                    free(target);
-                    target = NULL;
-                    continue;
-                }
-
-                if (asprintf(&start, "-o %s -t %s %s .%s\n",
-                        mnt->mnt_opts, mnt->mnt_type, mnt->mnt_fsname,
-                        mnt->mnt_dir) < 0) {
-                    eprintf("setuproot: out of memory while mounting %s\n",
-                            mnt->mnt_dir);
-                    continue;
-                }
-
-                end = start + 1;
-                while (*end && (*end != '\n'))
-                    end++;
-                /* end points to the \n at the end of the command */
-
-                if (mountCommand(start, end) != 0)
-                    eprintf("setuproot: mount returned error\n");
-
-                free(start);
-                start = NULL;
-            }
+            while((mnt = getmntent(fp)))
+                mountMntEnt(mnt);
             endmntent(fp);
         } else {
             struct {
@@ -1290,17 +1287,16 @@ resumeCommand(char * cmd, char * end)
     qprintf("Trying to resume from %s\n", resumedev);
 
     resume = getpathbyspec(resumedev);
-    if (resume) {
-        resumedev = strdupa(resume);
-        free(resume);
-    }
+    if (resume)
+        resumedev = resume;
 
     if (access(resumedev, R_OK)) {
         eprintf("Unable to access resume device (%s)\n", resumedev);
         return 1;
     }
 
-    if ((fd = open(resumedev, O_RDONLY)) < 0)
+    fd = open(resumedev, O_RDONLY);
+    if (fd < 0)
         return 1;
     if (lseek(fd, getpagesize() - 10, SEEK_SET) != getpagesize() - 10) {
         close(fd);
@@ -1541,17 +1537,15 @@ readlinkCommand(char * cmd, char * end)
         return 0;
     }
 
-    buf = calloc(512, sizeof (char));
+    buf = alloca(512 * sizeof (char));
     if (readlink(path, buf, 512) == -1) {
         eprintf("error readlink %s: %m\n", path);
-        free(buf);
         return 1;
     }
 
     /* symlink is absolute */
     if (buf[0] == '/') {
         printf("%s\n", buf);
-        free(buf);
         return 0;
     }
 
@@ -1561,22 +1555,18 @@ readlinkCommand(char * cmd, char * end)
         *respath = '\0';
     }
 
-    fullpath = calloc(512, sizeof (char));
+    fullpath = alloca(512 * sizeof (char));
     /* and normalize it */
     snprintf(fullpath, 512, "%s/%s", path, buf);
     respath = NULL;
     respath = canonicalize_file_name(fullpath);
     if (respath == NULL) {
         eprintf("error resolving symbolic link %s: %m\n", fullpath);
-        rc = 1;
-        goto readlinkout;
+        return 1;
     }
 
     printf("%s\n", respath);
     free(respath);
- readlinkout:
-    free(buf);
-    free(fullpath);
     return rc;
 }
 
