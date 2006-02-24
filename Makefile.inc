@@ -18,9 +18,9 @@ LDFLAGS ?= $(CFLAGS) -Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
 mandir = usr/share/man
 
 all:: $(TARGETS) $(SUBDIRS)
-	
-.INTERMEDIATE:: $(shell pwd)/version.h
-$(shell pwd)/version.h: $(TOPDIR)/mkinitrd
+
+$(shell pwd)/version.h: $(TOPDIR)/mkinitrd $(TOPDIR)/Makefile.inc \
+		$(TOPDIR)/Makefile $(shell pwd)/Makefile
 	@echo making $(shell pwd)/version.h
 	@echo '#ifdef VERSION' > version.h
 	@echo '#undef VERSION' >> version.h
