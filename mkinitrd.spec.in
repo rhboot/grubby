@@ -63,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Feb 23 2006 Peter Jones <pjones@redhat.com> - 5.0.28-1
+- Make /dev/efirtc on ia64 boxes (#182598)
+
 * Wed Feb 22 2006 Peter Jones <pjones@redhat.com> - 5.0.27-1
 - Fix multiboot argument quoting in new-kernel-package (#182243)
 - Fix "netlink" fd error in hotplug initialization.

@@ -829,6 +829,9 @@ mknod $MNTIMAGE/dev/tty c 5 0
 mknod $MNTIMAGE/dev/console c 5 1
 mknod $MNTIMAGE/dev/ptmx c 5 2
 mknod $MNTIMAGE/dev/rtc c 10 135
+if [ "$(uname -m)" == "ia64" ]; then
+    mknod $MNTIMAGE/dev/efirtc c 10 136
+fi
 
 # FIXME -- this can really go poorly with clvm or duplicate vg names.
 # nash should do lvm probing for us and write its own configs.
@@ -866,6 +869,9 @@ mknod /dev/console c 5 1
 mknod /dev/ptmx c 5 2
 mknod /dev/rtc c 10 135
 EOF
+if [ "$(uname -m)" == "ia64" ]; then
+    emit "mknod $MNTIMAGE/dev/efirtc c 10 136"
+fi
 
 # XXX really we need to openvt too, in case someting changes the
 # color palette and then changes vts on fbcon before gettys start.
