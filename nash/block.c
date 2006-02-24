@@ -36,6 +36,34 @@
 #include "block.h"
 
 static int
+bdev_removable(const char *path)
+{
+    char *subpath = NULL;
+    char *contents = NULL;
+    int rc;
+    int fd;
+
+    rc = asprintfa(&subpath, "%s/removable", path);
+    if (rc == -1)
+        return 0;
+
+    fd = open(subpath, O_RDONLY);
+    if (fd == -1)
+        return 0;
+
+    rc = readFD(fd, &contents);
+    if (rc < 0) {
+        close(fd);
+        return 0;
+    }
+
+    rc = (contents[0] - '0') <= 0 ? 0 : 1;
+    free(contents);
+    close(fd);
+    return rc;
+}
+
+static int
 parse_sysfs_devnum(const char *path, dev_t *dev)
 {
     char *first = NULL, *second;
@@ -181,8 +209,9 @@ block_sysfs_try_dir(bdev_iter iter, char *sysfs_path, bdev *dev)
     dev_t devno = 0;
 
     ret = parse_sysfs_devnum(sysfs_path, &devno);
-    /* don't probe floppies */
-    if (!strncmp(iter->dent->d_name, "fd", 2) && major(devno) == 2)
+
+    /* don't probe floppies, cd drives, etc */
+    if (bdev_removable(sysfs_path))
         return -1;
     if (ret == 0) {
         /* we can't just assign it to *dev,
@@ -408,7 +437,7 @@ sysfs_blkdev_probe(const char *dirname)
 }
 
 char *
-getpathbyspec(const char * spec)
+agetpathbyspec(const char * spec)
 {
     char *path;
 
