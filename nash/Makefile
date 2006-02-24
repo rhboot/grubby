@@ -17,9 +17,9 @@ hotplug: hotplug.c lib.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -DFWDEBUG -o $@ $^
 
 debug:: hotplug
-debug::
-	make clean
-	make CFLAGS="$(CFLAGS) -DDEBUG" $(OBJECTS)
+	$(MAKE) clean
+debug:: $(shell pwd)/version.h
+	$(MAKE) CFLAGS="$(CFLAGS) -DDEBUG" $(OBJECTS)
 debug:: $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
@@ -29,5 +29,5 @@ clean::
 install:
 	mkdir -p $(BUILDROOT)/sbin
 	mkdir -p $(BUILDROOT)/$(mandir)/man8
-	install -m 755 -s nash $(BUILDROOT)/sbin
+	install -m 755 nash $(BUILDROOT)/sbin
 	install -m 644 nash.8 $(BUILDROOT)/$(mandir)/man8
