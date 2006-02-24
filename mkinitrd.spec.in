@@ -67,6 +67,10 @@ rm -rf $RPM_BUILD_ROOT
 - Make /dev/efirtc on ia64 boxes (#182598)
 - Handle selinux contexts on /etc/blkid.tab* since we can't do it in
   libblkid.
+- Make building from the "nash" subdir work again
+- Make getpathbyspec() allocate on the caller's stack, eliminating
+  several memory leaks in callers.
+- Don't strip nash
 
 * Wed Feb 22 2006 Peter Jones <pjones@redhat.com> - 5.0.27-1
 - Fix multiboot argument quoting in new-kernel-package (#182243)
