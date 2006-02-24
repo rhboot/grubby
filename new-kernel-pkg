@@ -143,7 +143,7 @@ install() {
 	fi
 	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
-	    ${mbkernel:+--mbkernel="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
+	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
 	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
