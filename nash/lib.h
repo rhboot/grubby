@@ -71,6 +71,22 @@ extern int stringsort(const void *v0, const void *v1);
 
 extern void udelay(long long usecs);
 
+#define asprintfa(str, fmt, ...) ({                 \
+        char *_tmp = NULL;                          \
+        int _rc;                                    \
+        _rc = asprintf((str), (fmt), __VA_ARGS__);  \
+        if (_rc != -1) {                            \
+            _tmp = strdupa(*(str));                 \
+            if (!_tmp) {                            \
+                _rc = -1;                           \
+            } else {                                \
+                free(*(str));                       \
+                *(str) = _tmp;                      \
+            }                                       \
+        }                                           \
+        _rc;                                        \
+    })
+
 #ifndef _GNU_SOURCE_DEFINED
 #undef _GNU_SOURCE
 #else
