@@ -10,7 +10,7 @@ include ../Makefile.inc
 LIBS=-ldevmapper -lparted -lblkid -lselinux -lsepol -luuid -lpopt \
 	-lpump -lresolv
 
-nash:: $(OBJECTS)
+nash:: version.h $(OBJECTS)
 	$(CC) $(LDFLAGS) -static -o $@ $^ $(LIBS)
 
 hotplug: hotplug.c lib.o
@@ -19,7 +19,7 @@ hotplug: hotplug.c lib.o
 debug:: hotplug
 debug::
 	make clean
-	make CFLAGS="$(CFLAGS) -DDEBUG" $(OBJECTS) 
+	make CFLAGS="$(CFLAGS) -DDEBUG" $(OBJECTS)
 debug:: $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
