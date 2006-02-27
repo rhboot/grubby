@@ -814,7 +814,7 @@ mkdir $MNTIMAGE/dev/mapper
 
 mknod $MNTIMAGE/dev/ram0 b 1 0
 mknod $MNTIMAGE/dev/ram1 b 1 1
-ln -sf ram $MNTIMAGE/dev/ram1
+ln -sf ram1 $MNTIMAGE/dev/ram
 
 mknod $MNTIMAGE/dev/null c 1 3
 mknod $MNTIMAGE/dev/zero c 1 5
@@ -858,9 +858,6 @@ mount -t devpts -o gid=5,mode=620 /dev/pts /dev/pts
 mkdir /dev/shm
 mkdir /dev/mapper
 echo Creating initial device nodes
-mknod /dev/ram0 b 1 0
-mknod /dev/ram1 b 1 1
-mknod /dev/ram b 1 1
 mknod /dev/null c 1 3
 mknod /dev/zero c 1 5
 mknod /dev/systty c 4 0
