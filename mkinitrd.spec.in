@@ -11,7 +11,7 @@ Requires: /bin/sh, /sbin/insmod.static, /sbin/losetup
 Requires: fileutils, grep, mount, gzip, tar, mktemp >= 1.5-5, findutils, lvm2
 Requires: filesystem >= 2.1.0, cpio, device-mapper, initscripts >= 8.22-1
 Requires: e2fsprogs
-BuildRequires: popt e2fsprogs-devel parted-devel
+BuildRequires: popt e2fsprogs-devel parted-devel pump-devel
 BuildRequires: device-mapper libselinux-devel libsepol-devel
 %ifnarch s390 s390x
 Requires: dmraid
@@ -63,6 +63,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Feb 27 2006 Peter Jones <pjones@redhat.com> - 5.0.29-1
+- Fix pump-devel buildrequires
+- Fix grubby's getpathbyspec() usage
+- Fix grubby's makefile
+- Make readlink command work with super scary huge sysfs paths
+
 * Fri Feb 24 2006 Peter Jones <pjones@redhat.com> - 5.0.28-1
 - Make /dev/efirtc on ia64 boxes (#182598)
 - Handle selinux contexts on /etc/blkid.tab* since we can't do it in
