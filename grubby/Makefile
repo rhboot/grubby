@@ -1,3 +1,5 @@
+TOPDIR ?= $(shell pwd)/../
+export TOPDIR
 
 TARGETS = grubby
 OBJECTS = grubby.o
