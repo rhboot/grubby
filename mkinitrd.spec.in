@@ -65,9 +65,13 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Mon Feb 27 2006 Peter Jones <pjones@redhat.com> - 5.0.29-1
 - Fix pump-devel buildrequires
-- Fix grubby's getpathbyspec() usage
+- Fix grubby's getpathbyspec() usage (#183010)
 - Fix grubby's makefile
-- Make readlink command work with super scary huge sysfs paths
+- Make readlink command work with super scary huge sysfs paths (#183091)
+- Make readlink handle directories better (#166666)
+- Don't create ramdisk blockdevs, mkblkdevs does it (#181873)
+- Don't use showlabels to resolve labels, use resolveDevice so we don't
+  need messy awk (#180372)
 
 * Fri Feb 24 2006 Peter Jones <pjones@redhat.com> - 5.0.28-1
 - Make /dev/efirtc on ia64 boxes (#182598)
