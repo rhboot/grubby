@@ -1537,8 +1537,8 @@ readlinkCommand(char * cmd, char * end)
         return 0;
     }
 
-    buf = alloca(512 * sizeof (char));
-    if (readlink(path, buf, 512) == -1) {
+    buf = readlinka(path);
+    if (buf == NULL) {
         eprintf("error readlink %s: %m\n", path);
         return 1;
     }
