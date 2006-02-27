@@ -409,14 +409,15 @@ readlink_malloc(const char *filename)
         int nchars;
 
         buffer = (char *)realloc(buffer, size);
+        memset(buffer, '\0', size);
         if (!buffer)
             return NULL;
-        nchars = readlink(filename, buffer, size);
+        nchars = readlink(filename, buffer, size-1);
         if (nchars < 0) {
             free(buffer);
             return NULL;
         }
-        if (nchars < size)
+        if (nchars < size-1)
             return buffer;
         size *= 2;
     }
