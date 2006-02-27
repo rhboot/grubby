@@ -1518,7 +1518,7 @@ static int
 readlinkCommand(char * cmd, char * end)
 {
     char * path;
-    char * buf, * respath, * fullpath;
+    char * buf, * respath, * fullpath = NULL;
     struct stat sb;
     int rc = 0;
 
@@ -1555,9 +1555,8 @@ readlinkCommand(char * cmd, char * end)
         *respath = '\0';
     }
 
-    fullpath = alloca(512 * sizeof (char));
+    asprintfa(&fullpath, "%s/%s", path, buf);
     /* and normalize it */
-    snprintf(fullpath, 512, "%s/%s", path, buf);
     respath = NULL;
     respath = canonicalize_file_name(fullpath);
     if (respath == NULL) {
