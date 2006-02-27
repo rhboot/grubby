@@ -969,7 +969,6 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
         return 0;
 
     i = stat(dev, &sb);
-    free(dev);
     if (i)
 	return 0;
 
