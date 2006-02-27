@@ -399,6 +399,29 @@ void udelay(long long usecs)
     }
 }
 
+char *
+readlink_malloc(const char *filename)
+{
+    int size=100;
+    char *buffer = NULL;
+
+    while (1) {
+        int nchars;
+
+        buffer = (char *)realloc(buffer, size);
+        if (!buffer)
+            return NULL;
+        nchars = readlink(filename, buffer, size);
+        if (nchars < 0) {
+            free(buffer);
+            return NULL;
+        }
+        if (nchars < size)
+            return buffer;
+        size *= 2;
+    }
+}
+
 static inline int
 init_hotplug_stub(void)
 {
@@ -430,3 +453,4 @@ notify_hotplug_of_exit_stub(void)
 }
 void notify_hotplug_of_exit(void)
     __attribute__ ((weak, alias ("notify_hotplug_of_exit_stub")));
+

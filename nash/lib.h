@@ -71,6 +71,18 @@ extern int stringsort(const void *v0, const void *v1);
 
 extern void udelay(long long usecs);
 
+extern char *readlink_malloc(const char *filename);
+
+#define readlinka(_filename) ({             \
+        char *_buf0, *_buf1 = NULL;         \
+        _buf0 = readlink_malloc(_filename); \
+        if (_buf0 != NULL) {                \
+            _buf1 = strdupa(_buf0);         \
+            free(_buf0);                    \
+        }                                   \
+        _buf0 = _buf1;                      \
+    })
+
 #define asprintfa(str, fmt, ...) ({                 \
         char *_tmp = NULL;                          \
         int _rc;                                    \
