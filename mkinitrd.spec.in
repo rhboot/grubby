@@ -63,6 +63,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Mar  8 2006 Peter Jones <pjones@redhat.com> - 5.0.30-1
+- move blkid.tab* references to /etc/blkid/blkid.tab*
+- don't do the selinux context stuff on blkid.tab*, as it now inherits from
+  the directory.
+
 * Mon Feb 27 2006 Peter Jones <pjones@redhat.com> - 5.0.29-1
 - Fix pump-devel buildrequires
 - Fix grubby's getpathbyspec() usage (#183010)

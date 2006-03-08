@@ -97,17 +97,11 @@ parse_sysfs_devnum(const char *path, dev_t *dev)
 }
 
 static blkid_cache cache = NULL;
-static security_context_t blkid_contexts[2] = { NULL, NULL };
 
 void
 block_init(void)
 {
-    if (getfilecon("/etc/blkid.tab", &blkid_contexts[0]) == -1)
-        getfilecon("/etc/blkid.tab.old", &blkid_contexts[0]);
-    if (getfilecon("/etc/blkid.tab.old", &blkid_contexts[1]) == -1)
-        getfilecon("/etc/blkid.tab", &blkid_contexts[1]);
-
-    if (blkid_get_cache(&cache, "/etc/blkid.tab") < 0)
+    if (blkid_get_cache(&cache, "/etc/blkid/blkid.tab") < 0)
         blkid_get_cache(&cache, NULL);
 }
 
@@ -115,13 +109,6 @@ void
 block_finish(void)
 {
     blkid_put_cache(cache);
-    if (blkid_contexts[0] != NULL)
-        setfilecon("/etc/blkid.tab", blkid_contexts[0]);
-    if (blkid_contexts[1] != NULL)
-        setfilecon("/etc/blkid.tab.old", blkid_contexts[1]);
-    freecon(blkid_contexts[0]);
-    freecon(blkid_contexts[1]);
-    blkid_contexts[0] = blkid_contexts[1] = NULL;
 }
 
 struct block_dev {
