@@ -2083,11 +2083,33 @@ void delayOnSignal(int signum) {
     signal(signum, delayOnSignal);
 }
 
+static void traceback(int signum)
+{
+    void *array[20];
+    size_t size;
+    char **strings;
+    size_t i;
+
+    signal(SIGSEGV, SIG_DFL);
+
+    size = backtrace(array, 20);
+    strings = backtrace_symbols(array, size);
+
+    printf("nash received SIGSEGV!  Backtrace:\n");
+    for (i = 0; i < size; i++)
+        printf("%s\n", strings[i]);
+
+    free(strings);
+    exit(1);
+}
+
 int main(int argc, char **argv) {
     int fd = 0;
     char * name;
     int rc;
     int force = 0;
+
+    signal(SIGSEGV, traceback);
 
     name = strrchr(argv[0], '/');
     if (!name)
