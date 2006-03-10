@@ -50,6 +50,7 @@
 #include <sys/reboot.h>
 #include <termios.h>
 #include <mntent.h>
+#include <execinfo.h>
 
 #include <asm/unistd.h>
 
