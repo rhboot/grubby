@@ -153,13 +153,6 @@ findmodule() {
     if [ "$modName" = "off" -o "$modName" = "null" ]; then
 	return
     fi
-    # need to handle prescsimods here, so they're _pre_
-    if [ "$modName" = "scsi_mod" ]; then
-	for n in $PRESCSIMODS ; do
-	    findmodule $n
-	done
-    fi
-
     if [ $(echo $modName | cut -b1) = "-" ]; then
 	skiperrors=--skiperrors
 	modName=$(echo $modName | cut -b2-)
@@ -232,6 +225,13 @@ findmodule() {
 
     # only need to add each module once
     MODULES="$MODULES $fmPath"
+
+    # need to handle prescsimods here -- they need to go _after_ scsi_mod
+    if [ "$modName" = "scsi_mod" ]; then
+	for n in $PRESCSIMODS ; do
+	    findmodule $n
+	done
+    fi
 }
 
 finddmmods() {
