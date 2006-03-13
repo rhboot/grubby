@@ -153,6 +153,7 @@ findmodule() {
     if [ "$modName" = "off" -o "$modName" = "null" ]; then
 	return
     fi
+
     if [ $(echo $modName | cut -b1) = "-" ]; then
 	skiperrors=--skiperrors
 	modName=$(echo $modName | cut -b2-)
