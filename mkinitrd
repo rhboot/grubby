@@ -183,11 +183,7 @@ findmodule() {
     else
 	moduledep $modName
 	for i in $deps; do
-	    # sd_mod requires scsi_mod, which we make require sd_mod
-	    # artificially, so we need to break the loop here.
-	    if [ "$modName" != "sd_mod" -o "$i" != "scsi_mod" ]; then
-	        findmodule $i
-	    fi
+	    findmodule $i
 	done
     fi
 
