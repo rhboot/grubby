@@ -153,6 +153,12 @@ findmodule() {
     if [ "$modName" = "off" -o "$modName" = "null" ]; then
 	return
     fi
+    # need to handle prescsimods here, so they're _pre_
+    if [ "$modName" = "scsi_mod" ]; then
+	for n in $PRESCSIMODS ; do
+	    findmodule $n
+	done
+    fi
 
     if [ $(echo $modName | cut -b1) = "-" ]; then
 	skiperrors=--skiperrors
@@ -184,7 +190,11 @@ findmodule() {
     else
 	moduledep $modName
 	for i in $deps; do
-	    findmodule $i
+	    # sd_mod requires scsi_mod, which we make require sd_mod
+	    # artificially, so we need to break the loop here.
+	    if [ "$modName" != "sd_mod" -o "$i" != "scsi_mod" ]; then
+	        findmodule $i
+	    fi
 	done
     fi
 
@@ -613,16 +623,6 @@ if [ -n "$forcescsi" -o -z "$noscsi" -a "x$PROBE" == "xyes" ]; then
 
     if [ -f $modulefile ]; then
 	scsimodules=`grep "alias[[:space:]]\+scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
-
-        if echo "$MODULES" | egrep -c -q 'scsi_mod|libata' ; then
-            dosdmod=1
-        fi
-        if [ -n "$scsimodules" -o -n "$dosdmod" ]; then
-            for n in $PRESCSIMODS ; do
-                findmodule $n
-            done
-        fi
-        unset dosdmod
 
 	if [ -n "$scsimodules" ]; then
             for n in $scsimodules; do
