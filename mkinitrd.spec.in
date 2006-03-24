@@ -63,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+*
+- fix unbalanced pushd in mkinitrd (patch from Pete Zaitcev, bz# 185822)
+
 * Mon Mar 13 2006 Peter Jones <pjones@redhat.com> - 5.0.32-1
 - handle sd_mod on scsi_mod in findmodule, not in the scsi setup.  This
   fixes the "no scsi_hostadapter" alias problem better (#182008).

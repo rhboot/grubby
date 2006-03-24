@@ -274,6 +274,22 @@ access() {
     echo nash-access -w $t | /sbin/nash --force --quiet
 }
 
+findstoragedriverinsys () {
+    while [ ! -L device ]; do
+        [ "$PWD" = "/sys" ] && return
+        cd ..
+    done
+    cd $(readlink ./device)
+    while [ ! -f modalias ]; do
+        [ "$PWD" = "/sys/devices" ] && return
+        cd ..
+    done
+    modalias=$(cat modalias)
+    for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
+        findmodule ${driver%%.ko}
+    done
+}
+
 findstoragedriver () {
     for device in $@ ; do
         case " $handleddevices " in
@@ -290,19 +306,7 @@ findstoragedriver () {
         sysfs=$(findone -type d /sys/block -name $device)
         [ -z "$sysfs" ] && return
         pushd $sysfs >/dev/null 2>&1
-        while [ ! -L device ]; do
-            [ "$PWD" = "/sys" ] && continue 2
-            cd ..
-        done
-        cd $(readlink ./device)
-        while [ ! -f modalias ]; do
-            [ "$PWD" = "/sys/devices" ] && continue 2
-            cd ..
-        done
-        modalias=$(cat modalias)
-        for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
-            findmodule ${driver%%.ko}
-        done
+        findstoragedriverinsys
         popd >/dev/null 2>&1
     done
 }
@@ -318,7 +322,6 @@ findnetdriver() {
         for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
             findmodule ${driver%%.ko}
         done
-        popd >/dev/null 2>&1
     done
 }
 
