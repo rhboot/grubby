@@ -79,9 +79,10 @@ mbargs=""
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
     echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
-    echo "       [--kernel-args=<args>] [--banner=<banner>]" >&2
-    echo "       [--multiboot=multiboot] [--mbargs=mbargs]" >&2
-    echo "       [--make-default] <--install | --remove> <kernel-version>" >&2
+    echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2 
+    echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
+    echo "       [--mbargs=mbargs] [--make-default]" >&2
+    echo "       <--install | --remove | --update> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
 }
@@ -203,6 +204,36 @@ remove() {
     fi
 }
 
+update() {
+    if [ -n "$cfgGrub" ]; then
+	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
+	/sbin/grubby --update-kernel=$bootPrefix/$kernelName-$version \
+	    ${kernargs:+--args="$kernargs"} \
+	    ${removeargs:+--remove-args="$removeargs"}	
+    else
+	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
+    fi
+
+    if [ -n "$cfgLilo" ]; then
+	[ -n "$verbose" ] && echo "updating $version from $liloConfig"
+	/sbin/grubby --update-kernel=$bootPrefix/$kernelName-$version \
+	    ${kernargs:+--args="$kernargs"} \
+	    ${removeargs:+--remove-args="$removeargs"}	\
+		     --$liloFlag
+
+	if [ -n "$runLilo" ]; then 
+	    [ -n "$verbose" ] && echo "running $lilo"
+	    if [ ! -x $lilo ] ; then
+		[ -n "$verbose" ] && echo "$lilo does not exist"
+	    else
+		$lilo > /dev/null
+	    fi
+	fi
+    else
+	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
+    fi
+}
+
 mkinitrd() {
     [ -n "$verbose" ] && echo "creating initrd $initrdfile using $version"
     /sbin/mkinitrd --allow-missing -f $initrdfile $version
@@ -253,6 +284,15 @@ while [ $# -gt 0 ]; do
 	    	kernargs=`echo $1 | sed 's/^--kernel-args=//'`
 	    else
 		kernargs=$2
+		shift
+	    fi		    
+	    ;;
+
+	--remove-args*)
+	    if echo $1 | grep '=' >/dev/null ; then
+	    	removeargs=`echo $1 | sed 's/^--remove-args=//'`
+	    else
+		removeargs=$2
 		shift
 	    fi		    
 	    ;;
@@ -325,7 +365,7 @@ while [ $# -gt 0 ]; do
 done
 
 # make sure the mode is valid
-if [ "$mode" != "--install" -a "$mode" != "--remove" ] ; then
+if [ "$mode" != "--install" -a "$mode" != "--remove"  -a "$mode" != "--update" ] ; then
     usage
 fi
 
@@ -395,6 +435,8 @@ if [ "$mode" == "--install" ]; then
     install
 elif [ "$mode" == "--remove" ]; then
     remove
+elif [ "$mode" == "--update" ]; then
+    update
 fi
 
 exit 0
