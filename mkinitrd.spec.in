@@ -63,8 +63,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-*
+* Thu Mar 30 2006 Peter Jones <pjones@redhat.com> - 5.0.33-1
 - fix unbalanced pushd in mkinitrd (patch from Pete Zaitcev, bz# 185822)
+- add "cond" command for simple conditionals (bz# 182938)
+- add "status" command to see/set the exit status for testing
+- add "--remove-args" and "--update" args for new-kernel-pkg (patch from
+  Don Zickus, bz# 183917)
 
 * Mon Mar 13 2006 Peter Jones <pjones@redhat.com> - 5.0.32-1
 - handle sd_mod on scsi_mod in findmodule, not in the scsi setup.  This
