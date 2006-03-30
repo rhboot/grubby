@@ -114,6 +114,7 @@ static char * env[] = {
 static char sysPath[] = PATH;
 
 static pid_t ocPid = -1;
+static int exit_status = 0;
 
 static int
 searchPath(char *bin, char **resolved)
@@ -475,7 +476,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
     char ** args;
     char ** nextArg;
     int wpid;
-    int status;
+    int status = 0;
     char * stdoutFile = NULL;
     int stdoutFd = 1;
 
@@ -531,34 +532,32 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
             execve(args[0], args, env);
             errnum = errno; /* so we'll have it after printf */
             eprintf("ERROR: failed in exec of %s: %m\n", args[0]);
-            return errnum;
+            return 1;
         }
 
         if (stdoutFd != 1)
                 close(stdoutFd);
 
         for (;;) {
-            wpid = wait4(-1, &status, 0, NULL);
-            if (wpid == -1) {
+            wpid = waitpid(ocPid, &status, 0);
+            if (wpid == -1)
                 eprintf("ERROR: Failed to wait for process %d: %m\n", wpid);
-            }
 
-            if (wpid != ocPid)
-                continue;
-
-            ocPid = -1;
             if (!WIFEXITED(status) || WEXITSTATUS(status)) {
 #if 0
                 eprintf("ERROR: %s exited abnormally with value %d (pid %d)\n",
-                    args[0], WEXITSTATUS(status), pid);
+                    args[0], WEXITSTATUS(status), ocPid);
 #endif
-                return 1;
+                status = WEXITSTATUS(status);
+            } else {
+                status = 0;
             }
             break;
         }
+        return status;
     }
 
-    return 0;
+    return status;
 }
 
 static int
@@ -696,7 +695,7 @@ execCommand(char *cmd, char *end)
 
     rc = otherCommand(fullPath, cmd, end, 0);
     free(fullPath);
-    return rc == -ENOENT ? 1 : rc;
+    return rc;
 }
 
 static int
@@ -1899,6 +1898,120 @@ rmpartsCommand(char *cmd, char *end)
     return 0;
 }
 
+struct commandHandler {
+    char *name;
+    int (*fp)(char *cmd, char *end);
+};
+
+static const struct commandHandler *getCommandHandler(const char *name);
+
+static int
+statusCommand(char *cmd, char *end)
+{
+    char *si = NULL;
+    long i;
+
+    cmd = getArg(cmd, end, &si);
+    if (!si) {
+        printf("%d\n", exit_status);
+        return exit_status;
+    }
+
+    i = strtoul(si, NULL, 0);
+    if (i == ULONG_MAX && errno) {
+        eprintf("status: error: %m\n");
+        return 1;
+    }
+
+    return i;
+}
+
+static int
+condCommand(char *cmd, char *end)
+{
+    char *op = NULL;
+    int conditional = 0;
+    int internal = 0;
+    int rc;
+
+    while((cmd = getArg(cmd, end, &op))) {
+        char *stval = NULL;
+        unsigned long tval;
+
+        if (!op)
+            return 1;
+
+        if (op[0] != '-')
+            break;
+
+        cmd = getArg(cmd, end, &stval);
+        if (stval)
+            tval = strtoul(stval, NULL, 0);
+        if (!stval || (tval == ULONG_MAX && errno)) {
+            if (errno)
+                eprintf("cond: error: %m\n");
+            else
+                eprintf("cond: error: invalid value '%s' for '%s' operator\n",
+                        stval, op);
+            return 1;
+        }
+
+        if (!strcmp(op, "-lt")) { 
+            if (exit_status >= tval)
+                return exit_status;
+            conditional = 1;
+        } else if (!strcmp(op, "-le")) {
+            if (exit_status > tval)
+                return exit_status;
+            conditional = 1;
+        } else if (!strcmp(op, "-et")) {
+            if (exit_status != tval)
+                return exit_status;
+            conditional = 1;
+        } else if (!strcmp(op, "-ne")) {
+            if (exit_status == tval)
+                return exit_status;
+            conditional = 1;
+        } else if (!strcmp(op, "-ge")) {
+            if (exit_status < tval)
+                return exit_status;
+            conditional = 1;
+        } else if (!strcmp(op, "-gt")) {
+            if (exit_status <= tval)
+                return exit_status;
+            conditional = 1;
+        }
+    }
+
+    if (!conditional && exit_status != 0)
+        return exit_status;
+
+    if (strncmp(op, "nash-", 5)) {
+        char *fullPath = NULL;
+
+        rc = searchPath(op, &fullPath);
+        if (rc >= 0) {
+            rc = otherCommand(fullPath, cmd, end, 1);
+            free(fullPath);
+            return rc;
+        } else
+            internal = 1;
+    } else {
+        op += 5;
+        internal = 1;
+    }
+
+    rc = 1;
+    if (internal) {
+        const struct commandHandler *handler;
+
+        handler = getCommandHandler(cmd);
+        if (handler->name != NULL)
+            rc = (handler->fp)(cmd, end);
+    }
+    return rc;
+}
+
 static int
 networkCommand(char *cmd, char *end)
 {
@@ -1939,16 +2052,12 @@ setQuietCommand(char * cmd, char * end)
     return 0;
 }
 
-struct commandHandler {
-    char *name;
-    int (*fp)(char *cmd, char *end);
-};
-
 static const struct commandHandler handlers[] = {
     { "access", accessCommand },
 #ifdef DEBUG
     { "cat", catCommand },
 #endif
+    { "cond", condCommand },
     { "dm", dmCommand },
     { "echo", echoCommand },
     { "exec", execCommand },
@@ -1976,6 +2085,7 @@ static const struct commandHandler handlers[] = {
     { "setuproot", setuprootCommand },
     { "showlabels", showLabelsCommand },
     { "sleep", sleepCommand },
+    { "status", statusCommand },
     { "switchroot", switchrootCommand },
     { "umount", umountCommand },
     { NULL, },
@@ -2067,6 +2177,7 @@ runStartup(int fd, char *name)
             if (handler->name != NULL)
                 rc = (handler->fp)(chptr, end);
         }
+        exit_status = rc;
         start = end + 1;
     }
 
