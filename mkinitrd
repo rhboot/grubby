@@ -2,7 +2,7 @@
 
 # mkinitrd
 #
-# Copyright 2005 Red Hat, Inc.
+# Copyright 2005,2006 Red Hat, Inc.
 #
 # Written by Erik Troan <ewt@redhat.com>
 #
@@ -28,7 +28,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.1.7
+VERSION=4.2.1.8
 
 compress=1
 allowmissing=""
@@ -487,15 +487,20 @@ if echo $rootdev | cut -d/ -f3 | grep -q loop ; then
     basicmodules="$basicmodules -${loopFs}"
 # check if the root fs is on a logical volume
 elif ! echo $rootdev | cut -c1-6 |grep -q "LABEL=" ; then
-    root_vg=$(echo $rootdev | cut -d/ -f3)
+    if echo $rootdev | grep -q /dev/mapper 2>/dev/null ; then
+	root_vg=$(echo $rootdev | cut -d/ -f4 | cut -d- -f1)
+    else
+	root_vg=$(echo $rootdev | cut -d/ -f3)
+    fi
+
     rootdev=$(echo "readlink $rootdev" | /sbin/nash --quiet)
     major=`ls -l $rootdev | sed -e "s/.* \\([0-9]\+\\), *[0-9]\+.*/\\1/"`
     [ "$major" != "58" ] || root_lvm=1
     if echo $rootdev |grep -q /dev/mapper 2>/dev/null ; then root_lvm=1 ; fi
 fi
 
-rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
-rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
+rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; exit }}' $fstab)
+rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; exit }}' $fstab)
 
 # in case the root filesystem is modular
 findmodule -${rootfs}
