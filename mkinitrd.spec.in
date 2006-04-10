@@ -61,6 +61,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Apr 10 2005 Peter Jones <pjones@redhat.com> - 4.2.1.8-1
+- Fix mangling of mount when using device mapper (#171872)
+- Fix lvm striping (#174678, patch from Bastien Nocera)
+
 * Wed Aug 31 2005 Peter Jones <pjones@redhat.com> - 4.2.1.6-1
 - Handle short reads correctly when dealing with files in /proc (#137816)
 
