@@ -1673,10 +1673,20 @@ mknodCommand(char * cmd, char * end)
     mode_t mode;
 
     cmd = getArg(cmd, end, &path);
+    if (!path)
+        goto err;
+
     cmd = getArg(cmd, end, &type);
+    if (!type)
+        goto err;
+
     cmd = getArg(cmd, end, &majorStr);
+    if (!majorStr)
+        goto err;
+
     cmd = getArg(cmd, end, &minorStr);
     if (!minorStr) {
+err:
         eprintf("mknod: usage mknod <path> [c|b] <major> <minor>\n");
         return 1;
     }

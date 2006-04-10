@@ -307,28 +307,27 @@ eprintf(const char *format, ...)
 int
 smartmknod(const char * device, mode_t mode, dev_t dev)
 {
-    char buf[256];
+    char buf[PATH_MAX];
     char * end;
 
     strncpy(buf, device, 256);
 
     end = buf;
     do {
-        char tmp;
-
-        end = strchr(end, '/');
+        size_t len;
+        len = strcspn(end, "/!");
+        end += len;
         if (!end || !*end)
             break;
 
-        end++;
-        tmp = *end;
         *end = '\0';
         if (access(buf, F_OK) && errno == ENOENT)
             mkdir(buf, 0755);
-        *end = tmp;
+        *end = '/';
+        end++;
     } while (1);
 
-    return mknod(device, mode, dev);
+    return mknod(buf, mode, dev);
 }
 
 int
