@@ -122,6 +122,8 @@ int nashNetworkCommand(char * cmd) {
         nashLogger(WARNING, "WARNING: ethtool options not currently handled\n");
     }
 
+    memset(&intf,'\0',sizeof(intf));
+
     if (mtu) {
         intf.mtu = mtu;
         intf.set |= PUMP_INTFINFO_HAS_MTU;
