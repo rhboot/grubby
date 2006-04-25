@@ -87,7 +87,8 @@ int nashNetworkCommand(char * cmd) {
     char ** argv;
     char * bootProto = NULL, * dev = NULL, * dhcpclass = NULL, * ethtool = NULL, * hostname = NULL;
     char * gateway = NULL, * ip = NULL, * nameserver = NULL, * netmask = NULL;
-    int mtu;
+    int mtu = 0, rc;
+    char * err = NULL;
     struct pumpNetIntf intf;
     poptContext optCon;
     struct poptOption netOptions[] = {
@@ -112,7 +113,8 @@ int nashNetworkCommand(char * cmd) {
     optCon = poptGetContext(NULL, argc, (const char **) argv, 
                             netOptions, 0);    
 
-    if (poptGetNextOpt(optCon) < -1) {
+    while ((rc = poptGetNextOpt(optCon)) > 0) {}
+    if (rc < -1) {
         nashLogger(ERROR, "ERROR: Bad argument to network command\n");
         return 1;
     }
@@ -122,7 +124,7 @@ int nashNetworkCommand(char * cmd) {
         nashLogger(WARNING, "WARNING: ethtool options not currently handled\n");
     }
 
-    memset(&intf,'\0',sizeof(intf));
+    memset(&intf,'\0', sizeof(intf));
 
     if (mtu) {
         intf.mtu = mtu;
@@ -136,6 +138,8 @@ int nashNetworkCommand(char * cmd) {
 
     if (dev == NULL)
         dev = strdup("eth0");
+
+    strncpy(intf.device, dev, 9);
 
     if ((bootProto != NULL) && (!strncmp(bootProto, "dhcp", 4))) {
         waitForLink(dev);
@@ -151,16 +155,22 @@ int nashNetworkCommand(char * cmd) {
         }
         if (netmask && inet_aton(netmask, &addr)) {
             intf.netmask = addr;
-            intf.set |= PUMP_INTFINFO_HAS_NETMASK;
+            intf.network.s_addr = intf.ip.s_addr & intf.netmask.s_addr;
+            intf.broadcast.s_addr = intf.network.s_addr | ~intf.netmask.s_addr;
+            intf.set |= PUMP_INTFINFO_HAS_NETMASK | PUMP_INTFINFO_HAS_NETWORK |
+                        PUMP_INTFINFO_HAS_BROADCAST;
         }
         if (gateway && inet_aton(gateway, &addr)) {
             intf.gateway = addr;
             intf.set |= PUMP_NETINFO_HAS_GATEWAY;
         }
+            
         /* FIXME: still need to do the dns bits.  loader2/net.c:393 or so */
     }
 
-    pumpSetupInterface(&intf);
+    err =  pumpSetupInterface(&intf);
+    if (err)
+        nashLogger(ERROR, "Interface setup failed: %s\n", err);
     if (intf.set & PUMP_NETINFO_HAS_GATEWAY) {
         pumpSetupDefaultGateway(&intf.gateway);
     }
