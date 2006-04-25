@@ -169,8 +169,10 @@ int nashNetworkCommand(char * cmd) {
     }
 
     err =  pumpSetupInterface(&intf);
-    if (err)
-        nashLogger(ERROR, "Interface setup failed: %s\n", err);
+    if (err) {
+        nashLogger(ERROR, "ERROR: Interface setup failed: %s\n", err);
+	return 1;
+    }
     if (intf.set & PUMP_NETINFO_HAS_GATEWAY) {
         pumpSetupDefaultGateway(&intf.gateway);
     }
