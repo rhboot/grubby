@@ -155,7 +155,7 @@ int nashNetworkCommand(char * cmd) {
         }
         if (gateway && inet_aton(gateway, &addr)) {
             intf.gateway = addr;
-            intf.set |= PUMP_INTFINFO_HAS_NETMASK;
+            intf.set |= PUMP_INTFINFO_HAS_GATEWAY;
         }
         /* FIXME: still need to do the dns bits.  loader2/net.c:393 or so */
     }
