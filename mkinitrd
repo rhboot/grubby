@@ -385,6 +385,7 @@ handlelvordev() {
 handlenetdev() {
     local dev=$1
 
+    source /etc/sysconfig/network
     if [ ! -f /etc/sysconfig/network-scripts/ifcfg-$dev ]; then
 	error "unable to find network device configuration for $dev"
     fi
