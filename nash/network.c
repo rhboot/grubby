@@ -86,15 +86,18 @@ int nashNetworkCommand(char * cmd) {
     int argc;
     char ** argv;
     char * bootProto = NULL, * dev = NULL, * dhcpclass = NULL, * ethtool = NULL, * hostname = NULL;
-    char * gateway = NULL, * ip = NULL, * nameserver = NULL, * netmask = NULL;
+    char * gateway = NULL, * ip = NULL, * nameserver = NULL, * netmask = NULL, * dns = NULL, * domain = NULL;
     int mtu = 0, rc;
     char * err = NULL;
     struct pumpNetIntf intf;
+    struct in_addr addr;
     poptContext optCon;
     struct poptOption netOptions[] = {
         { "bootproto", '\0', POPT_ARG_STRING, &bootProto, 0, NULL, NULL },
         { "device", '\0', POPT_ARG_STRING, &dev, 0, NULL, NULL },
         { "dhcpclass", '\0', POPT_ARG_STRING, &dhcpclass, 0, NULL, NULL },
+        { "dns", '\0', POPT_ARG_STRING, &dns, 0, NULL, NULL },
+        { "domain", '\0', POPT_ARG_STRING, &domain, 0, NULL, NULL },
         { "gateway", '\0', POPT_ARG_STRING, &gateway, 'g', NULL, NULL },
         { "ip", '\0', POPT_ARG_STRING, &ip, 'i', NULL, NULL },
         { "nameserver", '\0', POPT_ARG_STRING, &nameserver, 'n', NULL, NULL },
@@ -135,6 +138,24 @@ int nashNetworkCommand(char * cmd) {
         intf.hostname = hostname;
         intf.set |= PUMP_NETINFO_HAS_HOSTNAME;
     }
+    
+    if (domain != NULL) {
+        intf.domain = domain;
+        intf.set |= PUMP_NETINFO_HAS_DOMAIN;
+    }
+
+    if (dns) {
+        char *c, *buf = strdup(dns);
+        
+        c = strtok(buf, ",");
+        while ((intf.numDns < MAX_DNS_SERVERS) && (c != NULL) && inet_aton(c, &addr)) {
+            intf.dnsServers[intf.numDns] = addr;
+            intf.numDns++;
+            c = strtok(NULL, ",");
+        }
+        if (intf.numDns)
+            intf.set |= PUMP_NETINFO_HAS_DNS;
+    }
 
     if (dev == NULL)
         dev = strdup("eth0");
@@ -148,7 +169,6 @@ int nashNetworkCommand(char * cmd) {
                          dhcpclass ? dhcpclass : "nash",
                          &intf, NULL);
     } else { /* static IP.  hope enough is specified! */
-        struct in_addr addr;
         if (ip && inet_aton(ip, &addr)) {
             intf.ip = addr;
             intf.set |= PUMP_INTFINFO_HAS_IP;
@@ -164,14 +184,12 @@ int nashNetworkCommand(char * cmd) {
             intf.gateway = addr;
             intf.set |= PUMP_NETINFO_HAS_GATEWAY;
         }
-            
-        /* FIXME: still need to do the dns bits.  loader2/net.c:393 or so */
     }
 
     err =  pumpSetupInterface(&intf);
     if (err) {
         nashLogger(ERROR, "ERROR: Interface setup failed: %s\n", err);
-	return 1;
+        return 1;
     }
     if (intf.set & PUMP_NETINFO_HAS_GATEWAY) {
         pumpSetupDefaultGateway(&intf.gateway);

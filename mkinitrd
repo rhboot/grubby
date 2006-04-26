@@ -398,8 +398,20 @@ handlenetdev() {
     [ -n "$GATEWAY" ] && IPSTR="$IPSTR --gateway $GATEWAY"
     [ -n "$ETHTOOL_OPTS" ] && IPSTR="$IPSTR --ethtool \"$ETHTOOL_OPTS\""
     [ -n "$MTU" ] && IPSTR="$IPSTR --mtu $MTU"
-    # FIXME: need to do DNS
-
+    if [ -n "$IPADDR" ]; then
+	[ -z "$DOMAIN" ] && DOMAIN=$(awk '/^search / { print gensub("^search ","",1) }' /etc/resolv.conf)
+	if [ -z "$DNS1" ]; then
+	    DNS1=$(awk '/^nameserver / { ORS="" ; if (x > 0) print "," ; printf "%s", $2 ; x = 1}' /etc/resolv.conf)
+	fi
+    fi
+    [ -n "$DOMAIN" ] && IPSTR="$IPSTR --domain \"$DOMAIN\""
+    if [ -n "$DNS1" ]; then
+        if [ -n "$DNS2" ]; then
+	    IPSTR="$IPSTR --dns $DNS1,$DNS2"
+	else
+	    IPSTR="$IPSTR --dns $DNS1"
+	fi
+    fi
     network="network --device $dev --bootproto $BOOTPROTO $IPSTR"
 }
 
@@ -650,9 +662,7 @@ fi
 
 if [ "x$PROBE" == "xyes" ]; then
     rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
-    rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab\
-               | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
-                     -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
+    rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
 
     # in case the root filesystem is modular
     findmodule -${rootfs}
@@ -667,6 +677,8 @@ if [ "x$PROBE" == "xyes" ]; then
 	handlenetdev $netdev
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
+    	rootopts=$(echo rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
+                     -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
         majmin=$(get_numeric_dev dec /dev/root)
         if [ -n "$majmin" ]; then
             dev=$(findall /sys/block -name dev | while read device ; do \
