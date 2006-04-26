@@ -63,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Apr 26 2006 Bill Nottingham <notting@redhat.com> - 5.0.35-1
+- NFS root fixes
+
 * Mon Apr 10 2006 Peter Jones <pjones@redhat.com> - 5.0.34-1
 - fix "!" handling for sysfs paths in mkblkdevs
 - fix argument checking for mknodCommand
