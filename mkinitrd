@@ -34,7 +34,7 @@ export PATH
 
 . /etc/rc.d/init.d/functions
 
-VERSION=5.0.35
+VERSION=5.0.36
 
 PROBE="yes"
 MODULES=""
@@ -677,7 +677,7 @@ if [ "x$PROBE" == "xyes" ]; then
 	handlenetdev $netdev
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
-    	rootopts=$(echo rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
+    	rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
                      -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
         majmin=$(get_numeric_dev dec /dev/root)
         if [ -n "$majmin" ]; then
