@@ -34,7 +34,7 @@ export PATH
 
 . /etc/rc.d/init.d/functions
 
-VERSION=5.0.36
+VERSION=5.0.37
 
 PROBE="yes"
 MODULES=""
@@ -689,6 +689,9 @@ if [ "x$PROBE" == "xyes" ]; then
                 rootdev=$dev
 	    fi
         fi
+    else
+    	rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
+                     -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
     fi
     [ "$rootfs" != "nfs" ] && handlelvordev $rootdev
 
