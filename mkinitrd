@@ -65,6 +65,7 @@ PRESCSIMODS="sd_mod"
 fstab="/etc/fstab"
 
 vg_list=""
+net_list=""
 
 vecho()
 {
@@ -674,7 +675,7 @@ if [ "x$PROBE" == "xyes" ]; then
 	# FIXME: this doesn't handle ips properly
 	remoteip=$(host $remote | cut -d ' ' -f 4) 
 	netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`	
-	handlenetdev $netdev
+	net_list="$net_list $netdev"
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
     	rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
@@ -942,9 +943,12 @@ if [ -n "$vg_list" ]; then
     emit "mkdmnod"
 fi
 
-if [ -n "$network" ]; then
-    emit "echo Bringing up $netdev"
-    emit $network
+if [ -n "$net_list" ]; then
+    for netdev in $net_list; do 
+	emit "echo Bringing up $netdev"
+	handle_netdev $netdev
+	emit $network
+    done
 fi
 
 # HACK: module loading + device creation isn't necessarily synchronous...

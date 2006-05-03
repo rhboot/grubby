@@ -63,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed May  3 2006 Jeremy Katz <katzj@redhat.com> 
+- handle bringing up multiple network devices
+
 * Mon May  1 2006 Jeremy Katz <katzj@redhat.com>  - 5.0.37-1
 - munge rootopts on all non-nfs cases
 
