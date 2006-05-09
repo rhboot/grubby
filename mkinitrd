@@ -48,7 +48,7 @@ MPATHS=""
 CONFMODS="$MODULES"
 MODULES=""
 
-
+withusb=yes
 compress=1
 allowmissing=""
 target=""
@@ -431,6 +431,10 @@ while [ $# -gt 0 ]; do
 	    withusb=yes
 	    ;;
 
+        --without-usb)
+            withusb=no
+            ;;
+
 	--with*)
 	    if echo $1 | grep -q '=' ; then
 	    	modname=`echo $1 | sed 's/^--with=//'`
@@ -621,12 +625,17 @@ fi
 if [ -n "$needusb" -a "x$PROBE" == "xyes" ]; then
     drivers=$(awk '/^alias[[:space:]]+usb-controller[0-9]* / { print $3}' < $modulefile)
     if [ -n "$drivers" ]; then
-	for driver in $drivers; do
-	    findmodule $driver
-	done
-	findmodule scsi_mod
-	findmodule sd_mod
-	findmodule usb-storage
+        for driver in $drivers; do
+            findmodule $driver
+        done
+        for x in ehci_hcd uhci_hcd ohci_hcd ; do
+            if grep -c -q $x /proc/modules ; then
+                findmodule $x
+            fi
+        done
+        findmodule scsi_mod
+        findmodule sd_mod
+        findmodule usb-storage
     fi
 fi
 
