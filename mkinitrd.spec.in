@@ -63,8 +63,11 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Wed May  3 2006 Jeremy Katz <katzj@redhat.com> 
-- handle bringing up multiple network devices
+* Tue May  9 2006 Peter Jones <pjones@redhat.com> - 5.0.38-1
+- handle bringing up multiple network devices (katzj)
+- make "withusb=yes" default
+- add --without-usb
+- make usb load [euo]hci_hcd correctly
 
 * Mon May  1 2006 Jeremy Katz <katzj@redhat.com>  - 5.0.37-1
 - munge rootopts on all non-nfs cases
