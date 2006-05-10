@@ -624,15 +624,18 @@ fi
 
 if [ -n "$needusb" -a "x$PROBE" == "xyes" ]; then
     drivers=$(awk '/^alias[[:space:]]+usb-controller[0-9]* / { print $3}' < $modulefile)
+    useUSB=0
     if [ -n "$drivers" ]; then
+        useUSB=1
         for driver in $drivers; do
             findmodule $driver
         done
-        for x in ehci_hcd uhci_hcd ohci_hcd ; do
-            if grep -c -q $x /proc/modules ; then
-                findmodule $x
-            fi
-        done
+    fi
+    for x in $(grep ^[eou]hci_hcd /proc/modules | awk '{ print $1 }' | tac) ; do
+        useUSB=1
+        findmodule $(echo $x | sed 's/_/-/')
+    done
+    if [ "$useUSB" == "1" ]; then
         findmodule scsi_mod
         findmodule sd_mod
         findmodule usb-storage
