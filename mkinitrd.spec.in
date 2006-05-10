@@ -63,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Tue May 10 2006 Peter Jones <pjones@redhat.com> - 5.0.39-1
+- handle [eou]hci_hcd even _more_ correctly ;)
+
 * Tue May  9 2006 Peter Jones <pjones@redhat.com> - 5.0.38-1
 - handle bringing up multiple network devices (katzj)
 - make "withusb=yes" default
