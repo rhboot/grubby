@@ -958,7 +958,7 @@ fi
 if [ -n "$net_list" ]; then
     for netdev in $net_list; do 
 	emit "echo Bringing up $netdev"
-	handle_netdev $netdev
+	handlenetdev $netdev
 	emit $network
     done
 fi
