@@ -34,7 +34,7 @@ export PATH
 
 . /etc/rc.d/init.d/functions
 
-VERSION=5.0.39
+VERSION=5.0.40
 
 PROBE="yes"
 MODULES=""
@@ -393,7 +393,6 @@ handlenetdev() {
     source /etc/sysconfig/network-scripts/ifcfg-$dev
     [ -n  "$BOOTPROTO" ] || error "bootproto not specified for $dev"
 
-    findnetdriver $dev
     [ -n "$IPADDR" ] && IPSTR="$IPSTR --ip $IPADDR"
     [ -n "$NETMASK" ] && IPSTR="$IPSTR --netmask $NETMASK"
     [ -n "$GATEWAY" ] && IPSTR="$IPSTR --gateway $GATEWAY"
@@ -414,6 +413,14 @@ handlenetdev() {
 	fi
     fi
     network="network --device $dev --bootproto $BOOTPROTO $IPSTR"
+}
+
+addnetdev() {
+    dev=$1
+
+    vecho "Adding network device $dev"
+    findnetdriver $dev
+    net_list="$net_list $netdev"
 }
 
 while [ $# -gt 0 ]; do
@@ -687,7 +694,7 @@ if [ "x$PROBE" == "xyes" ]; then
 	# FIXME: this doesn't handle ips properly
 	remoteip=$(host $remote | cut -d ' ' -f 4) 
 	netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`	
-	net_list="$net_list $netdev"
+	addnetdev $netdev
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
     	rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \

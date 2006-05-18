@@ -63,6 +63,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu May 18 2006 Jeremy Katz <katzj@redhat.com> - 5.0.40-1
+- fix multiple netdev handling (#192321)
+
 * Tue May 10 2006 Peter Jones <pjones@redhat.com> - 5.0.39-1
 - handle [eou]hci_hcd even _more_ correctly ;)
 
