@@ -1,6 +1,6 @@
 /*
  * dm.c - backend library for partition table scanning on dm devices
-  *
+ *
  * Peter Jones (pjones@redhat.com)
  *
  * Copyright 2005,2006 Red Hat, Inc.
@@ -810,3 +810,7 @@ dm_list_sorted(const char **names)
     dm_iter_destroy(iter);
     return 0;
 }
+
+/*
+ * vim:ts=8:sw=4:sts=4:et
+ */
