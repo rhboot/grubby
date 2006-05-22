@@ -1260,7 +1260,7 @@ resumeCommand(char * cmd, char * end)
 {
     char * resumedev = NULL;
     char * resume = NULL;
-    int fd;
+    int fd, n;
     struct stat sb;
     char buf[25];
 
@@ -1283,6 +1283,8 @@ resumeCommand(char * cmd, char * end)
     if (resumedev == NULL) {
         resumedev = resume;
     }
+    n = strcspn(resumedev, " \t\r\n");
+    resumedev[n] = '\0';
 
     qprintf("Trying to resume from %s\n", resumedev);
 
