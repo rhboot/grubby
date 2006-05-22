@@ -51,6 +51,7 @@
 #include <termios.h>
 #include <mntent.h>
 #include <execinfo.h>
+#include <time.h>
 
 #include <asm/unistd.h>
 
@@ -1517,6 +1518,72 @@ sleepCommand(char * cmd, char * end)
 }
 
 static int
+stabilizedCommand(char *cmd, char *end)
+{
+    struct timespec req, rem = {0,0};
+    int iterations=-1;
+    struct timespec initial = {0,0};
+    unsigned long interval=300;
+    char *buf = NULL, *file = NULL;
+    struct stat sb;
+    time_t last = 0;
+    int count = 0;
+
+    while ((cmd = getArg(cmd, end, &buf))) {
+        if (!strcmp(buf, "--iterations")) {
+            if (!(cmd = getArg(cmd, end, &buf))) {
+usage:
+                eprintf("usage: stabilized [ --iterations N ] "
+                        "[ --interval MSECS ] <file>\n");
+                return 1;
+            }
+            iterations = atoi(buf);
+            continue;
+        }
+        if (!strcmp(buf, "--interval")) {
+            if (!(cmd = getArg(cmd, end, &buf)))
+                goto usage;
+                interval = atoi(buf);
+            continue;
+        }
+        if (file)
+            goto usage;
+        file = buf;
+    }
+
+    if (!file)
+        goto usage;
+
+    initial.tv_sec = 0;
+    initial.tv_nsec = interval * 1000000;
+    while (initial.tv_nsec > 999999999) {
+        initial.tv_sec += 1;
+        initial.tv_nsec -= 999999999;
+    }
+
+    memset(&sb, '\0', sizeof(sb));
+    do {
+        sb.st_mtime = 0;
+        if (sb.st_mtime == last) {
+            if (++count == 5)
+                return 0;
+        } else
+            count = 0;
+
+        rem.tv_sec = initial.tv_sec;
+        rem.tv_nsec = initial.tv_nsec;
+        do {
+            req.tv_sec = rem.tv_sec;
+            req.tv_nsec = rem.tv_nsec;
+        } while (nanosleep(&req, &rem) < 0 && errno == EINTR);
+        last = sb.st_mtime;
+        if (iterations != -1)
+            iterations--;
+    } while (iterations == -1 || iterations > 0);
+    return 1;
+}
+
+static int
 readlinkCommand(char * cmd, char * end)
 {
     char * path;
@@ -2097,6 +2164,7 @@ static const struct commandHandler handlers[] = {
     { "setuproot", setuprootCommand },
     { "showlabels", showLabelsCommand },
     { "sleep", sleepCommand },
+    { "stabilized", stabilizedCommand },
     { "status", statusCommand },
     { "switchroot", switchrootCommand },
     { "umount", umountCommand },
