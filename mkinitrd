@@ -885,6 +885,7 @@ cemit << EOF
 mount -t proc /proc /proc
 setquiet
 echo Mounting proc filesystem
+mount -t usbfs /proc/bus/usb /proc/bus/usb
 echo Mounting sysfs filesystem
 mount -t sysfs /sys /sys
 echo Creating /dev
@@ -941,8 +942,8 @@ for MODULE in $MODULES; do
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" ]; then
-	emit "echo Waiting 8 seconds for driver initialization."
-	emit "sleep 8"
+        emit "echo Waiting for driver initialization."
+        emit "stabilized /proc/bus/usb/devices"
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
 	emit "echo Waiting 2 seconds for driver initialization."
