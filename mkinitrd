@@ -643,6 +643,7 @@ if [ -n "$needusb" -a "x$PROBE" == "xyes" ]; then
         findmodule $(echo $x | sed 's/_/-/')
     done
     if [ "$useUSB" == "1" ]; then
+        findmodule usbcore
         findmodule scsi_mod
         findmodule sd_mod
         findmodule usb-storage
@@ -885,7 +886,6 @@ cemit << EOF
 mount -t proc /proc /proc
 setquiet
 echo Mounting proc filesystem
-mount -t usbfs /proc/bus/usb /proc/bus/usb
 echo Mounting sysfs filesystem
 mount -t sysfs /sys /sys
 echo Creating /dev
@@ -941,6 +941,9 @@ for MODULE in $MODULES; do
 
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
+    if [ "$module" = "usbcore" -o "$module" = "usb-storage" ]; then
+        emit "mount -t usbfs /proc/bus/usb /proc/bus/usb"
+    fi
     if [ "$module" = "usb-storage" ]; then
         emit "echo Waiting for driver initialization."
         emit "stabilized /proc/bus/usb/devices"
