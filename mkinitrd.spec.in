@@ -63,6 +63,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed May 24 2006 Peter Jones <pjones@redhat.com> - 5.0.41-1
+- (very) basic multipath support
+- minor fixes for usb
+
 * Thu May 18 2006 Jeremy Katz <katzj@redhat.com> - 5.0.40-1
 - fix multiple netdev handling (#192321)
 
