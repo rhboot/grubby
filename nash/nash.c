@@ -985,6 +985,7 @@ setuprootCommand(char *cmd, char *end)
                 char *type;
                 int flags;
                 void *data;
+                int raise;
             } fstab[] = {
                 { "/proc", "./proc", "proc", 0, NULL },
                 { "/sys", "./sys", "sysfs", 0, NULL },
@@ -1016,7 +1017,7 @@ static int
 switchrootCommand(char * cmd, char * end)
 {
     /*  Don't try to unmount the old "/", there's no way to do it. */
-    const char * umounts[] = { "/dev", "/proc", "/sys", NULL };
+    const char *umounts[] = { "/dev", "/proc", "/proc/bus/usb", "/sys", NULL };
     const char *initprogs[] = { "/sbin/init", "/etc/init",
                                 "/bin/init", "/bin/sh", NULL };
     char *init, **initargs;
@@ -1040,6 +1041,8 @@ switchrootCommand(char * cmd, char * end)
     for (; umounts[i] != NULL; i++) {
         qprintf("unmounting old %s\n", umounts[i]);
         if (umount2(umounts[i], MNT_DETACH) < 0) {
+            if (errno == EINVAL && !strcmp(umounts[i], "/proc/bus/usb"))
+                continue;
             eprintf("ERROR unmounting old %s: %m\n",umounts[i]);
             eprintf("forcing unmount of %s\n", umounts[i]);
             umount2(umounts[i], MNT_FORCE);
@@ -2362,3 +2365,7 @@ int main(int argc, char **argv) {
     kill_hotplug();
     return rc;
 }
+
+/*
+ * vim:ts=8:sw=4:sts=4:et
+ */
