@@ -95,3 +95,7 @@ int bdevid_register_probe(struct bdevid_module_context *c,
 	printf("module <%p> registered probe <%p>\n", c, ops);
 	return 0;
 }
+
+/*
+ * vim:ts=8:sts=8:sw=8:noet
+ */
