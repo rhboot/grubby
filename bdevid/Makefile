@@ -13,9 +13,6 @@ all :: $(OBJDIR)
 all :: $(foreach lib,${LIBS},$(OBJDIR)/lib${lib}.so $(OBJDIR)/lib${lib}.a)
 all :: $(foreach mod,${MODULES},$(OBJDIR)/${mod}.so)
 
-%.o : %.c
-	$(CC) $(CFLAGS) -c -o $@ $^
-
 $(foreach lib,$(MODULES),$(OBJDIR)/$(lib).so) : $(OBJDIR)/%.so : %.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -L$(OBJDIR) -o $@ $($*_LIBS) $^
 
@@ -23,7 +20,6 @@ $(foreach lib,$(LIBS),$(OBJDIR)/lib$(lib).so.$(VERSION)) : $(OBJDIR)/lib%.so.$(V
 	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="lib$*.so.$(VERSION)" -L$(OBJDIR) -o $@ $($*_LIBS) $^
 
 $(OBJDIR)/%.so : $(OBJDIR)/%.so.$(VERSION)
-	@echo ln -sf $(shell basename $<) $@
 	@ln -vsf $(shell basename $<) $@
 
 # XXX doesn't work, not quite sure why...
