@@ -2,9 +2,10 @@
 #define BDEVID_H 1
 
 #include <sys/types.h>
+#include <sysfs/libsysfs.h>
 
 struct bdevid_probe_ops {
-	int (*probe)(int fd, char **id);
+	int (*probe)(struct sysfs_device *dev, char **id);
 };
 
 struct bdevid_module_context;
