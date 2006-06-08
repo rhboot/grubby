@@ -187,7 +187,6 @@ int bdevid_register_probe(struct bdevid_module *bm,
 
 int bdevid_probe_device(struct bdevid *b, char *path, char **id)
 {
-	assert(0);
 	return 1;	
 }
 
