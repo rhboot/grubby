@@ -2,30 +2,24 @@
 #define BDEVID_H 1
 
 #include <sys/types.h>
-#include <sysfs/libsysfs.h>
 
-struct bdevid_probe_ops {
-	int (*probe)(struct sysfs_device *dev, char **id);
-};
+struct bdevid;
 
-struct bdevid_module_context;
-
-extern int bdevid_register_probe(struct bdevid_module_context *c,
-	struct bdevid_probe_ops *ops);
-
-struct bdevid_module_context;
-
-struct bdevid_module_info {
+struct bdevid_module {
 	u_int32_t magic;
 	char *name;
-	int (*init)(struct bdevid_module_context *c);
+	int (*init)(struct bdevid *, struct bdevid_module *);
+};
+#define BDEVID_MAGIC 0x07d007f0
+#define BDEVID_MODULE(__module) \
+	struct bdevid_module *bdevid_module = & (__module) 
+
+struct bdevid_probe_ops {
+	int (*probe)(dev_t dev, char **id);
 };
 
-#define BDEVID_INFO_MAGIC 0x07d007f0
-
-#define BDEVID_MODULE(__info) \
-	struct bdevid_module_info *bdevid_module_info = & (__info) 
-
+extern int bdevid_register_probe(struct bdevid_module *,
+	struct bdevid_probe_ops *ops);
 
 #endif /* BDEVID_H */
 

@@ -3,8 +3,8 @@
 
 #include <bdevid.h>
 
-struct bdevid_module_context {
-	int a;
+struct bdevid {
+	struct modloader *modloader;
 };
 
 #endif /* BDEVID_PRIV_H */

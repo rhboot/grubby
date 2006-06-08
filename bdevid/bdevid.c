@@ -1,99 +1,108 @@
+#define _GNU_SOURCE 1
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <modloader.h>
 #include <dlfcn.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include <assert.h>
 
 #include "bdevid.h"
 
-static struct modloader_context *modcons;
-static struct bdevid_module_info *minfo;
-
-static int bdevid_module_cons(struct modloader_module_info *m, void **priv)
+static int bdevid_module_cons(struct modloader_module *mm)
 {
-	void *dlh = modloader_module_dlhandle_get(m);
-	struct bdevid_module_info **minfop;
-	struct bdevid_module_context *c;
+	void *dlh = modloader_module_dlhandle_get(mm);
+	struct bdevid_module **bmodp, *bmod;
+	struct bdevid *b;
 	
-	c = calloc(1, sizeof (*c));
-	modloader_module_priv_set(m, c);
+	b = calloc(1, sizeof (*b));
+	modloader_module_priv_set(mm, b);
 
-	minfop = dlsym(dlh, "bdevid_module_info");
-	if (!minfop || !*minfop)
+	bmodp = dlsym(dlh, "bdevid_module");
+	if (!bmodp || !*bmodp)
 		return -1;
-	minfo = *minfop;
-	if (!minfo->magic == BDEVID_INFO_MAGIC)
+	bmod = *bmodp;
+	if (!bmod->magic == BDEVID_MAGIC)
 		return -1;
 
-	/* XXX: create bdevid_module_context here */
+	printf("bdevid: loading module '%s'\n", bmod->name);
+	if (bmod->init && bmod->init(b, bmod) == -1)
+		return -1;
+	return 0;
+}
 
-	printf("bdevid: loading module '%s'\n", minfo->name);
-	if (minfo->init) {
-		int ret;
+static void bdevid_module_dest(struct modloader_module *mm)
+{
+	assert(0);
+}
 
-		if ((ret = minfo->init(c)) == -1)
-			return -1;
+static int bdevid_module_ident(struct modloader_module *mm, char **name)
+{
+	void *dlh = modloader_module_dlhandle_get(mm);
+	struct bdevid_module **bmodp, *bmod;
+
+	bmodp = dlsym(dlh, "bdevid_module");
+	if (!bmodp || !*bmodp)
+		return -1;
+	bmod = *bmodp;
+	if (!bmod->magic == BDEVID_MAGIC)
+		return -1;
+	printf("bdevid: found module '%s'\n", bmod->name);
+	*name = bmod->name;
+	return 0;
+}
+
+struct modloader_ops bdevid_ops = {
+	.path_env = "BDEVID_PATH",
+	.constructor = bdevid_module_cons,
+	.destructor = bdevid_module_dest,
+	.ident = bdevid_module_ident,
+};
+
+void bdevid_destroy(struct bdevid *b)
+{
+	if (b) {
+		if (b->modloader)
+			modloader_destroy(b->modloader);
+		memset(b, '\0', sizeof (*b));
+		free(b);
 	}
-	return 0;
 }
 
-static int bdevid_module_dest(struct modloader_module_info *m, void **priv)
+struct bdevid *bdevid_new(void)
 {
-	return 0;
+	struct bdevid *b = NULL;
+
+	if (!(b = calloc(1, sizeof (*b))))
+		goto err;
+
+	if (!(b->modloader = modloader_new(&bdevid_ops)))
+		goto err;
+
+	modloader_path_set(b->modloader, "/lib/bdevid:/usr/lib/bdevid");
+	modloader_module_load_all(b->modloader);
+
+	return b;
+err:
+	bdevid_destroy(b);
+	return NULL;
 }
 
-static int bdevid_module_ident(struct modloader_module_info *m, char **name)
-{
-	void *dlh = modloader_module_dlhandle_get(m);
-	struct bdevid_module_info **minfop, *minfo;
-
-	minfop = dlsym(dlh, "bdevid_module_info");
-	if (!minfop || !*minfop)
-		return -1;
-	minfo = *minfop;
-	if (!minfo->magic == BDEVID_INFO_MAGIC)
-		return -1;
-	printf("bdevid: found module '%s'\n", minfo->name);
-	*name = minfo->name;
-	return 0;
-}
-
-extern void bdevid_cons(void) __attribute__((constructor));
-void bdevid_cons(void) {
-	module_cons_dest *cd;
-	module_ident *ident;
-
-	if (!modcons)
-		modcons = modloader_context_new();
-	if (!modcons)
-		return;
-	
-	cd = modloader_module_cons_get(modcons);
-	*cd = bdevid_module_cons;
-	cd = modloader_module_dest_get(modcons);
-	*cd = bdevid_module_dest;
-
-	ident = modloader_module_ident_get(modcons);
-	*ident = bdevid_module_ident;
-
-	modloader_path_set(modcons, "/lib/bdevid:/usr/lib/bdevid");
-	modloader_path_env_set(modcons, "BDEVID_PATH");
-
-	modloader_init(modcons);
-
-	modloader_module_load_all(modcons);
-}
-
-extern void bdevid_dest(void) __attribute__((destructor));
-void bdevid_dest(void) {
-	modloader_context_destroy(modcons);
-	modcons = NULL;
-}
-
-int bdevid_register_probe(struct bdevid_module_context *c,
+int bdevid_register_probe(struct bdevid_module *bm,
 	struct bdevid_probe_ops *ops)
 {
-	printf("module <%p> registered probe <%p>\n", c, ops);
+	printf("module <%p> registered probe <%p>\n", bm, ops);
 	return 0;
+}
+
+int bdevid_probe_device(struct bdevid *b, char *path, char **id)
+{
+	assert(0);
+	return 1;	
 }
 
 /*
