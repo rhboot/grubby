@@ -64,7 +64,7 @@ PRESCSIMODS="sd_mod"
 fstab="/etc/fstab"
 
 vg_list=""
-net_list=""
+net_list="$NET_LIST"
 
 vecho()
 {
