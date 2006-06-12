@@ -445,7 +445,7 @@ while [ $# -gt 0 ]; do
 
         --with*)
             if echo $1 | grep -q '=' ; then
-                    modname=`echo $1 | sed 's/^--with=//'`
+                modname=`echo $1 | sed 's/^--with=//'`
             else
                 modname=$2
                 shift
@@ -456,7 +456,7 @@ while [ $# -gt 0 ]; do
 
         --builtin*)
             if echo $1 | grep -q '=' ; then
-                    modname=`echo $1 | sed 's/^--builtin=//'`
+                modname=`echo $1 | sed 's/^--builtin=//'`
             else
                 modname=$2
                 shift
@@ -524,9 +524,6 @@ while [ $# -gt 0 ]; do
         --allow-missing)
             allowmissing=yes
             ;;
-        --noresume)
-            noresume=1
-            ;;
         --net-dev*)
             if echo $1 | grep -q '=' ; then
                 net_list="$net_list `echo $1 | sed 's/^--net-list=//'`"
@@ -534,6 +531,9 @@ while [ $# -gt 0 ]; do
                 net_list="$net_list $2"
                 shift
             fi
+            ;;
+        --noresume)
+            noresume=1
             ;;
         --help)
             usage -n
