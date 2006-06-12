@@ -8,22 +8,22 @@
 # Written by Erik Troan <ewt@redhat.com>
 #
 # Contributors:
-#	Elliot Lee <sopwith@cuc.edu>
-#	Miguel de Icaza <miguel@nuclecu.unam.mx>
-#	Christian 'Dr. Disk' Hechelmann <drdisk@ds9.au.s.shuttle.de>
-#	Michael K. Johnson <johnsonm@redhat.com>
-#	Pierre Habraken <Pierre.Habraken@ujf-grenoble.fr>
-#	Jakub Jelinek <jakub@redhat.com>
-#	Carlo Arenas Belon (carenas@chasqui.lared.net.pe>
-#	Keith Owens <kaos@ocs.com.au>
-#	Bernhard Rosenkraenzer <bero@redhat.com>
-#	Matt Wilson <msw@redhat.com>
+#       Elliot Lee <sopwith@cuc.edu>
+#       Miguel de Icaza <miguel@nuclecu.unam.mx>
+#       Christian 'Dr. Disk' Hechelmann <drdisk@ds9.au.s.shuttle.de>
+#       Michael K. Johnson <johnsonm@redhat.com>
+#       Pierre Habraken <Pierre.Habraken@ujf-grenoble.fr>
+#       Jakub Jelinek <jakub@redhat.com>
+#       Carlo Arenas Belon (carenas@chasqui.lared.net.pe>
+#       Keith Owens <kaos@ocs.com.au>
+#       Bernhard Rosenkraenzer <bero@redhat.com>
+#       Matt Wilson <msw@redhat.com>
 #       Trond Eivind Glomsrød <teg@redhat.com>
 #       Jeremy Katz <katzj@redhat.com>
 #       Preston Brown <pbrown@redhat.com>
-#	Bill Nottingham <notting@redhat.com>
+#       Bill Nottingham <notting@redhat.com>
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
-#	Peter Jones <pjones@redhat.com>
+#       Peter Jones <pjones@redhat.com>
 
 umask 0022
 
@@ -111,8 +111,8 @@ usage () {
 
 moduledep() {
     if [ ! -f "/lib/modules/$kernel/modules.dep" ]; then
-	error "No dep file found for kernel $kernel"
-	exit 1
+        error "No dep file found for kernel $kernel"
+        exit 1
     fi
 
     vecho -n "Looking for deps of module $1"
@@ -129,7 +129,7 @@ moduledep() {
 
 findone() {
     echo nash-find "$@" | /sbin/nash --force --quiet \
-	| /bin/awk '{ print $1; exit; }'
+        | /bin/awk '{ print $1; exit; }'
 }
 
 findall() {
@@ -144,19 +144,19 @@ findmodule() {
     skiperrors=""
 
     if [ $1 == "--skiperrors" ]; then
-	skiperrors=--skiperrors
-	shift
+        skiperrors=--skiperrors
+        shift
     fi
 
     local modName=$1
 
     if [ "$modName" = "off" -o "$modName" = "null" ]; then
-	return
+        return
     fi
 
     if [ $(echo $modName | cut -b1) = "-" ]; then
-	skiperrors=--skiperrors
-	modName=$(echo $modName | cut -b2-)
+        skiperrors=--skiperrors
+        modName=$(echo $modName | cut -b2-)
     fi
 
     case "$MODULES " in
@@ -165,59 +165,59 @@ findmodule() {
 
     if echo $builtins | egrep -q '(^| )'$modName'( |$)' ; then
         vecho "module $modName assumed to be built in"
-	return
+        return
     fi
 
     # special cases
     if [ "$modName" = "i2o_block" ]; then
-	findmodule i2o_core
-	findmodule -i2o_pci
-	modName="i2o_block"
+        findmodule i2o_core
+        findmodule -i2o_pci
+        modName="i2o_block"
     elif [ "$modName" = "ppa" ]; then
-	findmodule parport
-	findmodule parport_pc
-	modName="ppa"
+        findmodule parport
+        findmodule parport_pc
+        modName="ppa"
     elif [ "$modName" = "sbp2" ]; then
-	findmodule ieee1394
-	findmodule ohci1394
-	modName="sbp2"
+        findmodule ieee1394
+        findmodule ohci1394
+        modName="sbp2"
     else
-	moduledep $modName
-	for i in $deps; do
-	    findmodule $i
-	done
+        moduledep $modName
+        for i in $deps; do
+            findmodule $i
+        done
     fi
 
     for modExt in o.gz o ko ; do
-	for modDir in /lib/modules/$kernel/updates /lib/modules/$kernel ; do
-	    if [ -d $modDir ]; then
-		fmPath=$(findone $modDir -name $modName.$modExt)
-	        if [ -f "$fmPath" ]; then
-		    break 2
-	        fi
-	    fi
+        for modDir in /lib/modules/$kernel/updates /lib/modules/$kernel ; do
+            if [ -d $modDir ]; then
+                fmPath=$(findone $modDir -name $modName.$modExt)
+                if [ -f "$fmPath" ]; then
+                    break 2
+                fi
+            fi
         done
     done
 
     if [ ! -f $fmPath ]; then
-	if [ -n "$skiperrors" ]; then
-	    return
-	fi
+        if [ -n "$skiperrors" ]; then
+            return
+        fi
 
         # ignore the absence of the scsi modules
-	for n in $PRESCSIMODS; do
-	    if [ "$n" = "$modName" ]; then
-		return;
-	    fi
-	done;
+        for n in $PRESCSIMODS; do
+            if [ "$n" = "$modName" ]; then
+                return;
+            fi
+        done;
 
-	if [ -n "$allowmissing" ]; then
-	    error "WARNING: No module $modName found for kernel $kernel, continuing anyway"
-	    return
-	fi
+        if [ -n "$allowmissing" ]; then
+            error "WARNING: No module $modName found for kernel $kernel, continuing anyway"
+            return
+        fi
 
-	error "No module $modName found for kernel $kernel, aborting."
-	exit 1
+        error "No module $modName found for kernel $kernel, aborting."
+        exit 1
     fi
 
     # only need to add each module once
@@ -225,9 +225,9 @@ findmodule() {
 
     # need to handle prescsimods here -- they need to go _after_ scsi_mod
     if [ "$modName" = "scsi_mod" ]; then
-	for n in $PRESCSIMODS ; do
-	    findmodule $n
-	done
+        for n in $PRESCSIMODS ; do
+            findmodule $n
+        done
     fi
 }
 
@@ -340,23 +340,23 @@ handleraid() {
         awk '{ print gensub("\\[[0-9]*\\]","","g",gensub("^md.*raid[0-9]*","","1")) }')
 
     for level in $levels ; do
-	case $level in
-	linear)
-	    findmodule linear
-	    start=1
-	    ;;
-	multipath)
-	    findmodule multipath
-	    start=1
-	    ;;
-	raid[01456] | raid10)
-	    findmodule $level
-	    start=1
-	    ;;
-	*)
-	    error "raid level $level (in /proc/mdstat) not recognized"
-	    ;;
-	esac
+        case $level in
+        linear)
+            findmodule linear
+            start=1
+            ;;
+        multipath)
+            findmodule multipath
+            start=1
+            ;;
+        raid[01456] | raid10)
+            findmodule $level
+            start=1
+            ;;
+        *)
+            error "raid level $level (in /proc/mdstat) not recognized"
+            ;;
+        esac
     done
     findstoragedriver $devs
     if [ "$start" = 1 ]; then
@@ -389,7 +389,7 @@ handlenetdev() {
 
     source /etc/sysconfig/network
     if [ ! -f /etc/sysconfig/network-scripts/ifcfg-$dev ]; then
-	error "unable to find network device configuration for $dev"
+        error "unable to find network device configuration for $dev"
     else
         source /etc/sysconfig/network-scripts/ifcfg-$dev
     fi
@@ -400,18 +400,18 @@ handlenetdev() {
     [ -n "$ETHTOOL_OPTS" ] && IPSTR="$IPSTR --ethtool \"$ETHTOOL_OPTS\""
     [ -n "$MTU" ] && IPSTR="$IPSTR --mtu $MTU"
     if [ -n "$IPADDR" ]; then
-	[ -z "$DOMAIN" ] && DOMAIN=$(awk '/^search / { print gensub("^search ","",1) }' /etc/resolv.conf)
-	if [ -z "$DNS1" ]; then
-	    DNS1=$(awk '/^nameserver / { ORS="" ; if (x > 0) print "," ; printf "%s", $2 ; x = 1}' /etc/resolv.conf)
-	fi
+        [ -z "$DOMAIN" ] && DOMAIN=$(awk '/^search / { print gensub("^search ","",1) }' /etc/resolv.conf)
+        if [ -z "$DNS1" ]; then
+            DNS1=$(awk '/^nameserver / { ORS="" ; if (x > 0) print "," ; printf "%s", $2 ; x = 1}' /etc/resolv.conf)
+        fi
     fi
     [ -n "$DOMAIN" ] && IPSTR="$IPSTR --domain \"$DOMAIN\""
     if [ -n "$DNS1" ]; then
         if [ -n "$DNS2" ]; then
-	    IPSTR="$IPSTR --dns $DNS1,$DNS2"
-	else
-	    IPSTR="$IPSTR --dns $DNS1"
-	fi
+            IPSTR="$IPSTR --dns $DNS1,$DNS2"
+        else
+            IPSTR="$IPSTR --dns $DNS1"
+        fi
     fi
     network="network --device $dev --bootproto $BOOTPROTO $IPSTR"
 }
@@ -426,107 +426,107 @@ addnetdev() {
 
 while [ $# -gt 0 ]; do
     case $1 in
-	--fstab*)
-	    if echo $1 | grep -q '=' ; then
-	    	fstab=`echo $1 | sed 's/^--fstab=//'`
-	    else
-		fstab=$2
-		shift
-	    fi
-	    ;;
+        --fstab*)
+            if echo $1 | grep -q '=' ; then
+                fstab=`echo $1 | sed 's/^--fstab=//'`
+            else
+                fstab=$2
+                shift
+            fi
+            ;;
 
-	--with-usb)
-	    withusb=yes
-	    ;;
+        --with-usb)
+            withusb=yes
+            ;;
 
         --without-usb)
             withusb=no
             ;;
 
-	--with*)
-	    if echo $1 | grep -q '=' ; then
-	    	modname=`echo $1 | sed 's/^--with=//'`
-	    else
-		modname=$2
-		shift
-	    fi
+        --with*)
+            if echo $1 | grep -q '=' ; then
+                    modname=`echo $1 | sed 's/^--with=//'`
+            else
+                modname=$2
+                shift
+            fi
 
-	    basicmodules="$basicmodules $modname"
-	    ;;
+            basicmodules="$basicmodules $modname"
+            ;;
 
-	--builtin*)
-	    if echo $1 | grep -q '=' ; then
-	    	modname=`echo $1 | sed 's/^--builtin=//'`
-	    else
-		modname=$2
-		shift
-	    fi
-	    builtins="$builtins $modname"
-	    ;;
+        --builtin*)
+            if echo $1 | grep -q '=' ; then
+                    modname=`echo $1 | sed 's/^--builtin=//'`
+            else
+                modname=$2
+                shift
+            fi
+            builtins="$builtins $modname"
+            ;;
 
-	--version)
-	    echo "mkinitrd: version $VERSION"
-	    exit 0
-	    ;;
+        --version)
+            echo "mkinitrd: version $VERSION"
+            exit 0
+            ;;
 
-	-v)
-	    verbose=-v
-	    ;;
+        -v)
+            verbose=-v
+            ;;
 
-	--nocompress)
-	    compress=""
-	    ;;
+        --nocompress)
+            compress=""
+            ;;
 
-	--ifneeded)
-	    # legacy
-	    ;;
+        --ifneeded)
+            # legacy
+            ;;
 
-	-f)
-	    force=1
-	    ;;
-	--preload*)
-	    if echo $1 | grep -q '=' ; then
-	    	modname=`echo $1 | sed 's/^--preload=//'`
-	    else
-		modname=$2
-		shift
-	    fi
-	    PREMODS="$PREMODS $modname"
-	    ;;
-	--force-scsi-probe)
-	    forcescsi=1
-	    ;;
-	--omit-scsi-modules)
-	    PRESCSIMODS=""
-	    noscsi=1
-	    ;;
-	--force-raid-probe)
-	    forceraid=1
-	    ;;
-	--omit-raid-modules)
-	    noraid=1
-	    ;;
-	--force-lvm-probe)
-	    forcelvm=1
-	    ;;
-	--omit-lvm-modules)
-	    nolvm=1
-	    ;;
-	--omit-dmraid)
-	    nodmraid=1
+        -f)
+            force=1
+            ;;
+        --preload*)
+            if echo $1 | grep -q '=' ; then
+                modname=`echo $1 | sed 's/^--preload=//'`
+            else
+                modname=$2
+                shift
+            fi
+            PREMODS="$PREMODS $modname"
+            ;;
+        --force-scsi-probe)
+            forcescsi=1
+            ;;
+        --omit-scsi-modules)
+            PRESCSIMODS=""
+            noscsi=1
+            ;;
+        --force-raid-probe)
+            forceraid=1
+            ;;
+        --omit-raid-modules)
+            noraid=1
+            ;;
+        --force-lvm-probe)
+            forcelvm=1
+            ;;
+        --omit-lvm-modules)
+            nolvm=1
+            ;;
+        --omit-dmraid)
+            nodmraid=1
             ;;
         --force-ide-probe)
             forceide=1
             ;;
-	--image-version)
-	    img_vers=yes
-	    ;;
-	--allow-missing)
-	    allowmissing=yes
-	    ;;
-	--noresume)
-	    noresume=1
-	    ;;
+        --image-version)
+            img_vers=yes
+            ;;
+        --allow-missing)
+            allowmissing=yes
+            ;;
+        --noresume)
+            noresume=1
+            ;;
         --net-dev*)
             if echo $1 | grep -q '=' ; then
                 net_list="$net_list `echo $1 | sed 's/^--net-list=//'`"
@@ -538,15 +538,15 @@ while [ $# -gt 0 ]; do
         --help)
             usage -n
             ;;
-	*)
-	    if [ -z "$target" ]; then
-		target=$1
-	    elif [ -z "$kernel" ]; then
-		kernel=$1
-	    else
-		usage
-	    fi
-	    ;;
+        *)
+            if [ -z "$target" ]; then
+                target=$1
+            elif [ -z "$kernel" ]; then
+                kernel=$1
+            else
+                usage
+            fi
+            ;;
     esac
 
     shift
@@ -601,8 +601,8 @@ for t in /tmp /var/tmp /root ${PWD}; do
 
     fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
     if [ "$fs" != "tmpfs" ]; then
-	TMPDIR=$t
-	break
+        TMPDIR=$t
+        break
     fi
 done
 
@@ -616,7 +616,7 @@ if [ $TMPDIR = "/root" -o $TMPDIR = "${PWD}" ]; then
 fi
 
 for n in $PREMODS; do
-	findmodule $n
+        findmodule $n
 done
 
 needusb=""
@@ -665,15 +665,15 @@ if [ -n "$forcescsi" -o -z "$noscsi" -a "x$PROBE" == "xyes" ]; then
     fi
 
     if [ -f $modulefile ]; then
-	scsimodules=`grep "alias[[:space:]]\+scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
+        scsimodules=`grep "alias[[:space:]]\+scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
 
-	if [ -n "$scsimodules" ]; then
+        if [ -n "$scsimodules" ]; then
             for n in $scsimodules; do
     # for now allow scsi modules to come from anywhere.  There are some
     # RAID controllers with drivers in block/
-		findmodule $n
-	    done
-	fi
+                findmodule $n
+            done
+        fi
     fi
 fi
 
@@ -700,27 +700,27 @@ if [ "x$PROBE" == "xyes" ]; then
     rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
     # check if it's nfsroot
     if [ "$rootfs" == "nfs" -a "x$net_list" == "x" ]; then
-	remote=$(echo $rootdev | cut -d : -f 1)
-	# FIXME: this doesn't handle ips properly
-	remoteip=$(host $remote | cut -d ' ' -f 4) 
-	netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`	
-	addnetdev $netdev
+        remote=$(echo $rootdev | cut -d : -f 1)
+        # FIXME: this doesn't handle ips properly
+        remoteip=$(host $remote | cut -d ' ' -f 4) 
+        netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`        
+        addnetdev $netdev
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
-    	rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
+        rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
                      -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
         majmin=$(get_numeric_dev dec /dev/root)
         if [ -n "$majmin" ]; then
             dev=$(findall /sys/block -name dev | while read device ; do \
-	          echo "$majmin" | cmp -s $device && echo $device ; done \
-	          | sed -e 's,.*/\([^/]\+\)/dev,\1,' )
-	    if [ -n "$dev" ]; then
+                  echo "$majmin" | cmp -s $device && echo $device ; done \
+                  | sed -e 's,.*/\([^/]\+\)/dev,\1,' )
+            if [ -n "$dev" ]; then
                 vecho "Found root device $dev for $rootdev"
                 rootdev=$dev
-	    fi
+            fi
         fi
     else
-    	rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
+        rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
                      -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
     fi
     [ "$rootfs" != "nfs" ] && handlelvordev $rootdev
@@ -895,9 +895,9 @@ ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
     if [ -x /usr/bin/strip ]; then
-	/usr/bin/strip -g $verbose $MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
+        /usr/bin/strip -g $verbose $MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
     else
-	cp $verbose -a $MODULE $MNTIMAGE/lib
+        cp $verbose -a $MODULE $MNTIMAGE/lib
     fi
 done
 
@@ -931,7 +931,7 @@ fi
 if [ -n "$vg_list" ]; then
     inst /sbin/lvm.static "$MNTIMAGE/bin/lvm"
     if [ -f /etc/lvm/lvm.conf ]; then
-	cp $verbose --parents /etc/lvm/lvm.conf $MNTIMAGE/
+        cp $verbose --parents /etc/lvm/lvm.conf $MNTIMAGE/
     fi
 fi
 
@@ -1020,7 +1020,7 @@ for MODULE in $MODULES; do
         emit "stabilized /proc/bus/usb/devices"
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
-	emit "echo Waiting 2 seconds for driver initialization."
+        emit "echo Waiting 2 seconds for driver initialization."
         emit "sleep 2"
         cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICE SCSIID WWPN SCSILUN FCPLUN; do
         cemit <<EOF 
@@ -1039,9 +1039,9 @@ fi
 
 if [ -n "$net_list" ]; then
     for netdev in $net_list; do 
-	emit "echo Bringing up $netdev"
-	handlenetdev $netdev
-	emit $network
+        emit "echo Bringing up $netdev"
+        handlenetdev $netdev
+        emit $network
     done
 fi
 
@@ -1054,8 +1054,8 @@ emitdms
 
 if [ -n "$raiddevices" ]; then
     for dev in $raiddevices; do
-	cp -a /dev/${dev} $MNTIMAGE/dev
-	emit "raidautorun /dev/${dev}"
+        cp -a /dev/${dev} $MNTIMAGE/dev
+        emit "raidautorun /dev/${dev}"
     done
 fi
 
