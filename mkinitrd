@@ -703,7 +703,7 @@ if [ "x$PROBE" == "xyes" ]; then
         remote=$(echo $rootdev | cut -d : -f 1)
         # FIXME: this doesn't handle ips properly
         remoteip=$(host $remote | cut -d ' ' -f 4) 
-        netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`        
+        netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`
         addnetdev $netdev
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
