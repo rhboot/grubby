@@ -40,6 +40,7 @@ PROBE="yes"
 MODULES=""
 PREMODS=""
 DMDEVS=""
+NET_LIST=""
 
 [ -e /etc/sysconfig/mkinitrd ] && . /etc/sysconfig/mkinitrd
 
@@ -96,7 +97,7 @@ usage () {
     $cmd "       [--force-ide-probe] [--force-scsi-probe | --omit-scsi-modules]"
     $cmd "       [--image-version] [--force-scsi-probe | --omit-raid-modules]"
     $cmd "       [--with=<module>] [--force-lvm-probe | --omit-lvm-modules]"
-    $cmd "       [--builtin=<module>] [--omit-dmraid]"
+    $cmd "       [--builtin=<module>] [--omit-dmraid] [--net-dev=<interface>]"
     $cmd "       [--fstab=<fstab>] [--nocompress] <initrd-image> <kernel-version>"
     $cmd ""
     $cmd "       (ex: `basename $0` /boot/initrd-2.2.5-15.img 2.2.5-15)"
@@ -317,7 +318,9 @@ findnetdriver() {
                 continue ;;
             *) handleddevices="$handleddevices $device" ;;
         esac
-        modalias=$(cat /sys/class/net/$device/device/modalias)
+        if [ -f /sys/class/net/$device/device/modalias ]; then
+            modalias=$(cat /sys/class/net/$device/device/modalias)
+        fi
         for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
             findmodule ${driver%%.ko}
         done
@@ -387,9 +390,9 @@ handlenetdev() {
     source /etc/sysconfig/network
     if [ ! -f /etc/sysconfig/network-scripts/ifcfg-$dev ]; then
 	error "unable to find network device configuration for $dev"
+    else
+        source /etc/sysconfig/network-scripts/ifcfg-$dev
     fi
-    source /etc/sysconfig/network-scripts/ifcfg-$dev
-    [ -n  "$BOOTPROTO" ] || error "bootproto not specified for $dev"
 
     [ -n "$IPADDR" ] && IPSTR="$IPSTR --ip $IPADDR"
     [ -n "$NETMASK" ] && IPSTR="$IPSTR --netmask $NETMASK"
@@ -524,6 +527,14 @@ while [ $# -gt 0 ]; do
 	--noresume)
 	    noresume=1
 	    ;;
+        --net-list*)
+            if echo $1 | grep -q '=' ; then
+                net_list="$net_list `echo $1 | sed 's/^--net-list=//'`"
+            else
+                net_list="$net_list $2"
+                shift
+            fi
+            ;;
         --help)
             usage -n
             ;;
@@ -688,7 +699,7 @@ if [ "x$PROBE" == "xyes" ]; then
 
     rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
     # check if it's nfsroot
-    if [ "$rootfs" == "nfs" ]; then
+    if [ "$rootfs" == "nfs" -a "x$net_list" == "x" ]; then
 	remote=$(echo $rootdev | cut -d : -f 1)
 	# FIXME: this doesn't handle ips properly
 	remoteip=$(host $remote | cut -d ' ' -f 4) 

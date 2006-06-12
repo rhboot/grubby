@@ -63,6 +63,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Mon Jun 12 2006 Peter Jones <pjones@redhat.com> - 5.0.XX-1
+- Fixes for stateless/diskless configurations (patch from Jeff Law,
+  <law@redhat.com>)
+
 * Wed May 24 2006 Peter Jones <pjones@redhat.com> - 5.0.41-1
 - (very) basic multipath support
 - minor fixes for usb
