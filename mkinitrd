@@ -527,7 +527,7 @@ while [ $# -gt 0 ]; do
 	--noresume)
 	    noresume=1
 	    ;;
-        --net-list*)
+        --net-dev*)
             if echo $1 | grep -q '=' ; then
                 net_list="$net_list `echo $1 | sed 's/^--net-list=//'`"
             else
