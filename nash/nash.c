@@ -1566,7 +1566,10 @@ usage:
 
     memset(&sb, '\0', sizeof(sb));
     do {
-        sb.st_mtime = 0;
+        if (stat(file, &sb) == -1) {
+            eprintf("stabilized: stat %s: %m\n", file);
+            return 1;
+        }
         if (sb.st_mtime == last) {
             if (++count == 5)
                 return 0;

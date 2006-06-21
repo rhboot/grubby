@@ -63,6 +63,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Wed Jun 21 2006 Jeremy Katz <katzj@redhat.com> - 5.0.43-1
+- Add back patches from pjones which had just been in the package for 
+  * fix bad shell code to detect DMs in use
+  * fix "stabilized" to stat where appropriate
+  * use stabilized for sbp2
+
 * Wed Jun 21 2006 Jeremy Katz <katzj@redhat.com> - 5.0.42-1
 - add a hack to handle xennet devices not having a modalias (#196104)
 - initial pass at support for root on iscsi (patch from Patrick 

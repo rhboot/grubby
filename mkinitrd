@@ -36,7 +36,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.0.42
+VERSION=5.0.43
 
 PROBE="yes"
 MODULES=""
@@ -836,69 +836,68 @@ if [ -n "$testdm" ]; then
     fi
 
     dmout=$(/sbin/dmsetup ls 2>/dev/null)
-    if [ "$dmout" == "No devices found" -o "$dmout" == "" ]; then
-        break;
-    fi
+    if [ "$dmout" != "No devices found" -a "$dmout" != "" ]; then
 
-    findmodule -dm-mod
-
-    # DM requires all of these to be there in case someone used the
-    # feature.  broken.  (#132001)
-    findmodule -dm-mirror
-    findmodule -dm-zero
-    findmodule -dm-snapshot
+        findmodule -dm-mod
     
-    RAIDS=$(/sbin/dmraid -s -craidname 2>/dev/null | grep -vi "no raid disks") 
-
-    # I fucking hate shell. 
-    lineno=1
-    PREV=""
-    LINE=""
-    while :; do
-        PREV="$LINE"
-        LINE=$(/sbin/dmsetup table | head -$lineno | tail -1)
-        if [ "$LINE" == "$PREV" ]; then
-            break;
-        fi
-
-        eval $(echo $LINE | \
-            while read NAME START END TYPE TABLE ; do
-                echo NAME=\"$(sed 's/:$//'<<< "$NAME")\"
-                echo START=\"$START\"
-                echo END=\"$END\"
-                echo TYPE=\"$TYPE\"
-                echo TABLE=\"$TABLE\"
-            done)
-
-        case "$TYPE" in
-            multipath|emc)
-                # ugggh.  We could try to fish the module name out, but it
-                # requires real parsing... 
-                # XXX also covered by #132001
-                for mod in $TABLE ; do 
-                    DMMODS="$DMMODS $([[ "$mod" =~ "[[:alpha:]]" ]] && echo "$mod")"
-                done
-                DMDEVS="$DMDEVS $NAME"
-                ;;
-            *)
-                NAME=""
-                for raid in $RAIDS ; do
-                    if [ "$raid" == "$NAME" ]; then
-                        dmname=$(resolve_dm_name $NAME)
-                        DMDEVS="$DMDEVS $dmname"
-                        RAIDS=$(sed 's/ $NAME //' <<< "$RAIDS")
-                        break
-                    fi
-                done
-                ;;
-        esac
-        lineno=$(($lineno + 1))
-    done
-
-    for mod in $(tr ' ' '\n' <<< $DMMODS | sort -u) ; do
-        findmodule -dm-$mod
-    done
-    DMDEVS=$(tr ' ' '\n' <<< $DMDEVS | sort -u)
+        # DM requires all of these to be there in case someone used the
+        # feature.  broken.  (#132001)
+        findmodule -dm-mirror
+        findmodule -dm-zero
+        findmodule -dm-snapshot
+        
+        RAIDS=$(/sbin/dmraid -s -craidname 2>/dev/null | grep -vi "no raid disks") 
+    
+        # I fucking hate shell. 
+        lineno=1
+        PREV=""
+        LINE=""
+        while :; do
+            PREV="$LINE"
+            LINE=$(/sbin/dmsetup table | head -$lineno | tail -1)
+            if [ "$LINE" == "$PREV" ]; then
+                break;
+            fi
+    
+            eval $(echo $LINE | \
+                while read NAME START END TYPE TABLE ; do
+                    echo NAME=\"$(sed 's/:$//'<<< "$NAME")\"
+                    echo START=\"$START\"
+                    echo END=\"$END\"
+                    echo TYPE=\"$TYPE\"
+                    echo TABLE=\"$TABLE\"
+                done)
+    
+            case "$TYPE" in
+                multipath|emc)
+                    # ugggh.  We could try to fish the module name out, but it
+                    # requires real parsing... 
+                    # XXX also covered by #132001
+                    for mod in $TABLE ; do 
+                        DMMODS="$DMMODS $([[ "$mod" =~ "[[:alpha:]]" ]] && echo "$mod")"
+                    done
+                    DMDEVS="$DMDEVS $NAME"
+                    ;;
+                *)
+                    NAME=""
+                    for raid in $RAIDS ; do
+                        if [ "$raid" == "$NAME" ]; then
+                            dmname=$(resolve_dm_name $NAME)
+                            DMDEVS="$DMDEVS $dmname"
+                            RAIDS=$(sed 's/ $NAME //' <<< "$RAIDS")
+                            break
+                        fi
+                    done
+                    ;;
+            esac
+            lineno=$(($lineno + 1))
+        done
+    
+        for mod in $(tr ' ' '\n' <<< $DMMODS | sort -u) ; do
+            findmodule -dm-$mod
+        done
+        DMDEVS=$(tr ' ' '\n' <<< $DMDEVS | sort -u)
+    fi
 fi
 
 for n in $basicmodules; do
@@ -1107,6 +1106,10 @@ for MODULE in $MODULES; do
     if [ "$module" = "usb-storage" ]; then
         emit "echo Waiting for driver initialization."
         emit "stabilized /proc/bus/usb/devices"
+    fi
+    if [ "$module" = "sbp2" ]; then
+        emit "echo Waiting for driver initialization."
+        emit "stabilized /sys/bus/ieee1394/drivers/sbp2"
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
         emit "echo Waiting 2 seconds for driver initialization."
