@@ -25,8 +25,6 @@
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
 #       Peter Jones <pjones@redhat.com>
 
-umask 0022
-
 export MALLOC_PERTURB_=204
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
@@ -34,7 +32,11 @@ export PATH
 
 . /etc/rc.d/init.d/functions
 
-VERSION=5.0.41
+# Set the umask. For iscsi, the initrd can contain platintext
+# password (chap secret), so only allow read by owner.
+umask 077
+
+VERSION=5.0.42
 
 PROBE="yes"
 MODULES=""
@@ -280,6 +282,10 @@ findstoragedriverinsys () {
         cd ..
     done
     cd $(readlink ./device)
+    if is_iscsi $PWD; then
+        handleiscsi "$PWD"
+        return
+    fi
     while [ ! -f modalias ]; do
         [ "$PWD" = "/sys/devices" ] && return
         cd ..
@@ -320,11 +326,94 @@ findnetdriver() {
         esac
         if [ -f /sys/class/net/$device/device/modalias ]; then
             modalias=$(cat /sys/class/net/$device/device/modalias)
-        fi
+	elif [ $(basename $(readlink /sys/class/net/$device/device/bus)) = "xen" ]; then
+ 	    modalias="xennet" # FIXME: hack for xen not using modaliases...
+ 	fi
         for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
             findmodule ${driver%%.ko}
         done
     done
+}
+
+iscsi_get_rec_val() {
+    result=$(/sbin/iscsiadm --show -m node -M ${1} | grep "^${2} = " | \
+        sed -e s'/.* = //')
+}
+
+iscsi_set_parameters() {
+    path=$1
+    vecho setting iscsi parameters
+
+    # Check once before getting explicit values, so we can output a decent
+    # error message.
+    if ! /sbin/iscsiadm -m node -M ${path} > /dev/null ; then
+        echo Unable to find iscsi record for $path
+        exit 1
+    fi
+
+    nit_name=$(grep "^InitiatorName=" /etc/initiatorname.iscsi | \
+        sed -e "s/^InitiatorName=//")
+
+    iscsi_get_rec_val $path "node.name"; tgt_name=${result}
+    iscsi_get_rec_val $path "node.tpgt"; tpgt=${result}
+    iscsi_get_rec_val $path "node.conn\[0\].address"; tgt_ipaddr=${result}
+    iscsi_get_rec_val $path "node.conn\[0\].port"; tgt_port=${result}
+
+    # Note: we get chap secrets (passwords) in plaintext, and also store
+    # them in the initrd.
+
+    iscsi_get_rec_val $path "node.session.auth.username"
+    chap=${result}
+    if [ -n "${chap}" -o "${chap}" = "<empty>" ]; then
+        chap="-u ${chap}"
+        iscsi_get_rec_val $path "node.session.auth.password" 
+        chap_pw="-w ${result}"
+    fi
+
+    iscsi_get_rec_val $path "node.session.auth.username_in"
+    chap_in=${result}
+    if [ -n "${chap_in}" -o "${chap_in}" = "<empty>" ]; then
+        chap_in="-U ${chap_in}"
+        iscsi_get_rec_val $path "node.session.auth.password_in" 
+        chap_in_pw="-W ${result}"
+    fi
+}
+
+emit_iscsi () {
+    if [ -n ${iscsi_devs} ]; then
+        inst /sbin/iscsistart "$MNTIMAGE/bin/iscsistart"
+        emit "echo Attaching to iSCSI storage"
+        for dev in ${iscsi_devs}; do
+            iscsi_set_parameters $dev
+            # recid is not really used, just use 0 for it
+            emit "/bin/iscsistart -r 0 -t ${tgt_name} -i ${nit_name} \
+                -g ${tpgt} -a ${tgt_ipaddr} ${chap} ${chap_pw} \
+                ${chap_in} ${chap_in_pw}"
+        done
+    fi
+}
+
+is_iscsi() {
+    path=$1
+    if echo $path | grep -q "/platform/host[0-9]*/session[0-9]*/target[0-9]*:[0-9]*:[0-9]*/[0-9]*:[0-9]*:[0-9]*:[0-9]*"; then
+        return 0
+    else 
+        return 1
+    fi
+}
+
+handleiscsi() {
+    vecho "Found iscsi component $1"
+    findmodule iscsi_tcp
+
+    # We call iscsi_set_parameters once here to figure out what network to
+    # use (it sets tgt_ipaddr), and once again to emit iscsi values,
+    # not very efficient.
+    iscsi_set_parameters $1
+    iscsi_devs="$iscsi_devs $1"
+    netdev=$(/sbin/ip route get to $tgt_ipaddr | \
+        sed 's|.*dev \(.*\).*|\1|g' | awk {'print $1;'} | head -n 1)
+    addnetdev $netdev
 }
 
 handleraid() {
@@ -1044,6 +1133,8 @@ if [ -n "$net_list" ]; then
         emit $network
     done
 fi
+
+emit_iscsi
 
 # HACK: module loading + device creation isn't necessarily synchronous...
 # this will make sure that we have all of our devices before trying

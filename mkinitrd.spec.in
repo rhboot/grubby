@@ -63,7 +63,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
-* Mon Jun 12 2006 Peter Jones <pjones@redhat.com> - 5.0.XX-1
+* Wed Jun 21 2006 Jeremy Katz <katzj@redhat.com> - 5.0.42-1
+- add a hack to handle xennet devices not having a modalias (#196104)
+- initial pass at support for root on iscsi (patch from Patrick 
+  Mansfield <patmans@us.ibm.com>)
+
+* Mon Jun 12 2006 Peter Jones <pjones@redhat.com> 
 - Fixes for stateless/diskless configurations (patch from Jeff Law,
   <law@redhat.com>)
 
