@@ -36,7 +36,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.0.44
+VERSION=5.0.45
 
 PROBE="yes"
 MODULES=""
@@ -364,18 +364,22 @@ iscsi_set_parameters() {
 
     iscsi_get_rec_val $path "node.session.auth.username"
     chap=${result}
-    if [ -n "${chap}" -o "${chap}" = "<empty>" ]; then
+    if [ -n "${chap}" -a "${chap}" != "<empty>" ]; then
         chap="-u ${chap}"
         iscsi_get_rec_val $path "node.session.auth.password" 
         chap_pw="-w ${result}"
+    else
+	chap=""
     fi
 
     iscsi_get_rec_val $path "node.session.auth.username_in"
     chap_in=${result}
-    if [ -n "${chap_in}" -o "${chap_in}" = "<empty>" ]; then
+    if [ -n "${chap_in}" -a "${chap_in}" != "<empty>" ]; then
         chap_in="-U ${chap_in}"
         iscsi_get_rec_val $path "node.session.auth.password_in" 
         chap_in_pw="-W ${result}"
+    else
+	chap_in=""
     fi
 }
 
@@ -796,8 +800,7 @@ if [ "x$PROBE" == "xyes" ]; then
         addnetdev $netdev
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
-        rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
-                     -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
+        rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,_netdev//' -e 's/_netdev//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
         majmin=$(get_numeric_dev dec /dev/root)
         if [ -n "$majmin" ]; then
             dev=$(findall /sys/block -name dev | while read device ; do \
@@ -809,8 +812,7 @@ if [ "x$PROBE" == "xyes" ]; then
             fi
         fi
     else
-        rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' \
-                     -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
+        rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,_netdev//' -e 's/_netdev//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
     fi
     [ "$rootfs" != "nfs" ] && handlelvordev $rootdev
 
