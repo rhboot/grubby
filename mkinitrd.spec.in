@@ -63,6 +63,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Thu Jun 22 2006 Jeremy Katz <katzj@redhat.com> - 5.0.44-1
+- fix so we only use iscsistart if we're doing root on iscsi 
+- fix spurious shell error (noticed by karsten)
+
 * Wed Jun 21 2006 Jeremy Katz <katzj@redhat.com> - 5.0.43-1
 - Add back patches from pjones which had just been in the package for 
   * fix bad shell code to detect DMs in use

@@ -36,7 +36,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.0.43
+VERSION=5.0.44
 
 PROBE="yes"
 MODULES=""
@@ -380,7 +380,7 @@ iscsi_set_parameters() {
 }
 
 emit_iscsi () {
-    if [ -n ${iscsi_devs} ]; then
+    if [ -n "${iscsi_devs}" ]; then
         inst /sbin/iscsistart "$MNTIMAGE/bin/iscsistart"
         emit "echo Attaching to iSCSI storage"
         for dev in ${iscsi_devs}; do
@@ -830,11 +830,7 @@ testdm=""
 [ -z "$nolvm" -o -z "$noraid" ] && testdm="yes"
 [ "x$PROBE" != "xyes" ] && testdm=""
 
-if [ -n "$testdm" ]; then
-    if [ ! -x /sbin/dmsetup -o ! -e /dev/mapper/control ]; then
-        break;
-    fi
-
+if [ -n "$testdm" -a -x /sbin/dmsetup -a -e /dev/mapper/control ]; then
     dmout=$(/sbin/dmsetup ls 2>/dev/null)
     if [ "$dmout" != "No devices found" -a "$dmout" != "" ]; then
 
