@@ -326,8 +326,11 @@ findnetdriver() {
         esac
         if [ -f /sys/class/net/$device/device/modalias ]; then
             modalias=$(cat /sys/class/net/$device/device/modalias)
+	
 	elif [ $(basename $(readlink /sys/class/net/$device/device/bus)) = "xen" ]; then
  	    modalias="xennet" # FIXME: hack for xen not using modaliases...
+	else
+	    modalias=$(ethtool -i $device | awk '/^driver:/ { print $2 }')
  	fi
         for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
             findmodule ${driver%%.ko}
