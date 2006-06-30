@@ -1,0 +1,25 @@
+prompt
+timeout=50
+default=foo
+boot=/dev/md1
+map=/boot/map
+install=/boot/boot.b
+message=/boot/message
+linear
+
+disk=/dev/sdm
+	bios=0x80
+disk=/dev/sdn
+	bios=0x81
+
+image=/vmlinuz-2.6.10-1.1076_FC4
+	label=foo
+	initrd=/initrd-2.6.10-1.1088_FC4.img
+	append="dom0_mem=130000 --"
+image=/boot/vmlinuz-2.4.18-4
+	label=linux-up
+	vmm=/xen.gz
+	root=/dev/md0
+	read-only
+	initrd=/boot/initrd-2.4.18-4.img
+

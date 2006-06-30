@@ -334,6 +334,24 @@ grubTest grub.10 multiboot/g10.6 --boot-filesystem=/boot \
 grubTest grub.10 multiboot/g10.7 --boot-filesystem=/boot \
     --remove-multiboot=/boot/xen.gz
 
+testing="ELILO add multiboot"
+eliloTest elilo.1 multiboot/e1.1 --add-multiboot=/boot/xen.gz \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 --boot-filesystem=/boot \
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
+    --mbargs="dom0_mem=130000"
+eliloTest elilo.1 multiboot/e1.2 --add-multiboot=/boot/xen.gz \
+    --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 --boot-filesystem=/boot \
+    --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
+    --mbargs="dom0_mem=130000" --copy-default
+
+testing="ELILO remove multiboot"
+eliloTest elilo.2 multiboot/e2.1 --boot-filesystem=/boot \
+    --remove-kernel=/boot/vmlinuz-2.6.10-1.1076_FC4
+eliloTest elilo.2 multiboot/e2.2 --boot-filesystem=/boot \
+    --remove-kernel=/boot/vmlinuz-2.6.10-1.1082_FC4
+eliloTest elilo.2 multiboot/e2.3 --boot-filesystem=/boot \
+    --remove-multiboot=/boot/xen.gz
+
 printf "\n%d (%d%%) tests passed, %d (%d%%) tests failed\n" \
     $pass $(((100*pass)/(pass+fail))) \
     $fail $(((100*fail)/(pass+fail)))
