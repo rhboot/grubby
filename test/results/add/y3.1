@@ -3,11 +3,12 @@ partition=sda2
 init-message="\nWelcome to Red Hat Linux!\nHit <TAB> for boot options.\n\n"
 install=/usr/lib/yaboot/yaboot
 nonvram
+default=test
 timeout=100
 
 image=/boot/new-kernel
 	label=newtitle
 image=/boot/vmlinux-2.4.9-23.19.8
-	label=
+	label=test
 	read-only
 	root=/dev/sda2
