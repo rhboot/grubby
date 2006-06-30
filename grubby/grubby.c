@@ -54,6 +54,7 @@ enum lineType_e {
     LT_TITLE      = 1 << 1,
     LT_KERNEL     = 1 << 2,
     LT_INITRD     = 1 << 3,
+    LT_HYPER      = 1 << 4,
     LT_DEFAULT    = 1 << 5,
     LT_MBMODULE   = 1 << 6,
     LT_ROOT       = 1 << 7,
@@ -86,11 +87,12 @@ struct singleEntry {
 
 #define GRUB_CONFIG_NO_DEFAULT	    (1 << 0)	/* don't write out default=0 */
 
-#define KERNEL_KERNEL	    (1 << 0)
-#define KERNEL_INITRD	    (1 << 2)
-#define KERNEL_TITLE	    (1 << 3)
-#define KERNEL_ARGS	    (1 << 4)
-#define KERNEL_MB           (1 << 5)
+/* These defines are (only) used in addNewKernel() */
+#define NEED_KERNEL  (1 << 0)
+#define NEED_INITRD  (1 << 1)
+#define NEED_TITLE   (1 << 2)
+#define NEED_ARGS    (1 << 3)
+#define NEED_MB      (1 << 4)
 
 #define MAIN_DEFAULT	    (1 << 0)
 #define DEFAULT_SAVED       -2
@@ -111,6 +113,8 @@ struct configFileInfo {
     int argsInQuotes;
     int maxTitleLength;
     int titleBracketed;
+    int mbHyperFirst;
+    int mbInitRdIsModule;
 };
 
 struct keywordTypes grubKeywords[] = {
@@ -121,6 +125,7 @@ struct keywordTypes grubKeywords[] = {
     { "kernel",	    LT_KERNEL,	    ' ' },
     { "initrd",	    LT_INITRD,	    ' ' },
     { "module",     LT_MBMODULE,    ' ' },
+    { "kernel",     LT_HYPER,       ' ' },
     { NULL,	    0, 0 },
 };
 
@@ -134,6 +139,8 @@ struct configFileInfo grubConfigType = {
     0,					    /* argsInQuotes */
     0,					    /* maxTitleLength */
     0,                                      /* titleBracketed */
+    1,                                      /* mbHyperFirst */
+    1,                                      /* mbInitRdIsModule */
 };
 
 struct keywordTypes yabootKeywords[] = {
@@ -187,6 +194,17 @@ struct keywordTypes liloKeywords[] = {
     { NULL,	    0, 0 },
 };
 
+struct keywordTypes eliloKeywords[] = {
+    { "label",	    LT_TITLE,	    '=' },
+    { "root",	    LT_ROOT,	    '=' },
+    { "default",    LT_DEFAULT,	    '=' },
+    { "image",	    LT_KERNEL,	    '=' },
+    { "initrd",	    LT_INITRD,	    '=' },
+    { "append",	    LT_KERNELARGS,  '=' },
+    { "vmm",	    LT_HYPER,       '=' },
+    { NULL,	    0, 0 },
+};
+
 struct keywordTypes siloKeywords[] = {
     { "label",	    LT_TITLE,	    '=' },
     { "root",	    LT_ROOT,	    '=' },
@@ -210,7 +228,7 @@ struct keywordTypes ziplKeywords[] = {
 
 struct configFileInfo eliloConfigType = {
     "/boot/efi/EFI/redhat/elilo.conf",	    /* defaultConfig */
-    liloKeywords,			    /* keywords */
+    eliloKeywords,			    /* keywords */
     0,					    /* defaultIsIndex */
     0,					    /* defaultSupportSaved */
     LT_KERNEL,				    /* entrySeparator */
@@ -218,6 +236,8 @@ struct configFileInfo eliloConfigType = {
     1,					    /* argsInQuotes */
     0,					    /* maxTitleLength */
     0,                                      /* titleBracketed */
+    0,                                      /* mbHyperFirst */
+    0,                                      /* mbInitRdIsModule */
 };
 
 struct configFileInfo liloConfigType = {
@@ -230,6 +250,8 @@ struct configFileInfo liloConfigType = {
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
     0,                                      /* titleBracketed */
+    0,                                      /* mbHyperFirst */
+    0,                                      /* mbInitRdIsModule */
 };
 
 struct configFileInfo yabootConfigType = {
@@ -242,6 +264,8 @@ struct configFileInfo yabootConfigType = {
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
     0,                                      /* titleBracketed */
+    0,                                      /* mbHyperFirst */
+    0,                                      /* mbInitRdIsModule */
 };
 
 struct configFileInfo siloConfigType = {
@@ -254,6 +278,8 @@ struct configFileInfo siloConfigType = {
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
     0,                                      /* titleBracketed */
+    0,                                      /* mbHyperFirst */
+    0,                                      /* mbInitRdIsModule */
 };
 
 struct configFileInfo ziplConfigType = {
@@ -266,6 +292,8 @@ struct configFileInfo ziplConfigType = {
     1,					    /* argsInQuotes */
     15,					    /* maxTitleLength */
     1,                                      /* titleBracketed */
+    0,                                      /* mbHyperFirst */
+    0,                                      /* mbInitRdIsModule */
 };
 
 struct grubConfig {
@@ -671,11 +699,39 @@ static struct grubConfig * readConfig(const char * inName,
 	if (line->type == LT_DEFAULT && line->numElements == 2) {
 	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 	    defaultLine = line;
+
+        } else if (line->type == LT_KERNEL) {
+	    /* if by some freak chance this is multiboot and the "module"
+	     * lines came earlier in the template, make sure to use LT_HYPER 
+	     * instead of LT_KERNEL now
+	     */
+	    if (entry->multiboot)
+		line->type = LT_HYPER;
+
         } else if (line->type == LT_MBMODULE) {
+	    /* go back and fix the LT_KERNEL line to indicate LT_HYPER
+	     * instead, now that we know this is a multiboot entry.
+	     * This only applies to grub, but that's the only place we
+	     * should find LT_MBMODULE lines anyway.
+	     */
+	    struct singleLine * l;
+	    for (l = entry->lines; l; l = l->next) {
+		if (l->type == LT_HYPER)
+		    break;
+		else if (l->type == LT_KERNEL) {
+		    l->type = LT_HYPER;
+		    break;
+		}
+	    }
             entry->multiboot = 1;
+
+	} else if (line->type == LT_HYPER) {
+	    entry->multiboot = 1;
+
 	} else if (line->type == LT_FALLBACK && line->numElements == 2) {
 	    cfg->fallbackImage = strtol(line->elements[1].item, &end, 10);
 	    if (*end) cfg->fallbackImage = -1;
+
 	} else if (line->type == LT_TITLE && line->numElements > 1) {
 	    /* make the title a single argument (undoing our parsing) */
 	    len = 0;
@@ -700,6 +756,7 @@ static struct grubConfig * readConfig(const char * inName,
 		    line->elements[line->numElements - 1].indent;
 	    line->elements[1].item = buf;
 	    line->numElements = 2;
+
 	} else if (line->type == LT_KERNELARGS && cfi->argsInQuotes) {
 	    /* Strip off any " which may be present; they'll be put back
 	       on write. This is one of the few (the only?) places that grubby
@@ -709,15 +766,14 @@ static struct grubConfig * readConfig(const char * inName,
 		int last, len;
 
 		if (*line->elements[1].item == '"')
-		    memcpy(line->elements[1].item, line->elements[1].item + 1,
-			   strlen(line->elements[1].item + 1) + 1);
+		    memmove(line->elements[1].item, line->elements[1].item + 1,
+			    strlen(line->elements[1].item + 1) + 1);
 
 		last = line->numElements - 1;
 		len = strlen(line->elements[last].item) - 1;
 		if (line->elements[last].item[len] == '"')
 		    line->elements[last].item[len] = '\0';
 	    }
-
 	}
 
 	/* If we find a generic config option which should live at the
@@ -737,6 +793,7 @@ static struct grubConfig * readConfig(const char * inName,
 		movedLine = 1;
 		continue; /* without setting 'last' */
 	}
+
 	/* If a second line of whitespace happens after a generic option
 	   which was moved, drop it. */
 	if (movedLine && line->type == LT_WHITESPACE && last->type == LT_WHITESPACE) {
@@ -752,12 +809,13 @@ static struct grubConfig * readConfig(const char * inName,
 		entry->lines = line;
 	    else
 		last->next = line;
+	    dbgPrintf("readConfig added %d to %p\n", line->type, entry);
 	} else {
 	    if (!cfg->theLines)
 		cfg->theLines = line;
-	    else {
+	    else
 		last->next = line;
-	    }
+	    dbgPrintf("readConfig added %d to cfg\n", line->type);
 	}
 
 	last = line;
@@ -979,7 +1037,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
     if (skipRemoved && entry->skip) return 0;
 
-    line = getLineByType(LT_KERNEL, entry->lines);
+    line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
     if (!line || line->numElements < 2) return 0;
 
     if (flags & GRUBBY_BADIMAGE_OKAY) return 1;
@@ -1076,7 +1134,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	entry = findEntryByIndex(config, indexVars[i]);
 	if (!entry) return NULL;
 
-	line = getLineByType(LT_KERNEL, entry->lines);
+	line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
 	if (!line) return NULL;
 
 	if (index) *index = indexVars[i];
@@ -1126,7 +1184,8 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	    /* check all the lines matching checkType */
 	    for (line = entry->lines; line; line = line->next) {
 		line = getLineByType(entry->multiboot && checkType == LT_KERNEL ? 
-				     LT_KERNEL|LT_MBMODULE : checkType, line);
+				     LT_KERNEL|LT_MBMODULE|LT_HYPER : 
+				     checkType, line);
 		if (!line) break;  /* not found in this entry */
 
 		if (line && line->numElements >= 2) {
@@ -1142,7 +1201,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	     * non-Linux boot entries (could find netbsd etc, though, which is
 	     * unfortunate)
 	     */
-	    if (line && getLineByType(LT_KERNEL, entry->lines))
+	    if (line && getLineByType(LT_KERNEL|LT_HYPER, entry->lines))
 		break; /* found 'im! */
 	}
 
@@ -1315,7 +1374,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 
     printf("index=%d\n", index);
 
-    line = getLineByType(LT_KERNEL, entry->lines);
+    line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
     printf("kernel=%s\n", line->elements[1].item);
 
     if (line->numElements >= 3) {
@@ -1491,7 +1550,7 @@ struct singleLine * addLineTmpl(struct singleEntry * entry,
 	insertElement(newLine, val, 1);
 
 	/* but try to keep the rootspec from the template... sigh */
-	if (tmplLine->type & (LT_KERNEL|LT_MBMODULE|LT_INITRD)) {
+	if (tmplLine->type & (LT_HYPER|LT_KERNEL|LT_MBMODULE|LT_INITRD)) {
 	    char * rootspec = getRootSpecifier(tmplLine->elements[1].item);
 	    if (rootspec != NULL) {
 		free(newLine->elements[1].item);
@@ -1737,8 +1796,7 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
     while ((entry = findEntryByPath(cfg, image, prefix, &index))) {
 	index++;
 
-	line = entry->lines;
-	while (line && line->type != LT_KERNEL) line = line->next;
+	line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
 	if (!line) continue;
 	firstElement = 2;
 
@@ -2108,13 +2166,9 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		 char * newKernelArgs, char * newKernelInitrd,
                  char * newMBKernel, char * newMBKernelArgs) {
     struct singleEntry * new;
-    struct singleLine * newLine = NULL, * tmplLine = NULL, * lastLine = NULL;
+    struct singleLine * newLine = NULL, * tmplLine = NULL, * masterLine = NULL;
     int needs;
-    char * indent = NULL;
-    char * rootspec = NULL;
     char * chptr;
-    int i;
-    enum lineType_e type;
 
     if (!newKernelPath) return 0;
 
@@ -2144,236 +2198,239 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
     config->entries = new;
 
     /* copy/update from the template */
-    needs = KERNEL_KERNEL | KERNEL_INITRD | KERNEL_TITLE;
+    needs = NEED_KERNEL | NEED_TITLE;
+    if (newKernelInitrd)
+	needs |= NEED_INITRD;
     if (newMBKernel) {
-        needs |= KERNEL_MB;
+        needs |= NEED_MB;
         new->multiboot = 1;
     }
 
     if (template) {
-	for (tmplLine = template->lines; tmplLine; tmplLine = tmplLine->next) {
-	    /* remember the indention level; we may need it for new lines */
-	    if (tmplLine->numElements)
-		indent = tmplLine->indent;
+	for (masterLine = template->lines; 
+	     masterLine && (tmplLine = lineDup(masterLine)); 
+	     lineFree(tmplLine), masterLine = masterLine->next) 
+	{
+	    dbgPrintf("addNewKernel processing %d\n", tmplLine->type);
 
 	    /* skip comments */
 	    chptr = tmplLine->indent;
 	    while (*chptr && isspace(*chptr)) chptr++;
 	    if (*chptr == '#') continue;
 
-	    /* we don't need an initrd here */
-	    if (tmplLine->type == LT_INITRD && !newKernelInitrd) continue;
-
-            if (tmplLine->type == LT_KERNEL &&
-                !template->multiboot && (needs & KERNEL_MB)) {
-                struct singleLine *l;
-                needs &= ~ KERNEL_MB;
-
-                l = addLine(new, config->cfi, LT_KERNEL, 
-                                  config->secondaryIndent, 
-                                  newMBKernel + strlen(prefix));
-                
-                tmplLine = lastLine;
-                if (!new->lines) {
-                    new->lines = l;
-                } else {
-                    newLine->next = l;
-                    newLine = l;
-                }
-                continue;
-            } else if (tmplLine->type == LT_KERNEL &&
-                       template->multiboot && !new->multiboot) {
-                continue; /* don't need multiboot kernel here */
-            }
-
-	    if (!new->lines) {
-		newLine = malloc(sizeof(*newLine));
-		new->lines = newLine;
-	    } else {
-		newLine->next = malloc(sizeof(*newLine));
-		newLine = newLine->next;
-	    }
-
-
-	    newLine->indent = strdup(tmplLine->indent);
-	    newLine->next = NULL;
-	    newLine->type = tmplLine->type;
-	    newLine->numElements = tmplLine->numElements;
-	    newLine->elements = malloc(sizeof(*newLine->elements) * 
-					    newLine->numElements);
-	    for (i = 0; i < newLine->numElements; i++) {
-		newLine->elements[i].item = strdup(tmplLine->elements[i].item);
-		newLine->elements[i].indent = 
-				strdup(tmplLine->elements[i].indent);
-	    }
-
-            lastLine = tmplLine;
-	    if (tmplLine->type == LT_KERNEL && tmplLine->numElements >= 2) {
-                char * repl;
-                if (!template->multiboot) {
-                    needs &= ~KERNEL_KERNEL;
-                    repl = newKernelPath;
-                } else { 
-                    needs &= ~KERNEL_MB;
-                    repl = newMBKernel;
-                }
-                if (new->multiboot && !template->multiboot) {
-                    free(newLine->elements[0].item);
-                    newLine->elements[0].item = strdup("module");
-                    newLine->type = LT_MBMODULE;
-                }
-		free(newLine->elements[1].item);
-                rootspec = getRootSpecifier(tmplLine->elements[1].item);
-                if (rootspec != NULL) {
-                    newLine->elements[1].item = sdupprintf("%s%s",
-                                                           rootspec,
-                                                           repl + 
-                                                           strlen(prefix));
-                } else {
-                    newLine->elements[1].item = strdup(repl + 
-                                                       strlen(prefix));
-                }
-            } else if (tmplLine->type == LT_MBMODULE && 
-                       tmplLine->numElements >= 2 && (needs & KERNEL_KERNEL)) {
-                needs &= ~KERNEL_KERNEL;
-                if (!new->multiboot && template->multiboot) {
-                    free(newLine->elements[0].item);
-                    newLine->elements[0].item = strdup("kernel");
-                    newLine->type = LT_KERNEL;
-                }
-		free(newLine->elements[1].item);
-                rootspec = getRootSpecifier(tmplLine->elements[1].item);
-                if (rootspec != NULL) {
-                    newLine->elements[1].item = sdupprintf("%s%s",
-                                                           rootspec,
-                                                           newKernelPath + 
-                                                           strlen(prefix));
-                } else {
-                    newLine->elements[1].item = strdup(newKernelPath + 
-                                                       strlen(prefix));
-                }
-	    } else if (tmplLine->type == LT_INITRD && 
-			    tmplLine->numElements >= 2) {
-		needs &= ~KERNEL_INITRD;
-		free(newLine->elements[1].item);
-                if (new->multiboot && !template->multiboot) {
-                    free(newLine->elements[0].item);
-                    newLine->elements[0].item = strdup("module");
-                    newLine->type = LT_MBMODULE;
-                }
-                rootspec = getRootSpecifier(tmplLine->elements[1].item);
-                if (rootspec != NULL) {
-                    newLine->elements[1].item = sdupprintf("%s%s",
-                                                           rootspec,
-                                                           newKernelInitrd + 
-                                                           strlen(prefix));
-                } else {
-                    newLine->elements[1].item = strdup(newKernelInitrd + 
-                                                       strlen(prefix));
-                }
-            } else if (tmplLine->type == LT_MBMODULE && 
-                       tmplLine->numElements >= 2 && (needs & KERNEL_INITRD)) {
-		needs &= ~KERNEL_INITRD;
-                if (!new->multiboot && template->multiboot) {
-                    free(newLine->elements[0].item);
-                    newLine->elements[0].item = strdup("initrd");
-                    newLine->type = LT_INITRD;
-                }
-		free(newLine->elements[1].item);
-                rootspec = getRootSpecifier(tmplLine->elements[1].item);
-                if (rootspec != NULL) {
-                    newLine->elements[1].item = sdupprintf("%s%s",
-                                                           rootspec,
-                                                           newKernelInitrd + 
-                                                           strlen(prefix));
-                } else {
-                    newLine->elements[1].item = strdup(newKernelInitrd + 
-                                                       strlen(prefix));
-                }
-	    } else if (tmplLine->type == LT_TITLE && 
-			    tmplLine->numElements >= 2) {
-		needs &= ~KERNEL_TITLE;
-
-		for (i = 1; i < newLine->numElements; i++) {
-		    free(newLine->elements[i].item);
-		    free(newLine->elements[i].indent);
+	    if (tmplLine->type == LT_KERNEL && 
+		tmplLine->numElements >= 2) {
+		if (!template->multiboot && (needs & NEED_MB)) {
+		    /* it's not a multiboot template and this is the kernel
+		     * line.  Try to be intelligent about inserting the
+		     * hypervisor at the same time.
+		     */
+		    if (config->cfi->mbHyperFirst) {
+			/* insert the hypervisor first */
+			newLine = addLine(new, config->cfi, LT_HYPER, 
+					  tmplLine->indent,
+					  newMBKernel + strlen(prefix));
+			/* set up for adding the kernel line */
+			free(tmplLine->indent);
+			tmplLine->indent = strdup(config->secondaryIndent);
+			needs &= ~NEED_MB;
+		    }
+		    if (needs & NEED_KERNEL) {
+			/* use addLineTmpl to preserve line elements,
+			 * otherwise we could just call addLine.  Unfortunately
+			 * this means making some changes to the template
+			 * such as the indent change above and the type
+			 * change below.
+			 */
+			struct keywordTypes * mbm_kw = 
+			    getKeywordByType(LT_MBMODULE, config->cfi);
+			if (mbm_kw) {
+			    tmplLine->type = LT_MBMODULE;
+			    free(tmplLine->elements[0].item);
+			    tmplLine->elements[0].item = strdup(mbm_kw->key);
+			}
+			newLine = addLineTmpl(new, tmplLine, newLine,
+					      newKernelPath + strlen(prefix));
+			needs &= ~NEED_KERNEL;
+		    }
+		    if (needs & NEED_MB) { /* !mbHyperFirst */
+			newLine = addLine(new, config->cfi, LT_HYPER, 
+					  config->secondaryIndent,
+					  newMBKernel + strlen(prefix));
+			needs &= ~NEED_MB;
+		    }
+		} else if (needs & NEED_KERNEL) {
+		    newLine = addLineTmpl(new, tmplLine, newLine, 
+					  newKernelPath + strlen(prefix));
+		    needs &= ~NEED_KERNEL;
 		}
 
-		newLine->elements[1].item = strdup(newKernelTitle);
-		newLine->elements[1].indent = strdup("");
-		newLine->numElements = 2;
+	    } else if (tmplLine->type == LT_HYPER && 
+		       tmplLine->numElements >= 2) {
+		if (needs & NEED_MB) {
+		    newLine = addLineTmpl(new, tmplLine, newLine, 
+					  newMBKernel + strlen(prefix));
+		    needs &= ~NEED_MB;
+		}
+
+	    } else if (tmplLine->type == LT_MBMODULE && 
+		       tmplLine->numElements >= 2) {
+		if (new->multiboot) {
+		    if (needs & NEED_KERNEL) {
+			newLine = addLineTmpl(new, tmplLine, newLine, 
+					      newKernelPath + 
+					      strlen(prefix));
+			needs &= ~NEED_KERNEL;
+		    } else if (config->cfi->mbInitRdIsModule &&
+			       (needs & NEED_INITRD)) {
+			newLine = addLineTmpl(new, tmplLine, newLine,
+					      newKernelInitrd + 
+					      strlen(prefix));
+			needs &= ~NEED_INITRD;
+		    }
+		} else if (needs & NEED_KERNEL) {
+		    /* template is multi but new is not, 
+		     * insert the kernel in the first module slot
+		     */
+		    tmplLine->type = LT_KERNEL;
+		    free(tmplLine->elements[0].item);
+		    tmplLine->elements[0].item = 
+			strdup(getKeywordByType(LT_KERNEL, config->cfi)->key);
+		    newLine = addLineTmpl(new, tmplLine, newLine, 
+					  newKernelPath + strlen(prefix));
+		    needs &= ~NEED_KERNEL;
+		} else if (needs & NEED_INITRD) {
+		    /* template is multi but new is not,
+		     * insert the initrd in the second module slot
+		     */
+		    tmplLine->type = LT_INITRD;
+		    free(tmplLine->elements[0].item);
+		    tmplLine->elements[0].item = 
+			strdup(getKeywordByType(LT_INITRD, config->cfi)->key);
+		    newLine = addLineTmpl(new, tmplLine, newLine, 
+					  newKernelInitrd + strlen(prefix));
+		    needs &= ~NEED_INITRD;
+		}
+
+	    } else if (tmplLine->type == LT_INITRD && 
+		       tmplLine->numElements >= 2) {
+		if (needs & NEED_INITRD &&
+		    new->multiboot && !template->multiboot &&
+		    config->cfi->mbInitRdIsModule) {
+		    /* make sure we don't insert the module initrd
+		     * before the module kernel... if we don't do it here,
+		     * it will be inserted following the template.
+		     */
+		    if (!needs & NEED_KERNEL) {
+			newLine = addLine(new, config->cfi, LT_MBMODULE,
+					  config->secondaryIndent, 
+					  newKernelInitrd + strlen(prefix));
+			needs &= ~NEED_INITRD;
+		    }
+		} else if (needs & NEED_INITRD) {
+		    newLine = addLineTmpl(new, tmplLine, newLine,
+					  newKernelInitrd + strlen(prefix));
+		    needs &= ~NEED_INITRD;
+		}
+
 	    } else if (tmplLine->type == LT_TITLE && 
-                       config->cfi->titleBracketed && 
-                       tmplLine->numElements == 1) {
-                needs &= ~KERNEL_TITLE;
-                free(newLine->elements[0].item);
-                free(newLine->elements[0].indent);
-                newLine->elements = malloc(sizeof(*newLine->elements) * 
-                                           newLine->numElements);
+		       (needs & NEED_TITLE)) {
+		if (tmplLine->numElements >= 2) {
+		    newLine = addLineTmpl(new, tmplLine, newLine, 
+					  newKernelTitle);
+		    needs &= ~NEED_TITLE;
+		} else if (tmplLine->numElements == 1 &&
+			   config->cfi->titleBracketed) {
+		    /* addLineTmpl doesn't handle titleBracketed */
+		    newLine = addLine(new, config->cfi, LT_TITLE,
+				      tmplLine->indent, newKernelTitle);
+		    needs &= ~NEED_TITLE;
+		}
 
-                newLine->elements[0].item = malloc(strlen(newKernelTitle) + 3);
-                sprintf(newLine->elements[0].item, "[%s]", newKernelTitle);
-                newLine->elements[0].indent = strdup("");
-                newLine->numElements = 1;
-            }
+	    } else {
+		/* pass through other lines from the template */
+		newLine = addLineTmpl(new, tmplLine, newLine, NULL);
+	    }
 	}
+
     } else {
-	for (i = 0; config->cfi->keywords[i].key; i++) {
-	    if ((config->cfi->keywords[i].type == config->cfi->entrySeparator) || (config->cfi->keywords[i].type == LT_OTHER)) 
+	/* don't have a template, so start the entry with the 
+	 * appropriate starting line 
+	 */
+	switch (config->cfi->entrySeparator) {
+	    case LT_KERNEL:
+		if (new->multiboot && config->cfi->mbHyperFirst) {
+		    /* fall through to LT_HYPER */
+		} else {
+		    newLine = addLine(new, config->cfi, LT_KERNEL,
+				      config->primaryIndent,
+				      newKernelPath + strlen(prefix));
+		    needs &= ~NEED_KERNEL;
+		    break;
+		}
+
+	    case LT_HYPER:
+		newLine = addLine(new, config->cfi, LT_HYPER,
+				  config->primaryIndent,
+				  newMBKernel + strlen(prefix));
+		needs &= ~NEED_MB;
 		break;
-        }
 
-	switch (config->cfi->keywords[i].type) {
-	    case LT_KERNEL:  needs &= ~KERNEL_KERNEL, 
-			     chptr = newKernelPath + strlen(prefix);
-			     type = LT_KERNEL; break;
-	    case LT_TITLE:   needs &= ~KERNEL_TITLE, chptr = newKernelTitle;
-			     type = LT_TITLE; break;
-	    default:	    
-                /* zipl strikes again */
-                if (config->cfi->titleBracketed) {
-                    needs &= ~KERNEL_TITLE;
-                    chptr = newKernelTitle;
-                    type = LT_TITLE;
-                    break;
-                } else {
-                    abort();
-                }
+	    case LT_TITLE:
+		newLine = addLine(new, config->cfi, LT_TITLE,
+				  config->primaryIndent, newKernelTitle);
+		needs &= ~NEED_TITLE;
+		break;
+
+	    default:
+		abort();
 	}
-
-	newLine = addLine(new, config->cfi, type, config->primaryIndent, chptr);
-	new->lines = newLine;
     } 
 
-    if (new->multiboot) {
-        if (needs & KERNEL_MB)
-            newLine = addLine(new, config->cfi, LT_KERNEL, 
-                              config->secondaryIndent, 
-                              newMBKernel + strlen(prefix));
-        if (needs & KERNEL_KERNEL)
-            newLine = addLine(new, config->cfi, LT_MBMODULE, 
-                              config->secondaryIndent, 
-                              newKernelPath + strlen(prefix));
-        /* don't need to check for title as it's guaranteed to have been
-         * done as we only do multiboot with grub which uses title as
-         * a separator */
-        if (needs & KERNEL_INITRD && newKernelInitrd)
-            newLine = addLine(new, config->cfi, LT_MBMODULE, 
-                              config->secondaryIndent, 
-                              newKernelInitrd + strlen(prefix));
-    } else {
-        if (needs & KERNEL_KERNEL)
-            newLine = addLine(new, config->cfi, LT_KERNEL, 
-                              config->secondaryIndent, 
-                              newKernelPath + strlen(prefix));
-        if (needs & KERNEL_TITLE)
-            newLine = addLine(new, config->cfi, LT_TITLE, 
-                              config->secondaryIndent, 
-                              newKernelTitle);
-        if (needs & KERNEL_INITRD && newKernelInitrd)
-            newLine = addLine(new, config->cfi, LT_INITRD, 
-                              config->secondaryIndent, 
-                              newKernelInitrd + strlen(prefix));
+    /* add the remainder of the lines, i.e. those that either
+     * weren't present in the template, or in the case of no template,
+     * all the lines following the entrySeparator.
+     */
+    if (needs & NEED_TITLE) {
+	newLine = addLine(new, config->cfi, LT_TITLE, 
+			  config->secondaryIndent, 
+			  newKernelTitle);
+	needs &= ~NEED_TITLE;
+    }
+    if ((needs & NEED_MB) && config->cfi->mbHyperFirst) {
+	newLine = addLine(new, config->cfi, LT_HYPER, 
+			  config->secondaryIndent, 
+			  newMBKernel + strlen(prefix));
+	needs &= ~NEED_MB;
+    }
+    if (needs & NEED_KERNEL) {
+	newLine = addLine(new, config->cfi, 
+			  (new->multiboot && getKeywordByType(LT_MBMODULE, 
+							      config->cfi)) ?
+			  LT_MBMODULE : LT_KERNEL, 
+			  config->secondaryIndent, 
+			  newKernelPath + strlen(prefix));
+	needs &= ~NEED_KERNEL;
+    }
+    if (needs & NEED_MB) {
+	newLine = addLine(new, config->cfi, LT_HYPER, 
+			  config->secondaryIndent,
+			  newMBKernel + strlen(prefix));
+	needs &= ~NEED_MB;
+    }
+    if (needs & NEED_INITRD) {
+	newLine = addLine(new, config->cfi,
+			  (new->multiboot && getKeywordByType(LT_MBMODULE,
+							      config->cfi)) ?
+			  LT_MBMODULE : LT_INITRD, 
+			  config->secondaryIndent, 
+			  newKernelInitrd + strlen(prefix));
+	needs &= ~NEED_INITRD;
+    }
+
+    if (needs) {
+	printf(_("grubby: needs=%d, aborting\n"), needs);
+	abort();
     }
 
     if (updateImage(config, "0", prefix, newKernelArgs, NULL, 
@@ -2669,7 +2726,7 @@ int main(int argc, const char ** argv) {
 	if (!entry) return 0;
 	if (!suitableImage(entry, bootPrefix, 0, flags)) return 0;
 
-	line = getLineByType(LT_KERNEL, entry->lines);
+	line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
 	if (!line) return 0;
 
         rootspec = getRootSpecifier(line->elements[1].item);
