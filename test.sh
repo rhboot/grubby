@@ -1,132 +1,150 @@
 #!/bin/bash
+# 
+# test.sh -- grubby regression tests
+# 
 
-ARCH=$(uname -m)
+#----------------------------------------------------------------------
+# Global vars
+#----------------------------------------------------------------------
 
-elilotest=""
-lilotest=""
-grubtest=""
-zipltest=""
-yaboottest=""
+read dum1 version dum2 <<<'$Revision$'
+cmd=${0##*/}
+opt_bootloader=*
+opt_verbose=false
+read -d '' usage <<EOT
+usage: test.sh [ -hv ]
 
-case "$ARCH" in
-    i?86)
-	lilotest="yes"
-	grubtest="yes"
-	;;
-    x86_64)
-	lilotest="yes"
-	grubtest="yes"
-	;;
-    ppc*)
-	yaboottest="yes"
-	;;
-    s390*)
-	zipltest="yes"
-	;;
-    *)
-	echo "Not running any tests for $ARCH"
-	exit 0
-esac
+    -b B   --bootloader=B  Test bootloader B instead of all
+    -h     --help          Show this help message
+    -v     --verbose       Verbose output
+           --version       Show version information
+EOT
+declare -i pass=0 fail=0
+testing=
 
-export MALLOC_CHECK_=2
+#----------------------------------------------------------------------
+# Functions
+#----------------------------------------------------------------------
 
-RESULT=0
+oneTest() {
+    typeset mode=$1 cfg=test/$2 correct=test/results/$3
+    shift 3
 
-oneTest () {
-    mode=$1
-    cfg=test/$2
-    correct=test/results/$3
-    shift; shift; shift
-    ./grubby $mode --bad-image-okay -c $cfg -o - "$@" | cmp $correct > /dev/null
-
-    if [ $? != 0 ]; then 
+    echo "$testing ... $mode $cfg $correct"
+    runme=( ./grubby "$mode" --bad-image-okay -c "$cfg" -o - "$@" )
+    if "${runme[@]}" | cmp "$correct" > /dev/null; then
+	(( pass++ ))
+	if $opt_verbose; then
+	    echo -------------------------------------------------------------
+	    echo -n "PASS: "
+	    printf "%q " "${runme[@]}"; echo
+	    "${runme[@]}" | diff -U30 "$cfg" -
+	    echo
+	fi
+    else
+	(( fail++ ))
 	echo -------------------------------------------------------------
-	echo FAILURE: $cfg $correct "$@"
-	echo -n ./grubby $mode --bad-image-okay -c $cfg -o - 
-	for arg in "$@"; do
-	    echo -n " \"$arg\""
-	done
-	echo ""
-	./grubby $mode --bad-image-okay -c $cfg -o - "$@" | diff -u $correct -; 
-	RESULT=1
+	echo -n "FAIL: "
+	printf "%q " "${runme[@]}"; echo
+	"${runme[@]}" | diff -U30 "$correct" -
+	echo
     fi 
 }
 
-liloTest() {
-    if [ -z "$lilotest" ]; then echo "skipping LILO test" ; return; fi
-    oneTest --lilo "$@"
-}
-
-eliloTest() {
-    if [ -z "$elilotest" ]; then echo "skipping ELILO test" ; return; fi
-    oneTest --elilo "$@"
-}
-
-grubTest() {
-    if [ -z "$grubtest" ]; then echo "skipping GRUB test" ; return; fi
-    oneTest --grub "$@"
-}
-
-yabootTest() {
-    if [ -z "$yaboottest" ]; then echo "skipping YABOOT test" ; return; fi
-    oneTest --yaboot "$@"
-}
-
-ziplTest() {
-    if [ -z "$zipltest" ]; then echo "skipping Z/IPL test" ; return; fi
-    oneTest --zipl "$@"
-}
-
-echo "Parse/write comparison..."
-for n in $(cd test; echo grub.[0-9]*); do
-    grubTest $n ../$n --remove-kernel 1234
+# generate convenience functions
+for b in $(./grubby --help | \
+	sed -n 's/^.*--\([^ ]*\) *configure \1 bootloader$/\1/p'); do
+    eval "${b}Test() { [[ \"$b\" == \$opt_bootloader ]] && oneTest --$b \"\$@\"; }"
 done
 
-for n in $(cd test; echo lilo.[0-9]*); do
-    liloTest $n ../$n --remove-kernel 1234
+#----------------------------------------------------------------------
+# Main
+#----------------------------------------------------------------------
+
+# Use /usr/bin/getopt which supports GNU-style long options
+args=$(getopt -o b:hv --long bootloader,help,verbose,version -n "$cmd" -- "$@") || exit
+eval set -- "$args"
+while true; do
+    case $1 in
+	-b|--bootloader) opt_bootloader=$2; shift 2 ;;
+	-h|--help) echo "$usage"; exit 0 ;;
+	-v|--verbose) opt_verbose=true; shift ;;
+	--version) echo "$cmd $version"; exit 0 ;;
+        --) shift; break ;;
+        *) echo "failed to process cmdline args" >&2; exit 1 ;;
+    esac
 done
 
-echo "Permission preservation..."
-cp test/grub.1 grub-test
-chmod 0614 grub-test 
-touch -t 200301010101.00 grub-test
-time=$(ls -l grub-test | awk '{ print $6 " " $7 " "$8}')
-perm=$(ls -l grub-test | awk '{print $1}')
-./grubby --grub --add-kernel bar --title title -c grub-test 
-newtime=$(ls -l grub-test | awk '{ print $6 " " $7 " "$8}')
-newperm=$(ls -l grub-test | awk '{print $1}')
-if [ "$time" == "$newtime" -o "$perm" != "$newperm" ]; then
-    echo "  failed ($perm $newperm)"; 
-fi
-rm -f grub-test
+export MALLOC_CHECK_=2
 
-cp test/lilo.1 lilo-test
-chmod 0614 lilo-test 
-touch -t 200301010101.00 lilo-test
-time=$(ls -l lilo-test | awk '{ print $6 " " $7 " "$8}')
-perm=$(ls -l lilo-test | awk '{print $1}')
-./grubby --lilo --add-kernel bar --title title -c lilo-test 
-newtime=$(ls -l lilo-test | awk '{ print $6 " " $7 " "$8}')
-newperm=$(ls -l lilo-test | awk '{print $1}')
-if [ "$time" == "$newtime" -o "$perm" != "$newperm" ]; then
-    echo "  failed ($perm $newperm)"; 
-fi
-rm -f lilo-test
+testing="Parse/write comparison"
+for n in test/*.[0-9]*; do
+    n=${n#*/}	# remove test/
+    b=${n%.*}	# remove suffix
+    [[ $b == $opt_bootloader ]] || continue
+    ${b}Test $n ../$n --remove-kernel 1234
+done
 
-echo "Following symlinks..."
-cp test/grub.1 grub-test
-ln -s grub-test mytest
-./grubby --grub --add-kernel bar --title title -c mytest
-if [ ! -L mytest ]; then
-    echo " failed (not a symlink)"
-fi
-target=$(ls -l mytest | awk '{ print $11 }')
-if [ "$target" != grub-test ]; then
-    echo "  failed (wrong target)"
-fi
-rm -f grub-test mytest
+testing="Permission preservation"
+unset b
+for n in test/*.[0-9]*; do
+    n=${n#*/}	# remove test/
+    [[ ${n%.*} == "$b" ]] && continue
+    b=${n%.*}	# remove suffix
+    [[ $b == $opt_bootloader ]] || continue
 
-echo "GRUB default directive..."
+    echo "$testing ... --$b"
+
+    cp test/$n ${b}-test
+    chmod 0614 ${b}-test 
+    touch -t 200301010101.00 ${b}-test
+    time=$(ls -l ${b}-test | awk '{ print $6 " " $7 " "$8}')
+    perm=$(ls -l ${b}-test | awk '{print $1}')
+    ./grubby --${b} --add-kernel bar --title title -c ${b}-test 
+    if [[ $? != 0 ]]; then
+	echo "  FAIL (grubby returned non-zero)"
+	(( fail++ ))
+    elif newtime=$(ls -l ${b}-test | awk '{ print $6 " " $7 " "$8}') && \
+	newperm=$(ls -l ${b}-test | awk '{print $1}') && \
+	[[ $time == "$newtime" || $perm != "$newperm" ]]
+    then
+	echo "  FAIL ($perm $newperm)"; 
+	(( fail++ ))
+    else
+	(( pass++ ))
+    fi
+    rm -f ${b}-test
+done
+
+testing="Following symlinks"
+unset b
+for n in test/*.[0-9]*; do
+    n=${n#*/}	# remove test/
+    [[ ${n%.*} == "$b" ]] && continue
+    b=${n%.*}	# remove suffix
+    [[ $b == $opt_bootloader ]] || continue
+
+    echo "$testing ... --$b"
+
+    cp test/${b}.1 ${b}-test
+    ln -s ./${b}-test mytest
+    ./grubby --${b} --add-kernel bar --title title -c mytest
+    if [[ $? != 0 ]]; then
+	echo "  failed (grubby returned non-zero)"
+	(( fail++ ))
+    elif [[ ! -L mytest ]]; then
+	echo "  failed (not a symlink)"
+	(( fail++ ))
+    elif target=$(readlink mytest) && [[ $target != "./${b}-test" ]]; then
+	echo "  failed (wrong target)"
+	(( fail++ ))
+    else
+	(( pass++ ))
+    fi
+    rm -f ${b}-test mytest
+done
+
+testing="GRUB default directive"
 grubTest grub.1 default/g1.1 --boot-filesystem=/boot --add-kernel /boot/new-kernel --title Some_Title 
 grubTest grub.1 default/g1.2 --boot-filesystem=/boot --add-kernel /boot/new-kernel --title Some_Title --make-default
 grubTest grub.3 default/g3.1 --boot-filesystem=/boot --set-default=/boot/vmlinuz-2.4.7-2
@@ -135,7 +153,7 @@ grubTest grub.4 default/g4.1 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4
 grubTest grub.4 default/g4.2 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4.7-ac3 --remove-kernel /boot/vmlinuz-2.4.7-2.5 --add-kernel=/boot/new-kernel --copy-default --title New_Title
 grubTest grub.6 default/g6.1 --remove-kernel=/boot/vmlinuz-2.4.7-2.9 --boot-filesystem=/
 
-echo "LILO default directive..."
+testing="LILO default directive"
 liloTest lilo.1 default/l1.1 --set-default=/boot/vmlinuz-2.4.18-4
 liloTest lilo.1 default/l1.2 --remove-kernel=/boot/vmlinuz-2.4.18-4smp
 liloTest lilo.1 default/l1.3 --add-kernel /boot/kernel --title label \
@@ -143,11 +161,11 @@ liloTest lilo.1 default/l1.3 --add-kernel /boot/kernel --title label \
 liloTest lilo.1 default/l1.4 --add-kernel /boot/kernel --title label \
     --copy-default --make-default
 
-echo "Z/IPL default directive..."
+testing="Z/IPL default directive"
 ziplTest zipl.1 default/z1.1 --add-kernel /boot/new-kernel --title test
 ziplTest zipl.1 default/z1.2 --add-kernel /boot/new-kernel --title test --make-default
 
-echo "GRUB fallback directive..."
+testing="GRUB fallback directive"
 grubTest grub.5 fallback/g5.1 --remove-kernel=/boot/vmlinuz-2.4.7-ac3 \
     --boot-filesystem=/
 grubTest grub.5 fallback/g5.2 --remove-kernel=/boot/vmlinuz-2.4.7-2.5 \
@@ -156,13 +174,13 @@ grubTest grub.5 fallback/g5.3 --remove-kernel=/boot/vmlinuz-2.4.7-2.5 \
     --boot-filesystem=/ --copy-default --add-kernel=/boot/new-kernel \
     --title="Some_Title"
 
-echo "GRUB new kernel argument handling..."
+testing="GRUB new kernel argument handling"
 grubTest grub.1 args/g1.1 --boot-filesystem=/boot \
     --add-kernel=/boot/foo --title=some_title --args="1234" --copy-default
 grubTest grub.1 args/g1.2 --boot-filesystem=/boot \
     --add-kernel=/boot/foo --title=some_title --args="1234" 
 
-echo "GRUB remove kernel..."
+testing="GRUB remove kernel"
 grubTest grub.7 remove/g7.1 --boot-filesystem=/ \
     --remove-kernel=/boot/vmlinuz-2.4.7-2.5
 grubTest grub.3 remove/g3.1 --boot-filesystem=/ \
@@ -170,16 +188,16 @@ grubTest grub.3 remove/g3.1 --boot-filesystem=/ \
 grubTest grub.9 remove/g9.1 --boot-filesystem=/boot \
     --remove-kernel=/boot/vmlinuz-2.4.7-2
 
-echo "YABOOT remove kernel..."
+testing="YABOOT remove kernel"
 yabootTest yaboot.1 remove/y1.1 --boot-filesystem=/ --remove-kernel=DEFAULT
 yabootTest yaboot.1 remove/y1.2 --boot-filesystem=/ --remove-kernel=/boot/vmlinuz-2.5.50-eepro
 yabootTest yaboot.2 remove/y2.1 --boot-filesystem=/ --remove-kernel=/boot/vmlinux-2.5.50
 
-echo "Z/IPL remove kernel..."
+testing="Z/IPL remove kernel"
 ziplTest zipl.1 remove/z1.1 --remove-kernel=/boot/vmlinuz-2.4.9-38
 ziplTest zipl.1 remove/z1.2 --remove-kernel=DEFAULT
 
-echo "GRUB update kernel argument handling..."
+testing="GRUB update kernel argument handling"
 grubTest grub.1 updargs/g1.1 --update-kernel=DEFAULT --args="root=/dev/hda1"
 grubTest grub.1 updargs/g1.2 --update-kernel=DEFAULT \
     --args="root=/dev/hda1 hda=ide-scsi root=/dev/hda2"
@@ -209,7 +227,7 @@ grubTest grub.11 updargs/g11.2 --boot-filesystem=/    \
     --update-kernel=/vmlinuz-2.4.7-2smp \
     --args "ro root=LABEL=/ single"
 
-echo "LILO update kernel argument handling..."
+testing="LILO update kernel argument handling"
 liloTest lilo.1 updargs/l1.1 --update-kernel=/boot/vmlinuz-2.4.18-4 \
     --args="root=/dev/md1"
 liloTest lilo.1 updargs/l1.2 --update-kernel=/boot/vmlinuz-2.4.18-4smp \
@@ -223,7 +241,7 @@ liloTest lilo.3 updargs/l3.1 --update-kernel=/boot/vmlinuz-2.4.18-4 \
 liloTest lilo.3 updargs/l3.2 --update-kernel=ALL \
     --remove-args="single" --args "root=/dev/hda2"
 
-echo "LILO add kernel..."
+testing="LILO add kernel"
 liloTest lilo.4 add/l4.1 --add-kernel=/boot/new-kernel.img --title="title" \
     --copy-default --boot-filesystem=/boot
 liloTest lilo.4 add/l4.2 --add-kernel=/boot/new-kernel.img --title="linux" \
@@ -238,7 +256,7 @@ liloTest lilo.6 add/l6.2 --add-kernel=/boot/new-kernel.img --title="linux" \
   --initrd=/boot/new-initrd --copy-default --boot-filesystem=/boot --remove-kernel "TITLE=linux"
 
 
-echo "GRUB add kernel..."
+testing="GRUB add kernel"
 grubTest grub.1 add/g1.1 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/
 grubTest grub.1 add/g1.2 --add-kernel=/boot/new-kernel.img --title='title' \
@@ -260,19 +278,19 @@ grubTest grub.11 add/g11.1 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default \
     --args='console=tty0 console=ttyS1,9600n81 single'
 
-echo "YABOOT add kernel..."
+testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
     --title=newtitle
 yabootTest yaboot.1 add/y1.2 --add-kernel=/boot/new-kernel --boot-filesystem=/ --title=newtitle
 
-echo "YABOOT empty label..."
+testing="YABOOT empty label"
 yabootTest yaboot.3 add/y3.1 --add-kernel=/boot/new-kernel --boot-filesystem=/ --title=newtitle
 
-echo "Z/IPL add kernel..."
+testing="Z/IPL add kernel"
 ziplTest zipl.1 add/z1.1 --add-kernel=/boot/new-kernel.img --title test
 ziplTest zipl.1 add/z1.2 --add-kernel=/boot/new-kernel.img --title test --copy-default
 
-echo "LILO long titles..."
+testing="LILO long titles"
 liloTest lilo.1 longtitle/l1.1 --add-kernel=/boot/new-kernel.img \
     --title="linux-longtitle" --copy-default --boot-filesystem=/boot 
 liloTest lilo.1 longtitle/l1.2 --add-kernel=/boot/new-kernel.img \
@@ -280,11 +298,11 @@ liloTest lilo.1 longtitle/l1.2 --add-kernel=/boot/new-kernel.img \
 liloTest lilo.7 longtitle/l7.1 --add-kernel=/boot/new-kernel.img \
     --title="linux-longtitle-fix" --copy-default --boot-filesystem=/boot 
 
-echo "ELILO long titles..."
+testing="ELILO long titles"
 eliloTest lilo.7 longtitle/e7.1 --add-kernel=/boot/new-kernel.img \
     --title="linux-longtitle-fix" --copy-default --boot-filesystem=/boot 
 
-echo "GRUB add multiboot..."
+testing="GRUB add multiboot"
 grubTest grub.1 multiboot/g1.1 --add-multiboot=/boot/xen.gz \
     --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 --boot-filesystem=/boot \
     --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
@@ -308,7 +326,7 @@ grubTest grub.10 multiboot/g10.4 --add-kernel=/boot/vmlinuz-2.6.10-1.1088_FC4 \
     --initrd=/boot/initrd-2.6.10-1.1088_FC4.img --title foo \
     --boot-filesystem=/boot
 
-echo "GRUB remove multiboot..."
+testing="GRUB remove multiboot"
 grubTest grub.10 multiboot/g10.5 --boot-filesystem=/boot \
     --remove-kernel=/boot/vmlinuz-2.6.10-1.1076_FC4
 grubTest grub.10 multiboot/g10.6 --boot-filesystem=/boot \
@@ -316,4 +334,8 @@ grubTest grub.10 multiboot/g10.6 --boot-filesystem=/boot \
 grubTest grub.10 multiboot/g10.7 --boot-filesystem=/boot \
     --remove-multiboot=/boot/xen.gz
 
-exit $RESULT
+printf "\n%d (%d%%) tests passed, %d (%d%%) tests failed\n" \
+    $pass $(((100*pass)/(pass+fail))) \
+    $fail $(((100*fail)/(pass+fail)))
+
+exit $(( !!fail ))
