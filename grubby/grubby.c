@@ -31,6 +31,14 @@
 
 #include "block.h"
 
+#define DEBUG 0
+
+#if DEBUG
+#define dbgPrintf(format, args...) fprintf(stderr, format , ## args)
+#else
+#define dbgPrintf(format, args...)
+#endif
+
 #define _(A) (A)
 
 #define CODE_SEG_SIZE	  128	/* code segment checked by --bootloader-probe */
@@ -41,9 +49,23 @@ struct lineElement {
     char * indent;
 };
 
-enum lineType_e { LT_WHITESPACE, LT_TITLE, LT_KERNEL, LT_INITRD, LT_DEFAULT,
-       LT_UNKNOWN, LT_ROOT, LT_FALLBACK, LT_KERNELARGS, LT_BOOT,
-       LT_BOOTROOT, LT_LBA, LT_MBMODULE, LT_OTHER, LT_GENERIC };
+enum lineType_e { 
+    LT_WHITESPACE = 1 << 0,
+    LT_TITLE      = 1 << 1,
+    LT_KERNEL     = 1 << 2,
+    LT_INITRD     = 1 << 3,
+    LT_DEFAULT    = 1 << 5,
+    LT_MBMODULE   = 1 << 6,
+    LT_ROOT       = 1 << 7,
+    LT_FALLBACK   = 1 << 8,
+    LT_KERNELARGS = 1 << 9,
+    LT_BOOT       = 1 << 10,
+    LT_BOOTROOT   = 1 << 11,
+    LT_LBA        = 1 << 12,
+    LT_OTHER      = 1 << 13,
+    LT_GENERIC    = 1 << 14,
+    LT_UNKNOWN    = 1 << 15,
+};
 
 struct singleLine {
     char * indent;
@@ -77,7 +99,7 @@ struct keywordTypes {
     char * key;
     enum lineType_e type;
     char nextChar;
-} ;
+};
 
 struct configFileInfo {
     char * defaultConfig;
@@ -258,19 +280,28 @@ struct grubConfig {
     struct configFileInfo * cfi;
 };
 
-
 struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index);
 struct singleEntry * findEntryByPath(struct grubConfig * cfg, 
 				     const char * path, const char * prefix,
 				     int * index);
 static int readFile(int fd, char ** bufPtr);
 static void lineInit(struct singleLine * line);
+struct singleLine * lineDup(struct singleLine * line);
 static void lineFree(struct singleLine * line);
 static int lineWrite(FILE * out, struct singleLine * line,
 		     struct configFileInfo * cfi);
 static int getNextLine(char ** bufPtr, struct singleLine * line,
 		       struct configFileInfo * cfi);
 static char * getRootSpecifier(char * str);
+static void insertElement(struct singleLine * line,
+			  const char * item, int insertHere);
+static void removeElement(struct singleLine * line, int removeHere);
+static struct keywordTypes * getKeywordByType(enum lineType_e type,
+					      struct configFileInfo * cfi);
+static enum lineType_e getTypeByKeyword(char * keyword, 
+					struct configFileInfo * cfi);
+static struct singleLine * getLineByType(enum lineType_e type,
+					 struct singleLine * line);
 
 static char * sdupprintf(const char *format, ...)
 #ifdef __GNUC__
@@ -305,8 +336,40 @@ static char * sdupprintf(const char *format, ...) {
     return buf;
 }
 
+static struct keywordTypes * getKeywordByType(enum lineType_e type,
+					      struct configFileInfo * cfi) {
+    struct keywordTypes * kw;
+    for (kw = cfi->keywords; kw->key; kw++) {
+	if (kw->type == type)
+	    return kw;
+    }
+    return NULL;
+}
+
+static enum lineType_e getTypeByKeyword(char * keyword, 
+					struct configFileInfo * cfi) {
+    struct keywordTypes * kw;
+    for (kw = cfi->keywords; kw->key; kw++) {
+	if (!strcmp(keyword, kw->key))
+	    return kw->type;
+    }
+    return LT_UNKNOWN;
+}
+
+static struct singleLine * getLineByType(enum lineType_e type,
+					 struct singleLine * line) {
+    dbgPrintf("getLineByType(%d): ", type);
+    for (; line; line = line->next) {
+	dbgPrintf("%d:%s ", line->type, 
+		  line->numElements ? line->elements[0].item : "(empty)");
+	if (line->type & type) break;
+    }
+    dbgPrintf(line ? "\n" : " (failed)\n");
+    return line;
+}
+
 static int isBracketedTitle(struct singleLine * line) {
-    if ((*line->elements[0].item == '[') && (line->numElements == 1)) {
+    if (line->numElements == 1 && *line->elements[0].item == '[') {
         int len = strlen(line->elements[0].item);
         if (*(line->elements[0].item + len - 1) == ']') {
             /* FIXME: this is a hack... */
@@ -318,19 +381,10 @@ static int isBracketedTitle(struct singleLine * line) {
     return 0;
 }
 
-/* figure out if this is a entry separator */
 static int isEntrySeparator(struct singleLine * line,
                             struct configFileInfo * cfi) {
-    if (line->type == LT_WHITESPACE)
-	return 0;
-    if (line->type == cfi->entrySeparator)
-        return 1;
-    if (line->type == LT_OTHER)
-        return 1;
-    if (cfi->titleBracketed && isBracketedTitle(line)) {
-        return 1;
-    }
-    return 0;
+    return line->type == cfi->entrySeparator || line->type == LT_OTHER ||
+	(cfi->titleBracketed && isBracketedTitle(line));
 }
 
 /* extract the title from within brackets (for zipl) */
@@ -381,6 +435,25 @@ static void lineInit(struct singleLine * line) {
     line->next = NULL;
 }
 
+struct singleLine * lineDup(struct singleLine * line) {
+    int i;
+    struct singleLine * newLine = malloc(sizeof(*newLine));
+
+    newLine->indent = strdup(line->indent);
+    newLine->next = NULL;
+    newLine->type = line->type;
+    newLine->numElements = line->numElements;
+    newLine->elements = malloc(sizeof(*newLine->elements) * 
+			       newLine->numElements);
+
+    for (i = 0; i < newLine->numElements; i++) {
+	newLine->elements[i].indent = strdup(line->elements[i].indent);
+	newLine->elements[i].item = strdup(line->elements[i].item);
+    }
+
+    return newLine;
+}
+
 static void lineFree(struct singleLine * line) {
     int i;
 
@@ -425,9 +498,7 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
     char * chptr;
     int elementsAlloced = 0;
     struct lineElement * element;
-    struct keywordTypes * keywords = cfi->keywords;
     int first = 1;
-    int i;
 
     lineFree(line);
 
@@ -481,14 +552,8 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
     if (!line->numElements)
 	line->type = LT_WHITESPACE;
     else {
-	for (i = 0; keywords[i].key; i++) 
-	    if (!strcmp(line->elements[0].item, keywords[i].key)) break;
-
-	if (keywords[i].key) {
-	    line->type = keywords[i].type;
-	} else {
-	    line->type = LT_UNKNOWN;
-            
+	line->type = getTypeByKeyword(line->elements[0].item, cfi);
+	if (line->type == LT_UNKNOWN) {
             /* zipl does [title] instead of something reasonable like all
              * the other boot loaders.  kind of ugly */
             if (cfi->titleBracketed && isBracketedTitle(line)) {
@@ -761,8 +826,7 @@ static void writeDefault(FILE * out, char * indent,
 
 	    if (!entry) return;
 
-	    line = entry->lines;
-	    while (line && line->type != LT_TITLE) line = line->next;
+	    line = getLineByType(LT_TITLE, entry->lines);
 
 	    if (line && line->numElements >= 2)
 		fprintf(out, "%sdefault%s%s\n", indent, separator, 
@@ -913,12 +977,10 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     char * dev;
     char * rootspec;
 
-    line = entry->lines;
-    while (line && line->type != LT_KERNEL) line = line->next;
-    
-    if (!line) return 0;
     if (skipRemoved && entry->skip) return 0;
-    if (line->numElements < 2) return 0;
+
+    line = getLineByType(LT_KERNEL, entry->lines);
+    if (!line || line->numElements < 2) return 0;
 
     if (flags & GRUBBY_BADIMAGE_OKAY) return 1;
 
@@ -926,8 +988,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 		      strlen(line->elements[1].item) + 1);
     rootspec = getRootSpecifier(line->elements[1].item);
     sprintf(fullName, "%s%s", bootPrefix, 
-            line->elements[1].item + ((rootspec != NULL) ? 
-                                      strlen(rootspec) : 0));
+            line->elements[1].item + (rootspec ? strlen(rootspec) : 0));
     if (access(fullName, R_OK)) return 0;
 
     for (i = 2; i < line->numElements; i++) 
@@ -936,19 +997,15 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	dev = line->elements[i].item + 5;
     } else {
 	/* look for a lilo style LT_ROOT line */
-	line = entry->lines;
-	while (line && line->type != LT_ROOT) line = line->next;
+	line = getLineByType(LT_ROOT, entry->lines);
 
 	if (line && line->numElements >= 2) {
 	    dev = line->elements[1].item;
 	} else {
-            int type;
-	    /* didn't succeed in finding a LT_ROOT, let's try LT_KERNELARGS */
-	    line = entry->lines;
-
-            type = ((entry->multiboot) ? LT_MBMODULE : LT_KERNELARGS);
-
-	    while (line && line->type != type) line = line->next;
+	    /* didn't succeed in finding a LT_ROOT, let's try LT_KERNELARGS.
+	     * grub+multiboot uses LT_MBMODULE for the args, so check that too.
+	     */
+	    line = getLineByType(LT_KERNELARGS|LT_MBMODULE, entry->lines);
 
             /* failed to find one */
             if (!line) return 0;
@@ -1019,10 +1076,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	entry = findEntryByIndex(config, indexVars[i]);
 	if (!entry) return NULL;
 
-	line = entry->lines;
-	while (line && line->type != LT_KERNEL)
-	    line = line->next;
-
+	line = getLineByType(LT_KERNEL, entry->lines);
 	if (!line) return NULL;
 
 	if (index) *index = indexVars[i];
@@ -1064,47 +1118,35 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	    kernel += 6;
 	}
 
-	while ((entry = findEntryByIndex(config, i))) {
-	    line = entry->lines;
-	    while (line && line->type != checkType) line=line->next;
+	for (entry = findEntryByIndex(config, i); entry; entry = entry->next, i++) {
+	    if (entry->skip) continue;
 
+	    dbgPrintf("findEntryByPath looking for %d %s in %p\n", checkType, kernel, entry);
 
-	    if (line && line->numElements >= 2 && !entry->skip) {
-                rootspec = getRootSpecifier(line->elements[1].item);
-	        if (!strcmp(line->elements[1].item  + 
-                            ((rootspec != NULL) ? strlen(rootspec) : 0),
-                            kernel + strlen(prefix)))
-                    break;
-            }
-            
-            /* have to check multiboot lines too */
-            if (entry->multiboot) {
-                while (line && line->type != LT_MBMODULE) line = line->next;
-                if (line && line->numElements >= 2 && !entry->skip) {
-                    rootspec = getRootSpecifier(line->elements[1].item);
-                    if (!strcmp(line->elements[1].item  + 
-                                ((rootspec != NULL) ? strlen(rootspec) : 0),
-                                kernel + strlen(prefix)))
-                        break;
-                }
-            }
+	    /* check all the lines matching checkType */
+	    for (line = entry->lines; line; line = line->next) {
+		line = getLineByType(entry->multiboot && checkType == LT_KERNEL ? 
+				     LT_KERNEL|LT_MBMODULE : checkType, line);
+		if (!line) break;  /* not found in this entry */
 
-	    i++;
+		if (line && line->numElements >= 2) {
+		    rootspec = getRootSpecifier(line->elements[1].item);
+		    if (!strcmp(line->elements[1].item + 
+				((rootspec != NULL) ? strlen(rootspec) : 0),
+				kernel + strlen(prefix)))
+			break;
+		}
+	    }
+
+	    /* make sure this entry has a kernel identifier; this skips
+	     * non-Linux boot entries (could find netbsd etc, though, which is
+	     * unfortunate)
+	     */
+	    if (line && getLineByType(LT_KERNEL, entry->lines))
+		break; /* found 'im! */
 	}
 
 	if (index) *index = i;
-    }
-
-    if (!entry) return NULL;
-
-    /* make sure this entry has a kernel identifier; this skips non-Linux
-       boot entries (could find netbsd etc, though, which is unfortunate) */
-    line = entry->lines;
-    while (line && line->type != LT_KERNEL) line = line->next;
-    if (!line) {
-	if (!index) index = &i;
-	(*index)++;
-	return findEntryByPath(config, kernel, prefix, index);
     }
 
     return entry;
@@ -1271,11 +1313,9 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     char * root = NULL;
     int i;
 
-    line = entry->lines;
-    while (line && line->type != LT_KERNEL) line = line->next;
-
     printf("index=%d\n", index);
 
+    line = getLineByType(LT_KERNEL, entry->lines);
     printf("kernel=%s\n", line->elements[1].item);
 
     if (line->numElements >= 3) {
@@ -1293,9 +1333,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 	}
 	printf("\"\n");
     } else {
-	line = entry->lines;
-	while (line && line->type != LT_KERNELARGS) line=line->next;
-	
+	line = getLineByType(LT_KERNELARGS, entry->lines);
 	if (line) {
 	    char * s;
 
@@ -1319,9 +1357,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     }
 
     if (!root) {
-	line = entry->lines;
-	while (line && line->type != LT_ROOT) line = line->next;
-
+	line = getLineByType(LT_ROOT, entry->lines);
 	if (line && line->numElements >= 2)
 	    root=line->elements[1].item;
     }
@@ -1336,8 +1372,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 	printf("root=%s\n", s);
     }
 
-    line = entry->lines;
-    while (line && line->type != LT_INITRD) line = line->next;
+    line = getLineByType(LT_INITRD, entry->lines);
 
     if (line && line->numElements >= 2) {
 	printf("initrd=%s", prefix);
@@ -1421,14 +1456,12 @@ int displayInfo(struct grubConfig * config, char * kernel,
     if (config->cfi == &grubConfigType) {
 	dumpSysconfigGrub();
     } else {
-	line = config->theLines;
-	while (line && line->type != LT_BOOT) line = line->next;
+	line = getLineByType(LT_BOOT, config->theLines);
 	if (line && line->numElements >= 1) {
 	    printf("boot=%s\n", line->elements[1].item);
 	}
 
-	line = config->theLines;
-	while (line && line->type != LT_LBA) line = line->next;
+	line = getLineByType(LT_LBA, config->theLines);
 	if (line) printf("lba\n");
     }
 
@@ -1443,77 +1476,100 @@ int displayInfo(struct grubConfig * config, char * kernel,
     return 0;
 }
 
+struct singleLine * addLineTmpl(struct singleEntry * entry,
+				struct singleLine * tmplLine,
+				struct singleLine * prevLine,
+				const char * val) {
+    struct singleLine * newLine = lineDup(tmplLine);
+
+    if (val) {
+	/* override the inherited value with our own.
+	 * This is a little weak because it only applies to elements[1]
+	 */
+	if (newLine->numElements > 1)
+	    removeElement(newLine, 1);
+	insertElement(newLine, val, 1);
+
+	/* but try to keep the rootspec from the template... sigh */
+	if (tmplLine->type & (LT_KERNEL|LT_MBMODULE|LT_INITRD)) {
+	    char * rootspec = getRootSpecifier(tmplLine->elements[1].item);
+	    if (rootspec != NULL) {
+		free(newLine->elements[1].item);
+		newLine->elements[1].item = 
+		    sdupprintf("%s%s", rootspec, val);
+	    }
+	}
+    }
+
+    dbgPrintf("addLineTmpl(%s)\n", newLine->numElements ? 
+	      newLine->elements[0].item : "");
+
+    if (!entry->lines) {
+	/* first one on the list */
+	entry->lines = newLine;
+    } else if (prevLine) {
+	/* add after prevLine */
+	newLine->next = prevLine->next;
+	prevLine->next = newLine;
+    }
+
+    return newLine;
+}
+
 /* val may be NULL */
 struct singleLine *  addLine(struct singleEntry * entry, 
 			     struct configFileInfo * cfi, 
-			     enum lineType_e type, const char * defaultIndent,
-			     char * val) {
+			     enum lineType_e type, char * defaultIndent,
+			     const char * val) {
     struct singleLine * line, * prev;
-    int i;
+    struct keywordTypes * kw;
+    struct singleLine tmpl;
 
-    for (i = 0; cfi->keywords[i].key; i++)
-	if (cfi->keywords[i].type == type) break;
-    if (type != LT_TITLE || !cfi->titleBracketed) 
-        if (!cfi->keywords[i].key) abort();
+    /* NB: This function shouldn't allocate items on the heap, rather on the
+     * stack since it calls addLineTmpl which will make copies.
+     */
+
+    if (type == LT_TITLE && cfi->titleBracketed) {
+	/* we're doing a bracketed title (zipl) */
+	tmpl.type = type;
+	tmpl.numElements = 1;
+	tmpl.elements = alloca(sizeof(*tmpl.elements));
+	tmpl.elements[0].item = alloca(strlen(val)+3);
+	sprintf(tmpl.elements[0].item, "[%s]", val);
+	tmpl.elements[0].indent = "";
+	val = NULL;
+    } else {
+	kw = getKeywordByType(type, cfi);
+	if (!kw) abort();
+	tmpl.type = type;
+	tmpl.numElements = val ? 2 : 1;
+	tmpl.elements = alloca(sizeof(*tmpl.elements) * tmpl.numElements);
+	tmpl.elements[0].item = kw->key;
+	tmpl.elements[0].indent = alloca(2);
+	sprintf(tmpl.elements[0].indent, "%c", kw->nextChar);
+	if (val) {
+	    tmpl.elements[1].item = (char *)val;
+	    tmpl.elements[1].indent = "";
+	}
+    }
 
     /* The last non-empty line gives us the indention to us and the line
        to insert after. Note that comments are considered empty lines, which
        may not be ideal? If there are no lines or we are looking at the
        first line, we use defaultIndent (the first line is normally indented
        differently from the rest) */ 
-    if (entry->lines) {
-	line = entry->lines;
-	prev = NULL;
-	while (line) {
-	    if (line->numElements) prev = line;
-	    line = line->next;
-	}
-	if (!prev) {
-	    /* just use the last line */
-	    prev = entry->lines;
-	    while (prev->next) prev = prev->next;
-	}
-
-	line = prev->next;
-	prev->next = malloc(sizeof(*line));
-	prev->next->next = line;
-	line = prev->next;
-
-	if (prev == entry->lines)
-	    line->indent = strdup(defaultIndent);
-	else
-	    line->indent = strdup(prev->indent);
-    } else {
-	line = malloc(sizeof(*line));
-	line->indent = strdup(defaultIndent);
-	line->next = NULL;
+    for (line = entry->lines, prev = NULL; line; line = line->next) {
+	if (line->numElements) prev = line;
+	/* fall back on the last line if prev isn't otherwise set */
+	if (!line->next && !prev) prev = line;
     }
 
-    if (type != LT_TITLE || !cfi->titleBracketed) {
-        line->type = type;
-        line->numElements = val ? 2 : 1;
-        line->elements = malloc(sizeof(*line->elements) * line->numElements);
-        line->elements[0].item = strdup(cfi->keywords[i].key);
-        line->elements[0].indent = malloc(2);
-        line->elements[0].indent[0] = cfi->keywords[i].nextChar;
-        line->elements[0].indent[1] = '\0';
-        
-        if (val) {
-            line->elements[1].item = val;
-            line->elements[1].indent = strdup("");
-        }
-    } else {
-        /* we're doing the title of a bracketed title (zipl) */
-        line->type = type;
-        line->numElements = 1;
-        line->elements = malloc(sizeof(*line->elements) * line->numElements);
+    if (prev == entry->lines)
+	tmpl.indent = defaultIndent ?: "";
+    else
+	tmpl.indent = prev->indent;
 
-        line->elements[0].item = malloc(strlen(val) + 3);
-        sprintf(line->elements[0].item, "[%s]", val);
-        line->elements[0].indent = strdup("");
-    }
-
-    return line;
+    return addLineTmpl(entry, &tmpl, prev, val);
 }
 
 void removeLine(struct singleEntry * entry, struct singleLine * line) {
@@ -1536,6 +1592,73 @@ void removeLine(struct singleEntry * entry, struct singleLine * line) {
     }
 
     free(line);
+}
+
+static void insertElement(struct singleLine * line,
+			  const char * item, int insertHere) {
+
+    /* sanity check */
+    if (insertHere > line->numElements) {
+	dbgPrintf("insertElement() adjusting insertHere from %d to %d\n",
+		  insertHere, line->numElements);
+	insertHere = line->numElements;
+    }
+
+    line->elements = realloc(line->elements, (line->numElements + 1) * 
+			     sizeof(*line->elements));
+    memmove(&line->elements[insertHere+1], 
+	    &line->elements[insertHere], 
+	    (line->numElements - insertHere) * 
+	    sizeof(*line->elements));
+    line->elements[insertHere].item = strdup(item);
+
+    if (insertHere > 0 && line->elements[insertHere-1].indent[0] == '\0') {
+	/* move the end-of-line forward */
+	line->elements[insertHere].indent = 
+	    line->elements[insertHere-1].indent;
+	line->elements[insertHere-1].indent = strdup(" ");
+    } else {
+	/* technically this should honor nextChar from keywordTypes 
+	 * when insertHere == 0, but oh well
+	 */
+	line->elements[insertHere].indent = 
+	    strdup(insertHere == line->numElements ? "" : " ");
+    }
+
+    line->numElements++;
+
+    dbgPrintf("insertElement(%s, '%s%s', %d)\n",
+	      line->elements[0].item,
+	      line->elements[insertHere].item,
+	      line->elements[insertHere].indent,
+	      insertHere);
+}
+
+static void removeElement(struct singleLine * line, int removeHere) {
+    int i;
+
+    /* sanity check */
+    if (removeHere >= line->numElements) return;
+
+    dbgPrintf("removeElement(%s, %d:%s)\n", line->elements[0].item, 
+	      removeHere, line->elements[removeHere].item);
+
+    free(line->elements[removeHere].item);
+
+    if (removeHere > 1) {
+	/* previous argument gets this argument's post-indentation */
+	free(line->elements[removeHere-1].indent);
+	line->elements[removeHere-1].indent =
+	    line->elements[removeHere].indent;
+    } else {
+	free(line->elements[removeHere].indent);
+    }
+
+    /* now collapse the array, but don't bother to realloc smaller */
+    for (i = removeHere; i < line->numElements - 1; i++)
+	line->elements[i] = line->elements[i + 1];
+
+    line->numElements--;
 }
 
 int argMatch(const char * one, const char * two) {
@@ -2546,8 +2669,7 @@ int main(int argc, const char ** argv) {
 	if (!entry) return 0;
 	if (!suitableImage(entry, bootPrefix, 0, flags)) return 0;
 
-	line = entry->lines;
-	while (line && line->type != LT_KERNEL) line = line->next;
+	line = getLineByType(LT_KERNEL, entry->lines);
 	if (!line) return 0;
 
         rootspec = getRootSpecifier(line->elements[1].item);
