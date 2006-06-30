@@ -63,6 +63,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Jun 30 2006 Jeremy Katz <katzj@redhat.com> - 5.0.46-1
+- if we don't get a modalias for a net driver, try via 
+  ethtool (notting, #196104)
+- add patches from Aron Griffis (aron AT hp DOT com) for multiboot 
+  support on ia64
+
 * Thu Jun 22 2006 Jeremy Katz <katzj@redhat.com> - 5.0.45-1
 - don't emit <empty> for iscsi username/password stuff
 - handle _netdev option for filesystems
