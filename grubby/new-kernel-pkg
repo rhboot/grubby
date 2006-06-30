@@ -125,7 +125,7 @@ install() {
 	fi
     fi
 
-    if [ -n "$mbkernel" ]; then
+    if [ -n "$mbkernel" -a -n "$cfgLilo" -a "$liloFlag" != "elilo" ]; then
 	[ -n "$verbose" ] && echo "multiboot specified, not updating lilo.conf"
 	cfgLilo=""
     fi
@@ -140,7 +140,7 @@ install() {
 	else
 	    title="Red Hat Linux ($version)"
 	fi
-	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version \
+	$grubby --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
 	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
@@ -151,11 +151,11 @@ install() {
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $liloConfig"
 
-	/sbin/grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD    \
-		     --copy-default $makedefault --title $version	    \
-		     --args="root=$rootdevice $kernargs"			    \
-		     --remove-kernel="TITLE=$version"		    \
-		     --$liloFlag
+	$grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD \
+		--copy-default $makedefault --title $version \
+		${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
+		--args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$version" \
+		--$liloFlag
 
 	if [ -n "$runLilo" ]; then 
 	    [ -n "$verbose" ] && echo "running $lilo"
@@ -181,14 +181,14 @@ remove() {
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
-	/sbin/grubby --remove-kernel=$bootPrefix/$kernelName-$version
+	$grubby --remove-kernel=$bootPrefix/$kernelName-$version
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
 
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $liloConfig"
-	/sbin/grubby --remove-kernel=$bootPrefix/$kernelName-$version	    \
+	$grubby --remove-kernel=$bootPrefix/$kernelName-$version	    \
 		     --$liloFlag
 
 	if [ -n "$runLilo" ]; then 
@@ -207,7 +207,7 @@ remove() {
 update() {
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
-	/sbin/grubby --update-kernel=$bootPrefix/$kernelName-$version \
+	$grubby --update-kernel=$bootPrefix/$kernelName-$version \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}	
     else
@@ -216,7 +216,7 @@ update() {
 
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $liloConfig"
-	/sbin/grubby --update-kernel=$bootPrefix/$kernelName-$version \
+	$grubby --update-kernel=$bootPrefix/$kernelName-$version \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}	\
 		     --$liloFlag
