@@ -115,6 +115,7 @@ struct configFileInfo {
     int titleBracketed;
     int mbHyperFirst;
     int mbInitRdIsModule;
+    int mbConcatArgs;
 };
 
 struct keywordTypes grubKeywords[] = {
@@ -141,6 +142,7 @@ struct configFileInfo grubConfigType = {
     0,                                      /* titleBracketed */
     1,                                      /* mbHyperFirst */
     1,                                      /* mbInitRdIsModule */
+    0,                                      /* mbConcatArgs */
 };
 
 struct keywordTypes yabootKeywords[] = {
@@ -238,6 +240,7 @@ struct configFileInfo eliloConfigType = {
     0,                                      /* titleBracketed */
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
+    1,                                      /* mbConcatArgs */
 };
 
 struct configFileInfo liloConfigType = {
@@ -252,6 +255,7 @@ struct configFileInfo liloConfigType = {
     0,                                      /* titleBracketed */
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
+    0,                                      /* mbConcatArgs */
 };
 
 struct configFileInfo yabootConfigType = {
@@ -266,6 +270,7 @@ struct configFileInfo yabootConfigType = {
     0,                                      /* titleBracketed */
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
+    0,                                      /* mbConcatArgs */
 };
 
 struct configFileInfo siloConfigType = {
@@ -280,6 +285,7 @@ struct configFileInfo siloConfigType = {
     0,                                      /* titleBracketed */
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
+    0,                                      /* mbConcatArgs */
 };
 
 struct configFileInfo ziplConfigType = {
@@ -294,6 +300,7 @@ struct configFileInfo ziplConfigType = {
     1,                                      /* titleBracketed */
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
+    0,                                      /* mbConcatArgs */
 };
 
 struct grubConfig {
@@ -1742,14 +1749,13 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
     struct singleEntry * entry;
     struct singleLine * line, * rootLine;
     int index = 0;
-    int i, j, k;
+    int i, k;
     const char ** newArgs, ** oldArgs;
     const char ** arg;
-    const char * chptr;
-    int useKernelArgs = 0;
-    int useRoot = 0;
+    int useKernelArgs, useRoot;
     int firstElement;
     int *usedElements, *usedArgs;
+    int doreplace;
 
     if (!image) return 0;
 
@@ -1776,53 +1782,102 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 	}
     }
 
-    for (i = 0; cfg->cfi->keywords[i].key; i++)
-	if (cfg->cfi->keywords[i].type == LT_KERNELARGS) break;
 
-    if (cfg->cfi->keywords[i].key)
-	useKernelArgs = 1;
+    useKernelArgs = (getKeywordByType(LT_KERNELARGS, cfg->cfi)
+		     && (!multibootArgs || cfg->cfi->mbConcatArgs));
 
-    for (i = 0; cfg->cfi->keywords[i].key; i++)
-	if (cfg->cfi->keywords[i].type == LT_ROOT) break;
+    useRoot = (getKeywordByType(LT_ROOT, cfg->cfi)
+	       && !multibootArgs);
 
-    if (cfg->cfi->keywords[i].key)
-	useRoot = 1;
+    for (k = 0, arg = newArgs; *arg; arg++, k++) ;
+    usedArgs = calloc(k, sizeof(*usedArgs));
 
-    k = 0;
-    for (arg = newArgs; *arg; arg++)
-        k++;
-    usedArgs = calloc(k, sizeof(int));
+    for (; (entry = findEntryByPath(cfg, image, prefix, &index)); index++) {
 
-    while ((entry = findEntryByPath(cfg, image, prefix, &index))) {
-	index++;
+	if (multibootArgs && !entry->multiboot)
+	    continue;
 
-	line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
-	if (!line) continue;
-	firstElement = 2;
-
-        if (entry->multiboot && !multibootArgs) {
-            /* first mb module line is the real kernel */
-            while (line && line->type != LT_MBMODULE) line = line->next;
-            firstElement = 2;
-        } else if (useKernelArgs) {
-	    while (line && line->type != LT_KERNELARGS) line = line->next;
+	/* Determine where to put the args.  If this config supports
+	 * LT_KERNELARGS, use that.  Otherwise use
+	 * LT_HYPER/LT_KERNEL/LT_MBMODULE lines.
+	 */
+	if (useKernelArgs) {
+	    line = getLineByType(LT_KERNELARGS, entry->lines);
+	    if (!line) {
+		/* no LT_KERNELARGS, need to add it */
+		line = addLine(entry, cfg->cfi, LT_KERNELARGS, 
+			       cfg->secondaryIndent, NULL);
+	    }
 	    firstElement = 1;
+
+	} else if (multibootArgs) {
+	    line = getLineByType(LT_HYPER, entry->lines);
+	    if (!line) {
+		/* a multiboot entry without LT_HYPER? */
+		continue;
+	    }
+	    firstElement = 2;
+
+	} else {
+	    line = getLineByType(LT_KERNEL|LT_MBMODULE, entry->lines);
+	    if (!line) {
+		/* no LT_KERNEL or LT_MBMODULE in this entry? */
+		continue;
+	    }
+	    firstElement = 2;
 	}
 
-	if (!line && useKernelArgs) {
-	    /* no append in there, need to add it */
-	    line = addLine(entry, cfg->cfi, LT_KERNELARGS, NULL, NULL);
-	}
-
-        usedElements = calloc(line->numElements, sizeof(int));
-
-        k = 0;
-	for (arg = newArgs; *arg; arg++) {
-            if (usedArgs[k]) {
-                k++;
-                continue;
-            }
+	/* handle the elilo case which does:
+	 *   append="hypervisor args -- kernel args"
+	 */
+	if (entry->multiboot && cfg->cfi->mbConcatArgs) {
+	    /* this is a multiboot entry, make sure there's
+	     * -- on the args line
+	     */
 	    for (i = firstElement; i < line->numElements; i++) {
+		if (!strcmp(line->elements[i].item, "--"))
+		    break;
+	    }
+	    if (i == line->numElements) {
+		/* assume all existing args are kernel args,
+		 * prepend -- to make it official
+		 */
+		insertElement(line, "--", firstElement);
+		i = firstElement;
+	    }
+	    if (!multibootArgs) {
+		/* kernel args start after the -- */
+		firstElement = i + 1;
+	    }
+	} else if (cfg->cfi->mbConcatArgs) {
+	    /* this is a non-multiboot entry, remove hyper args */
+	    for (i = firstElement; i < line->numElements; i++) {
+		if (!strcmp(line->elements[i].item, "--"))
+		    break;
+	    }
+	    if (i < line->numElements) {
+		/* remove args up to -- */
+		while (strcmp(line->elements[firstElement].item, "--"))
+		    removeElement(line, firstElement);
+		/* remove -- */
+		removeElement(line, firstElement);
+	    }
+	}
+
+        usedElements = calloc(line->numElements, sizeof(*usedElements));
+
+	for (k = 0, arg = newArgs; *arg; arg++, k++) {
+            if (usedArgs[k]) continue;
+
+	    doreplace = 1;
+	    for (i = firstElement; i < line->numElements; i++) {
+		if (multibootArgs && cfg->cfi->mbConcatArgs && 
+		    !strcmp(line->elements[i].item, "--")) 
+		{
+		    /* reached the end of hyper args, insert here */
+		    doreplace = 0;
+		    break;  
+		}
                 if (usedElements[i])
                     continue;
 		if (!argMatch(line->elements[i].item, *arg)) {
@@ -1831,91 +1886,62 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 		    break;
                 }
             }
-	    chptr = strchr(*arg, '=');
 
-	    if (i < line->numElements) {
-		/* replace */
+	    if (i < line->numElements && doreplace) {
+		/* direct replacement */
 		free(line->elements[i].item);
 		line->elements[i].item = strdup(*arg);
-	    } else if (useRoot && !strncmp(*arg, "root=/dev/", 10) && *chptr) {
-		rootLine = entry->lines;
-		while (rootLine && rootLine->type != LT_ROOT) 
-		    rootLine = rootLine->next;
-		if (!rootLine) {
-		    rootLine = addLine(entry, cfg->cfi, LT_ROOT, NULL, NULL);
-		    rootLine->elements = realloc(rootLine->elements,
-			    2 * sizeof(*rootLine->elements));
-		    rootLine->numElements++;
-		    rootLine->elements[1].indent = strdup("");
-		    rootLine->elements[1].item = strdup("");
-		}
 
-		free(rootLine->elements[1].item);
-		rootLine->elements[1].item = strdup(chptr + 1);
-	    } else {
-		/* append */
-		line->elements = realloc(line->elements,
-			(line->numElements + 1) * sizeof(*line->elements));
-		line->elements[line->numElements].item = strdup(*arg);
-		usedElements = realloc(usedElements,
-			(line->numElements + 1) * sizeof(int));
-		usedElements[line->numElements] = 1;
-
-		if (line->numElements > 1) {
-		    /* add to existing list of arguments */
-		    line->elements[line->numElements].indent = 
-			line->elements[line->numElements - 1].indent;
-		    line->elements[line->numElements - 1].indent = strdup(" ");
+	    } else if (useRoot && !strncmp(*arg, "root=/dev/", 10)) {
+		/* root= replacement */
+		rootLine = getLineByType(LT_ROOT, entry->lines);
+		if (rootLine) {
+		    free(rootLine->elements[1].item);
+		    rootLine->elements[1].item = strdup(*arg + 5);
 		} else {
-		    /* First thing on this line; treat a bit differently. Note
-		       this is only possible if we've added a LT_KERNELARGS
-		       entry */
-		    line->elements[line->numElements].indent = strdup("");
+		    rootLine = addLine(entry, cfg->cfi, LT_ROOT, 
+				       cfg->secondaryIndent, *arg + 5);
 		}
+	    }
 
-		line->numElements++;
+	    else {
+		/* insert/append */
+		insertElement(line, *arg, i);
+		usedElements = realloc(usedElements, line->numElements *
+				       sizeof(*usedElements));
+		memmove(&usedElements[i + 1], &usedElements[i],
+			line->numElements - i - 1);
+		usedElements[i] = 1;
 
 		/* if we updated a root= here even though there is a
 		   LT_ROOT available we need to remove the LT_ROOT entry
 		   (this will happen if we switch from a device to a label) */
 		if (useRoot && !strncmp(*arg, "root=", 5)) {
-		    rootLine = entry->lines;
-		    while (rootLine && rootLine->type != LT_ROOT)
-			rootLine = rootLine->next;
-		    if (rootLine) {
+		    rootLine = getLineByType(LT_ROOT, entry->lines);
+		    if (rootLine)
 			removeLine(entry, rootLine);
-		    }
 		}
 	    }
-            k++;
 	}
 
         free(usedElements);
 
-	/* no arguments to remove (i.e. no append line) */
-	if (!line) continue;
-
-	/* this won't remove an LT_ROOT item properly (but then again,
-	   who cares? */
 	for (arg = oldArgs; *arg; arg++) {
-	    for (i = firstElement; i < line->numElements; i++)
-		if (!argMatch(line->elements[i].item, *arg))
+	    for (i = firstElement; i < line->numElements; i++) {
+		if (multibootArgs && cfg->cfi->mbConcatArgs && 
+		    !strcmp(line->elements[i].item, "--")) 
+		    /* reached the end of hyper args, stop here */
 		    break;
-
-	    if (i < line->numElements) {
-		/* if this isn't the first argument the previous argument
-		   gets this arguments post-indention */
-		if (i > firstElement) {
-		    free(line->elements[i - 1].indent);
-		    line->elements[i - 1].indent = line->elements[i].indent;
+		if (!argMatch(line->elements[i].item, *arg)) {
+		    removeElement(line, i);
+		    break;
 		}
-		
-		free(line->elements[i].item);
-
-		for (j = i + 1; j < line->numElements; j++)
-		    line->elements[j - 1] = line->elements[j];
-
-		line->numElements--;
+	    }
+	    /* handle removing LT_ROOT line too */
+	    if (useRoot && !strncmp(*arg, "root=", 5)) {
+		rootLine = getLineByType(LT_ROOT, entry->lines);
+		if (rootLine)
+		    removeLine(entry, rootLine);
 	    }
 	}
 
