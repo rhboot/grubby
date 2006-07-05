@@ -461,7 +461,7 @@ nashHotplugNotifyExit(struct nash_context *nc)
 struct nash_context *_hotplug_nash_context = NULL;
 
 static void
-nashHotplugKill_signal(int signal)
+kill_hotplug_signal(int signal)
 {
     nashHotplugKill(_hotplug_nash_context);
 }
@@ -499,7 +499,7 @@ daemonize(struct nash_context *nc)
         close(netlink);
 
 #ifdef FWDEBUG
-        signal(SIGINT, nashHotplugKill_signal);
+        signal(SIGINT, kill_hotplug_signal);
 #endif
         usleep(250000);
         return 0;
