@@ -1,5 +1,5 @@
-#ifndef NASHNET_H
-#define NASHNET_H
+#ifndef NASH_PRIV_NET_H
+#define NASH_PRIV_NET_H
 
 /* type definitions so that the kernel-ish includes can be shared */
 #ifndef uint8_t
