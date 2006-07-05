@@ -15,8 +15,8 @@
  * vim:ts=8:sw=4:sts=4:et
  */
 
-#ifndef NASH_BLOCK_H
-#define NASH_BLOCK_H 1
+#ifndef NASH_PRIV_BLOCK_H
+#define NASH_PRIV_BLOCK_H 1
 
 extern void block_init(void);
 extern void block_finish(void);
@@ -44,4 +44,4 @@ extern int mkpathbyspec(const char *spec, const char *path);
 
 extern int block_disable_partitions(const char *devname);
 
-#endif /* NASH_BLOCK_H */
+#endif /* NASH_PRIV_BLOCK_H */
