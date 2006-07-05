@@ -700,6 +700,25 @@ execCommand(char *cmd, char *end)
 }
 
 static int
+exitCommand(char *cmd, char *end) {
+    char *arg;
+    int killHp = 1;
+    int status = 0;
+
+    while ((cmd = getArg(cmd, end, &arg)) && arg) {
+        if (!strcmp(arg, "--nokill")) {
+            killHp = 0;
+        } else {
+            status = strtol(arg, NULL, 10);
+        }
+    }
+    if (killHp)
+        kill_hotplug();
+
+    exit(status);
+}
+
+static int
 losetupCommand(char * cmd, char * end)
 {
     char * device;
@@ -2146,6 +2165,7 @@ static const struct commandHandler handlers[] = {
     { "dm", dmCommand },
     { "echo", echoCommand },
     { "exec", execCommand },
+    { "exit", exitCommand },
     { "find", findCommand },
     { "mkblkdevs", mkblkdevsCommand },
     { "mkdir", mkdirCommand },
