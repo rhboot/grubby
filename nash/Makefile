@@ -42,6 +42,6 @@ install:
 	install -m 755 nash $(BUILDROOT)/sbin
 	install -m 644 nash.8 $(BUILDROOT)/$(mandir)/man8
 	install -m 644 libnash.a $(BUILDROOT)/usr/lib
-	install -m 644 nash.h $(BUILDROOT)/usr/include
-	install -m 644 include/nash/$(LIBNASH_HEADERS) \
+	install -m 644 include/nash.h $(BUILDROOT)/usr/include
+	install -m 644 include/nash/$(libnash_HEADERS) \
 		$(BUILDROOT)/usr/include/nash
