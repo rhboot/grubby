@@ -73,7 +73,9 @@ rm -rf $RPM_BUILD_ROOT
 %files devel
 %defattr(-,root,root)
 %{_libdir}/libnash.a
+%{_includedir}/nash.h
 %{_includedir}/nash
+%{_includedir}/nash/*.h
 
 %changelog
 * Wed Jul  5 2006 Peter Jones <pjones@redhat.com> - 5.0.47-1
