@@ -29,7 +29,7 @@
 #include <time.h>
 #include <errno.h>
 
-static int
+static int __attribute__((used))
 setFdCoe(int fd, int enable)
 {
     int rc;
@@ -56,7 +56,8 @@ extern int getDevNumFromProc(char * file, char * device);
 
 extern int stringsort(const void *v0, const void *v1);
 
-static void udelay(long long usecs)
+static void __attribute__((used))
+udelay(long long usecs)
 {
     struct timespec req = {
         .tv_sec = 0,
