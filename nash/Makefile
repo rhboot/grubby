@@ -36,13 +36,11 @@ clean::
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
+	mkdir -p $(BUILDROOT)/usr/lib
+	mkdir -p $(BUILDROOT)/usr/include/nash
 	mkdir -p $(BUILDROOT)/$(mandir)/man8
 	install -m 755 nash $(BUILDROOT)/sbin
 	install -m 644 nash.8 $(BUILDROOT)/$(mandir)/man8
-
-install_devel:
-	mkdir -p $(BUILDROOT)/usr/lib
-	mkdir -p $(BUILDROOT)/usr/include/nash
 	install -m 644 libnash.a $(BUILDROOT)/usr/lib
 	install -m 644 nash.h $(BUILDROOT)/usr/include
 	install -m 644 include/nash/$(LIBNASH_HEADERS) \
