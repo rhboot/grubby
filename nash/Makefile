@@ -5,7 +5,6 @@ TARGETS = nash
 OBJECTS = util.o dm.o block.o linkdetect.o nash.o network.o nfsmount.o \
 	  nfsmount_clnt.o nfsmount_xdr.o dns.o
 
-libnash_HEADERS = lib.h log.h hotplug.h
 libnash_OBJECTS = lib.o hotplug.o wrap.o
 
 include ../Makefile.inc
@@ -43,5 +42,4 @@ install:
 	install -m 644 nash.8 $(BUILDROOT)/$(mandir)/man8
 	install -m 644 libnash.a $(BUILDROOT)/usr/lib
 	install -m 644 include/nash.h $(BUILDROOT)/usr/include
-	install -m 644 include/nash/$(libnash_HEADERS) \
-		$(BUILDROOT)/usr/include/nash
+	install -m 644 include/nash/*.h $(BUILDROOT)/usr/include/nash
