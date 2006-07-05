@@ -13,35 +13,16 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifndef NASH_PRIV_LIB_H
-#define NASH_PRIV_LIB_H 1
+#ifndef NASH_LIB_H
+#define NASH_LIB_H 1
 
-#ifdef _GNU_SOURCE
-#define _GNU_SOURCE_DEFINED
-#else
-#define _GNU_SOURCE 1
-#endif
+struct nash_context;
 
-#include <nash.h>
-#include <signal.h>
+extern struct nash_context *nashNewContext(void);
+extern void _nashFreeContext(struct nash_context **);
+#define nashFreeContext(x) _nashFreeContext(&(x))
 
-struct nash_context {
-    nashLogger_t logger;
-    int testing;
-    int quiet;
-    int reallyquiet;
-
-    int hp_childfd;
-    int hp_parentfd;
-};
-
-#ifndef _GNU_SOURCE_DEFINED
-#undef _GNU_SOURCE
-#else
-#undef _GNU_SOURCE_DEFINED
-#endif
-
-#endif /* NASH_PRIV_LIB_H */
+#endif /* NASH_LIB_H */
 /*
  * vim:ts=8:sw=4:sts=4:et
  */

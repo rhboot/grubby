@@ -33,7 +33,8 @@
 #include <signal.h>
 #include <termios.h>
 
-#include "hotplug.h"
+#include <nash.h>
+#include "util.h"
 #include "lib.h"
 
 #include <asm/types.h>
@@ -49,8 +50,6 @@
 
 static pid_t ppid = -1;
 
-static int parentfd = -1;
-static int childfd = -1;
 static int netlink = -1;
 
 /* Set the 'loading' attribute for a firmware device.
@@ -131,18 +130,47 @@ file_unmap(void *buf, size_t bufsize)
     munmap(buf, bufsize);
 }
 
+static char fw_dir[1024] = "/lib/firmware/";
+
+int
+nashSetFirmwareDir(char *dir)
+{
+    int n;
+
+    if (!dir) {
+        errno = EINVAL;
+        return 0;
+    }
+
+    if (access(dir, X_OK))
+        return -1;
+
+    n = strlen(dir);
+    if (dir[n] != '/' && n > 1022) {
+        errno = E2BIG;
+        return 0;
+    }
+    strcpy(fw_dir, dir);
+    if (dir[n] != '/')
+        fw_dir[++n] = '/';
+    fw_dir[n+1] = '\0';
+
+    return 0;
+}
+
 static void
 load_firmware(void)
 {
     char *physdevbus = NULL, *physdevdriver = NULL, *physdevpath = NULL,
          *devpath = NULL, *firmware = NULL;
-    char fw[1024] = "/lib/firmware/", driver[1024] = "/sys/bus/", data[1024] = "/sys";
+    char fw[1024] = "", driver[1024] = "/sys/bus/", data[1024] = "/sys";
     int dfd=-1, lfd=-1;
     int timeout = 0, loading = -2;
     char *fw_buf = NULL;
     size_t fw_len=0;
     size_t count;
 
+    strcpy(fw, fw_dir);
     devpath = getenv("DEVPATH");
     firmware = getenv("FIRMWARE");
     physdevbus = getenv("PHYSDEVBUS");
@@ -254,7 +282,7 @@ get_netlink_msg(int fd, char **msg, char **path)
 }
 
 static void
-handle_events(void)
+handle_events(struct nash_context *nc)
 {
     fd_set fds;
     int maxfd;
@@ -273,10 +301,10 @@ handle_events(void)
     do {
         maxfd = netlink;
         FD_ZERO(&fds);
-        if (childfd >= 0) {
-            if (childfd > netlink)
-                maxfd = childfd;
-            FD_SET(childfd, &fds);
+        if (nc->hp_childfd >= 0) {
+            if (nc->hp_childfd > netlink)
+                maxfd = nc->hp_childfd;
+            FD_SET(nc->hp_childfd, &fds);
         }
         FD_SET(netlink, &fds);
 
@@ -354,27 +382,27 @@ handle_events(void)
         }
 
 testexit:
-        if (childfd >= 0 && FD_ISSET(childfd, &fds)) {
+        if (nc->hp_childfd >= 0 && FD_ISSET(nc->hp_childfd, &fds)) {
             char buf[32] = {'\0'};
             size_t count = 0;
             int tries = 0;
             int rc;
 
-            while ((rc = read(childfd, buf+count, 13)) >= 0 && count+rc < 13) {
+            while ((rc = read(nc->hp_childfd, buf+count, 13)) >= 0 && count+rc < 13) {
                 if (rc == 0)
                     tries++;
                 else
                     tries=0;
                 if (tries == 2) {
-                    eprintf("parent exited without telling us\n");
-                    close(childfd);
-                    childfd = -1;
+                    nashLogger(nc, ERROR, "parent exited without telling us\n");
+                    close(nc->hp_childfd);
+                    nc->hp_childfd = -1;
                     break;
                 }
                 count += rc;
             }
             if (rc < 0)
-                eprintf("read didn't work: %m\n");
+                nashLogger(nc, ERROR, "read didn't work: %m\n");
             count = 0;
             while (rc != count) {
                 if (!strncmp(buf + count, "die udev die", 13)) {
@@ -393,62 +421,64 @@ testexit:
             continue;
         }
     } while (!doexit);
-    if (childfd >= 0)
-        close(childfd);
+    if (nc->hp_childfd >= 0)
+        close(nc->hp_childfd);
 }
 
 static int
-send_hotplug_message(char buf[13])
+send_hotplug_message(struct nash_context *nc, char buf[13])
 {
-    if (parentfd > 0) {
-        write(parentfd, buf, 13);
-        fdatasync(parentfd);
-        tcdrain(parentfd);
+    if (nc->hp_parentfd > 0) {
+        write(nc->hp_parentfd, buf, 13);
+        fdatasync(nc->hp_parentfd);
+        tcdrain(nc->hp_parentfd);
         return 1;
     }
     return 0;
 }
 
 void
-kill_hotplug(void)
+nashHotplugKill(struct nash_context *nc)
 {
-    if (send_hotplug_message("die udev die")) {
-        close(parentfd);
-        parentfd = -1;
-        childfd = -1;
+    if (send_hotplug_message(nc, "die udev die")) {
+        close(nc->hp_parentfd);
+        nc->hp_parentfd = -1;
+        nc->hp_childfd = -1;
     }
 }
 
 void
-move_hotplug(void) 
+nashHotplugNewRoot(struct nash_context *nc) 
 {
-    send_hotplug_message("set new root");
+    send_hotplug_message(nc, "set new root");
 }
 
 void
-notify_hotplug_of_exit(void)
+nashHotplugNotifyExit(struct nash_context *nc)
 {
-    send_hotplug_message("great egress");
+    send_hotplug_message(nc, "great egress");
 }
 
 #ifdef FWDEBUG
+struct nash_context *_hotplug_nash_context = NULL;
+
 static void
-kill_hotplug_signal(int signal)
+nashHotplugKill_signal(int signal)
 {
-    kill_hotplug();
+    nashHotplugKill(_hotplug_nash_context);
 }
 #endif
 
 static int
-daemonize(void)
+daemonize(struct nash_context *nc)
 {
     int i;
     struct sockaddr_nl sa;
 
     netlink = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_KOBJECT_UEVENT);
     if (netlink < 0) {
-        fprintf(stderr, "could not open netlink socket: %m\n");
-        close(parentfd);
+        nashLogger(nc, ERROR, "could not open netlink socket: %m\n");
+        close(nc->hp_parentfd);
         return -1;
     }
     setFdCoe(netlink, 1);
@@ -459,9 +489,9 @@ daemonize(void)
     sa.nl_groups = -1;
 
     if (bind(netlink, (struct sockaddr *)&sa, sizeof (sa)) < 0) {
-        fprintf(stderr, "could not bind to netlink socket: %m\n");
+        nashLogger(nc, ERROR, "could not bind to netlink socket: %m\n");
         close(netlink);
-        close(parentfd);
+        close(nc->hp_parentfd);
         return -1;
     }
 
@@ -471,7 +501,7 @@ daemonize(void)
         close(netlink);
 
 #ifdef FWDEBUG
-        signal(SIGINT, kill_hotplug_signal);
+        signal(SIGINT, nashHotplugKill_signal);
 #endif
         usleep(250000);
         return 0;
@@ -482,16 +512,16 @@ daemonize(void)
     chdir("/");
 
     close(0);
-    close(parentfd);
-    if (childfd != 0)
-        dup2(childfd, 0);
+    close(nc->hp_parentfd);
+    if (nc->hp_childfd != 0)
+        dup2(nc->hp_childfd, 0);
     setFdCoe(0, 1);
 #if 0
     close(1);
-    dup2(childfd, 1);
+    dup2(nc->hp_childfd, 1);
     setFdCoe(1, 1);
     close(2);
-    dup2(childfd, 2);
+    dup2(nc->hp_childfd, 2);
     setFdCoe(2, 1);
 #else
     close(1);
@@ -514,7 +544,7 @@ daemonize(void)
 #endif
 #ifndef FWDEBUG
     for (i = 3; i < getdtablesize(); i++) {
-        if (i != childfd && i != netlink)
+        if (i != nc->hp_childfd && i != netlink)
             close(i);
     }
 
@@ -534,36 +564,36 @@ daemonize(void)
     }
 
     set_timeout(10);
-    handle_events();
+    handle_events(nc);
     exit(0);
 }
 
 int 
-init_hotplug(void) {
-    if (parentfd == -1) {
+nashHotplugInit(struct nash_context *nc) {
+    if (nc->hp_parentfd == -1) {
         int filedes[2] = {0,0};
         long flags;
 
         pipe(filedes);
 
-        childfd = filedes[0];
+        nc->hp_childfd = filedes[0];
         flags = 0;
-        setFdCoe(childfd, 1);
-        fcntl(childfd, F_GETFL, &flags);
+        setFdCoe(nc->hp_childfd, 1);
+        fcntl(nc->hp_childfd, F_GETFL, &flags);
         flags |= O_SYNC;
         flags &= ~O_NONBLOCK;
-        fcntl(childfd, F_SETFL, flags);
+        fcntl(nc->hp_childfd, F_SETFL, flags);
 
-        parentfd = filedes[1];
+        nc->hp_parentfd = filedes[1];
         flags = 0;
-        setFdCoe(parentfd, 1);
-        fcntl(parentfd, F_GETFL, &flags);
+        setFdCoe(nc->hp_parentfd, 1);
+        fcntl(nc->hp_parentfd, F_GETFL, &flags);
         flags |= O_SYNC;
         flags &= ~O_NONBLOCK;
-        fcntl(parentfd, F_SETFL, flags);
+        fcntl(nc->hp_parentfd, F_SETFL, flags);
 
         /* child never returns from this, only parent */
-        if (daemonize() < 0)
+        if (daemonize(nc) < 0)
             return 1;
     }
     return 0;
@@ -572,9 +602,15 @@ init_hotplug(void) {
 #ifdef FWDEBUG
 int main(int argc, char *argv[]) {
     putenv("MALLOC_PERTURB_=204");
-    init_hotplug();
+    _hotplug_nash_context = nashNewContext();
+    nashHotplugInit(_hotplug_nash_context);
     while (sleep(86400) > 0)
         ;
+    nashFreeContext(_hotplug_nash_context);
     return 0;
 }
 #endif
+
+/*
+ * vim:ts=8:sw=4:sts=4:et
+ */

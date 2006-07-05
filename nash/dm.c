@@ -30,6 +30,7 @@
 #include "dm.h"
 #include "lib.h"
 #include "block.h"
+#include "util.h"
 
 void
 dm_cleanup(void)
@@ -220,6 +221,8 @@ nashDmRemove(char *name)
 static int nashPartedError = 0;
 static int nashPartedErrorDisplay = 1;
 
+static struct nash_context *nash_parted_context = NULL;
+
 static PedExceptionOption
 nashPartedExceptionHandler(PedException *ex)
 {
@@ -240,7 +243,7 @@ nashPartedExceptionHandler(PedException *ex)
             break;
     }
     if (nashPartedErrorDisplay) {
-        nashLogger(level, ex->message);
+        nashLogger(nash_parted_context, level, ex->message);
         fprintf(stderr, "\n");
     }
     switch (ex->options) {
@@ -260,6 +263,7 @@ nashDmCreatePartitions(char *path)
     PedDevice *dev;
     PedDisk *disk;
     PedPartition *part = NULL;
+    PedExceptionHandler *old_handler;
     char *namestart;
     int nparts = 0;
     struct stat sb;
@@ -282,6 +286,8 @@ nashDmCreatePartitions(char *path)
 
     parent_uuid = nashDmGetUUID(namestart);
 
+    old_handler = ped_exception_get_handler();
+    nash_parted_context = _nash_context;
     ped_exception_set_handler(nashPartedExceptionHandler);
 
     dev = ped_device_get(path);
@@ -350,6 +356,7 @@ out:
     if (newpath)
         free(newpath);
 
+    ped_exception_set_handler(old_handler);
     nashPartedError = 0;
     return nparts;
 }
@@ -628,10 +635,13 @@ open_part(const char *name, PedDevice **dev, PedDisk **disk)
 {
     int open = 0;
     char *path = NULL;
-
+    PedExceptionHandler *old_handler;
     int display = nashPartedErrorDisplay;
 
     asprintf(&path, "/dev/mapper/%s", name);
+
+    old_handler = ped_exception_get_handler();
+    nash_parted_context = _nash_context;
     ped_exception_set_handler(nashPartedExceptionHandler);
     nashPartedErrorDisplay = 0;
 
@@ -648,6 +658,8 @@ open_part(const char *name, PedDevice **dev, PedDisk **disk)
     if (!*disk || nashPartedError)
         goto out;
 
+    ped_exception_set_handler(old_handler);
+    nashPartedError = 0;
     return 0;
 out:
     if (*disk)
@@ -656,6 +668,7 @@ out:
     if (open)
         ped_device_close(*dev);
     *dev = NULL;
+    ped_exception_set_handler(old_handler);
     nashPartedErrorDisplay = display;
     nashPartedError = 0;
     return -1;
@@ -755,9 +768,12 @@ dm_should_partition(const struct dm_iter_object const *obj)
     PedDevice *dev = NULL;
     PedDisk *disk = NULL;
     PedPartition *part = NULL;
+    PedExceptionHandler *old_handler;
     int ret = 0;
     int display = nashPartedErrorDisplay;
 
+    old_handler = ped_exception_get_handler();
+    nash_parted_context = _nash_context;
     ped_exception_set_handler(nashPartedExceptionHandler);
     nashPartedErrorDisplay = 0;
 
@@ -783,6 +799,7 @@ out:
         ped_disk_destroy(disk);
         ped_device_close(dev);
     }
+    ped_exception_set_handler(old_handler);
     nashPartedErrorDisplay = display;
     nashPartedError = 0;
     return ret;

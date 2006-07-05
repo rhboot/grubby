@@ -55,8 +55,10 @@
 
 #include <asm/unistd.h>
 
+#include <nash.h>
+
 #include "lib.h"
-#include "hotplug.h"
+#include "util.h"
 #include "block.h"
 #include "dm.h"
 #include "net.h"
@@ -438,7 +440,7 @@ mountCommand(char * cmd, char * end)
         return 1;
     }
 
-    if (testing) {
+    if (_nash_context->testing) {
         printf("mount %s%s%s-t '%s' '%s' '%s' (%s%s%s%s%s%s%s)\n",
                 options ? "-o '" : "",
                 options ? options : "",
@@ -515,7 +517,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
         setFdCoe(stdoutFd, 0);
     }
 
-    if (testing) {
+    if (_nash_context->testing) {
         printf("%s ", bin);
         nextArg = args + 1;
         while (*nextArg)
@@ -530,7 +532,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
 
             dm_cleanup(); /* ARRGH */
             if (killHp)
-                kill_hotplug();
+                nashHotplugKill(_nash_context);
             dup2(stdoutFd, 1);
             execve(args[0], args, env);
             errnum = errno; /* so we'll have it after printf */
@@ -724,7 +726,7 @@ exitCommand(char *cmd, char *end) {
         }
     }
     if (killHp)
-        kill_hotplug();
+        nashHotplugKill(_nash_context);
 
     exit(status);
 }
@@ -753,7 +755,7 @@ losetupCommand(char * cmd, char * end)
         return 1;
     }
 
-    if (testing) {
+    if (_nash_context->testing) {
         printf("losetup '%s' '%s'\n", device, file);
     } else {
         dev = open(device, O_RDWR);
@@ -800,7 +802,7 @@ hotplugCommand(char *cmd, char *end)
         return 1;
     }
 
-    init_hotplug();
+    nashHotplugInit(_nash_context);
     return 0;
 }
 
@@ -814,7 +816,7 @@ killplugCommand(char *cmd, char *end)
         return 1;
     }
 
-    kill_hotplug();
+    nashHotplugKill(_nash_context);
     return 0;
 }
 
@@ -1081,8 +1083,8 @@ switchrootCommand(char * cmd, char * end)
     i=0;
 
     chdir(new);
-    move_hotplug();
-    notify_hotplug_of_exit();
+    nashHotplugNewRoot(_nash_context);
+    nashHotplugNotifyExit(_nash_context);
 
     recursiveRemove("/");
 
@@ -1184,7 +1186,7 @@ switchrootCommand(char * cmd, char * end)
 static int
 isEchoQuiet(int fd)
 {
-    if (!reallyquiet)
+    if (!_nash_context->reallyquiet)
         return 0;
     if (fd != 1)
         return 0;
@@ -1203,7 +1205,7 @@ echoCommand(char * cmd, char * end)
     int length = 0;
     char *string;
 
-    if (testing)
+    if (_nash_context->testing)
         qprintf("(echo) ");
 
     while ((cmd = getArg(cmd, end, nextArg))) {
@@ -2154,15 +2156,15 @@ setQuietCommand(char * cmd, char * end)
 
     quietcmd = getKernelArg("quiet");
     if (quietcmd)
-        reallyquiet = 1;
+        _nash_context->reallyquiet = 1;
 
     quietcmd = getKernelArg("noquiet");
     if (quietcmd)
-        reallyquiet = 0;
+        _nash_context->reallyquiet = 0;
 
     /* reallyquiet may be set elsewhere */
-    if (reallyquiet)
-          quiet = 1;
+    if (_nash_context->reallyquiet)
+          _nash_context->quiet = 1;
 
     return 0;
 }
@@ -2340,6 +2342,8 @@ int main(int argc, char **argv) {
 
     signal(SIGSEGV, traceback);
 
+    _nash_context = nashNewContext();
+
     name = strrchr(argv[0], '/');
     if (!name)
         name = argv[0];
@@ -2350,27 +2354,28 @@ int main(int argc, char **argv) {
         exit(0);
     }
 
-    testing = (getppid() != 0) && (getppid() != 1);
+    _nash_context->testing = (getppid() != 0) && (getppid() != 1);
     argv++, argc--;
 
     while (argc && **argv == '-') {
         if (!strcmp(*argv, "--forcequiet")) {
             force = 1;
-            quiet = 1;
+            _nash_context->quiet = 1;
             argv++, argc--;
-            testing = 0;
+            _nash_context->testing = 0;
         } else if (!strcmp(*argv, "--force")) {
             force = 1;
             argv++, argc--;
-            testing = 0;
+            _nash_context->testing = 0;
         } else if (!strcmp(*argv, "--quiet")) {
-            quiet = 1;
+            _nash_context->quiet = 1;
             argv++, argc--;
         } else if (!strcmp(*argv, "--reallyquiet")) {
-            reallyquiet = 1;
+            _nash_context->reallyquiet = 1;
             argv++, argc--;
         } else {
             eprintf("unknown argument %s\n", *argv);
+            nashFreeContext(_nash_context);
             return 1;
         }
     }
@@ -2378,7 +2383,7 @@ int main(int argc, char **argv) {
     if (force)
         qprintf("(forcing normal run)\n");
 
-    if (testing)
+    if (_nash_context->testing)
         qprintf("(running in test mode).\n");
 
     qprintf("Red Hat nash version %s starting\n", VERSION);
@@ -2387,6 +2392,7 @@ int main(int argc, char **argv) {
         fd = open(*argv, O_RDONLY, 0);
         if (fd < 0) {
             eprintf("nash: cannot open %s: %m\n", *argv);
+            nashFreeContext(_nash_context);
             exit(1);
         }
     }
@@ -2396,7 +2402,8 @@ int main(int argc, char **argv) {
     /* runStartup closes fd */
     rc = runStartup(fd, *argv);
 
-    kill_hotplug();
+    nashHotplugKill(_nash_context);
+    nashFreeContext(_nash_context);
     return rc;
 }
 

@@ -32,8 +32,9 @@
 
 #include <linux/blkpg.h>
 
-#include "lib.h"
+#include <nash.h>
 #include "block.h"
+#include "util.h"
 
 static int
 bdev_removable(const char *path)

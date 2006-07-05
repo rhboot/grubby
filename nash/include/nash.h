@@ -1,5 +1,5 @@
 /*
- * hotplug.h -- hotplug loading/hotplug event handling
+ * nash.h -- entry point for libnash includes
  *
  * Peter Jones (pjones@redhat.com)
  *
@@ -11,16 +11,16 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * vim:ts=8:sw=4:sts=4:et
  */
 
-#ifndef NASH_HOTPLUG_H
-#define NASH_HOTPLUG_H 1
+#ifndef NASH_H
+#define NASH_H 1
 
-extern int init_hotplug(void);
-extern void move_hotplug(void);
-extern void notify_hotplug_of_exit(void);
-extern void kill_hotplug(void);
+#include <nash/lib.h>
+#include <nash/log.h>
+#include <nash/hotplug.h>
 
-#endif /* NASH_HOTPLUG_H */
+#endif /* NASH_H */
+/*
+ * vim:ts=8:sw=4:sts=4:et
+ */
