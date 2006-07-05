@@ -472,7 +472,7 @@ mountCommand(char * cmd, char * end)
 }
 
 static int
-otherCommand(char * bin, char * cmd, char * end, int doFork)
+otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
 {
     char ** args;
     char ** nextArg;
@@ -529,6 +529,8 @@ otherCommand(char * bin, char * cmd, char * end, int doFork)
             int errnum;
 
             dm_cleanup(); /* ARRGH */
+            if (killHp)
+                kill_hotplug();
             dup2(stdoutFd, 1);
             execve(args[0], args, env);
             errnum = errno; /* so we'll have it after printf */
@@ -683,10 +685,19 @@ lsCommand(char * cmd, char * end)
 static int
 execCommand(char *cmd, char *end)
 {
-    char *bin, *fullPath = NULL;
+    char *bin = NULL, *fullPath = NULL;
+    int killHp = 1;
     int rc;
 
-    if (!(cmd = getArg(cmd, end, &bin))) {
+    while ((cmd = getArg(cmd, end, &bin))) {
+        if (!strcmp(bin, "--nokill")) {
+            killHp = 0;
+            bin = NULL;
+            continue;
+        }
+        break;
+    }
+    if (!bin) {
         eprintf("exec: argument expected\n");
         return 1;
     }
@@ -694,7 +705,7 @@ execCommand(char *cmd, char *end)
     if (rc < 0)
         return 1;
 
-    rc = otherCommand(fullPath, cmd, end, 0);
+    rc = otherCommand(fullPath, cmd, end, 0, killHp);
     free(fullPath);
     return rc;
 }
@@ -2095,7 +2106,7 @@ condCommand(char *cmd, char *end)
 
         rc = searchPath(op, &fullPath);
         if (rc >= 0) {
-            rc = otherCommand(fullPath, cmd, end, 1);
+            rc = otherCommand(fullPath, cmd, end, 1, 0);
             free(fullPath);
             return rc;
         } else
@@ -2269,7 +2280,7 @@ runStartup(int fd, char *name)
             char *fullPath = NULL;
             rc = searchPath(start, &fullPath);
             if (rc >= 0) {
-                rc = otherCommand(fullPath, chptr, end, 1);
+                rc = otherCommand(fullPath, chptr, end, 1, 0);
                 free(fullPath);
             } else
                 i = 1;
