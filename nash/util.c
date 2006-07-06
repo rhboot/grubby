@@ -154,7 +154,7 @@ readlink_malloc(const char *filename)
     }
 }
 
-struct nash_context *_nash_context = NULL;
+nashContext *_nash_context = NULL;
 
 int
 qprintf(const char *format, ...)

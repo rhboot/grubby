@@ -16,10 +16,10 @@
 #ifndef NASH_LIB_H
 #define NASH_LIB_H 1
 
-struct nash_context;
+typedef struct nashContext_s nashContext;
 
-extern struct nash_context *nashNewContext(void);
-extern void _nashFreeContext(struct nash_context **);
+extern nashContext *nashNewContext(void);
+extern void _nashFreeContext(nashContext **);
 #define nashFreeContext(x) _nashFreeContext(&(x))
 
 #endif /* NASH_LIB_H */

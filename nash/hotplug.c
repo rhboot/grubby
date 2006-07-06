@@ -185,7 +185,7 @@ out:
 }
 
 void
-nashSetFileFetcher(struct nash_context *nc, nashFileFetcher_t fetcher)
+nashSetFileFetcher(nashContext *nc, nashFileFetcher_t fetcher)
 {
     if (!fetcher)
         nc->fetcher = nashDefaultFileFetcher;
@@ -194,13 +194,13 @@ nashSetFileFetcher(struct nash_context *nc, nashFileFetcher_t fetcher)
 }
 
 nashFileFetcher_t
-nashGetFileFetcher(struct nash_context *nc)
+nashGetFileFetcher(nashContext *nc)
 {
     return nc->fetcher;
 }
 
 int
-nashSetFirmwarePath(struct nash_context *nc, char *dir)
+nashSetFirmwarePath(nashContext *nc, char *dir)
 {
     char *old = nc->fw_pathz, *new = NULL;
     size_t old_len = nc->fw_pathz_len;
@@ -240,7 +240,7 @@ out:
 }
 
 char *
-nashGetFirmwarePath(struct nash_context *nc)
+nashGetFirmwarePath(nashContext *nc)
 {
     static char path[1024];
     char *pathz = NULL;
@@ -260,7 +260,7 @@ nashGetFirmwarePath(struct nash_context *nc)
 }
 
 static int
-_load_firmware(struct nash_context *nc, int fw_fd, char *sysdir,
+_load_firmware(nashContext *nc, int fw_fd, char *sysdir,
     int timeout)
 {
     int rc;
@@ -328,7 +328,7 @@ out:
 }
 
 static void
-load_firmware(struct nash_context *nc)
+load_firmware(nashContext *nc)
 {
     char *physdevbus = NULL, *physdevdriver = NULL, *physdevpath = NULL,
          *devpath = NULL, *firmware = NULL, *timeout;
@@ -462,7 +462,7 @@ get_netlink_msg(int fd, char **msg, char **path)
 }
 
 static void
-handle_events(struct nash_context *nc)
+handle_events(nashContext *nc)
 {
     fd_set fds;
     int maxfd;
@@ -608,7 +608,7 @@ testexit:
 }
 
 static int
-send_hotplug_message(struct nash_context *nc, char buf[13])
+send_hotplug_message(nashContext *nc, char buf[13])
 {
     if (nc->hp_parentfd > 0) {
         write(nc->hp_parentfd, buf, 13);
@@ -620,7 +620,7 @@ send_hotplug_message(struct nash_context *nc, char buf[13])
 }
 
 void
-nashHotplugKill(struct nash_context *nc)
+nashHotplugKill(nashContext *nc)
 {
     if (send_hotplug_message(nc, "die udev die")) {
         close(nc->hp_parentfd);
@@ -630,19 +630,19 @@ nashHotplugKill(struct nash_context *nc)
 }
 
 void
-nashHotplugNewRoot(struct nash_context *nc) 
+nashHotplugNewRoot(nashContext *nc) 
 {
     send_hotplug_message(nc, "set new root");
 }
 
 void
-nashHotplugNotifyExit(struct nash_context *nc)
+nashHotplugNotifyExit(nashContext *nc)
 {
     send_hotplug_message(nc, "great egress");
 }
 
 #ifdef FWDEBUG
-struct nash_context *_hotplug_nash_context = NULL;
+nashContext *_hotplug_nash_context = NULL;
 
 static void
 kill_hotplug_signal(int signal)
@@ -652,7 +652,7 @@ kill_hotplug_signal(int signal)
 #endif
 
 static int
-daemonize(struct nash_context *nc)
+daemonize(nashContext *nc)
 {
     int i;
     struct sockaddr_nl sa;
@@ -751,7 +751,7 @@ daemonize(struct nash_context *nc)
 }
 
 int 
-nashHotplugInit(struct nash_context *nc) {
+nashHotplugInit(nashContext *nc) {
     if (nc->hp_parentfd == -1) {
         int filedes[2] = {0,0};
         long flags;
@@ -783,7 +783,7 @@ nashHotplugInit(struct nash_context *nc) {
 
 #ifdef FWDEBUG
 
-int logger(struct nash_context *nc, const nash_log_level level, const char *fmt, va_list ap)
+int logger(nashContext *nc, const nash_log_level level, const char *fmt, va_list ap)
 {
     FILE *f;
     int ret;

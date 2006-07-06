@@ -111,7 +111,7 @@ extern char *readlink_malloc(const char *filename);
     })
 
 
-extern struct nash_context *_nash_context;
+extern nashContext *_nash_context;
 
 #if 0 /* not just yet */
 extern int qprintf(const char *format, ...)

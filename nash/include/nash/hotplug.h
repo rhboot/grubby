@@ -18,16 +18,16 @@
 #ifndef NASH_HOTPLUG_H
 #define NASH_HOTPLUG_H 1
 
-extern int nashHotplugInit(struct nash_context *);
-extern void nashHotplugNewRoot(struct nash_context *);
-extern void nashHotplugNotifyExit(struct nash_context *);
-extern void nashHotplugKill(struct nash_context *);
+extern int nashHotplugInit(nashContext *);
+extern void nashHotplugNewRoot(nashContext *);
+extern void nashHotplugNotifyExit(nashContext *);
+extern void nashHotplugKill(nashContext *);
 
 typedef int (*nashFileFetcher_t)(char *inpath, int outfd);
 
-extern void nashSetFileFetcher(struct nash_context *, nashFileFetcher_t);
-extern nashFileFetcher_t nashGetFileFetcher(struct nash_context *);
-extern int nashSetFirmwarePath(struct nash_context *, char *);
-extern char *nashGetFirmwarePath(struct nash_context *);
+extern void nashSetFileFetcher(nashContext *, nashFileFetcher_t);
+extern nashFileFetcher_t nashGetFileFetcher(nashContext *);
+extern int nashSetFirmwarePath(nashContext *, char *);
+extern char *nashGetFirmwarePath(nashContext *);
 
 #endif /* NASH_HOTPLUG_H */

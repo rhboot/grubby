@@ -25,7 +25,7 @@
 #include <nash.h>
 #include <signal.h>
 
-struct nash_context {
+struct nashContext_s {
     nashLogger_t logger;
     int testing;
     int quiet;

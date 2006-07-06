@@ -24,7 +24,7 @@
 #include "lib.h"
 
 int
-nashDefaultLoggerV(struct nash_context *nc, const nash_log_level level,
+nashDefaultLoggerV(nashContext *nc, const nash_log_level level,
     const char *format, va_list ap)
 {
     FILE *output;
@@ -57,19 +57,19 @@ nashDefaultLoggerV(struct nash_context *nc, const nash_log_level level,
 }
 
 void
-nashSetLogger(struct nash_context *nc, nashLogger_t logger)
+nashSetLogger(nashContext *nc, nashLogger_t logger)
 {
     nc->logger = logger;    
 }
 
-nashLogger_t nashGetLogger(struct nash_context *nc)
+nashLogger_t nashGetLogger(nashContext *nc)
 {
     return nc->logger;
 }
 
-struct nash_context *
+nashContext *
 nashNewContext(void) {
-    struct nash_context *nc;
+    nashContext *nc;
     char *tmp;
     
     nc = calloc(1, sizeof(*nc));
@@ -94,7 +94,7 @@ nashNewContext(void) {
 }
 
 void
-_nashFreeContext(struct nash_context **nc)
+_nashFreeContext(nashContext **nc)
 {
     if (nc && *nc) {
         if ((*nc)->fw_pathz)
@@ -105,7 +105,7 @@ _nashFreeContext(struct nash_context **nc)
 }
 
 int
-nashLogger(struct nash_context *ctx, const nash_log_level level,
+nashLogger(nashContext *ctx, const nash_log_level level,
     const char *format, ...)
 {
     va_list ap;

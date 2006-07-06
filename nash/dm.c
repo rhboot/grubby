@@ -221,7 +221,7 @@ nashDmRemove(char *name)
 static int nashPartedError = 0;
 static int nashPartedErrorDisplay = 1;
 
-static struct nash_context *nash_parted_context = NULL;
+static nashContext *nash_parted_context = NULL;
 
 static PedExceptionOption
 nashPartedExceptionHandler(PedException *ex)

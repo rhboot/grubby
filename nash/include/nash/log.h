@@ -32,14 +32,14 @@ typedef enum {
     NASH_DEBUG,
 } nash_log_level;
 
-typedef int (*nashLogger_t)(struct nash_context *, const nash_log_level,
+typedef int (*nashLogger_t)(nashContext *, const nash_log_level,
     const char *, va_list)
     __attribute__((format(printf, 3, 0)));
 
-extern void nashSetLogger(struct nash_context *, nashLogger_t);
-extern nashLogger_t nashGetLogger(struct nash_context *);
+extern void nashSetLogger(nashContext *, nashLogger_t);
+extern nashLogger_t nashGetLogger(nashContext *);
 
-extern int nashLogger(struct nash_context *, const nash_log_level level,
+extern int nashLogger(nashContext *, const nash_log_level level,
     const char *format, ...)
     __attribute__((format(printf, 3, 4)));
 
