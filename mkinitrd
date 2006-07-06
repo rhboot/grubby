@@ -797,8 +797,9 @@ if [ "x$PROBE" == "xyes" ]; then
     # check if it's nfsroot
     if [ "$rootfs" == "nfs" -a "x$net_list" == "x" ]; then
         remote=$(echo $rootdev | cut -d : -f 1)
-        # FIXME: this doesn't handle ips properly
-        remoteip=$(host $remote | cut -d ' ' -f 4) 
+        remoteip=$(host $remote | awk '/ address / { print $4 }')
+        # assume, if it didn't resolve, that it's an IP
+        [ -z "$remoteip" ] && remoteip=$remote
         netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`
         addnetdev $netdev
     # check if it's root by label

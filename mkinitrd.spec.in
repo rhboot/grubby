@@ -78,6 +78,10 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/nash/*.h
 
 %changelog
+* Thu Jul  6 2006 Bill Nottingham <notting@redhat.com>
+- if NFS host doesn't resolve, assume it's an IP
+- make sure IP check doesn't get extraneous info
+
 * Wed Jul  5 2006 Peter Jones <pjones@redhat.com> - 5.0.47-1
 - make libnash.a and the nash-devel package
 
