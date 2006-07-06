@@ -76,7 +76,7 @@ nashNewContext(void) {
 
     nc->logger = nashDefaultLoggerV;
 
-    if ((tmp = strdup("/lib/firmware/:/firmware/")) == NULL) {
+    if ((tmp = strdup("/lib/firmware/")) == NULL) {
         free(nc);
         return NULL;
     }
