@@ -30,17 +30,17 @@ nashDefaultLoggerV(struct nash_context *nc, const nash_log_level level,
     int ret;
 
     switch (level) {
-        case NOTICE:
+        case NASH_NOTICE:
             output = stdout;
             if (nc->quiet)
                 return 0;
             break;
-        case WARNING:
+        case NASH_WARNING:
             output = stderr;
             if (nc->quiet)
                 return 0;
             break;
-        case ERROR:
+        case NASH_ERROR:
         default:
             output = stderr;
             break;
@@ -91,11 +91,13 @@ nashLogger(struct nash_context *ctx, const nash_log_level level,
     const char *format, ...)
 {
     va_list ap;
-    int ret;
+    int ret = 0;
 
-    va_start(ap, format);
-    ret = ctx->logger(ctx, level, format, ap);
-    va_end(ap);
+    if (ctx->logger) {
+        va_start(ap, format);
+        ret = ctx->logger(ctx, level, format, ap);
+        va_end(ap);
+    }
 
     return ret;
 }
