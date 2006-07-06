@@ -34,8 +34,13 @@ struct nashContext_s {
     nashFileFetcher_t fetcher;
     char *fw_pathz;
     size_t fw_pathz_len;
-    int hp_childfd;
+
+    nashDelayFunction_t delayParent;
+    int hp_parent_pid;
+    int hp_child_pid;
+
     int hp_parentfd;
+    int hp_childfd;
 };
 
 #ifndef _GNU_SOURCE_DEFINED
