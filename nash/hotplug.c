@@ -199,6 +199,12 @@ nashGetFileFetcher(nashContext *nc)
     return nc->fetcher;
 }
 
+void
+nashSetDelayParent(nashContext *nc, nashDelayFunction_t delayParent)
+{
+    nc->delayParent = delayParent;
+}
+
 int
 nashSetFirmwarePath(nashContext *nc, char *dir)
 {
@@ -532,8 +538,8 @@ handle_events(nashContext *nc)
                     if (!strcmp(action, "add") && !strcmp(subsystem, "firmware")) {
                         state = HANDLE_FIRMWARE_ADD;
                         token=strdup(getenv("FIRMWARE"));
-                        if (ppid != -1)
-                            kill(ppid, SIGALRM);
+                        if (nc->delayParent)
+                            nc->delayParent(nc, 500000);
                         load_firmware(nc);
                     } else {
                         //nashLogger(nc, NASH_ERROR, "unkown action %s %s\n", action, subsystem);
@@ -674,11 +680,24 @@ daemonize(nashContext *nc)
         nashLogger(nc, NASH_ERROR, "could not bind to netlink socket: %m\n");
         close(netlink);
         close(nc->hp_parentfd);
+        nc->hp_parentfd = -1;
+        close(nc->hp_childfd);
+        nc->hp_childfd = -1;
         return -1;
     }
 
-    ppid = getpid();
-    if (fork() > 0) {
+    nc->hp_parent_pid = getpid();
+    nc->hp_child_pid = fork();
+    if (nc->hp_child_pid < 0) {
+        nashLogger(nc, NASH_ERROR, "could not fork hotplug handler: %m\n");
+        close(netlink);
+        close(nc->hp_parentfd);
+        nc->hp_parentfd = -1;
+        close(nc->hp_childfd);
+        nc->hp_childfd = -1;
+        return -1;
+    }
+    if (nc->hp_child_pid > 0) {
         /* parent */
         close(netlink);
 
@@ -750,6 +769,17 @@ daemonize(nashContext *nc)
     exit(0);
 }
 
+static void
+unset_sysctl_hotplug(void)
+{
+    int fd;
+    
+    if ((fd = open("/proc/sys/kernel/hotplug", O_RDWR)) < 0)
+        return;
+    ftruncate(fd, 0);
+    write(fd, "\n", 1);
+}
+
 int 
 nashHotplugInit(nashContext *nc) {
     if (nc->hp_parentfd == -1) {
@@ -774,6 +804,7 @@ nashHotplugInit(nashContext *nc) {
         flags &= ~O_NONBLOCK;
         fcntl(nc->hp_parentfd, F_SETFL, flags);
 
+        unset_sysctl_hotplug();
         /* child never returns from this, only parent */
         if (daemonize(nc) < 0)
             return 1;
@@ -799,9 +830,26 @@ int logger(nashContext *nc, const nash_log_level level, const char *fmt, va_list
     return ret;
 }
 
+static void
+testAlarmHandler(int signum)
+{
+    udelay(500000);
+
+    signal(signum, testAlarmHandler);
+}
+
+static void 
+sendParentAlarm(nashContext *nc, int usec)
+{
+    kill(nc->hp_parent_pid, SIGALRM);
+}
+
 int main(int argc, char *argv[]) {
     putenv("MALLOC_PERTURB_=204");
+    signal(SIGALRM, testAlarmHandler);
+
     _hotplug_nash_context = nashNewContext();
+    nashSetDelayParent(_hotplug_nash_context, sendParentAlarm);
     nashSetLogger(_hotplug_nash_context, logger);
     nashSetFirmwarePath(_hotplug_nash_context, "/firmware");
     nashHotplugInit(_hotplug_nash_context);
