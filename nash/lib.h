@@ -31,6 +31,9 @@ struct nash_context {
     int quiet;
     int reallyquiet;
 
+    nashFileFetcher_t fetcher;
+    char *fw_pathz;
+    size_t fw_pathz_len;
     int hp_childfd;
     int hp_parentfd;
 };
