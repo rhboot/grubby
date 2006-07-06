@@ -26,9 +26,10 @@
 #include "lib.h"
 
 typedef enum {
-    NOTICE,
-    WARNING,
-    ERROR,
+    NASH_NOTICE,
+    NASH_WARNING,
+    NASH_ERROR,
+    NASH_DEBUG,
 } nash_log_level;
 
 typedef int (*nashLogger_t)(struct nash_context *, const nash_log_level,
