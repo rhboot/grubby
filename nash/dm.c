@@ -231,14 +231,14 @@ nashPartedExceptionHandler(PedException *ex)
     switch (ex->type) {
         case PED_EXCEPTION_INFORMATION:
             nashPartedError = 0;
-            level = NOTICE;
+            level = NASH_NOTICE;
             break;
         case PED_EXCEPTION_WARNING:
             nashPartedError = 0;
-            level = WARNING;
+            level = NASH_WARNING;
             break;
         default:
-            level = ERROR;
+            level = NASH_ERROR;
             nashPartedError = 1;
             break;
     }

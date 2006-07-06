@@ -41,17 +41,17 @@ static int waitForLink(char * dev) {
     /* try to wait for a valid link -- if the status is unknown or
      * up continue, else sleep for 1 second and try again for up
      * to five times */
-    nashLogger(_nash_context, NOTICE, "waiting for link... ");
+    nashLogger(_nash_context, NASH_NOTICE, "waiting for link... ");
     while (tries < NUM_LINK_CHECKS) {
       if (get_link_status(dev) != 0)
             break;
         sleep(1);
         tries++;
     }
-    nashLogger(_nash_context, NOTICE, "%d seconds.\n", tries);
+    nashLogger(_nash_context, NASH_NOTICE, "%d seconds.\n", tries);
     if (tries < NUM_LINK_CHECKS)
         return 0;
-    nashLogger(_nash_context, WARNING, "no network link detected on %s\n", dev);
+    nashLogger(_nash_context, NASH_WARNING, "no network link detected on %s\n", dev);
     return 1;
 }
 
@@ -119,13 +119,13 @@ int nashNetworkCommand(char * cmd) {
 
     while ((rc = poptGetNextOpt(optCon)) > 0) {}
     if (rc < -1) {
-        nashLogger(_nash_context, ERROR, "ERROR: Bad argument to network command\n");
+        nashLogger(_nash_context, NASH_ERROR, "ERROR: Bad argument to network command\n");
         return 1;
     }
 
     if (ethtool != NULL) {
         /* FIXME */
-        nashLogger(_nash_context, WARNING, "WARNING: ethtool options not currently handled\n");
+        nashLogger(_nash_context, NASH_WARNING, "WARNING: ethtool options not currently handled\n");
     }
 
     memset(&intf,'\0', sizeof(intf));
@@ -165,7 +165,7 @@ int nashNetworkCommand(char * cmd) {
 
     if ((bootProto != NULL) && (!strncmp(bootProto, "dhcp", 4))) {
         waitForLink(dev);
-        nashLogger(_nash_context, NOTICE, "Sending request for IP information through %s\n", dev);
+        nashLogger(_nash_context, NASH_NOTICE, "Sending request for IP information through %s\n", dev);
         pumpDhcpClassRun(dev, 0, 0, NULL, 
                          dhcpclass ? dhcpclass : "nash",
                          &intf, NULL);
@@ -189,7 +189,7 @@ int nashNetworkCommand(char * cmd) {
 
     err =  pumpSetupInterface(&intf);
     if (err) {
-        nashLogger(_nash_context, ERROR, "ERROR: Interface setup failed: %s\n", err);
+        nashLogger(_nash_context, NASH_ERROR, "ERROR: Interface setup failed: %s\n", err);
         return 1;
     }
     if (intf.set & PUMP_NETINFO_HAS_GATEWAY) {

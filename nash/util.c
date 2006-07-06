@@ -163,7 +163,7 @@ qprintf(const char *format, ...)
     int ret;
 
     va_start(ap, format);
-    ret = _nash_context->logger(_nash_context, NOTICE, format, ap);
+    ret = _nash_context->logger(_nash_context, NASH_NOTICE, format, ap);
     va_end(ap);
 
     return ret;
@@ -176,7 +176,7 @@ eprintf(const char *format, ...)
     int ret;
 
     va_start(ap, format);
-    ret = _nash_context->logger(_nash_context, ERROR, format, ap);
+    ret = _nash_context->logger(_nash_context, NASH_ERROR, format, ap);
     va_end(ap);
 
     return ret;
