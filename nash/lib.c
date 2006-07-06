@@ -85,8 +85,11 @@ nashNewContext(void) {
         free(nc);
         return NULL;
     }
-    nc->hp_childfd = -1;
+    nc->hp_parent_pid = -1;
+    nc->hp_child_pid = -1;
+
     nc->hp_parentfd = -1;
+    nc->hp_childfd = -1;
 
     nashSetFileFetcher(nc, NULL);
 
