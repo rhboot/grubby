@@ -242,10 +242,8 @@ nashPartedExceptionHandler(PedException *ex)
             nashPartedError = 1;
             break;
     }
-    if (nashPartedErrorDisplay) {
-        nashLogger(nash_parted_context, level, ex->message);
-        fprintf(stderr, "\n");
-    }
+    if (nashPartedErrorDisplay)
+        nashLogger(nash_parted_context, level, "%s\n", ex->message);
     switch (ex->options) {
         case PED_EXCEPTION_OK:
         case PED_EXCEPTION_CANCEL:
