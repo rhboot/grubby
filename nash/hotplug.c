@@ -157,7 +157,7 @@ nashSetFirmwareDir(char *dir)
 }
 
 static void
-load_firmware(void)
+load_firmware(struct nash_context *nc)
 {
     char *physdevbus = NULL, *physdevdriver = NULL, *physdevpath = NULL,
          *devpath = NULL, *firmware = NULL;
@@ -176,21 +176,26 @@ load_firmware(void)
     physdevpath = getenv("PHYSDEVPATH");
     
     if (!devpath || !firmware || !physdevbus || !physdevdriver || !physdevpath) {
-        fprintf(stderr, "couldn't get environment\n");
-        fprintf(stderr, "%s: %s\n", "DEVPATH", devpath);
-        fprintf(stderr, "%s: %s\n", "FIRMWARE", firmware);
-        fprintf(stderr, "%s: %s\n", "PHYSDEVBUS", physdevbus);
-        fprintf(stderr, "%s: %s\n", "PHYSDEVDRIVER", physdevdriver);
-        fprintf(stderr, "%s: %s\n", "PHYSDEVPATH", physdevpath);
+        nashLogger(nc, NASH_ERROR, "couldn't get environment\n");
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "DEVPATH", devpath);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "FIRMWARE", firmware);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVBUS", physdevbus);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVDRIVER", physdevdriver);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVPATH", physdevpath);
         return;
     }
+    nashLogger(nc, NASH_ERROR, "DEVPATH: %s\n", devpath);
+    nashLogger(nc, NASH_ERROR, "FIRMWARE: %s\n", firmware);
+    nashLogger(nc, NASH_ERROR, "PHYSDEVBUS: %s\n", physdevbus);
+    nashLogger(nc, NASH_ERROR, "PHYSDEVDRIVER: %s\n", physdevdriver);
+    nashLogger(nc, NASH_ERROR, "PHYSDEVPATH: %s\n", physdevpath);
 
     driver[9] = '\0';
     strcat(driver, physdevbus);
     strcat(driver, "/drivers/");
     strcat(driver, physdevdriver);
     while (access(driver, F_OK)) {
-        fprintf(stderr, "waiting for %s\n", driver);
+        nashLogger(nc, NASH_ERROR, "waiting for %s\n", driver);
         udelay(100);
     }
 
@@ -198,6 +203,7 @@ load_firmware(void)
 
     fw[14] = '\0';
     strcat(fw, firmware);
+    nashLogger(nc, NASH_ERROR, "Loading firmware from '%s'\n", fw);
     if (file_map(fw, &fw_buf, &fw_len) < 0) {
         fw_buf = NULL;
         loading = -2;
@@ -209,7 +215,7 @@ load_firmware(void)
     strcat(data, "/data");
     dfd = open(data, O_RDWR);
     if (dfd < 0) {
-        fprintf(stderr, "failed to open %s\n", data);
+        nashLogger(nc, NASH_ERROR, "failed to open %s\n", data);
         loading = -1;
         goto out;
     }
@@ -227,7 +233,7 @@ load_firmware(void)
 
 out:
     if (timeout)
-        fprintf(stderr, "timeout loading %s\n", firmware);
+        nashLogger(nc, NASH_ERROR, "timeout loading %s\n", firmware);
 
     if (dfd >= 0)
         close(dfd);
@@ -316,8 +322,10 @@ handle_events(struct nash_context *nc)
             char *msg = NULL, *path = NULL;
             int done = 0;
 
-            if (get_netlink_msg(netlink, &msg, &path) < 0)
+            if (get_netlink_msg(netlink, &msg, &path) < 0) {
+                nashLogger(nc, NASH_ERROR, "get_netlink_msg returned %m\n");
                 goto testexit;
+            }
                 
             assert(msg);
             assert(path);
@@ -327,8 +335,8 @@ handle_events(struct nash_context *nc)
             seqnum = getenv("SEQNUM");
 
             if (!action || !subsystem || !seqnum) {
-                fprintf(stderr, "couldn't get environment\n");
-                fprintf(stderr, "ACTION=\"%s\" SUBSYSTEM=\"%s\" SEQNUM=\"%s\"\n",
+                nashLogger(nc, NASH_ERROR, "couldn't get environment\n");
+                nashLogger(nc, NASH_ERROR, "ACTION=\"%s\" SUBSYSTEM=\"%s\" SEQNUM=\"%s\"\n",
                         action, subsystem, seqnum);
                 return;
             }
@@ -338,9 +346,9 @@ handle_events(struct nash_context *nc)
 
             cur = strtol(seqnum, NULL, 0);
             if (cur < prev)
-                fprintf(stderr, "WARNING: events out of order: %ld -> %ld\n", prev, cur);
+                nashLogger(nc, NASH_ERROR, "WARNING: events out of order: %ld -> %ld\n", prev, cur);
             if (cur == prev)
-                fprintf(stderr, "WARNING: duplicate event %ld\n", cur);
+                nashLogger(nc, NASH_ERROR, "WARNING: duplicate event %ld\n", cur);
             prev = cur;
 
             while (!done) switch (state) {
@@ -350,21 +358,21 @@ handle_events(struct nash_context *nc)
                         token=strdup(getenv("FIRMWARE"));
                         if (ppid != -1)
                             kill(ppid, SIGALRM);
-                        load_firmware();
+                        load_firmware(nc);
                     } else {
-                        //fprintf(stderr, "unkown action %s %s\n", action, subsystem);
+                        //nashLogger(nc, NASH_ERROR, "unkown action %s %s\n", action, subsystem);
                     }
                     done = 1;
                     break;
                 case HANDLE_FIRMWARE_ADD:
                     if (!strcmp(msg, "remove") && !strcmp(subsystem, "firmware")) {
                         if (strcmp(token, getenv("FIRMWARE")))
-                            fprintf(stderr, "WARNING: add firmware %s followed by remove firmware %s\n", token, getenv("FIRMWARE"));
+                            nashLogger(nc, NASH_ERROR, "WARNING: add firmware %s followed by remove firmware %s\n", token, getenv("FIRMWARE"));
                         free(token);
                         token = NULL;
                         state = HANDLE_FIRMWARE_REMOVE;
                     } else {
-                        //fprintf(stderr, "unkown action %s %s\n", action, subsystem);
+                        //nashLogger(nc, NASH_ERROR, "unkown action %s %s\n", action, subsystem);
                         state = IDLE;
                         done = 1;
                     }
@@ -392,7 +400,7 @@ testexit:
                 else
                     tries=0;
                 if (tries == 2) {
-                    nashLogger(nc, ERROR, "parent exited without telling us\n");
+                    nashLogger(nc, NASH_ERROR, "parent exited without telling us\n");
                     close(nc->hp_childfd);
                     nc->hp_childfd = -1;
                     break;
@@ -400,7 +408,7 @@ testexit:
                 count += rc;
             }
             if (rc < 0)
-                nashLogger(nc, ERROR, "read didn't work: %m\n");
+                nashLogger(nc, NASH_ERROR, "read didn't work: %m\n");
             count = 0;
             while (rc != count) {
                 if (!strncmp(buf + count, "die udev die", 13)) {
@@ -475,7 +483,7 @@ daemonize(struct nash_context *nc)
 
     netlink = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_KOBJECT_UEVENT);
     if (netlink < 0) {
-        nashLogger(nc, ERROR, "could not open netlink socket: %m\n");
+        nashLogger(nc, NASH_ERROR, "could not open netlink socket: %m\n");
         close(nc->hp_parentfd);
         return -1;
     }
@@ -487,7 +495,7 @@ daemonize(struct nash_context *nc)
     sa.nl_groups = -1;
 
     if (bind(netlink, (struct sockaddr *)&sa, sizeof (sa)) < 0) {
-        nashLogger(nc, ERROR, "could not bind to netlink socket: %m\n");
+        nashLogger(nc, NASH_ERROR, "could not bind to netlink socket: %m\n");
         close(netlink);
         close(nc->hp_parentfd);
         return -1;
@@ -598,9 +606,27 @@ nashHotplugInit(struct nash_context *nc) {
 }
 
 #ifdef FWDEBUG
+
+int logger(struct nash_context *nc, const nash_log_level level, const char *fmt, va_list ap)
+{
+    FILE *f;
+    int ret;
+    va_list apc;
+
+    va_copy(apc, ap);
+    f = fopen("/dev/tty8", "a+");
+    if (!f)
+        f = stderr;
+    ret = vfprintf(f, fmt, apc);
+    va_end(apc);
+    fclose(f);
+    return ret;
+}
+
 int main(int argc, char *argv[]) {
     putenv("MALLOC_PERTURB_=204");
     _hotplug_nash_context = nashNewContext();
+    nashSetLogger(_hotplug_nash_context, logger);
     nashHotplugInit(_hotplug_nash_context);
     while (sleep(86400) > 0)
         ;
