@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
+#include <argz.h>
 #include <nash.h>
 #include "lib.h"
 
@@ -68,10 +70,25 @@ nashLogger_t nashGetLogger(struct nash_context *nc)
 struct nash_context *
 nashNewContext(void) {
     struct nash_context *nc;
+    char *tmp;
     
     nc = calloc(1, sizeof(*nc));
 
     nc->logger = nashDefaultLoggerV;
+
+    if ((tmp = strdup("/lib/firmware/:/firmware/")) == NULL) {
+        free(nc);
+        return NULL;
+    }
+    if (argz_create_sep(tmp, ':', &nc->fw_pathz, &nc->fw_pathz_len) != 0) {
+        free(tmp);
+        free(nc);
+        return NULL;
+    }
+    nc->hp_childfd = -1;
+    nc->hp_parentfd = -1;
+
+    nashSetFileFetcher(nc, NULL);
 
     return nc;
 }
@@ -79,9 +96,10 @@ nashNewContext(void) {
 void
 _nashFreeContext(struct nash_context **nc)
 {
-    if (nc) {
-        if (*nc)
-            free(*nc);
+    if (nc && *nc) {
+        if ((*nc)->fw_pathz)
+            free((*nc)->fw_pathz);
+        free(*nc);
         *nc = NULL;
     }
 }
