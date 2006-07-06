@@ -24,7 +24,9 @@ extern void nashHotplugNotifyExit(nashContext *);
 extern void nashHotplugKill(nashContext *);
 
 typedef int (*nashFileFetcher_t)(char *inpath, int outfd);
+typedef void (*nashDelayFunction_t)(nashContext *, int usec);
 
+extern void nashSetDelayParent(nashContext *, nashDelayFunction_t);
 extern void nashSetFileFetcher(nashContext *, nashFileFetcher_t);
 extern nashFileFetcher_t nashGetFileFetcher(nashContext *);
 extern int nashSetFirmwarePath(nashContext *, char *);
