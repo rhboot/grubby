@@ -31,6 +31,8 @@
 #include <signal.h>
 #include <termios.h>
 
+#include <argz.h>
+
 #include <nash.h>
 #include "util.h"
 #include "lib.h"
@@ -64,7 +66,7 @@ set_loading(int fd, const char *device, int value)
     if (fd < 0) {
         char loading_path[1024];
 
-        snprintf(loading_path, sizeof(loading_path), "/sys/%s/loading", device);
+        snprintf(loading_path, sizeof(loading_path), "%s/loading", device);
         loading_path[sizeof(loading_path)-1] = '\0';
         fd = open(loading_path, O_RDWR | O_SYNC );
         if (fd < 0)
@@ -95,31 +97,46 @@ set_timeout(int value)
 }
 
 static inline int
-file_map(const char *filename, char **buf, size_t *bufsize)
+fd_map(int fd, char **buf, size_t *bufsize)
 {
     struct stat stats;
-    int fd;
-
-    fd = open(filename, O_RDONLY);
-    if (fd < 0) {
-        return -1;
-    }
+    int en = 0;
 
     if (fstat(fd, &stats) < 0) {
+        en = errno;
         close(fd);
+        errno = en;
         return -1;
     }
 
     *buf = mmap(NULL, stats.st_size, PROT_READ, MAP_SHARED, fd, 0);
     if (*buf == MAP_FAILED) {
+        *buf = NULL;
+        en = errno;
         close(fd);
+        errno = en;
         return -1;
     }
     *bufsize = stats.st_size;
-
-    close(fd);
-
     return 0;
+}
+
+static inline int
+file_map(const char *filename, char **buf, size_t *bufsize, int flags)
+{
+    int fd, en, rc = 0;
+
+    if ((fd = open(filename, flags ? flags : O_RDONLY)) < 0)
+        return -1;
+
+    if (fd_map(fd, buf, bufsize) < 0)
+        rc = -1;
+
+    en = errno;
+    close(fd);
+    errno = en;
+
+    return rc;
 }
 
 static inline void
@@ -128,95 +145,160 @@ file_unmap(void *buf, size_t bufsize)
     munmap(buf, bufsize);
 }
 
-static char fw_dir[1024] = "/lib/firmware/";
-
-int
-nashSetFirmwareDir(char *dir)
+static int
+nashDefaultFileFetcher(char *inpath, int outfd)
 {
-    int n;
+    char *inbuf = NULL;
+    size_t inlen;
+    int count;
+    int en = 0;
 
-    if (!dir) {
-        errno = EINVAL;
-        return 0;
+    errno = 0;
+    if (access(inpath, F_OK))
+        goto out;
+
+    if (file_map(inpath, &inbuf, &inlen, O_RDONLY) < 0)
+        goto out;
+
+    lseek(outfd, 0, SEEK_SET);
+    ftruncate(outfd, 0);
+    ftruncate(outfd, inlen);
+
+    count = 0;
+    while (count < inlen) {
+        ssize_t c;
+        c = write(outfd, inbuf + count, inlen - count);
+        if (c <= 0)
+            goto out;
+        count += c;
     }
 
-    if (access(dir, X_OK))
+out:
+    en = errno;
+    if (inbuf)
+        file_unmap(inbuf, inlen);
+    if (en) {
+        errno = en;
         return -1;
-
-    n = strlen(dir);
-    if (dir[n] != '/' && n > 1022) {
-        errno = E2BIG;
-        return 0;
     }
-    strcpy(fw_dir, dir);
-    if (dir[n] != '/')
-        fw_dir[++n] = '/';
-    fw_dir[n+1] = '\0';
-
     return 0;
 }
 
-static void
-load_firmware(struct nash_context *nc)
+void
+nashSetFileFetcher(struct nash_context *nc, nashFileFetcher_t fetcher)
 {
-    char *physdevbus = NULL, *physdevdriver = NULL, *physdevpath = NULL,
-         *devpath = NULL, *firmware = NULL;
-    char fw[1024] = "", driver[1024] = "/sys/bus/", data[1024] = "/sys";
-    int dfd=-1, lfd=-1;
-    int timeout = 0, loading = -2;
-    char *fw_buf = NULL;
-    size_t fw_len=0;
-    size_t count;
+    if (!fetcher)
+        nc->fetcher = nashDefaultFileFetcher;
+    else
+        nc->fetcher = fetcher;
+}
 
-    strcpy(fw, fw_dir);
-    devpath = getenv("DEVPATH");
-    firmware = getenv("FIRMWARE");
-    physdevbus = getenv("PHYSDEVBUS");
-    physdevdriver = getenv("PHYSDEVDRIVER");
-    physdevpath = getenv("PHYSDEVPATH");
-    
-    if (!devpath || !firmware || !physdevbus || !physdevdriver || !physdevpath) {
-        nashLogger(nc, NASH_ERROR, "couldn't get environment\n");
-        nashLogger(nc, NASH_ERROR, "%s: %s\n", "DEVPATH", devpath);
-        nashLogger(nc, NASH_ERROR, "%s: %s\n", "FIRMWARE", firmware);
-        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVBUS", physdevbus);
-        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVDRIVER", physdevdriver);
-        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVPATH", physdevpath);
-        return;
-    }
-    nashLogger(nc, NASH_ERROR, "DEVPATH: %s\n", devpath);
-    nashLogger(nc, NASH_ERROR, "FIRMWARE: %s\n", firmware);
-    nashLogger(nc, NASH_ERROR, "PHYSDEVBUS: %s\n", physdevbus);
-    nashLogger(nc, NASH_ERROR, "PHYSDEVDRIVER: %s\n", physdevdriver);
-    nashLogger(nc, NASH_ERROR, "PHYSDEVPATH: %s\n", physdevpath);
+nashFileFetcher_t
+nashGetFileFetcher(struct nash_context *nc)
+{
+    return nc->fetcher;
+}
 
-    driver[9] = '\0';
-    strcat(driver, physdevbus);
-    strcat(driver, "/drivers/");
-    strcat(driver, physdevdriver);
-    while (access(driver, F_OK)) {
-        nashLogger(nc, NASH_ERROR, "waiting for %s\n", driver);
-        udelay(100);
+int
+nashSetFirmwarePath(struct nash_context *nc, char *dir)
+{
+    char *old = nc->fw_pathz, *new = NULL;
+    size_t old_len = nc->fw_pathz_len;
+
+    nc->fw_pathz = NULL;
+    nc->fw_pathz_len = -1;
+    if (!dir) {
+        if (old)
+            free(old);
+        return 0;
     }
 
-    lfd = set_loading(lfd, devpath, 1);
-
-    fw[14] = '\0';
-    strcat(fw, firmware);
-    nashLogger(nc, NASH_ERROR, "Loading firmware from '%s'\n", fw);
-    if (file_map(fw, &fw_buf, &fw_len) < 0) {
-        fw_buf = NULL;
-        loading = -2;
+    if (strlen(dir) > 1023) {
+        errno = E2BIG;
         goto out;
     }
 
-    data[4] = '\0';
-    strcat(data, devpath);
-    strcat(data, "/data");
-    dfd = open(data, O_RDWR);
-    if (dfd < 0) {
-        nashLogger(nc, NASH_ERROR, "failed to open %s\n", data);
-        loading = -1;
+    if ((new = strdup(dir)) == NULL)
+        goto out;
+
+    nc->fw_pathz = NULL;
+    nc->fw_pathz_len = 0;
+    if (argz_create_sep(new, ':', &nc->fw_pathz, &nc->fw_pathz_len) != 0)
+        goto out;
+
+    if (old)
+        free(old);
+
+    return 0;
+out:
+    if (new)
+        free(new);
+    nc->fw_pathz = old;
+    nc->fw_pathz_len = old_len;
+
+    return -1;
+}
+
+char *
+nashGetFirmwarePath(struct nash_context *nc)
+{
+    static char path[1024];
+    char *pathz = NULL;
+    size_t n;
+
+    argz_stringify(nc->fw_pathz, nc->fw_pathz_len, ':');
+    n = strlen(nc->fw_pathz);
+    memmove(path, nc->fw_pathz, n > 1023 ? 1023 : n);
+    path[1023] = '\0';
+
+    n = 0;
+    argz_create_sep(nc->fw_pathz, ':', &pathz, &n);
+    nc->fw_pathz = pathz;
+    nc->fw_pathz_len = n;
+
+    return path;
+}
+
+static int
+_load_firmware(struct nash_context *nc, int fw_fd, char *sysdir,
+    int timeout)
+{
+    int rc;
+    char *fw_buf = NULL, *data = NULL;
+    size_t fw_len = 0;
+    int dfd = -1, lfd = -1;
+    int loading = -2;
+    size_t count;
+
+    timeout *= 1000000;
+    while (access(sysdir, F_OK) && timeout) {
+        nashLogger(nc, NASH_DEBUG, "waiting for %s\n", sysdir);
+        udelay(100);
+        timeout -= 100;
+    }
+    if (!timeout) {
+        nashLogger(nc, NASH_ERROR, "timeout loading firmware\n");
+        return -ENOENT;
+    }
+
+    nashLogger(nc, NASH_DEBUG, "Writing firmware to '%s/data'\n", sysdir);
+    lfd = set_loading(lfd, sysdir, 1);
+    loading = -1;
+
+    if (fd_map(fw_fd, &fw_buf, &fw_len) < 0) {
+        rc = -errno;
+        nashLogger(nc, NASH_ERROR, "load_firmware: mmap: %m\n");
+        goto out;
+    }
+
+    if (asprintfa(&data, "%s/data", sysdir) < 0) {
+        rc = -errno;
+        nashLogger(nc, NASH_ERROR, "%s: %d: %m\n", __func__, __LINE__);
+        goto out;
+    }
+    if ((dfd = open(data, O_RDWR)) < 0) {
+        rc = -errno;
+        nashLogger(nc, NASH_ERROR, "failed to open %s: %m\n", data);
         goto out;
     }
     count = 0;
@@ -224,6 +306,7 @@ load_firmware(struct nash_context *nc)
         ssize_t c;
         c = write(dfd, fw_buf + count, fw_len - count);
         if (c <= 0) {
+            nashLogger(nc, NASH_ERROR, "load_firmware: write: %m\n");
             loading = -1;
             goto out;
         }
@@ -232,19 +315,112 @@ load_firmware(struct nash_context *nc)
     loading = 0;
 
 out:
-    if (timeout)
-        nashLogger(nc, NASH_ERROR, "timeout loading %s\n", firmware);
-
-    if (dfd >= 0)
+    if (dfd != -1)
         close(dfd);
     if (fw_buf)
         file_unmap(fw_buf, fw_len);
     if (loading != -2)
-        lfd = set_loading(lfd, devpath, loading);
+        lfd = set_loading(lfd, sysdir, loading);
     if (lfd != -1)
         close(lfd);
 
-    return;
+    return rc;
+}
+
+static void
+load_firmware(struct nash_context *nc)
+{
+    char *physdevbus = NULL, *physdevdriver = NULL, *physdevpath = NULL,
+         *devpath = NULL, *firmware = NULL, *timeout;
+    char *dp = NULL;
+    char *fw_file = NULL, *sys_file = NULL;
+    char *entry;
+    int timeout_secs;
+    char template[] = "nash-hotplug-firmware-XXXXXX";
+    int fd = -1;
+
+    devpath = getenv("DEVPATH");
+    firmware = getenv("FIRMWARE");
+    physdevbus = getenv("PHYSDEVBUS");
+    physdevdriver = getenv("PHYSDEVDRIVER");
+    physdevpath = getenv("PHYSDEVPATH");
+    timeout = getenv("TIMEOUT");
+    
+    if (!devpath || !firmware || !physdevbus || !physdevdriver || !physdevpath) {
+        nashLogger(nc, NASH_ERROR, "couldn't get environment\n");
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "DEVPATH", devpath);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "FIRMWARE", firmware);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVBUS", physdevbus);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVDRIVER", physdevdriver);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "PHYSDEVPATH", physdevpath);
+        nashLogger(nc, NASH_ERROR, "%s: %s\n", "TIMEOUT", timeout);
+        return;
+    }
+    nashLogger(nc, NASH_DEBUG, "DEVPATH: %s\n", devpath);
+    nashLogger(nc, NASH_DEBUG, "FIRMWARE: %s\n", firmware);
+    nashLogger(nc, NASH_DEBUG, "PHYSDEVBUS: %s\n", physdevbus);
+    nashLogger(nc, NASH_DEBUG, "PHYSDEVDRIVER: %s\n", physdevdriver);
+    nashLogger(nc, NASH_DEBUG, "PHYSDEVPATH: %s\n", physdevpath);
+    nashLogger(nc, NASH_DEBUG, "TIMEOUT: %s\n", timeout);
+
+    timeout_secs = strtol(timeout, NULL, 10);
+
+    if ((fd = mkstemp(template)) < 0)
+        return;
+
+    /* find the file */
+    for (entry = nc->fw_pathz; entry;
+            entry = argz_next(nc->fw_pathz, nc->fw_pathz_len, entry)) {
+        if (asprintf(&fw_file, "%s/%s", entry, firmware) < 0) {
+            nashLogger(nc, NASH_ERROR, "%s: %d: %m\n", __func__, __LINE__);
+            return;
+        }
+        if (nc->fetcher(fw_file, fd) >= 0)
+            break;
+
+        free(fw_file);
+        fw_file = NULL;
+        if (errno == ENOENT || errno == EPERM)
+            continue;
+        break;
+    }
+    if (!fw_file) {
+        nashLogger(nc, NASH_ERROR, "Firmware '%s' could not be read\n", fw_file);
+        goto out;
+    }
+
+    /* try the new way first */
+    /* PJFIX this is messy */
+    dp = strdup(devpath + 2 + strcspn(devpath+1, "/"));
+    if (!dp)
+        goto out;
+    dp[strcspn(dp, "/")] = ':';
+
+    if (asprintf(&sys_file, "/sys%s/%s/", physdevpath, dp) < 0) {
+        free(dp);
+        nashLogger(nc, NASH_ERROR, "%s: %d: %m\n", __func__, __LINE__);
+        goto out;
+    }
+    free(dp);
+    if (_load_firmware(nc, fd, sys_file, timeout_secs) >= 0)
+        goto out;
+
+    /* ok, try the old way */
+    free(sys_file);
+    sys_file = NULL;
+
+    if (asprintf(&sys_file, "/sys%s/", devpath) < 0) {
+        nashLogger(nc, NASH_ERROR, "%s: %d: %m\n", __func__, __LINE__);
+        goto out;
+    }
+    _load_firmware(nc, fd, sys_file, timeout_secs);
+out:
+    if (fw_file)
+        free(fw_file);
+    if (sys_file)
+        free(sys_file);
+    if (fd != -1)
+        close(fd);
 }
 
 static int
@@ -517,6 +693,7 @@ daemonize(struct nash_context *nc)
     prctl(PR_SET_NAME, "nash-hotplug", 0, 0, 0);
     chdir("/");
 
+#ifndef FWDEBUG
     close(0);
     close(nc->hp_parentfd);
     if (nc->hp_childfd != 0)
@@ -548,7 +725,6 @@ daemonize(struct nash_context *nc)
     }
     setFdCoe(i, 1);
 #endif
-#ifndef FWDEBUG
     for (i = 3; i < getdtablesize(); i++) {
         if (i != nc->hp_childfd && i != netlink)
             close(i);
@@ -559,9 +735,9 @@ daemonize(struct nash_context *nc)
     signal(SIGTTOU, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
-#else
+#else /* FWDEBUG */
     signal(SIGINT, SIG_IGN);
-#endif
+#endif /* FWDEBUG */
 
     i = open("/proc/self/oom_adj", O_RDWR);
     if (i >= 0) {
@@ -627,6 +803,7 @@ int main(int argc, char *argv[]) {
     putenv("MALLOC_PERTURB_=204");
     _hotplug_nash_context = nashNewContext();
     nashSetLogger(_hotplug_nash_context, logger);
+    nashSetFirmwarePath(_hotplug_nash_context, "/firmware");
     nashHotplugInit(_hotplug_nash_context);
     while (sleep(86400) > 0)
         ;
