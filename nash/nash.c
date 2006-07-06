@@ -116,6 +116,7 @@ static char * env[] = {
 };
 static char sysPath[] = PATH;
 
+/* ocPid is set when we're in otherCommand() */
 static pid_t ocPid = -1;
 static int exit_status = 0;
 
@@ -2314,6 +2315,13 @@ void delayOnSignal(int signum) {
     signal(signum, delayOnSignal);
 }
 
+static void 
+sendParentAlarm(nashContext *nc, int usec)
+{
+    if (nc->hp_parent_pid != -1)
+        kill(nc->hp_parent_pid, SIGALRM);
+}
+
 static void traceback(int signum)
 {
     void *array[20];
@@ -2343,6 +2351,7 @@ int main(int argc, char **argv) {
     signal(SIGSEGV, traceback);
 
     _nash_context = nashNewContext();
+    nashSetDelayParent(_nash_context, sendParentAlarm);
 
     name = strrchr(argv[0], '/');
     if (!name)
