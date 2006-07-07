@@ -490,6 +490,11 @@ handlenetdev() {
         source /etc/sysconfig/network-scripts/ifcfg-$dev
     fi
 
+    if [ x"$BOOTPROTO" = x ]; then
+        error "bootproto not specified for $dev, assuming DHCP"
+        BOOTPROTO=dhcp
+    fi
+
     [ -n "$IPADDR" ] && IPSTR="$IPSTR --ip $IPADDR"
     [ -n "$NETMASK" ] && IPSTR="$IPSTR --netmask $NETMASK"
     [ -n "$GATEWAY" ] && IPSTR="$IPSTR --gateway $GATEWAY"
