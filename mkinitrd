@@ -627,7 +627,7 @@ while [ $# -gt 0 ]; do
             ;;
         --net-dev*)
             if echo $1 | grep -q '=' ; then
-                net_list="$net_list `echo $1 | sed 's/^--net-list=//'`"
+                net_list="$net_list `echo $1 | sed 's/^--net-dev=//'`"
             else
                 net_list="$net_list $2"
                 shift
