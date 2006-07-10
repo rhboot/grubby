@@ -2,15 +2,11 @@ include $(TOPDIR)/Makefile.tmpl
 
 LIBS = bdevid
 MODULES = test
-#MODULES += scsi
+MODULES += scsi
 
-bdevid_LIBS = -ldl -lmodloader
-bdevid_OBJECTS = bdevid.o
-
-test_OBJECTS = test.o
-
-scsi_LIBS = 
-scsi_OBJECTS = scsi.o
+bdevid_LIBS := -ldl
+bdevid_LIBS += `pkg-config --libs glib-2.0`
+bdevid_OBJECTS = bdevid.o module.o
 
 all :: $(OBJDIR)
 all :: $(foreach lib,${LIBS},$(OBJDIR)/lib${lib}.so $(OBJDIR)/lib${lib}.a)
@@ -19,8 +15,8 @@ all :: $(foreach mod,${MODULES},$(OBJDIR)/${mod}.so)
 $(foreach lib,$(MODULES),$(OBJDIR)/$(lib).so) : $(OBJDIR)/%.so : %.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -L$(OBJDIR) -o $@ -lbdevid $($*_LIBS) $^
 
-$(foreach lib,$(LIBS),$(OBJDIR)/lib$(lib).so.$(VERSION)) : $(OBJDIR)/lib%.so.$(VERSION) : %.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="lib$*.so.$(VERSION)" -L$(OBJDIR) -o $@ $($*_LIBS) $^
+$(OBJDIR)/libbdevid.so.$(VERSION) : $(bdevid_OBJECTS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="$@" -L$(OBJDIR) -o $@ $(bdevid_LIBS) $^
 
 $(OBJDIR)/%.so : $(OBJDIR)/%.so.$(VERSION)
 	@ln -vsf $(shell basename $<) $@
