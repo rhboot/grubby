@@ -1,195 +1,142 @@
+/*
+ * bdevid.c - library interface for programs wanting to do block device
+ *            probing
+ *
+ * Peter Jones (pjones@redhat.com)
+ *
+ * Copyright 2005,2006 Red Hat, Inc.
+ *
+ * This software may be freely redistributed under the terms of the GNU
+ * public license, version 2.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
 #define _GNU_SOURCE 1
 
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <modloader.h>
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <assert.h>
+#include <errno.h>
+#include <argz.h>
+#include <glib.h>
 
 #include "bdevid.h"
 
-static inline int bdevid_module_add(struct bdevid *b, struct bdevid_module *m)
+int bdevid_path_set(struct bdevid *b, char *path)
 {
-	struct bdevid_module **modules = NULL;
+    char *old = b->module_pathz, *new = NULL;
+    size_t old_len = b->module_pathz_len;
+    int en;
 
-	modules = realloc(b->modules, sizeof (*m) * (b->nmodules+2));
-	if (!modules)
-		return -1;
-	
-	modules[b->nmodules++] = m;
-	modules[b->nmodules] = NULL;
-	b->modules = modules;
+    b->module_pathz = NULL;
+    b->module_pathz_len = 0;
 
-	return 0;
+    if (!path) {
+        if (old)
+            free(old);
+        return 0;
+    }
+
+    if (strlen(path) > 1023) {
+        errno = E2BIG;
+        goto out;
+    }
+
+    if ((new = strdup(path)) == NULL)
+        goto out;
+
+    if (argz_create_sep(new, ':', &b->module_pathz, &b->module_pathz_len) != 0)
+        goto out;
+
+    if (old)
+        free(old);
+
+    return 0;
+out:
+    en = errno;
+    if (new)
+        free(new);
+    errno = en;
+    b->module_pathz = old;
+    b->module_pathz_len = old_len;
+
+    return -1;
 }
 
-static inline int bdevid_module_remove(struct bdevid_module *m)
+char *bdevid_path_get(struct bdevid *b)
 {
-	if (m) {
-		struct bdevid *b = NULL;
-		struct bdevid_module **modules = NULL;
-		int i;
+    static char path[1024];
+    char *pathz = NULL;
+    size_t n;
 
-		b = m->bdevid;
+    argz_stringify(b->module_pathz, b->module_pathz_len, ':');
+    n = strlen(b->module_pathz);
+    memmove(path, b->module_pathz, n > 1023 ? 1023 : n);
+    path[1023] = '\0';
 
-		for (i=0; b->modules[i] && b->modules[i] != m; i++)
-			;
-		if (!b->modules[i])
-			return 0;
+    n = 0;
+    argz_create_sep(b->module_pathz, ':', &pathz, &n);
+    b->module_pathz = pathz;
+    b->module_pathz_len = n;
 
-		if (!(modules = realloc(b->modules,sizeof (*m) * b->nmodules)))
-			return -1;
-
-		if (i != b->nmodules) 
-			modules[i] = modules[b->nmodules];
-		modules[b->nmodules--] = NULL;
-		b->modules = modules;
-	}
-	return 0;
+    return path;
 }
-
-static void bdevid_module_dest(struct modloader_module *mm)
-{
-	struct bdevid_module *bm = modloader_module_priv_get(mm);
-
-	if (bm) {
-		if (bm->probes)
-			free(bm->probes);
-
-		memset(bm, '\0', sizeof (*bm));
-		free(bm);
-		modloader_module_priv_set(mm, NULL);
-	}
-}
-
-static int bdevid_module_cons(struct modloader_module *mm)
-{
-	struct modloader *m = modloader_module_modloader_get(mm);
-	struct bdevid *b = modloader_priv_get(m);
-
-	void *dlh = modloader_module_dlhandle_get(mm);
-	struct bdevid_module_ops **ops;
-	struct bdevid_module *bm = NULL;
-	int added = 0;
-
-	if (!(bm = calloc(1, sizeof (*bm))))
-		goto err;
-	modloader_module_priv_set(mm, bm);
-	bm->modloader_module = mm;
-	
-	ops = dlsym(dlh, "bdevid_module_ops");
-	if (!ops || !*ops)
-		goto err;
-
-	bm->ops = *ops;
-	if (!(bm->ops->magic == BDEVID_MAGIC))
-		goto err;
-
-	if (!(bm->probes = calloc(1, sizeof (struct bdevid_probe_ops *))))
-		goto err;
-
-	b = modloader_priv_get(m);
-	if (bdevid_module_add(b, bm) == -1)
-		goto err;
-	added = 1;
-	
-	printf("bdevid: loading module '%s'\n", bm->ops->name);
-	if (bm->ops->init && bm->ops->init(bm) == -1)
-		goto err;
-
-	return 0;
-err:
-	if (bm) {
-		if (added)
-			bdevid_module_remove(bm);
-		bdevid_module_dest(mm);
-	}
-	return -1;
-}
-
-static int bdevid_module_ident(struct modloader_module *mm, char **name)
-{
-	void *dlh = modloader_module_dlhandle_get(mm);
-	struct bdevid_module_ops **ops;
-
-	ops = dlsym(dlh, "bdevid_module_ops");
-	if (!ops || !*ops)
-		return -1;
-
-	if (!((*ops)->magic != BDEVID_MAGIC))
-		return -1;
-
-	printf("bdevid: found module '%s'\n", (*ops)->name);
-	*name = (*ops)->name;
-	return 0;
-}
-
-struct modloader_ops bdevid_ops = {
-	.path_env = "BDEVID_PATH",
-	.constructor = bdevid_module_cons,
-	.destructor = bdevid_module_dest,
-	.ident = bdevid_module_ident,
-};
 
 void bdevid_destroy(struct bdevid *b)
 {
-	if (b) {
-		while (b->modules && b->modules[0]) {
-			struct bdevid_module *bm = b->modules[0];
-			struct modloader_module *mm = bm->modloader_module;
+    if (b) {
+        if (b->modules) {
+#if 0
+        while (b->nmodules) {
+            /* XXX fix this up */
+            struct bdevid_module *bm = b->modules[0];
+            struct modloader_module *mm = bm->modloader_module;
 
-			bdevid_module_remove(bm);
-			bdevid_module_dest(mm);
-		}
-		if (b->modules)
-			free(b->modules);
-		if (b->modloader)
-			modloader_destroy(b->modloader);
-		memset(b, '\0', sizeof (*b));
-		free(b);
-	}
+            bdevid_module_remove(bm);
+            bdevid_module_dest(mm);
+        }
+#endif
+            g_hash_table_destroy(b->modules);
+        }
+        if (b->module_pathz)
+            free(b->module_pathz);
+        memset(b, '\0', sizeof (*b));
+        free(b);
+    }
 }
 
-struct bdevid *bdevid_new(void)
+struct bdevid *bdevid_new(char *env)
 {
-	struct bdevid *b = NULL;
+    struct bdevid *b = NULL;
+    char *env_path = NULL;
 
-	if (!(b = calloc(1, sizeof (*b))))
-		goto err;
+    if (!(b = calloc(1, sizeof (*b))))
+        goto err;
 
-	if (!(b->modloader = modloader_new(&bdevid_ops)))
-		goto err;
-	
-	if (!(b->modules = calloc(1, sizeof (struct bdevid_module *))))
-		goto err;
+    if (env)
+        env_path = getenv(env);
 
-	modloader_path_set(b->modloader, "/lib/bdevid:/usr/lib/bdevid");
-	modloader_priv_set(b->modloader, b);
-	modloader_module_load_all(b->modloader);
+    if (env_path) {
+        bdevid_path_set(b, env_path);
+    } else {
+        bdevid_path_set(b, "/lib/bdevid:/usr/lib/bdevid");
+    }
 
-	return b;
+    if (!(b->modules = g_hash_table_new(g_str_hash, g_str_equal)))
+        goto err;
+
+    return b;
 err:
-	bdevid_destroy(b);
-	return NULL;
-}
-
-int bdevid_register_probe(struct bdevid_module *bm,
-	struct bdevid_probe_ops *ops)
-{
-	printf("module <%p> registered probe <%p>\n", bm, ops);
-	return 0;
-}
-
-int bdevid_probe_device(struct bdevid *b, char *path, char **id)
-{
-	return 1;	
+    bdevid_destroy(b);
+    return NULL;
 }
 
 /*
- * vim:ts=8:sts=8:sw=8:noet
+ * vim:ts=8:sw=4:sts=4:et
  */
