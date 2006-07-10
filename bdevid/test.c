@@ -1,9 +1,7 @@
 /*
  * Copyright 2006 Red Hat, Inc.
- * Copyright 2003 IBM Corp.
  *
  * Authors:
- *	Patrick Mansfield <patmans@us.ibm.com>
  *	Peter Jones <pjones@redhat.com>
  *
  *	This program is free software; you can redistribute it and/or modify it
@@ -13,11 +11,12 @@
 
 #define _GNU_SOURCE 1
 
+#include <sys/types.h>
 #include <stdio.h>
 #include <string.h>
 #include <bdevid.h>
 
-static int test_probe(dev_t dev, char **id)
+static int test_probe(int fd, char **id)
 {
 	char *foo;
 
