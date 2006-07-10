@@ -1,24 +1,37 @@
 #ifndef BDEVID_PRIV_H
 #define BDEVID_PRIV_H 1
 
+#include <glib.h>
 #include <bdevid.h>
 
 struct bdevid;
 struct bdevid_module;
+struct bdevid_probe;
 
 struct bdevid {
-	struct modloader *modloader;
-	struct bdevid_module **modules;
-	int nmodules;
+	char *module_pathz;
+	size_t module_pathz_len;
+
+	GHashTable *modules;
 };
 
 struct bdevid_module {
 	struct bdevid *bdevid;
-	struct modloader_module *modloader_module;
+
+	char *name;
+	void *dlh;
+
 	struct bdevid_module_ops *ops;
-	struct bdevid_probe_ops **probes;
-	int nprobes;
-	void *priv;
+
+	GPtrArray *probes;
+};
+
+struct bdevid_probe {
+	struct bdevid_module *module;
+
+	char *name;
+
+	struct bdevid_probe_ops *ops;
 };
 
 #endif /* BDEVID_PRIV_H */
