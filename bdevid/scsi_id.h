@@ -30,9 +30,6 @@
  */
 #define MAX_BUFFER_LEN	256
 
-extern int scsi_get_serial (struct sysfs_device *dev_scsi, const char *devname,
-			    int page_code, char *serial, int len);
-
 /*
  * Page code values. 
  */
