@@ -24,6 +24,7 @@
 
 #include <sys/types.h>
 #include <stdlib.h>
+#include <string.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -83,7 +84,31 @@ readFD (int fd, char **buf)
     return filesize;
 }
 
-extern int smartmknod(const char * device, mode_t mode, dev_t dev);
+static int __attribute__((used))
+smartmknod(const char * device, mode_t mode, dev_t dev)
+{
+    char buf[PATH_MAX];
+    char * end;
+
+    strncpy(buf, device, 256);
+
+    end = buf;
+    do {
+        size_t len;
+        len = strcspn(end, "/!");
+        end += len;
+        if (!end || !*end)
+            break;
+
+        *end = '\0';
+        if (access(buf, F_OK) && errno == ENOENT)
+            mkdir(buf, 0755);
+        *end = '/';
+        end++;
+    } while (1);
+
+    return mknod(buf, mode, dev);
+}
 
 extern int getDevNumFromProc(char * file, char * device);
 

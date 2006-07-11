@@ -25,32 +25,6 @@
 #include "util.h"
 
 int
-smartmknod(const char * device, mode_t mode, dev_t dev)
-{
-    char buf[PATH_MAX];
-    char * end;
-
-    strncpy(buf, device, 256);
-
-    end = buf;
-    do {
-        size_t len;
-        len = strcspn(end, "/!");
-        end += len;
-        if (!end || !*end)
-            break;
-
-        *end = '\0';
-        if (access(buf, F_OK) && errno == ENOENT)
-            mkdir(buf, 0755);
-        *end = '/';
-        end++;
-    } while (1);
-
-    return mknod(buf, mode, dev);
-}
-
-int
 getDevNumFromProc(char * file, char * device)
 {
     char buf[32768], line[4096];
