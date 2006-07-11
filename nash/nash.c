@@ -769,11 +769,15 @@ losetupCommand(char * cmd, char * end)
             return 1;
         }
 
-        fd = open(file, O_RDWR);
-        if (fd < 0) {
-            eprintf("losetup: failed to open %s: %m\n", file);
-            close(dev);
-            return 1;
+        if ((fd = open(file, O_RDWR)) < 0) {
+	    if (errno == EROFS) {
+	        fd = open(file, O_RDONLY);
+	    }
+	    if (fd < 0) {
+                eprintf("losetup: failed to open %s: %m\n", file);
+                close(dev);
+                return 1;
+	    }
         }
 
         if (ioctl(dev, LOOP_SET_FD, (long)fd)) {
