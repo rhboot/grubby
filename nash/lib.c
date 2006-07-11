@@ -102,6 +102,8 @@ _nashFreeContext(nashContext **nc)
     if (nc && *nc) {
         if ((*nc)->fw_pathz)
             free((*nc)->fw_pathz);
+        if ((*nc)->cache)
+            nashBlockFinish(*nc);
         free(*nc);
         *nc = NULL;
     }
