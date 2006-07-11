@@ -1271,7 +1271,7 @@ umountCommand(char * cmd, char * end)
         return 1;
     }
 
-    if (umount(path) < 0) {
+    if (umount2(path,MNT_DETACH) < 0) {
         eprintf("umount %s failed: %m\n", path);
         return 1;
     }
