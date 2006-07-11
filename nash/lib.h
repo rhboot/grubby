@@ -24,12 +24,15 @@
 
 #include <nash.h>
 #include <signal.h>
+#include <blkid/blkid.h>
 
 struct nashContext_s {
     nashLogger_t logger;
     int testing;
     int quiet;
     int reallyquiet;
+
+    blkid_cache cache;
 
     nashFileFetcher_t fetcher;
     char *fw_pathz;
