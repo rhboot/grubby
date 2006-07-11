@@ -21,7 +21,7 @@ libnash.a : $(libnash_OBJECTS)
 	$(AR) crs $@ $^
 
 hotplug: $(subst hotplug.o,,$(libnash_OBJECTS))
-	$(CC) $(CFLAGS) $(LDFLAGS) -DFWDEBUG -o $@ hotplug.c $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -DFWDEBUG -o $@ hotplug.c $^ -lblkid
 
 debug::
 	$(MAKE) clean
