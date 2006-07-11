@@ -24,10 +24,6 @@ install: all
 		install -m 644 grubby.8 $(BUILDROOT)/$(mandir)/man8 ; \
 	fi
 
-NASH_OBJECTS := block.o lib.o wrap.o util.o
-$(NASH_OBJECTS): %.o : ../nash/%.c
-	$(CC) $(CFLAGS) -iquote../nash/ -c -o $@ $<
-
-grubby:: $(NASH_OBJECTS) $(OBJECTS)
+grubby:: $(OBJECTS) ../nash/libnash.a
 	$(CC) $(LDFLAGS) -o $@ $^ -Wl,-Bstatic $(LIBS) -Wl,-Bdynamic
 
