@@ -6,13 +6,11 @@
  * Copyright 2006 Red Hat, Inc.
  *
  * This software may be freely redistributed under the terms of the GNU
- * public license.
+ * General Public License, version 2.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- *
- * vim:ts=8:sw=4:sts=4:et
  */
 
 #define _GNU_SOURCE 1
@@ -33,6 +31,7 @@
 #include <linux/blkpg.h>
 
 #include <nash.h>
+#include "lib.h"
 #include "block.h"
 #include "util.h"
 
@@ -64,8 +63,8 @@ bdev_removable(const char *path)
     return rc;
 }
 
-static int
-parse_sysfs_devnum(const char *path, dev_t *dev)
+int
+nashParseSysfsDevno(const char *path, dev_t *dev)
 {
     char *first = NULL, *second;
     int major, minor;
@@ -97,30 +96,21 @@ parse_sysfs_devnum(const char *path, dev_t *dev)
     return 0;
 }
 
-static blkid_cache cache = NULL;
-
 void
-block_init(void)
+nashBlockInit(nashContext *c)
 {
-    if (blkid_get_cache(&cache, "/etc/blkid/blkid.tab") < 0)
-        blkid_get_cache(&cache, NULL);
+    if (blkid_get_cache(&c->cache, "/etc/blkid/blkid.tab") < 0)
+        blkid_get_cache(&c->cache, NULL);
 }
 
 void
-block_finish(void)
+nashBlockFinish(nashContext *c)
 {
-    blkid_put_cache(cache);
+    blkid_put_cache(c->cache);
 }
-
-struct block_dev {
-    char *sysfs_path;
-    char *dev_path;
-    dev_t devno;
-};
-typedef struct block_dev *bdev;
 
 static void
-bdev_free(struct block_dev *dev)
+bdev_free(struct nash_block_dev *dev)
 {
     if (!dev)
         return;
@@ -135,18 +125,17 @@ bdev_free(struct block_dev *dev)
     dev->devno = 0;
 }
 
-struct block_iter {
-    struct block_iter *parent;
-    struct block_iter *current;
+struct nash_block_dev_iter {
+    struct nash_block_dev_iter *parent;
+    struct nash_block_dev_iter *current;
 
     DIR *dir;
     char *dirname;
     struct dirent *dent;
 };
-typedef struct block_iter *bdev_iter;
 
-static bdev_iter
-block_sysfs_get_top(bdev_iter iter)
+static nashBdevIter
+block_sysfs_get_top(nashBdevIter iter)
 {
     while (iter->parent)
         iter = iter->parent;
@@ -154,7 +143,7 @@ block_sysfs_get_top(bdev_iter iter)
 }
 
 static void
-block_sysfs_iterate_destroy(bdev_iter iter)
+block_sysfs_iterate_destroy(nashBdevIter iter)
 {
     if (!iter)
         return;
@@ -169,11 +158,11 @@ block_sysfs_iterate_destroy(bdev_iter iter)
     }
 }
 
-static bdev_iter
-block_sysfs_iterate_begin(const char *path)
+nashBdevIter
+nashBdevIterNew(const char *path)
 {
     const char *dirpath = path ? path : "/sys/block";
-    bdev_iter iter = calloc(1, sizeof(*iter));
+    nashBdevIter iter = calloc(1, sizeof(*iter));
 
     iter->parent = NULL;
     iter->current = iter;
@@ -191,12 +180,12 @@ block_sysfs_iterate_begin(const char *path)
 }
 
 static int
-block_sysfs_try_dir(bdev_iter iter, char *sysfs_path, bdev *dev)
+block_sysfs_try_dir(nashBdevIter iter, char *sysfs_path, nashBdev *dev)
 {
     int ret;
     dev_t devno = 0;
 
-    ret = parse_sysfs_devnum(sysfs_path, &devno);
+    ret = nashParseSysfsDevno(sysfs_path, &devno);
 
     /* don't probe floppies, cd drives, etc */
     if (bdev_removable(sysfs_path))
@@ -204,7 +193,7 @@ block_sysfs_try_dir(bdev_iter iter, char *sysfs_path, bdev *dev)
     if (ret == 0) {
         /* we can't just assign it to *dev,
            or gcc decides it's unused */
-        bdev tmp = calloc(1, sizeof (struct block_dev));
+        nashBdev tmp = calloc(1, sizeof (struct nash_block_dev));
         tmp->devno = devno;
         tmp->sysfs_path = strdup(sysfs_path);
         asprintf(&tmp->dev_path, "/dev/%s", iter->dent->d_name);
@@ -215,10 +204,10 @@ block_sysfs_try_dir(bdev_iter iter, char *sysfs_path, bdev *dev)
     return -1;
 }
 
-static void
-block_sysfs_iterate_end(bdev_iter *iter)
+void
+nashBdevIterEnd(nashBdevIter *iter)
 {
-    bdev_iter parent;
+    nashBdevIter parent;
 
     *iter = (*iter)->current;
     do {
@@ -229,11 +218,11 @@ block_sysfs_iterate_end(bdev_iter *iter)
     } while (*iter);
 }
 
-static int
-block_sysfs_next(bdev_iter iter, bdev *dev)
+int
+nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
 {
-    bdev_iter top = block_sysfs_get_top(iter);
-    bdev_iter parent;
+    nashBdevIter top = block_sysfs_get_top(iter);
+    nashBdevIter parent;
     char *name;
     struct stat sb;
 
@@ -276,7 +265,7 @@ block_sysfs_next(bdev_iter iter, bdev *dev)
 
         asprintf(&name, "%s/%s", iter->dirname, iter->dent->d_name);
         if (lstat(name, &sb) >= 0 && S_ISDIR(sb.st_mode)) {
-            bdev_iter newiter = block_sysfs_iterate_begin(name);
+            nashBdevIter newiter = nashBdevIterNew(name);
 
             if (newiter != NULL) {
                 newiter->parent = iter;
@@ -289,37 +278,37 @@ block_sysfs_next(bdev_iter iter, bdev *dev)
 }
 
 char *
-block_find_device_by_devno(dev_t devno)
+nashFindDeviceByDevno(dev_t devno)
 {
-    bdev_iter biter;
-    bdev dev = NULL;
+    nashBdevIter biter;
+    nashBdev dev = NULL;
     char *path = NULL;
 
-    biter = block_sysfs_iterate_begin("/sys/block");
-    while (block_sysfs_next(biter, &dev) >= 0) {
+    biter = nashBdevIterNew("/sys/block");
+    while (nashBdevIterNext(biter, &dev) >= 0) {
         if (dev->devno == devno) {
             path = strdup(strrchr(dev->dev_path, '/')+1);
             break;
         }
     }
-    block_sysfs_iterate_end(&biter);
+    nashBdevIterEnd(&biter);
     return path;
 }
 
 static char *
-block_find_fs_by_keyvalue(const char *key, const char *value)
+block_find_fs_by_keyvalue(nashContext *c, const char *key, const char *value)
 {
-    bdev_iter biter;
-    bdev dev = NULL;
+    nashBdevIter biter;
+    nashBdev dev = NULL;
     blkid_dev bdev = NULL;
     char *name;
 
-    biter = block_sysfs_iterate_begin("/sys/block");
-    while(block_sysfs_next(biter, &dev) >= 0) {
+    biter = nashBdevIterNew("/sys/block");
+    while(nashBdevIterNext(biter, &dev) >= 0) {
         blkid_tag_iterate titer;
         const char *type, *data;
 
-        bdev = blkid_get_dev(cache, dev->dev_path, BLKID_DEV_NORMAL);
+        bdev = blkid_get_dev(c->cache, dev->dev_path, BLKID_DEV_NORMAL);
         if (!bdev)
             continue;
         titer = blkid_tag_iterate_begin(bdev);
@@ -327,40 +316,40 @@ block_find_fs_by_keyvalue(const char *key, const char *value)
             if (!strcmp(type, key) && !strcmp(data, value)) {
                 name = strdup(blkid_dev_devname(bdev));
                 blkid_tag_iterate_end(titer);
-                block_sysfs_iterate_end(&biter);
+                nashBdevIterEnd(&biter);
                 return name;
             }
         }
         blkid_tag_iterate_end(titer);
     }
-    block_sysfs_iterate_end(&biter);
+    nashBdevIterEnd(&biter);
 
     return NULL;
 }
 
 char *
-block_find_fs_by_label(const char *label)
+nashFindFsByLabel(nashContext *c, const char *label)
 {
-    return block_find_fs_by_keyvalue("LABEL", label);
+    return block_find_fs_by_keyvalue(c, "LABEL", label);
 }
 
 char *
-block_find_fs_by_uuid(const char *uuid)
+nashFindFsByUUID(nashContext *c, const char *uuid)
 {
-    return block_find_fs_by_keyvalue("UUID", uuid);
+    return block_find_fs_by_keyvalue(c, "UUID", uuid);
 }
 
 char *
-block_find_fs_by_name(const char *name)
+nashFindFsByName(nashContext *c, const char *name)
 {
     blkid_dev bdev = NULL;
 
     if (!access("/sys/block", F_OK)) {
         /* populate the whole cache */
-        block_find_fs_by_keyvalue("unlikely","unlikely");
+        block_find_fs_by_keyvalue(c, "unlikely","unlikely");
 
         /* now look our device up */
-        bdev = blkid_get_dev(cache, name, BLKID_DEV_NORMAL);
+        bdev = blkid_get_dev(c->cache, name, BLKID_DEV_NORMAL);
     }
 
     if (bdev)
@@ -371,80 +360,27 @@ block_find_fs_by_name(const char *name)
     return NULL;
 }
 
-void
-block_show_labels(void)
-{
-    bdev_iter biter;
-    bdev dev = NULL;
-    blkid_dev bdev = NULL;
-
-    block_init();
-    biter = block_sysfs_iterate_begin("/sys/block");
-    while(block_sysfs_next(biter, &dev) >= 0) {
-        blkid_tag_iterate titer;
-        const char *type, *data;
-        char *label=NULL, *uuid=NULL;
-
-        bdev = blkid_get_dev(cache, dev->dev_path, BLKID_DEV_NORMAL);
-        if (!bdev)
-            continue;
-        titer = blkid_tag_iterate_begin(bdev);
-        while(blkid_tag_next(titer, &type, &data) >= 0) {
-            if (!strcmp(type, "LABEL"))
-                label = strdup(data);
-            if (!strcmp(type, "UUID"))
-                uuid = strdup(data);
-        }
-        blkid_tag_iterate_end(titer);
-        if (label) {
-            printf("%s %s ", dev->dev_path, label);
-            free(label);
-        }
-        if (uuid) {
-            printf("%s", uuid);
-            free(uuid);
-        }
-        if (label)
-            printf("\n");
-    }
-    block_sysfs_iterate_end(&biter);
-
-    block_finish();
-}
-
-void
-sysfs_blkdev_probe(const char *dirname)
-{
-    bdev_iter iter;
-    bdev dev = NULL;
-
-    iter = block_sysfs_iterate_begin(dirname);
-    while(block_sysfs_next(iter, &dev) >= 0)
-        smartmknod(dev->dev_path, S_IFBLK | 0700, dev->devno);
-    block_sysfs_iterate_end(&iter);
-}
-
 char *
-agetpathbyspec(const char * spec)
+nashAGetPathBySpec(nashContext *c, const char * spec)
 {
     char *path;
 
-    block_init();
+    nashBlockInit(c);
     if (!strncmp(spec, "LABEL=", 6))
-        path = block_find_fs_by_label(spec+6);
+        path = nashFindFsByLabel(c, spec+6);
     else if (!strncmp(spec, "UUID=", 5))
-        path = block_find_fs_by_uuid(spec+5);
+        path = nashFindFsByUUID(c, spec+5);
     else
-        path = block_find_fs_by_name(spec);
-    block_finish();
+        path = nashFindFsByName(c, spec);
+    nashBlockFinish(c);
 
     return path;
 }
 
 int
-mkpathbyspec(const char *spec, const char *path)
+nashMkPathBySpec(nashContext *c, const char *spec, const char *path)
 {
-    char *existing = getpathbyspec(spec);
+    char *existing = nashGetPathBySpec(c, spec);
     struct stat sb;
 
     if (!existing || stat(existing, &sb) < 0 || !S_ISBLK(sb.st_mode))
@@ -473,7 +409,7 @@ block_disable_partition(int fd, int partno)
 }
 
 int
-block_disable_partitions(const char *devname)
+nashDisablePartitions(const char *devname)
 {
     int fd;
     int partno;
@@ -499,13 +435,13 @@ int main(void)
 #if 1
     char *dev;
 
-    block_init();
+    nashBlockInit();
 
-    dev = block_find_fs_by_label("/");
+    dev = nashFindFsByLabel("/");
     printf("dev: %s\n", dev);
     free(dev);
 
-    block_finish();
+    nashBlockFinish();
 
     return 0;
 #else
@@ -532,3 +468,7 @@ int main(void)
 #endif
 }
 #endif
+
+/*
+ * vim:ts=8:sw=4:sts=4:et
+ */
