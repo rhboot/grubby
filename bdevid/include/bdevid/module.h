@@ -17,7 +17,9 @@ struct bdevid_module_ops {
 
 struct bdevid_probe_ops {
     char *name;
-    int (*probe)(int fd, char **id);
+    int (*get_vendor)(struct bdevid_bdev *bdev, char **vendor);
+    int (*get_model)(struct bdevid_bdev *bdev, char **model);
+    int (*get_unique_id)(struct bdevid_bdev *bdev, char **id);
 };
 
 extern int bdevid_register_probe(struct bdevid_module *,
