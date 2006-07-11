@@ -25,42 +25,6 @@
 #include "util.h"
 
 int
-readFD (int fd, char **buf)
-{
-    char *p;
-    size_t size = 16384;
-    int s, filesize;
-
-    *buf = calloc (16384, sizeof (char));
-    if (*buf == 0) {
-        eprintf("calloc failed: %s\n", strerror(errno));
-        return -1;
-    }
-
-    filesize = 0;
-    do {
-        p = &(*buf) [filesize];
-        s = read (fd, p, 16384);
-        if (s < 0)
-            break;
-        filesize += s;
-        /* only exit for empty reads */
-        if (s == 0)
-            break;
-        size += s;
-        *buf = realloc (*buf, size);
-    } while (1);
-
-    if (filesize == 0 && s < 0) {
-        free (*buf);
-        *buf = NULL;
-        return -1;
-    }
-
-    return filesize;
-}
-
-int
 smartmknod(const char * device, mode_t mode, dev_t dev)
 {
     char buf[PATH_MAX];
