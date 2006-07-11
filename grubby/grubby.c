@@ -29,7 +29,8 @@
 
 #include "version.h"
 
-#include "block.h"
+#include <nash.h>
+static nashContext *_nash_context;
 
 #define DEBUG 0
 
@@ -1086,7 +1087,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	}
     }
 
-    dev = getpathbyspec(dev);
+    dev = nashGetPathBySpec(_nash_context, dev);
     if (!dev)
         return 0;
 
@@ -2572,6 +2573,8 @@ int main(int argc, const char ** argv) {
 	POPT_AUTOHELP
 	{ 0, 0, 0, 0, 0 }
     };
+
+    _nash_context = nashNewContext();
 
     optCon = poptGetContext("grubby", argc, argv, options, 0);
     poptReadDefaultConfig(optCon, 1);
