@@ -620,7 +620,7 @@ dm_print_rmparts(const char *name)
 
     for (i=0; i < deps->count; i++) {
         if (major(deps->device[i]) != major) {
-            char *path = block_find_device_by_devno(deps->device[i]);
+            char *path = nashFindDeviceByDevno(deps->device[i]);
             if (path)
                 printf("rmparts %s\n", path);
         }
