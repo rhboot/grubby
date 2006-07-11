@@ -39,6 +39,9 @@ typedef int (*nashLogger_t)(nashContext *, const nash_log_level,
 extern void nashSetLogger(nashContext *, nashLogger_t);
 extern nashLogger_t nashGetLogger(nashContext *);
 
+extern int nashLoggerV(nashContext *, const nash_log_level level,
+    const char *format, va_list ap)
+    __attribute__((format(printf, 3, 0)));
 extern int nashLogger(nashContext *, const nash_log_level level,
     const char *format, ...)
     __attribute__((format(printf, 3, 4)));

@@ -110,6 +110,22 @@ _nashFreeContext(nashContext **nc)
 }
 
 int
+nashLoggerV(nashContext *ctx, const nash_log_level level,
+    const char *format, va_list ap)
+{
+    va_list apc;
+    int ret = 0;
+
+    if (ctx->logger) {
+        va_copy(apc, ap);
+        ret = ctx->logger(ctx, level, format, apc);
+        va_end(apc);
+    }
+
+    return ret;
+}
+
+int
 nashLogger(nashContext *ctx, const nash_log_level level,
     const char *format, ...)
 {
