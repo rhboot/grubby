@@ -56,10 +56,8 @@ readFD (int fd, char **buf)
     int s, filesize;
 
     *buf = calloc (16384, sizeof (char));
-    if (*buf == 0) {
-        eprintf("calloc failed: %s\n", strerror(errno));
+    if (*buf == 0)
         return -1;
-    }
 
     filesize = 0;
     do {
