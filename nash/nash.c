@@ -2082,7 +2082,8 @@ condCommand(char *cmd, char *end)
             if (exit_status > tval)
                 return exit_status;
             conditional = 1;
-        } else if (!strcmp(op, "-et")) {
+        } else if (!strcmp(op, "-eq") ||
+                   !strcmp(op, "-et")) {
             if (exit_status != tval)
                 return exit_status;
             conditional = 1;
@@ -2123,7 +2124,7 @@ condCommand(char *cmd, char *end)
     if (internal) {
         const struct commandHandler *handler;
 
-        handler = getCommandHandler(cmd);
+        handler = getCommandHandler(op);
         if (handler->name != NULL)
             rc = (handler->fp)(cmd, end);
     }
