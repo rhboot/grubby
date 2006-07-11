@@ -58,6 +58,8 @@ static int waitForLink(char * dev) {
 static void writeResolvConf(struct pumpNetIntf intf) {
     char * filename = "/etc/resolv.conf";
     FILE * f;
+    char buf[INET6_ADDRSTRLEN+1];
+    ip_addr_t *addr;
     int i;
 
     if (!(intf.set & PUMP_NETINFO_HAS_DOMAIN) && !intf.numDns)
@@ -72,8 +74,11 @@ static void writeResolvConf(struct pumpNetIntf intf) {
     if (intf.set & PUMP_NETINFO_HAS_DOMAIN)
         fprintf(f, "search %s\n", intf.domain);
 
-    for (i = 0; i < intf.numDns; i++) 
-        fprintf(f, "nameserver %s\n", inet_ntoa(intf.dnsServers[i]));
+    for (i = 0; i < intf.numDns; i++) {
+        addr = &(intf.dnsServers[i]);
+        inet_ntop(addr->sa_family, IP_ADDR(addr), buf, INET6_ADDRSTRLEN);
+        fprintf(f, "nameserver %s\n", buf);
+    }
 
     fclose(f);
 
@@ -82,6 +87,35 @@ static void writeResolvConf(struct pumpNetIntf intf) {
     return;
 }
 
+static void nashNetLogger(void * arg, int priority, char * fmt, va_list va) {
+    nash_log_level loglevel = NASH_NOTICE;
+
+    if (priority <= LOG_ERR)
+        loglevel = NASH_ERROR;
+    else if (priority <= LOG_WARNING)
+        loglevel = NASH_WARNING;
+
+    nashLoggerV(_nash_context, loglevel, fmt, va);
+    nashLogger(_nash_context, loglevel, "\n");
+}
+
+static inline int nashPton(char * addr_str, ip_addr_t *ret) {
+    struct in_addr addr;
+    struct in6_addr addr6;
+
+    if (!addr_str)
+        return 0;
+
+    if (inet_pton(AF_INET, addr_str, &addr)) {
+	*ret = ip_addr_in(&addr);
+	return 1;
+    } else if (inet_pton(AF_INET6, addr_str, &addr6)) {
+	*ret = ip_addr_in6(&addr6);
+	return 1;
+    }
+
+    return 0;
+}
 
 int nashNetworkCommand(char * cmd) {
     int argc;
@@ -149,9 +183,9 @@ int nashNetworkCommand(char * cmd) {
         char *c, *buf = strdup(dns);
         
         c = strtok(buf, ",");
-        while ((intf.numDns < MAX_DNS_SERVERS) && (c != NULL) && inet_aton(c, &addr)) {
-            intf.dnsServers[intf.numDns] = addr;
-            intf.numDns++;
+        while ((intf.numDns < MAX_DNS_SERVERS) && (c != NULL)) {
+            if (nashPton(c, &intf.dnsServers[intf.numDns]))
+                intf.numDns++;
             c = strtok(NULL, ",");
         }
         if (intf.numDns)
@@ -166,24 +200,25 @@ int nashNetworkCommand(char * cmd) {
     if ((bootProto != NULL) && (!strncmp(bootProto, "dhcp", 4))) {
         waitForLink(dev);
         nashLogger(_nash_context, NASH_NOTICE, "Sending request for IP information through %s\n", dev);
-        pumpDhcpClassRun(dev, 0, 0, NULL, 
+        pumpDhcpClassRun(&intf, NULL,
                          dhcpclass ? dhcpclass : "nash",
-                         &intf, NULL);
+                         DHCPv6_DISABLE, 0, 45, nashNetLogger, LOG_INFO);
     } else { /* static IP.  hope enough is specified! */
-        if (ip && inet_aton(ip, &addr)) {
-            intf.ip = addr;
+        if (nashPton(ip, &intf.ip))
             intf.set |= PUMP_INTFINFO_HAS_IP;
-        }
-        if (netmask && inet_aton(netmask, &addr)) {
-            intf.netmask = addr;
-            intf.network.s_addr = intf.ip.s_addr & intf.netmask.s_addr;
-            intf.broadcast.s_addr = intf.network.s_addr | ~intf.netmask.s_addr;
-            intf.set |= PUMP_INTFINFO_HAS_NETMASK | PUMP_INTFINFO_HAS_NETWORK |
-                        PUMP_INTFINFO_HAS_BROADCAST;
-        }
-        if (gateway && inet_aton(gateway, &addr)) {
-            intf.gateway = addr;
+        if (nashPton(netmask, &intf.netmask))
+            intf.set |= PUMP_INTFINFO_HAS_NETMASK;
+        if (nashPton(gateway, &intf.gateway))
             intf.set |= PUMP_NETINFO_HAS_GATEWAY;
+
+        /* FIXME: what about IPv6 ? */
+        if (intf.set & PUMP_INTFINFO_HAS_NETMASK &&
+            intf.netmask.sa_family == AF_INET) {
+            addr.s_addr = IP_ADDR_IN(&intf.ip)->s_addr & IP_ADDR_IN(&intf.netmask)->s_addr;
+            intf.network = ip_addr_in(&addr);
+            addr.s_addr = IP_ADDR_IN(&intf.network)->s_addr | ~IP_ADDR_IN(&intf.netmask)->s_addr;
+            intf.broadcast = ip_addr_in(&addr);
+            intf.set |= PUMP_INTFINFO_HAS_NETWORK | PUMP_INTFINFO_HAS_BROADCAST;
         }
     }
 
@@ -191,9 +226,6 @@ int nashNetworkCommand(char * cmd) {
     if (err) {
         nashLogger(_nash_context, NASH_ERROR, "ERROR: Interface setup failed: %s\n", err);
         return 1;
-    }
-    if (intf.set & PUMP_NETINFO_HAS_GATEWAY) {
-        pumpSetupDefaultGateway(&intf.gateway);
     }
     writeResolvConf(intf);
 

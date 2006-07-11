@@ -12,7 +12,10 @@ include ../Makefile.inc
 CFLAGS += -I$(TOPDIR)/nash/include
 
 LIBS=-ldevmapper -lparted -lblkid -lselinux -lsepol -luuid -lpopt \
-	-lpump -lresolv
+	-lresolv
+
+LIBS   += $(shell pkg-config --libs libdhcp) -lm
+CFLAGS += $(shell pkg-config --cflags libdhcp)
 
 nash:: version.h $(OBJECTS) libnash.a
 	$(CC) $(LDFLAGS) -static -o $@ $^ $(LIBS)
