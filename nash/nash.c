@@ -39,8 +39,10 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -433,7 +435,7 @@ mountCommand(char * cmd, char * end)
     if (!strncmp(fsType, "nfs", 3)) {
         device = strdupa(spec);
     } else {
-        device = getpathbyspec(spec);
+        device = nashGetPathBySpec(_nash_context, spec);
     }
 
     if (!device) {
@@ -645,6 +647,7 @@ static int lsdir(char *thedir, char * prefix)
     }
     return 0;
 }
+#endif
 
 static int
 catCommand(char * cmd, char * end)
@@ -670,6 +673,7 @@ catCommand(char * cmd, char * end)
     return 0;
 }
 
+#ifdef DEBUG
 static int
 lsCommand(char * cmd, char * end)
 {
@@ -1283,7 +1287,7 @@ resolveDeviceCommand(char *cmd, char *end)
         return 1;
     }
 
-    device = getpathbyspec(spec);
+    device = nashGetPathBySpec(_nash_context, spec);
     if (device) {
         printf("%s\n", device);
         return 0;
@@ -1325,7 +1329,7 @@ resumeCommand(char * cmd, char * end)
 
     qprintf("Trying to resume from %s\n", resumedev);
 
-    resume = getpathbyspec(resumedev);
+    resume = nashGetPathBySpec(_nash_context, resumedev);
     if (resume)
         resumedev = resume;
 
@@ -1455,7 +1459,7 @@ mkrootdevCommand(char *cmd, char *end)
     fclose(fstab);
 
     if (!strncmp(mnt.mnt_type, "nfs", 3)) return 0;    
-    return mkpathbyspec(root, "/dev/root") < 0 ? 1 : 0;
+    return nashMkPathBySpec(_nash_context, root, "/dev/root") < 0 ? 1 : 0;
 }
 
 static int
@@ -1532,7 +1536,7 @@ showLabelsCommand(char *cmd, char *end)
         eprintf("showlabels: unexpected arguments\n");
         return 1;
     }
-    block_show_labels();
+    block_show_labels(_nash_context);
     return 0;
 }
 
@@ -1554,18 +1558,113 @@ sleepCommand(char * cmd, char * end)
 }
 
 static int
-stabilizedCommand(char *cmd, char *end)
+stabilizedMtime(char *path, int iterations, struct timespec interval, int goal)
 {
     struct timespec req, rem = {0,0};
-    int iterations=-1;
-    struct timespec initial = {0,0};
-    unsigned long interval=300;
-    char *buf = NULL, *file = NULL;
     struct stat sb;
-    time_t last = 0;
-    int count = 0;
+    struct timespec last = {0, 0};
+    int count = 0, changed = 0;
+
+
+    do {
+        struct timeval now;
+        memset(&now, '\0', sizeof(now));
+        gettimeofday(&now, NULL);
+        memset(&sb, '\0', sizeof(sb));
+        if (stat(path, &sb) == -1) {
+            eprintf("stabilized: stat %s: %m\n", path);
+            return -1;
+        }
+        eprintf("last: %ld.%ld sb: %ld.%ld now: %ld.%ld\n", last.tv_sec, last.tv_nsec, sb.st_mtime, sb.st_atim.tv_nsec, now.tv_sec, now.tv_usec * 1000);
+        if (sb.st_mtime == last.tv_sec
+                && sb.st_atim.tv_nsec == last.tv_nsec) {
+            if (++count == goal)
+                return changed;
+        } else {
+            changed = 1;
+            count = 0;
+        }
+
+        rem.tv_sec = interval.tv_sec;
+        rem.tv_nsec = interval.tv_nsec;
+        do {
+            req.tv_sec = rem.tv_sec;
+            req.tv_nsec = rem.tv_nsec;
+            eprintf("nanosleep(%ld.%ld)\n", req.tv_sec, req.tv_nsec);
+        } while (nanosleep(&req, &rem) < 0 && errno == EINTR);
+        last.tv_sec = sb.st_mtime;
+        last.tv_nsec = sb.st_atim.tv_nsec;
+        if (iterations != -1)
+            iterations--;
+    } while (iterations == -1 || iterations > 0);
+    return -1;
+}
+
+#define _ppoll(fds, nfds, timeout, sigmask, nsigs) \
+    syscall(SYS_ppoll, fds, nfds, timeout, sigmask, nsigs)
+
+static int
+stabilizedPoll(char *path, int iterations, struct timespec interval, int goal)
+{
+    int count = -1, changed = 0;
+    struct pollfd pd = {
+        .events = POLLIN | POLLPRI | POLLERR |POLLHUP | POLLMSG,
+        .revents = 0,
+    };
+    struct timespec timeout = {0,0};
+    char buf;
+    int last = -1, rc = 0;
+
+    if ((pd.fd = open(path, O_RDONLY|O_NONBLOCK)) < 0) {
+        eprintf("stabilized: open %s: %m\n", path);
+        return -1;
+    }
+
+    /* first, drain the file */
+    while ((rc = read(pd.fd, &buf, 1)) >= 0) {
+        if (rc == 0 && last == 0)
+            break;
+        last = rc;
+    }
+    timeout.tv_sec = 0;
+    timeout.tv_nsec = 1;
+    rc = _ppoll(&pd, 1, &timeout, NULL, 0);
+    do {
+        timeout = interval;
+
+        pd.revents = 0;
+        while ((rc = _ppoll(&pd, 1, &timeout, NULL, 0) < 0)) {
+            if (errno != EINTR)
+                return -1;
+        }
+        eprintf("rc: %d pd.revent: %d\n", rc, pd.revents);
+        if (pd.revents) {
+            changed = 1;
+            count = 0;
+        } else {
+            if (++count == goal)
+                return changed;
+        }
+        if (iterations != -1)
+            iterations--;
+    } while (iterations == -1 || iterations > 0);
+    return -1;
+}
+
+static int
+stabilizedCommand(char *cmd, char *end)
+{
+    struct timespec interval_ts = {0,0};
+    int iterations=-1;
+    unsigned long interval=750;
+    char *buf = NULL, *file = NULL;
+    int rc, do_poll = 0;
 
     while ((cmd = getArg(cmd, end, &buf))) {
+        if (!strcmp(buf, "--poll")) {
+            do_poll = 1;
+            continue;
+        }
         if (!strcmp(buf, "--iterations")) {
             if (!(cmd = getArg(cmd, end, &buf))) {
 usage:
@@ -1590,36 +1689,25 @@ usage:
     if (!file)
         goto usage;
 
-    initial.tv_sec = 0;
-    initial.tv_nsec = interval * 1000000;
-    while (initial.tv_nsec > 999999999) {
-        initial.tv_sec += 1;
-        initial.tv_nsec -= 999999999;
+    interval_ts.tv_sec = 0;
+    interval_ts.tv_nsec = interval * 1000000;
+    while (interval_ts.tv_nsec > 999999999) {
+        interval_ts.tv_sec += 1;
+        interval_ts.tv_nsec -= 999999999;
     }
 
-    memset(&sb, '\0', sizeof(sb));
-    do {
-        if (stat(file, &sb) == -1) {
-            eprintf("stabilized: stat %s: %m\n", file);
-            return 1;
-        }
-        if (sb.st_mtime == last) {
-            if (++count == 5)
-                return 0;
-        } else
-            count = 0;
+    if (do_poll)
+        rc = stabilizedPoll(file, iterations, interval_ts, 10);
+    else
+        rc = stabilizedMtime(file, iterations, interval_ts, 10);
 
-        rem.tv_sec = initial.tv_sec;
-        rem.tv_nsec = initial.tv_nsec;
-        do {
-            req.tv_sec = rem.tv_sec;
-            req.tv_nsec = rem.tv_nsec;
-        } while (nanosleep(&req, &rem) < 0 && errno == EINTR);
-        last = sb.st_mtime;
-        if (iterations != -1)
-            iterations--;
-    } while (iterations == -1 || iterations > 0);
-    return 1;
+    if (rc < 0)
+        return 1;
+    if (rc == 0) {
+        eprintf("Could not detect stabilization, waiting 10 seconds.\n");
+        sleep(10);
+    }
+    return 0;
 }
 
 static int
@@ -2011,7 +2099,7 @@ rmpartsCommand(char *cmd, char *end)
         return 1;
     }
 
-    if (block_disable_partitions(devname) < 1)
+    if (nashDisablePartitions(devname) < 1)
         return 1;
     return 0;
 }
