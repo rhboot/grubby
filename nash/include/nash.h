@@ -19,6 +19,7 @@
 #include <nash/lib.h>
 #include <nash/log.h>
 #include <nash/hotplug.h>
+#include <nash/block.h>
 
 #endif /* NASH_H */
 /*
