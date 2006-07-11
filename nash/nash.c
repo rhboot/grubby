@@ -53,7 +53,6 @@
 #include <termios.h>
 #include <mntent.h>
 #include <execinfo.h>
-#include <time.h>
 
 #include <asm/unistd.h>
 
@@ -1548,15 +1547,15 @@ static int
 sleepCommand(char * cmd, char * end)
 {
     char *delaystr;
-    int delay;
+    long long delay;
 
     if (!(cmd = getArg(cmd, end, &delaystr))) {
         eprintf("sleep: delay expected\n");
         return 1;
     }
 
-    delay = atoi(delaystr);
-    sleep(delay);
+    delay = strtoll(delaystr, NULL, 0);
+    udelay(delay * 1000000);
 
     return 0;
 }
@@ -1564,7 +1563,6 @@ sleepCommand(char * cmd, char * end)
 static int
 stabilizedMtime(char *path, int iterations, struct timespec interval, int goal)
 {
-    struct timespec req, rem = {0,0};
     struct stat sb;
     struct timespec last = {0, 0};
     int count = 0, changed = 0;
@@ -1589,14 +1587,8 @@ stabilizedMtime(char *path, int iterations, struct timespec interval, int goal)
             count = 0;
         }
 
-        rem.tv_sec = interval.tv_sec;
-        rem.tv_nsec = interval.tv_nsec;
-        do {
-            req.tv_sec = rem.tv_sec;
-            req.tv_nsec = rem.tv_nsec;
-            eprintf("nanosleep(%ld.%ld)\n", req.tv_sec, req.tv_nsec);
-        } while (nanosleep(&req, &rem) < 0 && errno == EINTR);
-        last.tv_sec = sb.st_mtime;
+        udelayspec(interval);
+        last.tv_sec = sb.st_atim.tv_sec;
         last.tv_nsec = sb.st_atim.tv_nsec;
         if (iterations != -1)
             iterations--;
@@ -1660,7 +1652,7 @@ stabilizedCommand(char *cmd, char *end)
 {
     struct timespec interval_ts = {0,0};
     int iterations=-1;
-    unsigned long interval=750;
+    long long interval=750;
     char *buf = NULL, *file = NULL;
     int rc, do_poll = 0;
 
@@ -1672,17 +1664,17 @@ stabilizedCommand(char *cmd, char *end)
         if (!strcmp(buf, "--iterations")) {
             if (!(cmd = getArg(cmd, end, &buf))) {
 usage:
-                eprintf("usage: stabilized [ --iterations N ] "
-                        "[ --interval MSECS ] <file>\n");
+                eprintf("usage: stabilized [--poll] [ --iterations N ] "
+                        "[ --interval MILLISECS ] <file>\n");
                 return 1;
             }
-            iterations = atoi(buf);
+            iterations = strtoll(buf, NULL, 0);
             continue;
         }
         if (!strcmp(buf, "--interval")) {
             if (!(cmd = getArg(cmd, end, &buf)))
                 goto usage;
-                interval = atoi(buf);
+                interval = strtoll(buf, NULL, 0);
             continue;
         }
         if (file)
@@ -1694,11 +1686,11 @@ usage:
         goto usage;
 
     interval_ts.tv_sec = 0;
-    interval_ts.tv_nsec = interval * 1000000;
-    while (interval_ts.tv_nsec > 999999999) {
+    while (interval > 999) {
         interval_ts.tv_sec += 1;
-        interval_ts.tv_nsec -= 999999999;
+        interval -= 999;
     }
+    interval_ts.tv_nsec = interval * 1000000;
 
     if (do_poll)
         rc = stabilizedPoll(file, iterations, interval_ts, 10);

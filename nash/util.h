@@ -31,6 +31,8 @@
 #include <time.h>
 #include <errno.h>
 
+extern nashContext *_nash_context;
+
 static int __attribute__((used))
 setFdCoe(int fd, int enable)
 {
@@ -117,28 +119,28 @@ extern int stringsort(const void *v0, const void *v1);
 static void __attribute__((used))
 udelay(long long usecs)
 {
-    struct timespec req = {
-        .tv_sec = 0,
-        .tv_nsec = 0,
-    };
-    struct timespec rem = {
-        .tv_sec = 0,
-        .tv_nsec = 0,
-    };
-    struct timespec *reqp = &req, *remp = &rem;
+    struct timespec rem = {0,0}, req = {0,0};
+    struct timespec *reqp = &req, *remp = &rem, *tmp;
 
-    while (usecs >= 100000) {
-        req.tv_sec++;
-        usecs -= 100000;
+    while (usecs > 999999) {
+        rem.tv_sec++;
+        usecs -= 999999;
     }
-    req.tv_nsec = usecs * 100;
-     
-    while(nanosleep(reqp, remp) == -1 && errno == EINTR) {
+    rem.tv_nsec = usecs * 1000;
+
+    do {
+        tmp = reqp;
         reqp = remp;
-        remp = reqp == &req ? &rem : &req;
+        remp = tmp;
         errno = 0;
-    }
+    } while (nanosleep(reqp, remp) == -1 && errno == EINTR);
 }
+
+#define udelayspec(ts) ({                                       \
+        long long __delay = (ts.tv_nsec - (ts.tv_nsec % 1000))  \
+                          + (ts.tv_sec * 1000000);              \
+        udelay(__delay);                                        \
+    })
 
 extern char *readlink_malloc(const char *filename);
 
@@ -167,9 +169,6 @@ extern char *readlink_malloc(const char *filename);
         }                                           \
         _rc;                                        \
     })
-
-
-extern nashContext *_nash_context;
 
 #if 0 /* not just yet */
 extern int qprintf(const char *format, ...)
