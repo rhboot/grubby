@@ -20,6 +20,7 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <bdevid.h>
 
@@ -149,133 +150,6 @@ static int sg_err_category3(struct sg_io_hdr *hp)
                    hp->sbp, hp->sb_len_wr);
 }
 
-#if 0
-static int scsi_dump_sense(struct sysfs_device *dev, struct sg_io_hdr *io)
-{
-    unsigned char *sense_buffer;
-    int s;
-    int sb_len;
-    int code;
-    int sense_class;
-    int sense_key;
-    int descriptor_format;
-    int asc, ascq;
-#ifdef DUMP_SENSE
-    char out_buffer[256];
-    int i, j;
-#endif
-
-    /*
-     * Figure out and print the sense key, asc and ascq.
-     *
-     * If you want to suppress these for a particular drive model, add
-     * a black list entry in the scsi_id config file.
-     *
-     * XXX We probably need to: lookup the sense/asc/ascq in a retry
-     * table, and if found return 1 (after dumping the sense, asc, and
-     * ascq). So, if/when we get something like a power on/reset,
-     * we'll retry the command.
-     */
-
-    dbg("got check condition\n");
-
-    sb_len = io->sb_len_wr;
-    if (sb_len < 1) {
-        info("%s: sense buffer empty", dev->kernel_name);
-        return -1;
-    }
-
-    sense_buffer = io->sbp;
-    sense_class = (sense_buffer[0] >> 4) & 0x07;
-    code = sense_buffer[0] & 0xf;
-
-    if (sense_class == 7) {
-        /*
-         * extended sense data.
-         */
-        s = sense_buffer[7] + 8;
-        if (sb_len < s) {
-            info("%s: sense buffer too small %d bytes, %d bytes too short",
-                dev->kernel_name, sb_len, s - sb_len);
-            return -1;
-        }
-        if ((code == 0x0) || (code == 0x1)) {
-            descriptor_format = 0;
-            sense_key = sense_buffer[2] & 0xf;
-            if (s < 14) {
-                /*
-                 * Possible?
-                 */
-                info("%s: sense result too" " small %d bytes",
-                    dev->kernel_name, s);
-                return -1;
-            }
-            asc = sense_buffer[12];
-            ascq = sense_buffer[13];
-        } else if ((code == 0x2) || (code == 0x3)) {
-            descriptor_format = 1;
-            sense_key = sense_buffer[1] & 0xf;
-            asc = sense_buffer[2];
-            ascq = sense_buffer[3];
-        } else {
-            info("%s: invalid sense code 0x%x",
-                dev->kernel_name, code);
-            return -1;
-        }
-        info("%s: sense key 0x%x ASC 0x%x ASCQ 0x%x",
-            dev->kernel_name, sense_key, asc, ascq);
-    } else {
-        if (sb_len < 4) {
-            info("%s: sense buffer too small %d bytes, %d bytes too short",
-                dev->kernel_name, sb_len, 4 - sb_len);
-            return -1;
-        }
-
-        if (sense_buffer[0] < 15)
-            info("%s: old sense key: 0x%x", dev->kernel_name, sense_buffer[0] & 0x0f);
-        else
-            info("%s: sense = %2x %2x",
-                dev->kernel_name, sense_buffer[0], sense_buffer[2]);
-        info("%s: non-extended sense class %d code 0x%0x",
-            dev->kernel_name, sense_class, code);
-
-    }
-
-#ifdef DUMP_SENSE
-    for (i = 0, j = 0; (i < s) && (j < 254); i++) {
-        dbg("i %d, j %d\n", i, j);
-        out_buffer[j++] = hex_str[(sense_buffer[i] & 0xf0) >> 4];
-        out_buffer[j++] = hex_str[sense_buffer[i] & 0x0f];
-        out_buffer[j++] = ' ';
-    }
-    out_buffer[j] = '\0';
-    info("%s: sense dump:", dev->kernel_name);
-    info("%s: %s", dev->kernel_name, out_buffer);
-
-#endif
-    return -1;
-}
-
-static int scsi_dump(struct sysfs_device *dev, struct sg_io_hdr *io)
-{
-    if (!io->status && !io->host_status && !io->msg_status &&
-        !io->driver_status) {
-        /*
-         * Impossible, should not be called.
-         */
-        info("%s: called with no error", __FUNCTION__);
-        return -1;
-    }
-
-    info("%s: sg_io failed status 0x%x 0x%x 0x%x 0x%x",
-        dev->kernel_name, io->driver_status, io->host_status, io->msg_status, io->status);
-    if (io->status == SCSI_CHECK_CONDITION)
-        return scsi_dump_sense(dev, io);
-    else
-        return -1;
-}
-#endif
-
 static int scsi_inquiry(int fd, unsigned char evpd, unsigned char page,
             unsigned char *buf, size_t buflen)
 {
@@ -319,11 +193,6 @@ resend:
         case SG_ERR_CAT_RECOVERED:
             retval = 0;
             break;
-
-#if 0
-        default:
-            retval = scsi_dump(dev, &io_hdr);
-#endif
     }
 
     if (!retval) {
@@ -362,7 +231,7 @@ static int do_scsi_page0_inquiry(int fd, unsigned char *buffer, size_t len)
     memset(page0, '\0', SCSI_INQ_BUFF_LEN);
     if ((retval = scsi_inquiry(fd, 0, 0x0, page0, SCSI_INQ_BUFF_LEN) < 0))
         return retval;
-    if (page0[1] != 0 || page0[3] > SCSI_INQ_BUFF_LEN)
+    if (page0[3] > SCSI_INQ_BUFF_LEN)
         return -1;
 
     /* XXX ugh, this check sucks... */
@@ -429,7 +298,7 @@ static int check_fill_0x83_id(unsigned char *page_83,
         *max_len = len;
     }
 
-    *serial[0] = hex_str[id_search->id_type];
+    (*serial)[0] = hex_str[id_search->id_type];
 
     /*
      * For SCSI_ID_VENDOR_SPECIFIC prepend the vendor and model before
@@ -447,15 +316,15 @@ static int check_fill_0x83_id(unsigned char *page_83,
          * ASCII descriptor.
          */
         while (i < (4 + page_83[3]))
-            *serial[j++] = page_83[i++];
+            (*serial)[j++] = page_83[i++];
     } else {
         /*
          * Binary descriptor, convert to ASCII, using two bytes of
          * ASCII for each byte in the page_83.
          */
         while (i < (4 + page_83[3])) {
-            *serial[j++] = hex_str[(page_83[i] & 0xf0) >> 4];
-            *serial[j++] = hex_str[ page_83[i] & 0x0f];
+            (*serial)[j++] = hex_str[(page_83[i] & 0xf0) >> 4];
+            (*serial)[j++] = hex_str[ page_83[i] & 0x0f];
             i++;
         }
     }
@@ -469,13 +338,13 @@ static int check_fill_0x83_prespc3(unsigned char *page_83,
 {
     int i, j;
     
-    *serial[0] = hex_str[id_search->id_type];
+    (*serial)[0] = hex_str[id_search->id_type];
     /* serial has been memset to zero before */
     j = strlen(*serial);    /* j = 1; */
 
     for (i = 0; i < page_83[3]; ++i) {
-        *serial[j++] = hex_str[(page_83[4+i] & 0xf0) >> 4];
-        *serial[j++] = hex_str[ page_83[4+i] & 0x0f];
+        (*serial)[j++] = hex_str[(page_83[4+i] & 0xf0) >> 4];
+        (*serial)[j++] = hex_str[ page_83[4+i] & 0x0f];
     }
     return 0;
 }
@@ -574,7 +443,7 @@ static int do_scsi_page80_inquiry(int fd, char **serial, size_t *max_len)
 
     len = buf[3];
     for (i = 4; i < len + 4; i++, ser_ind++)
-        *serial[ser_ind] = buf[i];
+        (*serial)[ser_ind] = buf[i];
     return 0;
 }
 
@@ -583,13 +452,67 @@ int result_ok(char **serial, size_t *len)
     return 1;
 }
 
-static int scsi_probe(int fd, char **id)
+static int scsi_get_devattr(struct bdevid_bdev *bdev, char *attr, char **value)
+{
+    char *sysfs_dir = bdevid_bdev_get_sysfs_dir(bdev);
+    char *tmp = NULL;
+    FILE *f;
+    int n;
+    char buf[1024];
+
+    memset(buf, '\0', sizeof(buf));
+
+    if (asprintf(&tmp, "%s/device/%s", sysfs_dir, attr) < 0)
+        goto err;
+
+    if (!(f = fopen(tmp, "r"))) 
+        goto err;
+
+    if (!fgets(buf, 1023, f))
+        goto err;
+
+    n = strlen(buf);
+    if (buf[n] == '\n')
+        buf[n] = '\0';
+
+    free(tmp);
+    tmp = NULL;
+
+    fclose(f);
+    if (!(tmp = strdup(buf)))
+        goto err;
+
+    *value = tmp;
+    return 0;   
+err:
+    if (tmp) {
+        int en = errno;
+        free(tmp);
+        errno = en;
+    }
+    return -1;
+}
+
+static int scsi_get_vendor(struct bdevid_bdev *bdev, char **vendor)
+{
+    return scsi_get_devattr(bdev, "vendor", vendor);
+}
+
+static int scsi_get_model(struct bdevid_bdev *bdev, char **model)
+{
+    return scsi_get_devattr(bdev, "model", model);
+}
+
+static int scsi_get_unique_id(struct bdevid_bdev *bdev, char **id)
 {
     char *serial = NULL;
     size_t len;
+    int fd;
     unsigned char page0[SCSI_INQ_BUFF_LEN];
     int ind;
     int ret = -1;
+
+    fd = bdevid_bdev_get_fd(bdev);
 
     len = 256;
     if (!(serial = calloc(len, sizeof(char))))
@@ -626,12 +549,13 @@ err:
 
 struct bdevid_probe_ops scsi_probe_ops = {
     .name = "scsi_probe",
-    .probe = scsi_probe,
+    .get_vendor = scsi_get_vendor,
+    .get_model = scsi_get_model,
+    .get_unique_id = scsi_get_unique_id,
 };
 
 static int scsi_init(struct bdevid_module *bm)
 {
-    printf("in scsi_init\n");
     if (bdevid_register_probe(bm, &scsi_probe_ops) == -1)
         return -1;
     return 0;
