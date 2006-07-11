@@ -16,31 +16,17 @@
 #ifndef NASH_PRIV_BLOCK_H
 #define NASH_PRIV_BLOCK_H 1
 
-extern void block_init(void);
-extern void block_finish(void);
-extern char *block_find_fs_by_label(const char *label);
-extern char *block_find_fs_by_uuid(const char *uuid);
-extern char *block_find_fs_by_name(const char *name);
-extern char *block_find_device_by_devno(dev_t devno);
+#include <nash/block.h>
 
-extern void block_show_labels(void);
+struct nash_block_dev {
+    char *sysfs_path;
+    char *dev_path;
+    dev_t devno;
+};
+
+extern void block_show_labels(nashContext *c);
 
 extern void sysfs_blkdev_probe(const char *dirname);
-
-extern char *agetpathbyspec(const char * spec);
-#define getpathbyspec(_spec) ({         \
-        char *_ret0, *_ret1 = NULL;     \
-        _ret0 = agetpathbyspec(_spec);  \
-        if (_ret0) {                    \
-            _ret1 = strdupa(_ret0);     \
-            free(_ret0);                \
-        }                               \
-        _ret1;                          \
-    })
-
-extern int mkpathbyspec(const char *spec, const char *path);
-
-extern int block_disable_partitions(const char *devname);
 
 #endif /* NASH_PRIV_BLOCK_H */
 
