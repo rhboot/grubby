@@ -23,6 +23,7 @@
 #endif
 
 #include <sys/types.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <stdio.h>
