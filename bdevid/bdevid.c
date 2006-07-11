@@ -7,7 +7,7 @@
  * Copyright 2005,2006 Red Hat, Inc.
  *
  * This software may be freely redistributed under the terms of the GNU
- * public license, version 2.
+ * General Public License, version 2.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
