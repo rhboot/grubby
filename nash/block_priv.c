@@ -41,6 +41,10 @@ block_show_labels(nashContext *c)
         const char *type, *data;
         char *label=NULL, *uuid=NULL;
 
+        if (nashBdevRemovable(dev))
+            continue;
+
+        smartmknod(dev->dev_path, S_IFBLK | 0700, dev->devno);
         bdev = blkid_get_dev(c->cache, dev->dev_path, BLKID_DEV_NORMAL);
         if (!bdev)
             continue;
