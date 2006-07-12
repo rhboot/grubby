@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=/usr
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libnash
+Description: nash
+Version: VERSIONSUBST
+Requires: blkid
+Libs: -L${libdir} -lnash
+Cflags: -I${includedir}

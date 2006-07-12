@@ -1,7 +1,7 @@
 TOPDIR ?= $(shell pwd)/../
 export TOPDIR
 
-TARGETS = nash
+TARGETS = nash libnash.pc
 OBJECTS = util.o dm.o linkdetect.o nash.o network.o nfsmount.o \
 	  nfsmount_clnt.o nfsmount_xdr.o dns.o block_priv.o
 
@@ -23,6 +23,9 @@ nash:: version.h $(OBJECTS) libnash.a
 libnash.a : $(libnash_OBJECTS)
 	$(AR) crs $@ $^
 
+libnash.pc:: libnash.pc.in
+	@sed "s/VERSIONSUBST/$(VERSION)/" < libnash.pc.in > libnash.pc
+
 hotplug: $(subst hotplug.o,,$(libnash_OBJECTS))
 	$(CC) $(CFLAGS) $(LDFLAGS) -DFWDEBUG -o $@ hotplug.c $^ -lblkid
 
@@ -34,15 +37,17 @@ debug:: $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^ libnash.a $(LIBS)
 
 clean::
-	rm -f debug hotplug *.o *.a
+	rm -f debug hotplug *.o *.a libnash.pc
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
 	mkdir -p $(BUILDROOT)/usr/lib
+	mkdir -p $(BUILDROOT)/usr/lib/pkgconfig
 	mkdir -p $(BUILDROOT)/usr/include/nash
 	mkdir -p $(BUILDROOT)/$(mandir)/man8
 	install -m 755 nash $(BUILDROOT)/sbin
 	install -m 644 nash.8 $(BUILDROOT)/$(mandir)/man8
 	install -m 644 libnash.a $(BUILDROOT)/usr/lib
+	install -m 644 libnash.pc $(BUILDROOT)/usr/lib/pkgconfig
 	install -m 644 include/nash.h $(BUILDROOT)/usr/include
 	install -m 644 include/nash/*.h $(BUILDROOT)/usr/include/nash
