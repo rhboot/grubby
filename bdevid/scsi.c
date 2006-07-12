@@ -447,7 +447,7 @@ static int do_scsi_page80_inquiry(int fd, char **serial, size_t *max_len)
     return 0;
 }
 
-int result_ok(char **serial, size_t *len)
+static int result_ok(char **serial, size_t *len)
 {
     return 1;
 }
@@ -547,7 +547,7 @@ err:
     return -1;
 }
 
-struct bdevid_probe_ops scsi_probe_ops = {
+static struct bdevid_probe_ops scsi_probe_ops = {
     .name = "scsi_probe",
     .get_vendor = scsi_get_vendor,
     .get_model = scsi_get_model,
@@ -561,7 +561,7 @@ static int scsi_init(struct bdevid_module *bm)
     return 0;
 }
 
-struct bdevid_module_ops scsi_module = {
+static struct bdevid_module_ops scsi_module = {
     .magic = BDEVID_MAGIC,
     .name = "scsi",
     .init = scsi_init,
