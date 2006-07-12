@@ -53,6 +53,7 @@ typedef struct nash_block_dev_iter *nashBdevIter;
 extern nashBdevIter nashBdevIterNew(const char *path);
 extern void nashBdevIterEnd(nashBdevIter *iter);
 extern int nashBdevIterNext(nashBdevIter iter, nashBdev *dev);
+extern int nashBdevRemovable(nashBdev bdev);
 
 #ifndef _GNU_SOURCE_DEFINED
 #undef _GNU_SOURCE
