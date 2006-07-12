@@ -6,7 +6,7 @@
  * Copyright 2005,2006 Red Hat, Inc.
  *
  * This software may be freely redistributed under the terms of the GNU
- * public license, version 2.
+ * General Public License, version 2.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <argz.h>
 #include <glib.h>
 
 #include "bdevid.h"
@@ -40,90 +41,25 @@ int bdevid_register_probe(struct bdevid_module *m, struct bdevid_probe_ops *ops)
     probe->ops = ops;
     probe->name = probe->ops->name;
 
-    printf("module <%p> registered probe <%p>\n", m, probe);
     return 0;
 }
 
 /* end probe registration */
-
-struct bdevid_device_probe_data {
-    struct bdevid *bdevid;
-    struct bdevid_module *module;
-    int proceed;
-
-    char *file;
-    int fd;
-    bdevid_device_probe_visitor visitor;
-    void *user_data;
-};
-
-static void bdevid_device_probe_probe_helper(gpointer data, gpointer user_data)
-{
-    struct bdevid_probe *probe = data;
-    struct bdevid_device_probe_data *udata = user_data;
-    char *id = NULL;
-
-    if (!udata->proceed)
-        return;
-
-    if (probe->ops->probe(udata->fd, &id) >= 0 && id) {
-        int rc;
-
-        rc = udata->visitor(udata->module->name, probe->name, id);
-        free(id);
-        if (rc < 0)
-            udata->proceed = 0;
-    }
-}
-
-static void bdevid_device_probe_module_helper(gpointer key, gpointer value,
-    gpointer user_data)
-{
-    struct bdevid_device_probe_data *udata = user_data;
-
-    if (!udata->proceed)
-        return;
-
-    udata->module = value;
-    g_ptr_array_foreach(udata->module->probes,
-                        bdevid_device_probe_probe_helper, user_data);
-}
-
-int bdevid_probe_device(struct bdevid *b, char *file,
-    bdevid_device_probe_visitor visitor, void *user_data)
-{
-    struct bdevid_device_probe_data udata = {
-        .bdevid = b,
-        .module = NULL,
-        .proceed = 1,
-        .file = file,
-        .fd = -1,
-        .visitor = visitor,
-        .user_data = user_data,
-    };
-
-    if ((udata.fd = open(file, O_EXCL)) < 0)
-        return udata.fd;
-
-    g_hash_table_foreach(b->modules, bdevid_device_probe_module_helper,
-        &udata);
-    return 1;
-}
-
 /* begin loading and unloading */
 
-int bdevid_module_unload(struct bdevid_module *m)
+int bdevid_module_unload(struct bdevid *b, char *name)
 {
     /* XXX write me */
     return 0;
 }
 
-int bdevid_module_load(struct bdevid *b, char *file)
+int bdevid_module_load_file_maybe(struct bdevid *b, char *file, char *name)
 {
     struct bdevid_module *m;
     struct bdevid_module_ops **ops;
+    int rc = -1;
 
-    if (access(file, R_OK|X_OK))
+    if (access(file, X_OK))
         return -1;
 
     if (!(m = calloc(1, sizeof (*m))))
@@ -140,9 +76,13 @@ int bdevid_module_load(struct bdevid *b, char *file)
         goto out;
 
     m->name = m->ops->name;
-
-    if (g_hash_table_lookup(b->modules, (gconstpointer)m->name))
+    if (name && strcmp(m->name, name))
         goto out;
+
+    if (g_hash_table_lookup(b->modules, (gconstpointer)m->name)) {
+        rc = 0;
+        goto out;
+    }
 
     g_hash_table_insert(b->modules, (gpointer)m->name, (gpointer)m);
     m->bdevid = b;
@@ -169,6 +109,39 @@ out:
         errno = en;
     }
     m = NULL;
+    if (!rc)
+        errno = 0;
+    return rc;
+}
+
+int bdevid_module_load_file(struct bdevid *b, char *file)
+{
+    return bdevid_module_load_file_maybe(b, file, NULL);
+    
+}
+
+int bdevid_module_load(struct bdevid *b, char *name)
+{
+    char *dir;
+
+    if (g_hash_table_lookup(b->modules, (gconstpointer)name))
+        return 0;
+
+    for (dir = b->module_pathz; dir;
+            dir = argz_next(b->module_pathz, b->module_pathz_len, dir)) {
+        char *file = NULL;
+
+        if (asprintf(&file, "%s/%s.so", dir, name) < 0)
+            continue;
+
+        if (bdevid_module_load_file_maybe(b, file, name) < 0) {
+            free(file);
+            continue;
+        }
+        free(file);
+        return 0;
+    }
+
     return -1;
 }
 
