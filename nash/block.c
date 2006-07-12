@@ -35,15 +35,15 @@
 #include "block.h"
 #include "util.h"
 
-static int
-bdev_removable(const char *path)
+int
+nashBdevRemovable(nashBdev bdev)
 {
     char *subpath = NULL;
     char *contents = NULL;
     int rc;
     int fd;
 
-    rc = asprintfa(&subpath, "%s/removable", path);
+    rc = asprintfa(&subpath, "%s/removable", bdev->sysfs_path);
     if (rc == -1)
         return 0;
 
@@ -185,23 +185,16 @@ block_sysfs_try_dir(nashBdevIter iter, char *sysfs_path, nashBdev *dev)
     int ret;
     dev_t devno = 0;
 
-    ret = nashParseSysfsDevno(sysfs_path, &devno);
+    if ((ret = nashParseSysfsDevno(sysfs_path, &devno)) < 0)
+        return ret;
 
-    /* don't probe floppies, cd drives, etc */
-    if (bdev_removable(sysfs_path))
-        return -1;
-    if (ret == 0) {
-        /* we can't just assign it to *dev,
-           or gcc decides it's unused */
-        nashBdev tmp = calloc(1, sizeof (struct nash_block_dev));
-        tmp->devno = devno;
-        tmp->sysfs_path = strdup(sysfs_path);
-        asprintf(&tmp->dev_path, "/dev/%s", iter->dent->d_name);
-        smartmknod(tmp->dev_path, S_IFBLK | 0700, tmp->devno);
-        *dev = tmp;
-        return 0;
-    }
-    return -1;
+    /* we can't just assign it to *dev, or gcc decides it's unused */
+    nashBdev tmp = calloc(1, sizeof (struct nash_block_dev));
+    tmp->devno = devno;
+    tmp->sysfs_path = strdup(sysfs_path);
+    asprintf(&tmp->dev_path, "/dev/%s", iter->dent->d_name);
+    *dev = tmp;
+    return 0;
 }
 
 void
