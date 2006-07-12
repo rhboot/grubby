@@ -2,7 +2,6 @@ include $(TOPDIR)/Makefile.tmpl
 
 LIBS = bdevid
 MODULES =
-#MODULES += test
 MODULES += scsi
 
 bdevid_LIBS := -ldl
