@@ -34,4 +34,9 @@ struct bdevid_probe {
 	struct bdevid_probe_ops *ops;
 };
 
+struct bdevid_sysfs_node;
+extern struct bdevid_sysfs_node *bdevid_sysfs_find_node(char *file);
+extern char *bdevid_sysfs_get_name(struct bdevid_sysfs_node *node);
+extern char *bdevid_sysfs_get_dir(struct bdevid_sysfs_node *node);
+
 #endif /* BDEVID_PRIV_H */
