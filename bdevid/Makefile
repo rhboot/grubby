@@ -13,6 +13,7 @@ CFLAGS += $(shell pkg-config --cflags glib-2.0 libnash)
 all :: $(OBJDIR)
 all :: $(foreach lib,${LIBS},$(OBJDIR)/lib${lib}.so $(OBJDIR)/lib${lib}.a)
 all :: $(foreach mod,${MODULES},$(OBJDIR)/${mod}.so)
+all :: libbdevid.pc
 
 $(foreach lib,$(MODULES),$(OBJDIR)/$(lib).so) : $(OBJDIR)/%.so : %.o
 	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -L$(OBJDIR) -o $@ $< $($*_LIBS) -lbdevid $(bdevid_LIBS)
