@@ -17,7 +17,7 @@ Requires: /bin/sh, /sbin/insmod.static, /sbin/losetup
 Requires: fileutils, grep, mount, gzip, tar, mktemp >= 1.5-5, findutils, lvm2
 Requires: filesystem >= 2.1.0, cpio, device-mapper, initscripts >= 8.22-1
 Requires: e2fsprogs >= 1.38-12
-BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-9, pkgconfig
+BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-9, pkgconfig, glib2
 BuildRequires: libdhcp4client-devel, libdhcp6client-devel, libdhcp-devel >= 1.9
 BuildRequires: device-mapper libselinux-devel libsepol-devel, python-devel >= %{pyver}
 %ifnarch s390 s390x
@@ -68,7 +68,10 @@ cd mkinitrd-%{version}
 make
 make test
 if [ $? != 0 ]; then exit 1; fi
-cd ../bdevid-%{BDEVID_VERSION}
+cd ..
+cp -a mkinitrd-%{version}/nash/libnash.a bdevid-%{version}/bdevid/
+cp -a mkinitrd-%{version}/nash/include/nash* bdevid-%{version}/bdevid/include/
+cd bdevid-%{BDEVID_VERSION}
 make LIB=%{_lib}
 
 %install
