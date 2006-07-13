@@ -90,7 +90,7 @@ pybd_bdevid_compare(PyBdevidObject *self, PyBdevidObject *other)
 static long
 pybd_bdevid_hash(PyObject *self)
 {
-    return (int)self;
+    return (long)self;
 }
 
 static PyObject *
