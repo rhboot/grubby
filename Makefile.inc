@@ -6,6 +6,9 @@ export VERSION
 RELEASE = $(shell awk '/^Release:/ { print $$2 }' $(TOPDIR)/mkinitrd.spec.in)
 export RELEASE
 
+LIB ?= lib
+export LIB
+
 ARCH := $(patsubst i%86,i386,$(shell uname -m))
 ARCH := $(patsubst sparc%,sparc,$(ARCH))
 ARCH := $(patsubst ppc%,ppc,$(ARCH))

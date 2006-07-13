@@ -65,8 +65,8 @@ Library for probing block devices for their unique hardware IDs.
 
 %build
 cd mkinitrd-%{version}
-make
-make test
+make LIB=%{_lib}
+make LIB=%{_lib} test
 if [ $? != 0 ]; then exit 1; fi
 cd ..
 cp -a mkinitrd-%{version}/nash/libnash.a bdevid-%{BDEVID_VERSION}/bdevid/
@@ -80,7 +80,7 @@ rm -rf $RPM_BUILD_ROOT
 cd mkinitrd-%{version}
 make LIB=%{_lib} BUILDROOT=$RPM_BUILD_ROOT mandir=%{_mandir} install
 cd ../bdevid-%{BDEVID_VERSION}
-make DESTDIR=$RPM_BUILD_ROOT install
+make LIB=%{_lib} DESTDIR=$RPM_BUILD_ROOT install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
