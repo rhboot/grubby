@@ -29,6 +29,10 @@ $(OBJDIR)/%.so : $(OBJDIR)/%.so.$(VERSION)
 $(OBJDIR)/libbdevid.a : $(OBJDIR)/libbdevid.a($(bdevid_OBJECTS))
 	ranlib $@
 
+libbdevid.pc: libbdevid.pc.in
+	@sed "s/VERSIONSUBST/$(VERSION)/" < libbdevid.pc.in > libbdevid.pc
+	@chmod 0644 libbdevid.pc
+
 install : all
 	@install -m 0755 -d $(DESTDIR)/usr/lib
 	@cp -av $(OBJDIR)/libbdevid.{so*,a} $(DESTDIR)/usr/lib/
@@ -42,7 +46,7 @@ install : all
 	done
 
 clean ::
-	@rm -vf *.o
+	@rm -vf *.o libbdevid.pc
 	@rm -rvf .objs
 
 .PHONY : clean install

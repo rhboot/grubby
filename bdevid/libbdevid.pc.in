@@ -1,0 +1,12 @@
+prefix=/usr
+exec_prefix=/usr
+libdir=/usr/lib
+includedir=/usr/include
+
+Name: libbdevid
+Description: probes block devices for identifying information
+Version: VERSIONSUBST
+Requires: glib-2.0 libnash
+Libs: -L${libdir} -lbdevid
+Libs.private: -ldl
+Cflags: -I${includedir}
