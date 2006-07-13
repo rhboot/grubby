@@ -4,7 +4,10 @@ Version: VERSIONSUBST
 Release: 1
 License: GPL
 Group: System Environment/Base
-Source: mkinitrd-%{version}.tar.bz2
+Source0: mkinitrd-%{version}.tar.bz2
+%define BDEVID_VERSION 0.1
+Source1: bdevid-$(BDEVID_VERSION).tar.bz2
+
 ExclusiveOs: Linux
 Prereq: dev
 Requires: /bin/sh, /sbin/insmod.static, /sbin/losetup
@@ -46,16 +49,23 @@ Requires: glibc-devel
 C header files and library for functionality exported by libnash.
 
 %prep
-%setup -q
+%setup -q -c -a 0
+%setup -q -c -a 1
 
 %build
+cd mkinitrd-$(VERSION)
 make
 make test
 if [ $? != 0 ]; then exit 1; fi
+cd ../bdevid-$(BDEVID_VERSION)
+make
 
 %install
 rm -rf $RPM_BUILD_ROOT
+cd mkinitrd-$(VERSION)
 make BUILDROOT=$RPM_BUILD_ROOT mandir=%{_mandir} install
+cd ../bdevid-$(BDEVID_VERSION)
+make DESTDIR=$RPM_BUILD_ROOT install
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -70,20 +80,33 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/new-kernel-pkg
 %attr(755,root,root) /sbin/grubby
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
+%{_libdir}/libbdevid.so*
+/lib/bdevid/scsi.so
+%{_libdir}/python*/site-packages/pybdevid.so
 
 %files devel
 %defattr(-,root,root)
 %{_libdir}/libnash.a
+%{_libdir}/pkgconfig/libnash.pc
 %{_includedir}/nash.h
 %{_includedir}/nash
 %{_includedir}/nash/*.h
 
+%{_libdir}/libbdevid.a
+%{_libdir}/pkgconfig/libbdevid.pc
+%{_includedir}/bdevid.h
+%{_includedir}/bdevid
+%{_includedir}/bdevid/*.h
+
 %changelog
+* Thu Jul 13 2006 Peter Jones <pjones@redhat.com> - 5.0.47-1
+- add libbdevid
+
 * Thu Jul  6 2006 Bill Nottingham <notting@redhat.com>
 - if NFS host doesn't resolve, assume it's an IP
 - make sure IP check doesn't get extraneous info
 
-* Wed Jul  5 2006 Peter Jones <pjones@redhat.com> - 5.0.47-1
+* Wed Jul  5 2006 Peter Jones <pjones@redhat.com>
 - make libnash.a and the nash-devel package
 
 * Fri Jun 30 2006 Jeremy Katz <katzj@redhat.com> - 5.0.46-1
