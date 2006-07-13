@@ -41,17 +41,18 @@ int __wrap_pipe(int filedes[2])
 int
 nash_wrap_open(const char *path, int flags, ...)
 {
-    int fd, rc, mode = 0;
+    int fd, rc;
+    mode_t mode = 0;
     long errnum;
 
     if (flags & O_CREAT) {
         va_list arg;
         va_start(arg, flags);
-        mode = va_arg(arg, int);
+        mode = va_arg(arg, mode_t);
         va_end(arg);
     }
 
-    fd = __real_open(path, flags);
+    fd = __real_open(path, flags, mode);
     if (fd < 0)
         return fd;
 
