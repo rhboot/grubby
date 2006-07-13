@@ -11,7 +11,7 @@ include ../Makefile.inc
 
 CFLAGS += -I$(TOPDIR)/nash/include
 
-LIBS	= -L/lib -lnash -ldevmapper -lparted -lblkid -lselinux -lsepol -luuid
+LIBS	= -L/lib -ldevmapper -lparted -lblkid -lselinux -lsepol -luuid
 LIBS	+= -lpopt -lresolv
 LIBS   += $(shell pkg-config --libs libdhcp) -lm
 CFLAGS += $(shell pkg-config --cflags libdhcp)
