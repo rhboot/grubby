@@ -14,7 +14,7 @@ Requires: /bin/sh, /sbin/insmod.static, /sbin/losetup
 Requires: fileutils, grep, mount, gzip, tar, mktemp >= 1.5-5, findutils, lvm2
 Requires: filesystem >= 2.1.0, cpio, device-mapper, initscripts >= 8.22-1
 Requires: e2fsprogs >= 1.38-12
-BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-9
+BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-9, pkgconfig
 BuildRequires: libdhcp4client-devel, libdhcp6client-devel, libdhcp-devel
 BuildRequires: device-mapper libselinux-devel libsepol-devel
 %ifnarch s390 s390x
