@@ -23,7 +23,8 @@ libnash.a : $(libnash_OBJECTS)
 	$(AR) crs $@ $^
 
 libnash.pc:: libnash.pc.in
-	@sed "s/VERSIONSUBST/$(VERSION)/" < libnash.pc.in > libnash.pc
+	@sed -e "s/VERSIONSUBST/$(VERSION)/" \
+	     -e "s/LIBSUBST/$(LIB)/" < libnash.pc.in > libnash.pc
 
 hotplug: $(subst hotplug.o,,$(libnash_OBJECTS))
 	$(CC) $(CFLAGS) $(LDFLAGS) -DFWDEBUG -o $@ hotplug.c $^ -lblkid
@@ -40,13 +41,13 @@ clean::
 
 install:
 	mkdir -p $(BUILDROOT)/sbin
-	mkdir -p $(BUILDROOT)/usr/lib
-	mkdir -p $(BUILDROOT)/usr/lib/pkgconfig
+	mkdir -p $(BUILDROOT)/usr/$(LIB)
+	mkdir -p $(BUILDROOT)/usr/$(LIB)/pkgconfig
 	mkdir -p $(BUILDROOT)/usr/include/nash
 	mkdir -p $(BUILDROOT)/$(mandir)/man8
 	install -m 755 nash $(BUILDROOT)/sbin
 	install -m 644 nash.8 $(BUILDROOT)/$(mandir)/man8
-	install -m 644 libnash.a $(BUILDROOT)/usr/lib
-	install -m 644 libnash.pc $(BUILDROOT)/usr/lib/pkgconfig
+	install -m 644 libnash.a $(BUILDROOT)/usr/$(LIB)
+	install -m 644 libnash.pc $(BUILDROOT)/usr/$(LIB)/pkgconfig
 	install -m 644 include/nash.h $(BUILDROOT)/usr/include
 	install -m 644 include/nash/*.h $(BUILDROOT)/usr/include/nash

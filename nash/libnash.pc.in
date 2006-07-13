@@ -1,6 +1,6 @@
 prefix=/usr
 exec_prefix=/usr
-libdir=${exec_prefix}/lib
+libdir=${exec_prefix}/LIBSUBST
 includedir=${prefix}/include
 
 Name: libnash
