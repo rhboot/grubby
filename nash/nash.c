@@ -1637,7 +1637,7 @@ stabilizedMtime(char *path, int iterations, struct timespec interval, int goal)
 
 #ifdef __ia64__
 #define _ppoll(fds, nfds, timeout, sigmask, nsigs) \
-    ppoll(fds, nfds, timeout, sigmask, nsigs)
+    ppoll(fds, nfds, timeout, sigmask)
 #else
 #define _ppoll(fds, nfds, timeout, sigmask, nsigs) \
     syscall(SYS_ppoll, fds, nfds, timeout, sigmask, nsigs)
