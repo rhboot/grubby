@@ -9,6 +9,7 @@ bdevid_LIBS += $(shell pkg-config --libs glib-2.0 libnash)
 bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o
 
 CFLAGS += $(shell pkg-config --cflags glib-2.0 libnash)
+CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"$(LIB)\""
 
 all :: $(OBJDIR)
 all :: $(foreach lib,${LIBS},$(OBJDIR)/lib${lib}.so $(OBJDIR)/lib${lib}.a)
@@ -35,13 +36,13 @@ libbdevid.pc: libbdevid.pc.in
 	@chmod 0644 libbdevid.pc
 
 install : all
-	@install -m 0755 -d $(DESTDIR)/usr/lib
-	@cp -av $(OBJDIR)/libbdevid.{so*,a} $(DESTDIR)/usr/lib/
-	@install -m 0755 -d $(DESTDIR)/usr/lib/pkgconfig
-	@cp -av libbdevid.pc $(DESTDIR)/usr/lib/pkgconfig/
-	@install -m 0755 -d $(DESTDIR)/lib/bdevid
+	@install -m 0755 -d $(DESTDIR)/usr/$(LIB)
+	@cp -av $(OBJDIR)/libbdevid.{so*,a} $(DESTDIR)/usr/$(LIB)/
+	@install -m 0755 -d $(DESTDIR)/usr/$(LIB)/pkgconfig
+	@cp -av libbdevid.pc $(DESTDIR)/usr/$(LIB)/pkgconfig/
+	@install -m 0755 -d $(DESTDIR)/$(LIB)/bdevid
 	@cp -av $(foreach mod,$(MODULES),$(OBJDIR)/$(mod).so) \
-		$(DESTDIR)/lib/bdevid/
+		$(DESTDIR)/$(LIB)/bdevid/
 	@for x in ${SUBDIRS} ; do \
 		$(MAKE) -C $$x install ; \
 	done

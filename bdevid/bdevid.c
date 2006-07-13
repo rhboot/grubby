@@ -125,7 +125,7 @@ struct bdevid *bdevid_new(char *env)
     if (env_path) {
         bdevid_path_set(b, env_path);
     } else {
-        bdevid_path_set(b, "/lib/bdevid:/usr/lib/bdevid");
+        bdevid_path_set(b, BDEVID_DEFAULT_SEARCH_PATH);
     }
 
     if (!(b->modules = g_hash_table_new(g_str_hash, g_str_equal)))
