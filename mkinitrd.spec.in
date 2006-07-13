@@ -1,3 +1,6 @@
+%define pyver %(%{__python} -c "import sys; print sys.version[:3]")
+%{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)[1:]")}
+
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
@@ -16,7 +19,7 @@ Requires: filesystem >= 2.1.0, cpio, device-mapper, initscripts >= 8.22-1
 Requires: e2fsprogs >= 1.38-12
 BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-9, pkgconfig
 BuildRequires: libdhcp4client-devel, libdhcp6client-devel, libdhcp-devel
-BuildRequires: device-mapper libselinux-devel libsepol-devel
+BuildRequires: device-mapper libselinux-devel libsepol-devel, python-devel >= %{pyver}
 %ifnarch s390 s390x
 Requires: dmraid
 %endif
@@ -43,10 +46,18 @@ ramdisk using information found in the /etc/modules.conf file.
 %package devel
 Summary: C header files and library for functionality exported by libnash.
 Group: Development/Libraries
-Requires: glibc-devel
+Requires: glibc-devel, pkgconfig, e2fsprogs-devel
+
+%package -n libbdevid
+Summary: Library for probing block devices for their unique hardware IDs.
+Group: Development/Libraries
+Requires: mkinitrd-devel, python >= %{pyver}, pkgconfig
 
 %description devel
 C header files and library for functionality exported by libnash.
+
+%description -n libbdevid
+Library for probing block devices for their unique hardware IDs.
 
 %prep
 %setup -q -c -a 0
@@ -58,12 +69,12 @@ make
 make test
 if [ $? != 0 ]; then exit 1; fi
 cd ../bdevid-%{BDEVID_VERSION}
-make
+make LIB=%{_lib}
 
 %install
 rm -rf $RPM_BUILD_ROOT
 cd mkinitrd-%{version}
-make BUILDROOT=$RPM_BUILD_ROOT mandir=%{_mandir} install
+make LIB=%{_lib} BUILDROOT=$RPM_BUILD_ROOT mandir=%{_mandir} install
 cd ../bdevid-%{BDEVID_VERSION}
 make DESTDIR=$RPM_BUILD_ROOT install
 
@@ -80,9 +91,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/new-kernel-pkg
 %attr(755,root,root) /sbin/grubby
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
-%{_libdir}/libbdevid.so*
-/lib/bdevid/scsi.so
-%{_libdir}/python*/site-packages/bdevid.so
 
 %files devel
 %defattr(-,root,root)
@@ -91,8 +99,12 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/nash.h
 %{_includedir}/nash
 
+%files -n libblkid
+/%{_lib}/bdevid
+%{_libdir}/libbdevid.so*
 %{_libdir}/libbdevid.a
 %{_libdir}/pkgconfig/libbdevid.pc
+/%{python_sitelib}/bdevid.so
 %{_includedir}/bdevid.h
 %{_includedir}/bdevid
 
