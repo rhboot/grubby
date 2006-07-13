@@ -99,6 +99,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Thu Jul 13 2006 Peter Jones <pjones@redhat.com> - 5.0.47-1
 - add libbdevid
+- fix mode handling on open syscall wrapper (patch from Mark McLoughlin)
 
 * Thu Jul  6 2006 Bill Nottingham <notting@redhat.com>
 - if NFS host doesn't resolve, assume it's an IP
@@ -106,6 +107,7 @@ rm -rf $RPM_BUILD_ROOT
 
 * Wed Jul  5 2006 Peter Jones <pjones@redhat.com>
 - make libnash.a and the nash-devel package
+- use libdhcp instead of pump (patch from Mark McLoughlin)
 
 * Fri Jun 30 2006 Jeremy Katz <katzj@redhat.com> - 5.0.46-1
 - if we don't get a modalias for a net driver, try via 
