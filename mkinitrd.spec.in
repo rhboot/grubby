@@ -99,7 +99,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/nash.h
 %{_includedir}/nash
 
-%files -n libdevid
+%files -n libbdevid
 /%{_lib}/bdevid
 %{_libdir}/libbdevid.so*
 %{_libdir}/libbdevid.a
