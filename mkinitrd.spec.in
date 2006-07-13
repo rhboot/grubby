@@ -69,8 +69,9 @@ make
 make test
 if [ $? != 0 ]; then exit 1; fi
 cd ..
-cp -a mkinitrd-%{version}/nash/libnash.a bdevid-%{version}/bdevid/
-cp -a mkinitrd-%{version}/nash/include/nash* bdevid-%{version}/bdevid/include/
+cp -a mkinitrd-%{version}/nash/libnash.a bdevid-%{BDEVID_VERSION}/bdevid/
+cp -a mkinitrd-%{version}/nash/include/nash* \
+	bdevid-%{BDEVID_VERSION}/include/
 cd bdevid-%{BDEVID_VERSION}
 make LIB=%{_lib}
 
