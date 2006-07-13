@@ -5,10 +5,10 @@ MODULES =
 MODULES += scsi
 
 bdevid_LIBS := -ldl
-bdevid_LIBS += $(shell pkg-config --libs glib-2.0 libnash)
+bdevid_LIBS += $(shell pkg-config --libs glib-2.0)
 bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o
 
-CFLAGS += $(shell pkg-config --cflags glib-2.0 libnash)
+CFLAGS += $(shell pkg-config --cflags glib-2.0)
 CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"$(LIB)\""
 
 all :: $(OBJDIR)
