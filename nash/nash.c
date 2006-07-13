@@ -483,7 +483,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
     int wpid;
     int status = 0;
     char * stdoutFile = NULL;
-    int stdoutFd = 1;
+    int stdoutFd = fileno(stdout);
 
     args = (char **)calloc(128, sizeof (char *));
     if (!args)
@@ -542,8 +542,8 @@ otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
             return 1;
         }
 
-        if (stdoutFd != 1)
-                close(stdoutFd);
+        if (stdoutFd != fileno(stdout))
+            close(stdoutFd);
 
         for (;;) {
             wpid = waitpid(ocPid, &status, 0);
@@ -604,6 +604,55 @@ lnCommand(char *cmd, char *end)
     return 0;
 }
 
+static int
+copyToFd(const char *file, int destfd)
+{
+    char * buf;
+    int fd, n;
+
+    if ((fd = open(file, O_RDONLY)) < 0) {
+        eprintf("cp: error opening %s: %m\n", file);
+        return 1;
+    }
+
+    buf = calloc(1024, sizeof (char));
+    while ((n = read(fd, buf, 1024)) > 0) {
+        write(destfd, buf, n);
+    }
+    close(fd);
+    return 0;
+}
+
+static int
+cpCommand(char *cmd, char *end)
+{
+    char * src;
+    char * dest;
+    int fd;
+    int rc;
+
+    if (!(cmd = getArg(cmd, end, &src))) {
+        eprintf("cp: source argument expected\n");
+        return 1;
+    }
+
+    if (!(cmd = getArg(cmd, end, &dest))) {
+        eprintf("cp: destination argument expected\n");
+        return 1;
+    }
+
+    if ((fd = open(dest, O_CREAT|O_TRUNC|O_WRONLY, 0600)) < 0) {
+        eprintf("cp: error opening %s: %m\n", dest);
+        return 1;
+    }
+
+    rc = copyToFd(src, fd);
+
+    close(fd);
+
+    return rc;
+}
+
 #ifdef DEBUG
 static int lsdir(char *thedir, char * prefix)
 {
@@ -652,24 +701,14 @@ static int
 catCommand(char * cmd, char * end)
 {
     char * file;
-    char * buf;
-    int fd, n;
+    int fd = fileno(stdout);
 
     if (!(cmd = getArg(cmd, end, &file))) {
         eprintf("cat: argument expected\n");
         return 1;
     }
 
-    if ((fd = open(file, O_RDONLY)) < 0) {
-        eprintf("cat: error opening %s: %m\n", file);
-        return 1;
-    }
-
-    buf = calloc(1024, sizeof (char));
-    while ((n = read(fd, buf, 1024)) > 0) {
-        write(1, buf, n);
-    }
-    return 0;
+    return copyToFd(file, fd);
 }
 
 #ifdef DEBUG
@@ -2261,6 +2300,7 @@ static const struct commandHandler handlers[] = {
     { "cat", catCommand },
 #endif
     { "cond", condCommand },
+    { "cp", cpCommand },
     { "dm", dmCommand },
     { "echo", echoCommand },
     { "exec", execCommand },

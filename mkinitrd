@@ -515,6 +515,10 @@ handlenetdev() {
         fi
     fi
     network="network --device $dev --bootproto $BOOTPROTO $IPSTR"
+    if [ "$BOOTPROTO" = "dhcp" ]; then
+        dhclient_leases_cmd="cp /var/lib/dhclient/dhclient.leases /sysroot/dev/.dhclient-$dev.leases"
+        mkdir -p $MNTIMAGE/var/lib/dhclient
+    fi
 }
 
 addnetdev() {
@@ -1181,6 +1185,11 @@ emit "mount /sysroot"
 
 emit "echo Setting up other filesystems."
 emit "setuproot"
+
+if [ -n "$dhclient_leases_cmd" ]; then
+    emit "echo Copying DHCP lease"
+    emit "$dhclient_leases_cmd"
+fi
 
 emit "echo Switching to new root and running init."
 emit "switchroot"

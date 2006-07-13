@@ -202,7 +202,8 @@ int nashNetworkCommand(char * cmd) {
         nashLogger(_nash_context, NASH_NOTICE, "Sending request for IP information through %s\n", dev);
         pumpDhcpClassRun(&intf, NULL,
                          dhcpclass ? dhcpclass : "nash",
-                         DHCPv6_DISABLE, 0, 45, nashNetLogger, LOG_INFO);
+                         DHCPv6_DISABLE, DHCP_USE_LEASE_DATABASE,
+                         45, nashNetLogger, LOG_INFO);
     } else { /* static IP.  hope enough is specified! */
         if (nashPton(ip, &intf.ip))
             intf.set |= PUMP_INTFINFO_HAS_IP;
