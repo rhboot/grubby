@@ -4,12 +4,13 @@ LIBS = bdevid
 MODULES =
 MODULES += scsi
 
-bdevid_LIBS := -ldl
+bdevid_LIBS := -L. -ldl
 bdevid_LIBS += $(shell pkg-config --libs glib-2.0)
+bdevid_LIBS += -lnash -lblkid -luuid -ldevmapper -lselinux -lsepol
 bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o
 
 CFLAGS += $(shell pkg-config --cflags glib-2.0)
-CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"$(LIB)\""
+CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"/$(LIB)/bdevid/:/usr/$(LIB)/bdevid/\""
 
 all :: $(OBJDIR)
 all :: $(foreach lib,${LIBS},$(OBJDIR)/lib${lib}.so $(OBJDIR)/lib${lib}.a)
