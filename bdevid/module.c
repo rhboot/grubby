@@ -15,6 +15,7 @@
 #define _GNU_SOURCE 1
 
 #include <sys/types.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -147,7 +148,31 @@ int bdevid_module_load(struct bdevid *b, char *name)
 
 int bdevid_module_load_all(struct bdevid *b)
 {
-    /* XXX write me */
+    char *cur;
+
+    for (cur = b->module_pathz; cur; 
+            cur = argz_next(b->module_pathz, b->module_pathz_len, cur)) {
+        DIR *dir = NULL;
+        struct dirent *dent = NULL;
+
+        if (!(dir = opendir(cur)))
+            continue;
+
+        while ((dent = readdir(dir))) {
+            char *file = NULL;
+            if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, ".."))
+                continue;
+
+            if (asprintf(&file, "%s/%s", cur, dent->d_name) < 0)
+                continue;
+
+            bdevid_module_load_file(b, file);
+
+            free(file);
+        }
+        closedir(dir);
+    }
+
     return 0;
 }
 
