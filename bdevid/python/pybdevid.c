@@ -158,6 +158,19 @@ pybd_bdevid_load(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
+pybd_bdevid_load_all(PyObject *self)
+{
+    PyBdevidObject *bd = (PyBdevidObject *)self;
+    if (bdevid_module_load_all(bd->bdevid) < 0) {
+        PyErr_SetFromErrno(PyExc_SystemError);
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject *
 pybd_bdevid_unload(PyObject *self, PyObject *args, PyObject *kwds)
 {
     char *kwlist[] = {"name", NULL};
@@ -248,6 +261,7 @@ pybd_bdevid_probe(PyObject *self, PyObject *args, PyObject *kwds)
 }
 
 static struct PyMethodDef pybd_bdevid_methods[] = {
+    {"loadAll", (PyCFunction) pybd_bdevid_load_all, METH_NOARGS},
     {"load", (PyCFunction) pybd_bdevid_load, PYBD_ARGS},
     {"unload", (PyCFunction) pybd_bdevid_unload, PYBD_ARGS},
     {"probe", (PyCFunction) pybd_bdevid_probe, PYBD_ARGS},
