@@ -113,6 +113,10 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/bdevid
 
 %changelog
+* Mon Jul 17 2006 Jeremy Katz <katzj@redhat.com> - 5.1.0-1
+- allow rootdev/rootfs/rootopts parsing on the mkinitrd command line (notting)
+- fix case where we'd spin forever resolving a device (#199046) 
+
 * Thu Jul 13 2006 Peter Jones <pjones@redhat.com> - 5.0.47-1
 - add libbdevid
 - fix mode handling on open syscall wrapper (patch from Mark McLoughlin)
