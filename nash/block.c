@@ -107,6 +107,7 @@ void
 nashBlockFinish(nashContext *c)
 {
     blkid_put_cache(c->cache);
+    c->cache = NULL;
 }
 
 static void
