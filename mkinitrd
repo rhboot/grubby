@@ -640,6 +640,30 @@ while [ $# -gt 0 ]; do
         --noresume)
             noresume=1
             ;;
+	--rootdev*)
+            if echo $1 | grep -q '=' ; then
+                rootdev="$(echo $1 | sed 's/^--rootdev=//')"
+            else
+                rootdev="$2"
+                shift
+            fi
+	    ;;
+	--rootfs*)
+            if echo $1 | grep -q '=' ; then
+                rootfs="$(echo $1 | sed 's/^--rootfs=//')"
+            else
+                rootfs="$2"
+                shift
+            fi
+	    ;;
+	--rootopts*)
+            if echo $1 | grep -q '=' ; then
+                rootopts="$rootopts `echo $1 | sed 's/^--rootopts=//'`"
+            else
+                rootopts="$rootopts $2"
+                shift
+            fi
+	    ;;
         --help)
             usage -n
             ;;
@@ -796,13 +820,13 @@ if [ "x$PROBE" == "xyes" -a -d /proc/dasd ]; then
 fi
 
 if [ "x$PROBE" == "xyes" ]; then
-    rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
-    rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
+    [ -z "$rootfs" ] && rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
+    [ -z "$rootopts" ] && rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
 
     # in case the root filesystem is modular
     findmodule -${rootfs}
 
-    rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
+    [ -z "$rootdev" ] && rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
     # check if it's nfsroot
     if [ "$rootfs" == "nfs" -a "x$net_list" == "x" ]; then
         remote=$(echo $rootdev | cut -d : -f 1)
