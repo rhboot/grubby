@@ -8,7 +8,7 @@ Release: 1
 License: GPL
 Group: System Environment/Base
 Source0: mkinitrd-%{version}.tar.bz2
-%define BDEVID_VERSION 0.1
+%define BDEVID_VERSION 0.2
 Source1: bdevid-%{BDEVID_VERSION}.tar.bz2
 
 ExclusiveOs: Linux
@@ -113,6 +113,10 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/bdevid
 
 %changelog
+* Tue Jul 18 2006 Jeremy Katz <katzj@redhat.com> - 5.1.1-1
+- build with -fPIC
+- pull in new libbdevid for linking fix
+
 * Mon Jul 17 2006 Jeremy Katz <katzj@redhat.com> - 5.1.0-1
 - allow rootdev/rootfs/rootopts parsing on the mkinitrd command line (notting)
 - fix case where we'd spin forever resolving a device (#199046) 
