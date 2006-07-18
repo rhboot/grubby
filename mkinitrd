@@ -36,7 +36,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.0
+VERSION=5.1.1
 
 PROBE="yes"
 MODULES=""

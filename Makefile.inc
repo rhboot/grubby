@@ -14,7 +14,7 @@ ARCH := $(patsubst sparc%,sparc,$(ARCH))
 ARCH := $(patsubst ppc%,ppc,$(ARCH))
 
 CC = gcc
-CFLAGS ?= -Wall -Werror -g -D_FORTIFY_SOURCE=2 -Wno-unused-function
+CFLAGS ?= -Wall -Werror -g -D_FORTIFY_SOURCE=2 -Wno-unused-function -fPIC
 LDFLAGS ?= $(CFLAGS) -Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
 	-Wl,--wrap,pipe
 
