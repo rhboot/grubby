@@ -529,6 +529,16 @@ addnetdev() {
     net_list="$net_list $netdev"
 }
 
+handlenfs() {
+    remote=$(echo $$1 | cut -d : -f 1)
+    remoteip=$(host $remote | awk '/ address / { print $4 }')
+    # assume, if it didn't resolve, that it's an IP
+    [ -z "$remoteip" ] && remoteip=$remote
+    netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`
+    addnetdev $netdev
+}
+
+
 while [ $# -gt 0 ]; do
     case $1 in
         --fstab*)
@@ -661,6 +671,38 @@ while [ $# -gt 0 ]; do
                 rootopts="$rootopts `echo $1 | sed 's/^--rootopts=//'`"
             else
                 rootopts="$rootopts $2"
+                shift
+            fi
+	    ;;
+	--loopdev*)
+            if echo $1 | grep -q '=' ; then
+                loopdev="$(echo $1 | sed 's/^--loopdev=//')"
+            else
+                loopdev="$2"
+                shift
+            fi
+	    ;;
+	--loopfs*)
+            if echo $1 | grep -q '=' ; then
+                loopfs="$(echo $1 | sed 's/^--loopfs=//')"
+            else
+                loopfs="$2"
+                shift
+            fi
+	    ;;
+	--loopopts*)
+            if echo $1 | grep -q '=' ; then
+                loopopts="$loopopts `echo $1 | sed 's/^--loopopts=//'`"
+            else
+                loopopts="$loopopts $2"
+                shift
+            fi
+	    ;;
+	--looppath*)
+            if echo $1 | grep -q '=' ; then
+                looppath="$(echo $1 | sed 's/^--looppath=//')"
+            else
+                looppath="$2"
                 shift
             fi
 	    ;;
@@ -829,12 +871,7 @@ if [ "x$PROBE" == "xyes" ]; then
     [ -z "$rootdev" ] && rootdev=$(awk '/^[ \t]*[^#]/ { if ($2 == "/") { print $1; }}' $fstab)
     # check if it's nfsroot
     if [ "$rootfs" == "nfs" -a "x$net_list" == "x" ]; then
-        remote=$(echo $rootdev | cut -d : -f 1)
-        remoteip=$(host $remote | awk '/ address / { print $4 }')
-        # assume, if it didn't resolve, that it's an IP
-        [ -z "$remoteip" ] && remoteip=$remote
-        netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`
-        addnetdev $netdev
+        handlenfs $rootdev
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
         rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,_netdev//' -e 's/_netdev//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
@@ -858,6 +895,28 @@ if [ "x$PROBE" == "xyes" ]; then
                 | head -n 1)
     if ! echo $swsuspdev | cut -c1-6 | grep -q "LABEL=" ; then
         handlelvordev $swsuspdev
+    fi
+fi
+
+# Loopback root support
+# loopdev : device or nfs server:path file is on
+# looppath : filename
+# loopfs : filesystem of loopdev
+# loopots : options to mount loopfs
+
+if [ "x$PROBE" == "xyes" ]; then
+    if [[ "$rootdev" =~ "^/dev/loop" ]] || [[ "$rootopts" =~ "loop" ]] ; then
+    	# FIXME: probe this somehow?
+	
+	findmodule loop
+	findmodule -${loopfs}
+	
+	if [ "$loopfs" == "nfs" -a "x$net_list" == "x" ]; then
+	    handlenfs $loopdev
+	fi
+	# FIXME: label support
+	
+	[ "$loopfs" != "nfs" ] && handlevolordev $lopdev
     fi
 fi
 
@@ -1199,6 +1258,14 @@ if [ -z "$noresume" -a -n "$swsuspdev" ]; then
     emit "resume $swsuspdev"
 fi
 
+if [ -n "$loopfs" ]; then
+    emit "echo Mounting loop backing store."
+    emit "mkdir /tmpmount"
+    emit "mount -t $loopfs -o $loopopts $loopdev /tmpmount"
+    emit "echo Creating loop device."
+    emit "losetup /dev/loop0 /tmpmount/$looppath"
+fi
+
 emit "echo Creating root device."
 # mkrootdev does "echo /dev/root /sysroot ext3 defaults,ro 0 0 >/etc/fstab"
 emit "mkrootdev -t $rootfs -o $rootopts $rootdev"
@@ -1206,6 +1273,11 @@ rootdev=/dev/root
 
 emit "echo Mounting root filesystem."
 emit "mount /sysroot"
+
+if [ -n "$loopfs" ]; then
+     emit "Cleaning up loop mount."
+     emit "umount /tmpmount"
+fi
 
 emit "echo Setting up other filesystems."
 emit "setuproot"

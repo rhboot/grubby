@@ -113,6 +113,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/bdevid
 
 %changelog
+* Wed Jul 19 2006 Bill Nottingham <notting@redhat.com>
+- support for loopback root (including loop-over-NFS)
+
 * Tue Jul 18 2006 Jeremy Katz <katzj@redhat.com> - 5.1.1-1
 - build with -fPIC
 - pull in new libbdevid for linking fix
