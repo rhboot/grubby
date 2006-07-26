@@ -418,7 +418,7 @@ static int do_scsi_page83_inquiry(int fd, char **serial, size_t *len)
 static int do_scsi_page80_inquiry(int fd, char **serial, size_t *max_len)
 {
     int retval;
-    int ser_ind;
+    int ser_ind = 0;
     int i;
     int len;
     unsigned char buf[SCSI_INQ_BUFF_LEN];
