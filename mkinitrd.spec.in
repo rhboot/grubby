@@ -8,7 +8,7 @@ Release: 1
 License: GPL
 Group: System Environment/Base
 Source0: mkinitrd-%{version}.tar.bz2
-%define BDEVID_VERSION 0.2
+%define BDEVID_VERSION 0.3
 Source1: bdevid-%{BDEVID_VERSION}.tar.bz2
 
 ExclusiveOs: Linux
@@ -46,18 +46,28 @@ ramdisk using information found in the /etc/modules.conf file.
 %package devel
 Summary: C header files and library for functionality exported by libnash.
 Group: Development/Libraries
-Requires: glibc-devel, pkgconfig, e2fsprogs-devel
+Requires: glibc-devel, pkgconfig, e2fsprogs-devel, mkinitrd-devel, glib2-devel
+Requires: libbdevid
 
 %package -n libbdevid
 Summary: Library for probing block devices for their unique hardware IDs.
-Group: Development/Libraries
-Requires: mkinitrd-devel, python >= %{pyver}, pkgconfig
+Group: System Environment/Libraries
+Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper
+
+%package -n libbdevid-python
+Summary: Python bindings for libbdevid
+Group: System Environment/Libraries
+Requires: mkinitrd-devel, glib2, e2fsprogs, libselinux, libsepol, device-mapper
+Requires: libbdevid, python >= %{pyver}
 
 %description devel
 C header files and library for functionality exported by libnash.
 
 %description -n libbdevid
 Library for probing block devices for their unique hardware IDs.
+
+%description -n libbdevid-python
+Python bindings for libbdevid.
 
 %prep
 %setup -q -c -a 0
@@ -99,20 +109,28 @@ rm -rf $RPM_BUILD_ROOT
 %files devel
 %defattr(-,root,root)
 %{_libdir}/libnash.a
+%{_libdir}/libbdevid.a
+%{_libdir}/libbdevid.so
 %{_libdir}/pkgconfig/libnash.pc
+%{_libdir}/pkgconfig/libbdevid.pc
 %{_includedir}/nash.h
 %{_includedir}/nash
-
-%files -n libbdevid
-/%{_lib}/bdevid
-%{_libdir}/libbdevid.so*
-%{_libdir}/libbdevid.a
-%{_libdir}/pkgconfig/libbdevid.pc
-/%{python_sitelib}/bdevid.so
 %{_includedir}/bdevid.h
 %{_includedir}/bdevid
 
+%files -n libbdevid
+/%{_lib}/bdevid
+%{_libdir}/libbdevid.so.*
+
+%files -n libbdevid-python
+/%{python_sitelib}/bdevid.so
+
 %changelog
+* Wed Jul 26 2006 Peter Jones <pjones@redhat.com> - 5.1.2-1
+- pull in new libbdevid for scsi probing fix
+- restructure package so things can include libbdevid (and its modules)
+  without depending on python
+
 * Wed Jul 19 2006 Bill Nottingham <notting@redhat.com>
 - support for loopback root (including loop-over-NFS)
 
