@@ -973,7 +973,6 @@ if [ -n "$testdm" -a -x /sbin/dmsetup -a -e /dev/mapper/control ]; then
                     DMDEVS="$DMDEVS $NAME"
                     ;;
                 *)
-                    NAME=""
                     for raid in $RAIDS ; do
                         if [ "$raid" == "$NAME" ]; then
                             dmname=$(resolve_dm_name $NAME)
