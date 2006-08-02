@@ -50,10 +50,9 @@ getDevNumFromProc(char * file, char * device)
     end = strchr(start, '\n');
     while (start && end) {
         *end++ = '\0';
-        if ((sscanf(start, "%d %s", &num, line)) == 2) {
-            if (!strncmp(device, line, strlen(device)))
-                return num;
-        }
+        if (sscanf(start, "%d %n", &num, &off) && 
+                strncmp(device, start + off, strlen(device)) == 0)
+            return num;
         start = end;
         end = strchr(start, '\n');
     }

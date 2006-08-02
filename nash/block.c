@@ -57,7 +57,7 @@ nashBdevRemovable(nashBdev bdev)
         return 0;
     }
 
-    rc = (contents[0] - '0') <= 0 ? 0 : 1;
+    rc = contents[0] > '0';
     free(contents);
     close(fd);
     return rc;
@@ -380,7 +380,7 @@ nashMkPathBySpec(nashContext *c, const char *spec, const char *path)
     if (!existing || stat(existing, &sb) < 0 || !S_ISBLK(sb.st_mode))
         return -1;
 
-    return smartmknod(path, S_IFBLK | 0700, sb.st_rdev);
+    return smartmknod(path, S_IFBLK | 0600, sb.st_rdev);
 }
 
 static int
@@ -415,11 +415,8 @@ nashDisablePartitions(const char *devname)
     if (fd < 0)
         return fd;
 
-    for (partno = 1; partno <= 256; partno++) {
-        path[0]='\0';
-        snprintf(path, 255, "/dev/%s%d", devname, partno);
+    for (partno = 1; partno <= 256; partno++)
         ret += block_disable_partition(fd, partno);
-    }
     return ret ? ret : -1;
 }
 
