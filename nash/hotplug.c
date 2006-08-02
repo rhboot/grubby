@@ -60,7 +60,6 @@ static int netlink = -1;
 static inline int
 set_loading(int fd, const char *device, int value)
 {
-    char buf[10] = {'\0'};
     int rc;
 
     if (fd < 0) {
@@ -68,12 +67,18 @@ set_loading(int fd, const char *device, int value)
 
         snprintf(loading_path, sizeof(loading_path), "%s/loading", device);
         loading_path[sizeof(loading_path)-1] = '\0';
-        fd = open(loading_path, O_RDWR | O_SYNC );
-        if (fd < 0)
+        if ((fd = open(loading_path, O_RDWR | O_SYNC )) < 0)
             return fd;
     }
-    if ((rc = snprintf(buf, 9, "%d", value)) < 0 ||
-            (rc = write(fd, buf, strlen(buf) + 1)) < 0) {
+
+    if (value == -1)
+        rc = write(fd, "-1", 3);
+    else if (value == 0)
+        rc = write(fd, "0", 2);
+    else if (value == 1)
+        rc = write(fd, "1", 2);
+
+    if (rc < 0) {
         close(fd);
         return rc;
     }
@@ -321,13 +326,16 @@ _load_firmware(nashContext *nc, int fw_fd, char *sysdir,
     loading = 0;
 
 out:
-    if (dfd != -1)
+    if (dfd >= 0)
         close(dfd);
     if (fw_buf)
         file_unmap(fw_buf, fw_len);
-    if (loading != -2)
-        lfd = set_loading(lfd, sysdir, loading);
-    if (lfd != -1)
+    if (loading != -2) {
+        dfd = set_loading(lfd, sysdir, loading);
+        if (dfd >= 0 && dfd != lfd)
+            close(dfd);
+    }
+    if (lfd >= 0)
         close(lfd);
 
     return rc;
