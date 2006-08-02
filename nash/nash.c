@@ -2063,8 +2063,8 @@ dmCommand(char *cmd, char *end)
         qsort(names, m, sizeof (char *), stringsort);
         /* it's too bad qsort doesn't dedupe... */
         for (n = 0; n < m-1; n++) {
-            if (!strcmp(*(names+n), *(names+n+1))) {
-                memmove(names+(n*sizeof(char *)), names+((n+1) * sizeof (char *)), (m - n) * sizeof (char *));
+            if (!strcmp(names[n], names[n+1])) {
+                memmove(names+n, names+n+1, (m - n) * sizeof (char *));
                 m--; n--;
             }
         }
