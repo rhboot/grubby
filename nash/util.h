@@ -99,7 +99,7 @@ smartmknod(const char * device, mode_t mode, dev_t dev)
         size_t len;
         len = strcspn(end, "/!");
         end += len;
-        if (!end || !*end)
+        if (!*end)
             break;
 
         *end = '\0';
