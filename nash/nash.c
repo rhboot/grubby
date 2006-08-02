@@ -1141,7 +1141,7 @@ switchrootCommand(char * cmd, char * end)
         return 1;
     }
 
-    if (chroot(".") || chdir("/")) {
+    if (chroot(".")) {
         eprintf("switchroot: chroot() failed: %m\n");
         close(fd);
         return 1;
@@ -1280,7 +1280,7 @@ echoCommand(char * cmd, char * end)
     for (i = 0; i < num;i ++) {
         if (i)
             strcat(string, " ");
-        strncat(string, args[i], strlen(args[i]));
+        strcat(string, args[i]);
     }
 
     if (newline)
@@ -2262,18 +2262,22 @@ condCommand(char *cmd, char *end)
 static int
 networkCommand(char *cmd, char *end)
 {
-    char * ncmd = cmd;
+    char *ncmd = NULL;
+    char c;
     int rc;
-    int len = 9; /* "network " */
+    size_t len = 9; /* "network " */
 
     /* popt expects to get network --args here */
     if (!cmd || cmd >= end)
         return 1;
-    while (*ncmd && (*ncmd++ != '\n')) len++;
-    
-    ncmd = malloc(len);
-    ncmd = memset(ncmd, 0, len);
-    snprintf(ncmd, len, "network %s", cmd);
+
+    len = strcspn(cmd, "\n");
+    c = cmd[len];
+    cmd[len] = '\0';
+    rc = asprintf(&ncmd, "network %s", cmd);
+    cmd[len] = c;
+    if (rc < 0)
+        return rc;
     rc = nashNetworkCommand(ncmd);
     free(ncmd);
     return rc;
