@@ -19,6 +19,10 @@
 #include <nash/block.h>
 
 struct nash_block_dev {
+    enum {
+        ADD,
+        REMOVE,
+    } type;
     char *sysfs_path;
     char *dev_path;
     dev_t devno;
@@ -26,7 +30,7 @@ struct nash_block_dev {
 
 extern void block_show_labels(nashContext *c);
 
-extern void sysfs_blkdev_probe(const char *dirname);
+extern void sysfs_blkdev_probe(nashContext *c, const char *dirname);
 
 #endif /* NASH_PRIV_BLOCK_H */
 

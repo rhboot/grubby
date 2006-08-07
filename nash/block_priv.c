@@ -35,7 +35,7 @@ block_show_labels(nashContext *c)
     blkid_dev bdev = NULL;
 
     nashBlockInit(c);
-    biter = nashBdevIterNew("/sys/block");
+    biter = nashBdevIterNew(c, "/sys/block", 0);
     while(nashBdevIterNext(biter, &dev) >= 0) {
         blkid_tag_iterate titer;
         const char *type, *data;
@@ -73,12 +73,12 @@ block_show_labels(nashContext *c)
 }
 
 void
-sysfs_blkdev_probe(const char *dirname)
+sysfs_blkdev_probe(nashContext *c, const char *dirname)
 {
     nashBdevIter iter;
     nashBdev dev = NULL;
 
-    iter = nashBdevIterNew(dirname);
+    iter = nashBdevIterNew(c, dirname, 0);
     while(nashBdevIterNext(iter, &dev) >= 0)
         smartmknod(dev->dev_path, S_IFBLK | 0700, dev->devno);
     nashBdevIterEnd(&iter);

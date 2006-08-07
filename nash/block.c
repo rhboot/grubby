@@ -25,6 +25,9 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include <argz.h>
+#include <envz.h>
+
 #include <selinux/selinux.h>
 #include <blkid/blkid.h>
 
@@ -111,28 +114,34 @@ nashBlockFinish(nashContext *c)
 }
 
 static void
-bdev_free(struct nash_block_dev *dev)
+bdev_free(struct nash_block_dev **dev)
 {
-    if (!dev)
+    struct nash_block_dev *d = *dev;
+    if (!d)
         return;
-    if (dev->sysfs_path) {
-        free(dev->sysfs_path);
-        dev->sysfs_path = NULL;
+    if (d->sysfs_path) {
+        free(d->sysfs_path);
+        d->sysfs_path = NULL;
     }
-    if (dev->dev_path) {
-        free(dev->dev_path);
-        dev->dev_path = NULL;
+    if (d->dev_path) {
+        free(d->dev_path);
+        d->dev_path = NULL;
     }
-    dev->devno = 0;
+    d->devno = 0;
+    free(d);
+    *dev = NULL;
 }
 
 struct nash_block_dev_iter {
+    nashContext *nc;
     struct nash_block_dev_iter *parent;
     struct nash_block_dev_iter *current;
 
     DIR *dir;
     char *dirname;
     struct dirent *dent;
+    int poll;
+    struct nash_uevent_handler *nh;
 };
 
 static nashBdevIter
@@ -160,24 +169,37 @@ block_sysfs_iterate_destroy(nashBdevIter iter)
 }
 
 nashBdevIter
-nashBdevIterNew(const char *path)
+nashBdevIterNew(nashContext *c, const char *path, int poll)
 {
     const char *dirpath = path ? path : "/sys/block";
-    nashBdevIter iter = calloc(1, sizeof(*iter));
+    nashBdevIter iter = NULL;
 
+    if (!(iter = calloc(1, sizeof(*iter))))
+        return NULL;
+
+    iter->nc = c;
     iter->parent = NULL;
     iter->current = iter;
     iter->dent = NULL;
+    iter->poll = poll;
 
     iter->dirname = strdup(dirpath);
 
-    iter->dir = opendir(iter->dirname);
-    if (iter->dir == NULL) {
-        block_sysfs_iterate_destroy(iter);
-        return NULL;
+    if (poll) {
+        if (!(iter->nh = nashUEventHandlerNew(c)))
+            goto err;
     }
 
+    if (!(iter->dir = opendir(iter->dirname)))
+        goto err;
+
     return iter;
+err:
+    if (iter->nh)
+        nashUEventHandlerDestroy(iter->nh);
+    block_sysfs_iterate_destroy(iter);
+    free(iter);
+    return NULL;
 }
 
 static int
@@ -191,6 +213,7 @@ block_sysfs_try_dir(nashBdevIter iter, char *sysfs_path, nashBdev *dev)
 
     /* we can't just assign it to *dev, or gcc decides it's unused */
     nashBdev tmp = calloc(1, sizeof (struct nash_block_dev));
+    tmp->type = ADD;
     tmp->devno = devno;
     tmp->sysfs_path = strdup(sysfs_path);
     asprintf(&tmp->dev_path, "/dev/%s", iter->dent->d_name);
@@ -198,12 +221,56 @@ block_sysfs_try_dir(nashBdevIter iter, char *sysfs_path, nashBdev *dev)
     return 0;
 }
 
+static int
+block_try_uevent(nashUEvent *uevent, nashBdev *dev)
+{
+    char *slash = NULL;
+    int maj, min;
+    nashBdev tmp;
+
+    if (strcmp("block", envz_get(uevent->envz, uevent->envz_len, "SUBSYSTEM")))
+        return -1;
+
+    tmp = calloc(1, sizeof (struct nash_block_dev));
+    if (!strcmp(uevent->msg, "add")) {
+        tmp->type = ADD;
+    } else if (!strcmp(uevent->msg, "remove")) {
+        tmp->type = REMOVE;
+    } else {
+        goto err;
+    }
+
+    maj = atoi(envz_get(uevent->envz, uevent->envz_len, "MAJOR"));
+    min = atoi(envz_get(uevent->envz, uevent->envz_len, "MINOR"));
+    tmp->devno = makedev(maj, min);
+
+    slash = strrchr(envz_get(uevent->envz, uevent->envz_len, "DEVPATH"), '/');
+
+    if (asprintf(&tmp->dev_path, "/dev%s", slash) < 0)
+        goto err;
+
+    if (asprintf(&tmp->sysfs_path, "/sys%s", envz_get(uevent->envz,
+            uevent->envz_len, "DEVPATH")) < 0)
+        goto err;
+
+    *dev = tmp;
+    return 0;
+err:
+    bdev_free(&tmp);
+    return -1;
+}
+
 void
 nashBdevIterEnd(nashBdevIter *iter)
 {
     nashBdevIter parent;
+    nashBdevIter top;
 
-    *iter = (*iter)->current;
+    if (!iter || !*iter)
+        return;
+
+    top = block_sysfs_get_top(*iter);
+    *iter = (top)->current;
     do {
         parent = (*iter)->parent;
         block_sysfs_iterate_destroy((*iter));
@@ -212,73 +279,131 @@ nashBdevIterEnd(nashBdevIter *iter)
     } while (*iter);
 }
 
-int
-nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
+static int
+_nashBdevUEventIter(nashBdevIter iter, nashBdev *dev, struct timespec timeout)
 {
-    nashBdevIter top = block_sysfs_get_top(iter);
+    nashUEvent uevent;
+    int ret;
+
+    memset(&uevent, '\0', sizeof (uevent));
+    if (iter->dirname) {
+        free(iter->dirname);
+        iter->dirname = NULL;
+    }
+
+    while ((ret = nashGetUEvent(iter->nh, &timeout, &uevent)) >= 0) {
+        ret = block_try_uevent(&uevent, dev);
+        if (uevent.msg)
+            free(uevent.msg);
+        if (uevent.path)
+            free(uevent.path);
+        while (uevent.envz)
+            argz_delete(&uevent.envz, &uevent.envz_len, uevent.envz);
+        memset(&uevent, '\0', sizeof (uevent));
+        if (ret >= 0)
+            return 0;
+    }
+
+    nashUEventHandlerDestroy(iter->nh);
+    return -1;
+}
+
+static inline int
+_nashBdevIterNext(nashBdevIter iter, nashBdev *dev, struct timespec timeout)
+{
+    nashBdevIter top;
     nashBdevIter parent;
     char *name;
     struct stat sb;
 
-    if (*dev != NULL) {
-        bdev_free(*dev);
-        free(*dev);
-        *dev = NULL;
-    }
+    if (!iter)
+        return -1;
+
+    bdev_free(dev);
+    top = block_sysfs_get_top(iter);
     iter = top->current;
     do {
-        iter->dent = readdir(iter->dir);
+        /* if we have an open dir, we're still iterating directories */
+        if (iter->dir) {
+            iter->dent = readdir(iter->dir);
 
-        if (iter->dent != NULL &&
-                (!strcmp(iter->dent->d_name, ".")
-                 || !strcmp(iter->dent->d_name, "..")))
-            continue;
+            if (iter->dent != NULL &&
+                    (!strcmp(iter->dent->d_name, ".") ||
+                     !strcmp(iter->dent->d_name, "..")))
+                continue;
 
-        if (iter->dent == NULL) {
-            int ret;
+            if (iter->dent == NULL) {
+                int ret;
 
-            if (!iter->parent) {
+                if (!iter->parent) {
+                    if (iter->dir) {
+                        closedir(iter->dir);
+                        iter->dir = NULL;
+                    }
+                    if (iter->dirname) {
+                        free(iter->dirname);
+                        iter->dirname = NULL;
+                    }
+                    block_sysfs_iterate_destroy(iter);
+                    continue;
+                }
+                parent = iter->parent;
                 block_sysfs_iterate_destroy(iter);
-                bdev_free(*dev);
-                free(*dev);
-                *dev = NULL;
-                return -1;
+                free(iter);
+                iter = top->current = parent;
+
+                asprintf(&name, "%s/%s", iter->dirname, iter->dent->d_name);
+                ret = block_sysfs_try_dir(iter, name, dev);
+                free(name);
+                if (ret >= 0)
+                    return 0;
+
+                continue;
             }
-            parent = iter->parent;
-            block_sysfs_iterate_destroy(iter);
-            iter = top->current = parent;
 
             asprintf(&name, "%s/%s", iter->dirname, iter->dent->d_name);
-            ret = block_sysfs_try_dir(iter, name, dev);
-            free(name);
-            if (ret >= 0)
-                return 0;
+            if (lstat(name, &sb) >= 0 && S_ISDIR(sb.st_mode)) {
+                nashBdevIter newiter = nashBdevIterNew(iter->nc, name, 0);
 
+                if (newiter != NULL) {
+                    newiter->parent = iter;
+                    iter = top->current = newiter;
+                }
+            }
+            free(name);
             continue;
         }
 
-        asprintf(&name, "%s/%s", iter->dirname, iter->dent->d_name);
-        if (lstat(name, &sb) >= 0 && S_ISDIR(sb.st_mode)) {
-            nashBdevIter newiter = nashBdevIterNew(name);
+        /* we only ever get here if we're done iterating directories */
+        if (iter->poll && _nashBdevUEventIter(iter, dev, timeout) >= 0)
+            return 0;
 
-            if (newiter != NULL) {
-                newiter->parent = iter;
-                iter = top->current = newiter;
-            }
-        }
-        free(name);
+        break;
     } while (1);
-    return 0;
+    /* and we only ever get here if we're done iterating _everything_ */
+    return -1;
+}
+
+int nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
+{
+    struct timespec timeout = {-1,-1};
+    return _nashBdevIterNext(iter, dev, timeout);
+}
+
+int nashBdevIterNextTimeout(nashBdevIter iter, nashBdev *dev,
+    struct timespec timeout)
+{
+    return _nashBdevIterNext(iter, dev, timeout);
 }
 
 char *
-nashFindDeviceByDevno(dev_t devno)
+nashFindDeviceByDevno(nashContext *c, dev_t devno)
 {
     nashBdevIter biter;
     nashBdev dev = NULL;
     char *path = NULL;
 
-    biter = nashBdevIterNew("/sys/block");
+    biter = nashBdevIterNew(c, "/sys/block", 0);
     while (nashBdevIterNext(biter, &dev) >= 0) {
         if (dev->devno == devno) {
             path = strdup(strrchr(dev->dev_path, '/')+1);
@@ -297,7 +422,7 @@ block_find_fs_by_keyvalue(nashContext *c, const char *key, const char *value)
     blkid_dev bdev = NULL;
     char *name;
 
-    biter = nashBdevIterNew("/sys/block");
+    biter = nashBdevIterNew(c, "/sys/block", 0);
     while(nashBdevIterNext(biter, &dev) >= 0) {
         blkid_tag_iterate titer;
         const char *type, *data;
@@ -380,7 +505,7 @@ nashMkPathBySpec(nashContext *c, const char *spec, const char *path)
     if (!existing || stat(existing, &sb) < 0 || !S_ISBLK(sb.st_mode))
         return -1;
 
-    return smartmknod(path, S_IFBLK | 0600, sb.st_rdev);
+    return smartmknod(path, S_IFBLK | 0700, sb.st_rdev);
 }
 
 static int

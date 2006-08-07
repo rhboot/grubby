@@ -51,7 +51,7 @@ getDevNumFromProc(char * file, char * device)
     while (start && end) {
         size_t off;
         *end++ = '\0';
-        if (sscanf(start, "%d %n", &num, &off) && 
+        if (sscanf(start, "%d %n", &num, &off) &&
                 strncmp(device, start + off, strlen(device)) == 0)
             return num;
         start = end;

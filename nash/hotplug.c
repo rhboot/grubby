@@ -32,17 +32,13 @@
 #include <termios.h>
 
 #include <argz.h>
+#include <envz.h>
 
 #include <nash.h>
 #include "util.h"
 #include "lib.h"
 
 #include <asm/types.h>
-#include <linux/netlink.h>
-
-#ifndef NETLINK_KOBJECT_UEVENT
-#define NETLINK_KOBJECT_UEVENT 15
-#endif
 
 #ifndef PR_SET_NAME
 #define PR_SET_NAME 15
@@ -50,7 +46,7 @@
 
 static pid_t ppid = -1;
 
-static int netlink = -1;
+static struct nash_uevent_handler *uh = NULL;
 
 /* Set the 'loading' attribute for a firmware device.
  * 1 == currently loading
@@ -58,18 +54,21 @@ static int netlink = -1;
  * -1 == error
  */
 static inline int
-set_loading(int fd, const char *device, int value)
+get_loading_fd(const char *device)
+{
+    int fd = -1;
+    char *loading_path = NULL;
+
+    if (asprintfa(&loading_path, "%s/loading", device) < 0)
+        return -1;
+    fd = open(loading_path, O_RDWR | O_SYNC );
+    return fd;
+}
+
+static inline int
+set_loading(int fd, int value)
 {
     int rc;
-
-    if (fd < 0) {
-        char loading_path[1024];
-
-        snprintf(loading_path, sizeof(loading_path), "%s/loading", device);
-        loading_path[sizeof(loading_path)-1] = '\0';
-        if ((fd = open(loading_path, O_RDWR | O_SYNC )) < 0)
-            return fd;
-    }
 
     if (value == -1)
         rc = write(fd, "-1", 3);
@@ -77,28 +76,23 @@ set_loading(int fd, const char *device, int value)
         rc = write(fd, "0", 2);
     else if (value == 1)
         rc = write(fd, "1", 2);
+    fsync(fd);
+    fdatasync(fd);
 
-    if (rc < 0) {
-        close(fd);
-        return rc;
-    }
-    return fd;
+    return rc < 0 ? rc : 0;
 }
 
 static inline int
 set_timeout(int value)
 {
-    char buf[10] = {'\0'};
-    int fd, rc;
+    FILE *f = NULL;
 
-    fd = open("/sys/class/firmware/timeout", O_RDWR | O_SYNC);
-    if (fd < 0)
-        return fd;
+    if (!(f = fopen("/sys/class/firmware/timeout", "w+")))
+        return -1;
 
-    if ((rc = snprintf(buf, 9, "%d", value)) < 0)
-        rc = write(fd, buf, strlen(buf) + 1);
-    close(fd);
-    return rc;
+    fprintf(f, "%d", value);
+    fclose(f);
+    return 0;
 }
 
 static inline int
@@ -271,8 +265,7 @@ nashGetFirmwarePath(nashContext *nc)
 }
 
 static int
-_load_firmware(nashContext *nc, int fw_fd, char *sysdir,
-    int timeout)
+_load_firmware(nashContext *nc, int fw_fd, char *sysdir, int timeout)
 {
     int rc;
     char *fw_buf = NULL, *data = NULL;
@@ -280,6 +273,11 @@ _load_firmware(nashContext *nc, int fw_fd, char *sysdir,
     int dfd = -1, lfd = -1;
     int loading = -2;
     size_t count;
+
+    if ((lfd = get_loading_fd(sysdir)) < 0) {
+        nashLogger(nc, NASH_ERROR, "loading fd failed\n");
+        return lfd;
+    }
 
     timeout *= 1000000;
     while (access(sysdir, F_OK) && timeout) {
@@ -293,7 +291,7 @@ _load_firmware(nashContext *nc, int fw_fd, char *sysdir,
     }
 
     nashLogger(nc, NASH_DEBUG, "Writing firmware to '%s/data'\n", sysdir);
-    lfd = set_loading(lfd, sysdir, 1);
+    set_loading(lfd, 1);
     loading = -1;
 
     if (fd_map(fw_fd, &fw_buf, &fw_len) < 0) {
@@ -315,10 +313,8 @@ _load_firmware(nashContext *nc, int fw_fd, char *sysdir,
     count = 0;
     while (count < fw_len) {
         ssize_t c;
-        c = write(dfd, fw_buf + count, fw_len - count);
-        if (c <= 0) {
+        if ((c = write(dfd, fw_buf + count, fw_len - count)) <= 0) {
             nashLogger(nc, NASH_ERROR, "load_firmware: write: %m\n");
-            loading = -1;
             goto out;
         }
         count += c;
@@ -330,11 +326,8 @@ out:
         close(dfd);
     if (fw_buf)
         file_unmap(fw_buf, fw_len);
-    if (loading != -2) {
-        dfd = set_loading(lfd, sysdir, loading);
-        if (dfd >= 0 && dfd != lfd)
-            close(dfd);
-    }
+    if (loading != -2)
+        set_loading(lfd, loading);
     if (lfd >= 0)
         close(lfd);
 
@@ -342,7 +335,7 @@ out:
 }
 
 static void
-load_firmware(nashContext *nc)
+load_firmware(nashContext *nc, nashUEvent *ue)
 {
     char *physdevbus = NULL, *physdevdriver = NULL, *physdevpath = NULL,
          *devpath = NULL, *firmware = NULL, *timeout;
@@ -353,12 +346,12 @@ load_firmware(nashContext *nc)
     char template[] = "nash-hotplug-firmware-XXXXXX";
     int fd = -1;
 
-    devpath = getenv("DEVPATH");
-    firmware = getenv("FIRMWARE");
-    physdevbus = getenv("PHYSDEVBUS");
-    physdevdriver = getenv("PHYSDEVDRIVER");
-    physdevpath = getenv("PHYSDEVPATH");
-    timeout = getenv("TIMEOUT");
+    devpath = envz_get(ue->envz, ue->envz_len, "DEVPATH");
+    firmware = envz_get(ue->envz, ue->envz_len, "FIRMWARE");
+    physdevbus = envz_get(ue->envz, ue->envz_len, "PHYSDEVBUS");
+    physdevdriver = envz_get(ue->envz, ue->envz_len, "PHYSDEVDRIVER");
+    physdevpath = envz_get(ue->envz, ue->envz_len, "PHYSDEVPATH");
+    timeout = envz_get(ue->envz, ue->envz_len, "TIMEOUT");
     
     if (!devpath || !firmware || !physdevbus || !physdevdriver || !physdevpath) {
         nashLogger(nc, NASH_ERROR, "couldn't get environment\n");
@@ -438,50 +431,8 @@ out:
 }
 
 static int
-get_netlink_msg(int fd, char **msg, char **path)
+handle_single_uevent(nashContext *nc, nashUEvent *ue, long prev)
 {
-    size_t len;
-    ssize_t size;
-    static char buffer[2560];
-    char *pos;
-
-    size = recv(fd, &buffer, sizeof (buffer), 0);
-    if (size < 0)
-        return -1;
-
-    if ((size_t)size > sizeof (buffer) - 1)
-        size = sizeof (buffer) - 1;
-    buffer[size] = '\0';
-
-    len = strcspn(buffer, "@");
-    if (!buffer[len])
-        return -1;
-
-    pos = buffer;
-    *msg = strndup(pos, len++);
-    pos += len;
-    *path = strdup(pos);
-
-    pos += strlen(pos) + 1;
-    if (len < size + 1) {
-        clearenv();
-        putenv("MALLOC_PERTURB_=204");
-
-        while (pos[0]) {
-            putenv(pos);
-            pos += strlen(pos) + 1;
-        }
-    }
-    return 0;
-}
-
-static void
-handle_events(nashContext *nc)
-{
-    fd_set fds;
-    int maxfd;
-    int fdcount;
-    int doexit = 0;
     typedef enum states {
         IDLE,
         HANDLE_FIRMWARE_ADD,
@@ -490,95 +441,91 @@ handle_events(nashContext *nc)
     } states;
     states state = IDLE;
     char *token;
-    long prev = 0;
+    char *action = NULL, *subsystem = NULL, *seqnum = NULL;
+    long cur;
+    int done;
 
-    do {
-        maxfd = netlink;
-        FD_ZERO(&fds);
-        if (nc->hp_childfd >= 0) {
-            if (nc->hp_childfd > netlink)
-                maxfd = nc->hp_childfd;
-            FD_SET(nc->hp_childfd, &fds);
-        }
-        FD_SET(netlink, &fds);
+    action = envz_get(ue->envz, ue->envz_len, "ACTION");
+    subsystem = envz_get(ue->envz, ue->envz_len, "SUBSYSTEM");
+    seqnum = envz_get(ue->envz, ue->envz_len, "SEQNUM");
 
-        fdcount = select(maxfd+1, &fds, NULL, NULL, NULL);
-        if (fdcount < 0)
-            continue;
+    if (!action || !subsystem || !seqnum) {
+        nashLogger(nc, NASH_ERROR, "couldn't get environment\n");
+        nashLogger(nc, NASH_ERROR, "ACTION=\"%s\" SUBSYSTEM=\"%s\" SEQNUM=\"%s\"\n",
+            action, subsystem, seqnum);
+        return prev;
+    }
 
-        if (FD_ISSET(netlink, &fds)) {
-            char *action = NULL, *subsystem = NULL, *seqnum = NULL;
-            long cur;
-            char *msg = NULL, *path = NULL;
-            int done = 0;
+    cur = strtol(seqnum, NULL, 0);
+    if (cur < prev)
+        nashLogger(nc, NASH_ERROR, "WARNING: events out of order: %ld -> %ld\n", prev, cur);
+    else if (cur == prev)
+        nashLogger(nc, NASH_ERROR, "WARNING: duplicate event %ld\n", cur);
 
-            if (get_netlink_msg(netlink, &msg, &path) < 0) {
-                nashLogger(nc, NASH_ERROR, "get_netlink_msg returned %m\n");
-                goto testexit;
+    while (!done) switch (state) {
+        case IDLE:
+            if (!strcmp(action, "add") && !strcmp(subsystem, "firmware")) {
+                state = HANDLE_FIRMWARE_ADD;
+                token=strdup(envz_get(ue->envz, ue->envz_len, "FIRMWARE"));
+                if (nc->delayParent)
+                    nc->delayParent(nc, 500000);
+                load_firmware(nc, ue);
+            } else {
+                //nashLogger(nc, NASH_ERROR, "unkown action %s %s\n", action, subsystem);
             }
-                
-            assert(msg);
-            assert(path);
-
-            action = getenv("ACTION");
-            subsystem = getenv("SUBSYSTEM");
-            seqnum = getenv("SEQNUM");
-
-            if (!action || !subsystem || !seqnum) {
-                nashLogger(nc, NASH_ERROR, "couldn't get environment\n");
-                nashLogger(nc, NASH_ERROR, "ACTION=\"%s\" SUBSYSTEM=\"%s\" SEQNUM=\"%s\"\n",
-                        action, subsystem, seqnum);
-                return;
+            done = 1;
+            break;
+        case HANDLE_FIRMWARE_ADD:
+            if (!strcmp(ue->msg, "remove") &&
+                    !strcmp(subsystem, "firmware")) {
+                if (strcmp(token, envz_get(ue->envz, ue->envz_len, "FIRMWARE")))
+                    nashLogger(nc, NASH_ERROR, "WARNING: add firmware %s followed by remove firmware %s\n", token, envz_get(ue->envz, ue->envz_len, "FIRMWARE"));
+                free(token);
+                token = NULL;
+                state = HANDLE_FIRMWARE_REMOVE;
+            } else {
+                //nashLogger(nc, NASH_ERROR, "unkown action %s %s\n", action, subsystem);
+                state = IDLE;
+                done = 1;
             }
-            assert(subsystem);
-            assert(action);
-            assert(seqnum);
+            break;
+        case HANDLE_FIRMWARE_REMOVE:
+        default:
+            state = IDLE;
+            done = 1;
+            break;
+    }
 
-            cur = strtol(seqnum, NULL, 0);
-            if (cur < prev)
-                nashLogger(nc, NASH_ERROR, "WARNING: events out of order: %ld -> %ld\n", prev, cur);
-            if (cur == prev)
-                nashLogger(nc, NASH_ERROR, "WARNING: duplicate event %ld\n", cur);
-            prev = cur;
+    return cur;
+}
 
-            while (!done) switch (state) {
-                case IDLE:
-                    if (!strcmp(action, "add") && !strcmp(subsystem, "firmware")) {
-                        state = HANDLE_FIRMWARE_ADD;
-                        token=strdup(getenv("FIRMWARE"));
-                        if (nc->delayParent)
-                            nc->delayParent(nc, 500000);
-                        load_firmware(nc);
-                    } else {
-                        //nashLogger(nc, NASH_ERROR, "unkown action %s %s\n", action, subsystem);
-                    }
-                    done = 1;
-                    break;
-                case HANDLE_FIRMWARE_ADD:
-                    if (!strcmp(msg, "remove") && !strcmp(subsystem, "firmware")) {
-                        if (strcmp(token, getenv("FIRMWARE")))
-                            nashLogger(nc, NASH_ERROR, "WARNING: add firmware %s followed by remove firmware %s\n", token, getenv("FIRMWARE"));
-                        free(token);
-                        token = NULL;
-                        state = HANDLE_FIRMWARE_REMOVE;
-                    } else {
-                        //nashLogger(nc, NASH_ERROR, "unkown action %s %s\n", action, subsystem);
-                        state = IDLE;
-                        done = 1;
-                    }
-                    break;
-                case HANDLE_FIRMWARE_REMOVE:
-                default:
-                    state = IDLE;
-                    done = 1;
-                    break;
-            }
-            free(msg);
-            free(path);
-        }
+static void
+handle_events(nashContext *nc)
+{
+    int seqnum = -1, ret;
+    nashUEvent uevent;
+    struct timespec timeout = {-1,-1};
+    struct pollfd pd = {
+        .events = POLLIN | POLLPRI | POLLERR | POLLHUP | POLLMSG,
+        .revents = 0,
+        .fd = nc->hp_childfd,
+    };
+    int doexit = 0;
 
-testexit:
-        if (nc->hp_childfd >= 0 && FD_ISSET(nc->hp_childfd, &fds)) {
+    memset(&uevent, '\0', sizeof (uevent));
+
+    while ((ret = nashGetUEventPoll(uh, &timeout, &uevent, &pd, 1)) >= 0 &&
+            !doexit) {
+        seqnum = handle_single_uevent(nc, &uevent, seqnum);
+        if (uevent.msg)
+            free(uevent.msg);
+        if (uevent.path)
+            free(uevent.path);
+        while (uevent.envz)
+            argz_delete(&uevent.envz, &uevent.envz_len, uevent.envz);
+        memset(&uevent, '\0', sizeof (uevent));
+
+        if (pd.revents) {
             char buf[32] = {'\0'};
             size_t count = 0;
             int tries = 0;
@@ -614,9 +561,9 @@ testexit:
                 }
             }
             rc = 0;
-            continue;
+            pd.revents = 0;
         }
-    } while (!doexit);
+    }
     if (nc->hp_childfd >= 0)
         close(nc->hp_childfd);
 }
@@ -669,36 +616,12 @@ static int
 daemonize(nashContext *nc)
 {
     int i;
-    struct sockaddr_nl sa;
-
-    netlink = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_KOBJECT_UEVENT);
-    if (netlink < 0) {
-        nashLogger(nc, NASH_ERROR, "could not open netlink socket: %m\n");
-        close(nc->hp_parentfd);
-        return -1;
-    }
-    setFdCoe(netlink, 1);
-
-    memset(&sa, '\0', sizeof (sa));
-    sa.nl_family = AF_NETLINK;
-    sa.nl_pid = getpid();
-    sa.nl_groups = -1;
-
-    if (bind(netlink, (struct sockaddr *)&sa, sizeof (sa)) < 0) {
-        nashLogger(nc, NASH_ERROR, "could not bind to netlink socket: %m\n");
-        close(netlink);
-        close(nc->hp_parentfd);
-        nc->hp_parentfd = -1;
-        close(nc->hp_childfd);
-        nc->hp_childfd = -1;
-        return -1;
-    }
+    int socket;
 
     nc->hp_parent_pid = getpid();
     nc->hp_child_pid = fork();
     if (nc->hp_child_pid < 0) {
         nashLogger(nc, NASH_ERROR, "could not fork hotplug handler: %m\n");
-        close(netlink);
         close(nc->hp_parentfd);
         nc->hp_parentfd = -1;
         close(nc->hp_childfd);
@@ -707,15 +630,21 @@ daemonize(nashContext *nc)
     }
     if (nc->hp_child_pid > 0) {
         /* parent */
-        close(netlink);
-
 #ifdef FWDEBUG
         signal(SIGINT, kill_hotplug_signal);
 #endif
         usleep(250000);
         return 0;
     }
+
     /* child */
+    if (!(uh = nashUEventHandlerNew(nc))) {
+        nashLogger(nc, NASH_ERROR, "could not open netlink socket: %m\n");
+        close(nc->hp_parentfd);
+        nc->hp_parentfd = -1;
+        exit(1);
+    }
+    socket = nashUEventHandlerGetFd(uh);
 
     prctl(PR_SET_NAME, "nash-hotplug", 0, 0, 0);
     chdir("/");
@@ -753,7 +682,7 @@ daemonize(nashContext *nc)
     setFdCoe(i, 1);
 #endif
     for (i = 3; i < getdtablesize(); i++) {
-        if (i != nc->hp_childfd && i != netlink)
+        if (i != nc->hp_childfd && i != socket)
             close(i);
     }
 

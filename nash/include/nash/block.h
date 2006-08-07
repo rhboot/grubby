@@ -29,7 +29,7 @@ extern void nashBlockFinish(nashContext *);
 extern char *nashFindFsByLabel(nashContext *, const char *label);
 extern char *nashFindFsByUUID(nashContext *, const char *uuid);
 extern char *nashFindFsByName(nashContext *, const char *name);
-extern char *nashFindDeviceByDevno(dev_t devno);
+extern char *nashFindDeviceByDevno(nashContext *, dev_t devno);
 
 extern int nashParseSysfsDevno(const char *path, dev_t *dev);
 
@@ -50,9 +50,11 @@ extern char *nashAGetPathBySpec(nashContext *c, const char * spec);
 typedef struct nash_block_dev *nashBdev;
 typedef struct nash_block_dev_iter *nashBdevIter;
 
-extern nashBdevIter nashBdevIterNew(const char *path);
+extern nashBdevIter nashBdevIterNew(nashContext *, const char *path, int poll);
 extern void nashBdevIterEnd(nashBdevIter *iter);
 extern int nashBdevIterNext(nashBdevIter iter, nashBdev *dev);
+extern int nashBdevIterNextTimeout(nashBdevIter iter, nashBdev *dev,
+    struct timespec timeout);
 extern int nashBdevRemovable(nashBdev bdev);
 
 #ifndef _GNU_SOURCE_DEFINED

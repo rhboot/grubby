@@ -76,7 +76,7 @@ nashNewContext(void) {
 
     nc->logger = nashDefaultLoggerV;
 
-    if ((tmp = strdup("/lib/firmware/")) == NULL) {
+    if ((tmp = strdupa("/lib/firmware/")) == NULL) {
         free(nc);
         return NULL;
     }
@@ -100,11 +100,12 @@ void
 _nashFreeContext(nashContext **nc)
 {
     if (nc && *nc) {
-        if ((*nc)->fw_pathz)
-            free((*nc)->fw_pathz);
-        if ((*nc)->cache)
-            nashBlockFinish(*nc);
-        free(*nc);
+        nashContext *c = *nc;
+        while (c->fw_pathz)
+            argz_delete(&c->fw_pathz, &c->fw_pathz_len, c->fw_pathz);
+        if (c->cache)
+            nashBlockFinish(c);
+        free(c);
         *nc = NULL;
     }
 }

@@ -39,10 +39,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
-#include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -1635,14 +1633,6 @@ stabilizedMtime(char *path, int iterations, struct timespec interval, int goal)
     return -1;
 }
 
-#ifdef __ia64__
-#define _ppoll(fds, nfds, timeout, sigmask, nsigs) \
-    ppoll(fds, nfds, timeout, sigmask)
-#else
-#define _ppoll(fds, nfds, timeout, sigmask, nsigs) \
-    syscall(SYS_ppoll, fds, nfds, timeout, sigmask, nsigs)
-#endif
-
 static int
 stabilizedPoll(char *path, int iterations, struct timespec interval, int goal)
 {
@@ -1668,12 +1658,12 @@ stabilizedPoll(char *path, int iterations, struct timespec interval, int goal)
     }
     timeout.tv_sec = 0;
     timeout.tv_nsec = 1;
-    rc = _ppoll(&pd, 1, &timeout, NULL, 0);
+    rc = nash_ppoll(&pd, 1, &timeout, NULL, 0);
     do {
         timeout = interval;
 
         pd.revents = 0;
-        while ((rc = _ppoll(&pd, 1, &timeout, NULL, 0) < 0)) {
+        while ((rc = nash_ppoll(&pd, 1, &timeout, NULL, 0) < 0)) {
             if (errno != EINTR)
                 return -1;
         }
@@ -2124,7 +2114,7 @@ mkblkdevsCommand(char * cmd, char * end)
         return 1;
     }
 
-    sysfs_blkdev_probe("/sys/block");
+    sysfs_blkdev_probe(_nash_context, "/sys/block");
     return 1;
 }
 
@@ -2265,7 +2255,7 @@ networkCommand(char *cmd, char *end)
     char *ncmd = NULL;
     char c;
     int rc;
-    size_t len = 9; /* "network " */
+    size_t len;
 
     /* popt expects to get network --args here */
     if (!cmd || cmd >= end)

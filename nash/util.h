@@ -184,6 +184,16 @@ extern int eprintf(const char *format, ...)
     __attribute__((format(printf, 1, 2)));
 #endif
 
+#include <sys/syscall.h>
+#include <sys/poll.h>
+#ifdef __ia64__
+#define nash_ppoll(fds, nfds, timeout, sigmask, nsigs) \
+        ppoll(fds, nfds, timeout, sigmask)
+#else
+#define nash_ppoll(fds, nfds, timeout, sigmask, nsigs) \
+        syscall(SYS_ppoll, fds, nfds, timeout, sigmask, nsigs)
+#endif
+
 #ifndef _GNU_SOURCE_DEFINED
 #undef _GNU_SOURCE
 #else
