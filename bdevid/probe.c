@@ -39,15 +39,15 @@ const char *bdevid_pr_getattr(struct bdevid_probe_result *r, const char *key)
     char *s, *c;
     size_t n;
 
-    if (!strcmp(key, "module"))
+    if (!strcasecmp(key, "module"))
         strncpy(buf, r->m->name, 1023);
-    else if (!strcmp(key, "probe"))
+    else if (!strcasecmp(key, "probe"))
         strncpy(buf, r->p->name, 1023);
-    else if (!strcmp(key, "vendor") && r->vendor)
+    else if (!strcasecmp(key, "vendor") && r->vendor)
         strncpy(buf, r->vendor, 1023);
-    else if (!strcmp(key, "model") && r->model)
+    else if (!strcasecmp(key, "model") && r->model)
         strncpy(buf, r->model, 1023);
-    else if (!strcmp(key, "unique_id") && r->unique_id)
+    else if (!strcasecmp(key, "unique_id") && r->unique_id)
         strncpy(buf, r->unique_id, 1023);
     else
         return NULL;
