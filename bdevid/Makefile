@@ -9,6 +9,10 @@ bdevid_LIBS += $(shell pkg-config --libs glib-2.0)
 bdevid_LIBS += -lnash -lblkid -luuid -ldevmapper -lselinux -lsepol
 bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o
 
+command_LIBS := -L. -ldl
+command_LIBS += $(shell pkg-config --libs glib-2.0)
+command_LIBS += -lnash -lblkid -luuid -ldevmapper -lselinux -lsepol
+
 CFLAGS += $(shell pkg-config --cflags glib-2.0)
 CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"/$(LIB)/bdevid/:/usr/$(LIB)/bdevid/\""
 
@@ -16,6 +20,10 @@ all :: $(OBJDIR)
 all :: $(foreach lib,${LIBS},$(OBJDIR)/lib${lib}.so $(OBJDIR)/lib${lib}.a)
 all :: $(foreach mod,${MODULES},$(OBJDIR)/${mod}.so)
 all :: libbdevid.pc
+all :: $(OBJDIR)/bdevid
+
+$(OBJDIR)/bdevid : command.o $(OBJDIR)/libbdevid.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS) -L$(OBJDIR) -lbdevid
 
 $(foreach lib,$(MODULES),$(OBJDIR)/$(lib).so) : $(OBJDIR)/%.so : %.o
 	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -L$(OBJDIR) -o $@ $< $($*_LIBS) -lbdevid $(bdevid_LIBS)
@@ -44,6 +52,8 @@ install : all
 	@install -m 0755 -d $(DESTDIR)/$(LIB)/bdevid
 	@cp -av $(foreach mod,$(MODULES),$(OBJDIR)/$(mod).so) \
 		$(DESTDIR)/$(LIB)/bdevid/
+	@install -m 0755 -d $(DESTDIR)/sbin
+	@cp -av $(OBJDIR)/bdevid $(DESTDIR)/sbin/bdevid
 	@for x in ${SUBDIRS} ; do \
 		$(MAKE) -C $$x install ; \
 	done
