@@ -139,7 +139,11 @@ findall() {
 }
 
 dm_get_uuid() {
-    echo dm get_uuid "$1" | /sbin/nash --force --quiet
+    echo nash-dm get_uuid "$1" | /sbin/nash --force --quiet
+}
+
+resolve_device_name() {
+    echo nash-resolveDevice "$1" | /sbin/nash --forcequiet
 }
 
 findmodule() {
@@ -875,7 +879,8 @@ if [ "x$PROBE" == "xyes" ]; then
     # check if it's root by label
     elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
         rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,_netdev//' -e 's/_netdev//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
-        majmin=$(get_numeric_dev dec /dev/root)
+        devname=$(resolve_device_name $rootdev)
+        majmin=$(get_numeric_dev dec $devname)
         if [ -n "$majmin" ]; then
             dev=$(findall /sys/block -name dev | while read device ; do \
                   echo "$majmin" | cmp -s $device && echo $device ; done \
