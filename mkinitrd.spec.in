@@ -119,6 +119,7 @@ rm -rf $RPM_BUILD_ROOT
 * Fri Aug 11 2006 Bill Nottingham <notting@redhat.com>
 - replace various sed/grep/cut/head calls with bash & awk equivalents
 - fix a typo
+- nfs loop fixes
 
 * Wed Jul 26 2006 Peter Jones <pjones@redhat.com> - 5.1.2-1
 - pull in new libbdevid for scsi probing fix
