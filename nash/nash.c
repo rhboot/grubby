@@ -806,7 +806,7 @@ losetupCommand(char * cmd, char * end)
         }
 
         if ((fd = open(file, O_RDWR)) < 0) {
-	    if (errno == EROFS || errno == EPERM) {
+	    if (errno == EROFS || errno == EPERM || errno == EACCES) {
 	        fd = open(file, O_RDONLY);
 	    }
 	    if (fd < 0) {
