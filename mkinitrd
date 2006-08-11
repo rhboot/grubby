@@ -906,7 +906,7 @@ fi
 # loopfs : filesystem of loopdev
 # loopots : options to mount loopfs
 
-if [ "x$PROBE" == "xyes" ]; then
+if [ "x$PROBE" == "xyes" -o -n "${loopfs}" ]; then
     if [[ "$rootdev" =~ "^/dev/loop" ]] || [[ "$rootopts" =~ "loop" ]] ; then
     	# FIXME: probe this somehow?
 	
@@ -1262,7 +1262,7 @@ fi
 if [ -n "$loopfs" ]; then
     emit "echo Mounting loop backing store."
     emit "mkdir /tmpmount"
-    emit "mount -t $loopfs -o $loopopts $loopdev /tmpmount"
+    emit "mount -t $loopfs -o ${loopopts:-defaults} $loopdev /tmpmount"
     emit "echo Creating loop device."
     emit "losetup /dev/loop0 /tmpmount/$looppath"
 fi
