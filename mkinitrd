@@ -1264,7 +1264,7 @@ if [ -n "$loopfs" ]; then
     emit "mkdir /tmpmount"
     emit "mount -t $loopfs -o ${loopopts:-defaults} $loopdev /tmpmount"
     emit "echo Creating loop device."
-    emit "losetup /dev/loop0 /tmpmount/$looppath"
+    emit "losetup $rootdev /tmpmount/$looppath"
 fi
 
 emit "echo Creating root device."
