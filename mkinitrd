@@ -670,9 +670,9 @@ while [ $# -gt 0 ]; do
 	    ;;
 	--rootopts*)
             if [ "$1" != "${1##--rootopts=}" ]; then
-                rootopts="$rootopts ${1##--rootopts=}"
+                rootopts="${1##--rootopts=}"
             else
-                rootopts="$rootopts $2"
+                rootopts="$2"
                 shift
             fi
 	    ;;
@@ -694,9 +694,9 @@ while [ $# -gt 0 ]; do
 	    ;;
 	--loopopts*)
             if [ "$1" != "${1##--loopopts=}" ]; then
-                loopopts="$loopopts ${1##--loopopts=}"
+                loopopts="${1##--loopopts=}"
             else
-                loopopts="$loopopts $2"
+                loopopts="$2"
                 shift
             fi
 	    ;;
@@ -894,8 +894,8 @@ if [ "x$PROBE" == "xyes" ]; then
     [ "$rootfs" != "nfs" ] && handlelvordev $rootdev
 
     # find the first swap dev which would get used for swsusp
-    swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; exit }}' $fstab
-    if [ "$swsuspdev" = "${swsuspdev##LABEL=" ]; then
+    swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; exit }}' $fstab)
+    if [ "$swsuspdev" = "${swsuspdev##LABEL=}" ]; then
         handlelvordev $swsuspdev
     fi
 fi
@@ -906,11 +906,16 @@ fi
 # loopfs : filesystem of loopdev
 # loopots : options to mount loopfs
 
-if [ "x$PROBE" == "xyes" -o -n "${loopfs}" ]; then
-    if [[ "$rootopts" =~ "loop" ]] ; then
+if [ "x$PROBE" == "xyes" -o -n "${loopfs}" ] || [[ "$rootopts" =~ "loop" ]]; then
     	# FIXME: probe this somehow?
 	
 	rootdev=/dev/loop0
+	
+	[ -z "$rootopts" ] && rootopts="defaults"
+	
+	if [[ "$rootopts" =~ "loop" ]]; then
+	    rootopts="loop,$rootopts"
+	fi
 	
 	findmodule loop
 	findmodule -${loopfs}
@@ -920,7 +925,7 @@ if [ "x$PROBE" == "xyes" -o -n "${loopfs}" ]; then
 	fi
 	# FIXME: label support
 	
-	[ "$loopfs" != "nfs" ] && handlevolordev $loopdev
+	[ "$loopfs" != "nfs" ] && handlelvordev $loopdev
     fi
 fi
 
