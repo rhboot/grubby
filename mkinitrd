@@ -160,9 +160,9 @@ findmodule() {
         return
     fi
 
-    if [ $(echo $modName | cut -b1) = "-" ]; then
+    if [ "$modName" != "${modName##-}" ]; then
         skiperrors=--skiperrors
-        modName=$(echo $modName | cut -b2-)
+        modName="${modName##-}"
     fi
 
     case "$MODULES " in
@@ -423,7 +423,7 @@ handleiscsi() {
     iscsi_set_parameters $1
     iscsi_devs="$iscsi_devs $1"
     netdev=$(/sbin/ip route get to $tgt_ipaddr | \
-        sed 's|.*dev \(.*\).*|\1|g' | awk {'print $1;'} | head -n 1)
+        sed 's|.*dev \(.*\).*|\1|g' | awk '{ print $1; exit }')
     addnetdev $netdev
 }
 
@@ -434,10 +434,8 @@ handleraid() {
         return 0
     fi
 
-    levels=$(grep "^$1[	 ]*:" /proc/mdstat | \
-        awk '{ print $4 }')
-    devs=$(grep "^$1[	 ]*:" /proc/mdstat | \
-        awk '{ print gensub("\\[[0-9]*\\]","","g",gensub("^md.*raid[0-9]*","","1")) }')
+    levels=$(awk "/^$1[	 ]*:/ { print\$4 }" /proc/mdstat)
+    devs=$(awk "/^$1[	 ]*:/ { print gensub(\"\\[[0-9]*\\]\",\"\",\"g\",gensub(\"^md.*raid[0-9]*\",\"\",\"1\")) }" /proc/mdstat)
 
     for level in $levels ; do
         case $level in
@@ -534,11 +532,11 @@ addnetdev() {
 }
 
 handlenfs() {
-    remote=$(echo $$1 | cut -d : -f 1)
+    remote=${1%%:*}
     remoteip=$(host $remote | awk '/ address / { print $4 }')
     # assume, if it didn't resolve, that it's an IP
     [ -z "$remoteip" ] && remoteip=$remote
-    netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk {'print $1;'} |head -n 1`
+    netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk '{ print $1; exit }'`
     addnetdev $netdev
 }
 
@@ -546,8 +544,8 @@ handlenfs() {
 while [ $# -gt 0 ]; do
     case $1 in
         --fstab*)
-            if echo $1 | grep -q '=' ; then
-                fstab=`echo $1 | sed 's/^--fstab=//'`
+            if [ "$1" != "${1##--fstab=}" ]; then
+                fstab=${1##--fstab=}
             else
                 fstab=$2
                 shift
@@ -563,8 +561,8 @@ while [ $# -gt 0 ]; do
             ;;
 
         --with*)
-            if echo $1 | grep -q '=' ; then
-                modname=`echo $1 | sed 's/^--with=//'`
+            if [ "$1" != "${1##--with=}" ]; then
+                modname=${1##--with=}
             else
                 modname=$2
                 shift
@@ -574,8 +572,8 @@ while [ $# -gt 0 ]; do
             ;;
 
         --builtin*)
-            if echo $1 | grep -q '=' ; then
-                modname=`echo $1 | sed 's/^--builtin=//'`
+            if [ "$1" != "${1##--builtin=}" ]; then
+                modname=${1##--builtin=}
             else
                 modname=$2
                 shift
@@ -604,8 +602,8 @@ while [ $# -gt 0 ]; do
             force=1
             ;;
         --preload*)
-            if echo $1 | grep -q '=' ; then
-                modname=`echo $1 | sed 's/^--preload=//'`
+            if [ "$1" != "${1##--preload=}" ]; then
+                modname=${1##--preload=}
             else
                 modname=$2
                 shift
@@ -644,8 +642,8 @@ while [ $# -gt 0 ]; do
             allowmissing=yes
             ;;
         --net-dev*)
-            if echo $1 | grep -q '=' ; then
-                net_list="$net_list `echo $1 | sed 's/^--net-dev=//'`"
+            if [ "$1" != "${1##--net-dev=}" ]; then
+                net_list="$net_list ${1##--net-dev=}"
             else
                 net_list="$net_list $2"
                 shift
@@ -655,56 +653,56 @@ while [ $# -gt 0 ]; do
             noresume=1
             ;;
 	--rootdev*)
-            if echo $1 | grep -q '=' ; then
-                rootdev="$(echo $1 | sed 's/^--rootdev=//')"
+            if [ "$1" != "${1##--rootdev=}" ]; then
+                rootdev="${1##--rootdev=}"
             else
                 rootdev="$2"
                 shift
             fi
 	    ;;
 	--rootfs*)
-            if echo $1 | grep -q '=' ; then
-                rootfs="$(echo $1 | sed 's/^--rootfs=//')"
+            if [ "$1" != "${1##--rootfs=}" ]; then
+                rootfs="${1##--rootfs=}"
             else
                 rootfs="$2"
                 shift
             fi
 	    ;;
 	--rootopts*)
-            if echo $1 | grep -q '=' ; then
-                rootopts="$rootopts `echo $1 | sed 's/^--rootopts=//'`"
+            if [ "$1" != "${1##--rootopts=}" ]; then
+                rootopts="$rootopts ${1##--rootopts=}"
             else
                 rootopts="$rootopts $2"
                 shift
             fi
 	    ;;
 	--loopdev*)
-            if echo $1 | grep -q '=' ; then
-                loopdev="$(echo $1 | sed 's/^--loopdev=//')"
+            if [ "$1" != "${1##--loopdev=}" ]; then
+                loopdev="${1##--loopdev=}"
             else
                 loopdev="$2"
                 shift
             fi
 	    ;;
 	--loopfs*)
-            if echo $1 | grep -q '=' ; then
-                loopfs="$(echo $1 | sed 's/^--loopfs=//')"
+            if [ "$1" != "${1##--loopfs=}" ]; then
+                loopfs="${1##--loopfs=}"
             else
                 loopfs="$2"
                 shift
             fi
 	    ;;
 	--loopopts*)
-            if echo $1 | grep -q '=' ; then
-                loopopts="$loopopts `echo $1 | sed 's/^--loopopts=//'`"
+            if [ "$1" != "${1##--loopopts=}" ]; then
+                loopopts="$loopopts ${1##--loopopts=}"
             else
                 loopopts="$loopopts $2"
                 shift
             fi
 	    ;;
 	--looppath*)
-            if echo $1 | grep -q '=' ; then
-                looppath="$(echo $1 | sed 's/^--looppath=//')"
+            if [ "$1" != "${1##--looppath=}" ]; then
+                looppath="${1##--looppath=}"
             else
                 looppath="$2"
                 shift
@@ -801,7 +799,7 @@ if [ -n "$withusb" -a "x$PROBE" == "xyes" ]; then
     for fs in / /boot ; do
         esc=$(echo $fs | sed 's,/,\\/,g')
         dev=$(mount | awk "/ on ${esc} / { print \$1 }" | sed 's/[0-9]*$//' | cut -d/ -f3)
-        if [ "$(echo $dev | cut -c1-2)" = sd ]; then
+        if [ "$dev" != "${dev##sd}" ]; then
             if [ `which kudzu 2>/dev/null` ]; then
                 host=$(kudzu --probe -b scsi |
                 gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) { print $2; exit; } }')
@@ -822,7 +820,7 @@ if [ -n "$needusb" -a "x$PROBE" == "xyes" ]; then
             findmodule $driver
         done
     fi
-    for x in $(grep ^[eou]hci_hcd /proc/modules | awk '{ print $1 }' | tac) ; do
+    for x in $(awk '/^[eou]hci_hcd/ { print $1 }' /proc/modules | tac) ; do
         useUSB=1
         findmodule $(echo $x | sed 's/_/-/')
     done
@@ -877,7 +875,7 @@ if [ "x$PROBE" == "xyes" ]; then
     if [ "$rootfs" == "nfs" -a "x$net_list" == "x" ]; then
         handlenfs $rootdev
     # check if it's root by label
-    elif echo $rootdev | cut -c1-6 | grep -q "LABEL=" ; then
+    elif [ "$rootdev" != "${rootdev##LABEL=}" ]; then
         rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,_netdev//' -e 's/_netdev//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
         devname=$(resolve_device_name $rootdev)
         majmin=$(get_numeric_dev dec $devname)
@@ -896,9 +894,8 @@ if [ "x$PROBE" == "xyes" ]; then
     [ "$rootfs" != "nfs" ] && handlelvordev $rootdev
 
     # find the first swap dev which would get used for swsusp
-    swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; }}' $fstab \
-                | head -n 1)
-    if ! echo $swsuspdev | cut -c1-6 | grep -q "LABEL=" ; then
+    swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; exit }}' $fstab
+    if [ "$swsuspdev" = "${swsuspdev##LABEL=" ]; then
         handlelvordev $swsuspdev
     fi
 fi
