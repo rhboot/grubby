@@ -331,7 +331,7 @@ findnetdriver() {
         if [ -f /sys/class/net/$device/device/modalias ]; then
             modalias=$(cat /sys/class/net/$device/device/modalias)
 	
-	elif [ $(basename $(readlink /sys/class/net/$device/device/bus)) = "xen" ]; then
+	elif [ "$(basename $(readlink /sys/class/net/$device/device/bus 2>/dev/null) 2>/dev/null)" = "xen" ]; then
  	    modalias="xennet" # FIXME: hack for xen not using modaliases...
 	else
 	    modalias=$(ethtool -i $device | awk '/^driver:/ { print $2 }')
@@ -866,6 +866,7 @@ fi
 if [ "x$PROBE" == "xyes" ]; then
     [ -z "$rootfs" ] && rootfs=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $3; }}' $fstab)
     [ -z "$rootopts" ] && rootopts=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $4; }}' $fstab)
+    [ -z "$rootopts" ] && rootopts="defaults"
 
     # in case the root filesystem is modular
     findmodule -${rootfs}
@@ -913,10 +914,6 @@ if [ "x$PROBE" == "xyes" -o -n "${loopfs}" ] || [[ "$rootopts" =~ "loop" ]]; the
 	
 	[ -z "$rootopts" ] && rootopts="defaults"
 	
-	if [[ "$rootopts" =~ "loop" ]]; then
-	    rootopts="loop,$rootopts"
-	fi
-	
 	findmodule loop
 	findmodule -${loopfs}
 	
@@ -926,7 +923,6 @@ if [ "x$PROBE" == "xyes" -o -n "${loopfs}" ] || [[ "$rootopts" =~ "loop" ]]; the
 	# FIXME: label support
 	
 	[ "$loopfs" != "nfs" ] && handlelvordev $loopdev
-    fi
 fi
 
 # If we use LVM or dm-based raid, include dm-mod

@@ -116,10 +116,11 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
-* Fri Aug 11 2006 Bill Nottingham <notting@redhat.com>
+* Fri Aug 11 2006 Bill Nottingham <notting@redhat.com> - 5.1.3-1
 - replace various sed/grep/cut/head calls with bash & awk equivalents
 - fix a typo
 - nfs loop fixes
+- silence xen errors when sysfs layout is different
 
 * Wed Jul 26 2006 Peter Jones <pjones@redhat.com> - 5.1.2-1
 - pull in new libbdevid for scsi probing fix
