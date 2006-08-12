@@ -331,7 +331,7 @@ findnetdriver() {
         if [ -f /sys/class/net/$device/device/modalias ]; then
             modalias=$(cat /sys/class/net/$device/device/modalias)
 	
-	elif [ "$(basename $(readlink /sys/class/net/$device/device/bus 2>/dev/null) 2>/dev/null)" = "xen" ]; then
+	elif [ "$(basename $(readlink /sys/class/net/$device/device/bus) 2>/dev/null)" = "xen" ]; then
  	    modalias="xennet" # FIXME: hack for xen not using modaliases...
 	else
 	    modalias=$(ethtool -i $device | awk '/^driver:/ { print $2 }')
