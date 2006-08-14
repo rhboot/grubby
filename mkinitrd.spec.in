@@ -27,6 +27,7 @@ Requires: dmraid
 Requires: ppc64-utils >= 0.3-1
 %endif
 BuildRoot: %{_tmppath}/%{name}-root
+Provides: libbdevid = %{version}-%{release}
 
 %description
 Mkinitrd creates filesystem images for use as initial ramdisk (initrd)
@@ -116,6 +117,9 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Mon Aug 14 2006 Peter Jones <pjones@redhat.com> - 5.1.5-1
+- Provide libbdevid.
+
 * Mon Aug 14 2006 Peter Jones <pjones@redhat.com> - 5.1.4-1
 - Fix requires for libbdevid
 - Make it safe to call nashLogger and nashLoggerV with no context.
