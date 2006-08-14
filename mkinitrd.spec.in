@@ -82,7 +82,7 @@ cd mkinitrd-%{version}
 make LIB=%{_lib} BUILDROOT=$RPM_BUILD_ROOT mandir=%{_mandir} install
 cd ../bdevid-%{BDEVID_VERSION}
 make LIB=%{_lib} DESTDIR=$RPM_BUILD_ROOT install
-rm -f /sbin/bdevid
+rm -f $RPM_BUILD_ROOT/sbin/bdevid
 
 %clean
 rm -rf $RPM_BUILD_ROOT
