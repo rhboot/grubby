@@ -117,6 +117,9 @@ nashLoggerV(nashContext *ctx, const nash_log_level level,
     va_list apc;
     int ret = 0;
 
+    if (!ctx)
+        return -1;
+
     if (ctx->logger) {
         va_copy(apc, ap);
         ret = ctx->logger(ctx, level, format, apc);
@@ -132,6 +135,9 @@ nashLogger(nashContext *ctx, const nash_log_level level,
 {
     va_list ap;
     int ret = 0;
+
+    if (!ctx)
+        return -1;
 
     if (ctx->logger) {
         va_start(ap, format);

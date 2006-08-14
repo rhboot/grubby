@@ -46,13 +46,12 @@ ramdisk using information found in the /etc/modules.conf file.
 %package devel
 Summary: C header files and library for functionality exported by libnash.
 Group: Development/Libraries
-Requires: glibc-devel, pkgconfig, e2fsprogs-devel, mkinitrd-devel, glib2-devel
-Requires: libbdevid
+Requires: glibc-devel, pkgconfig, e2fsprogs-devel, mkinitrd, glib2-devel
 
 %package -n libbdevid-python
 Summary: Python bindings for libbdevid
 Group: System Environment/Libraries
-Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper, libbdevid,
+Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper, mkinitrd
 Requires: python >= %{pyver}
 
 %description devel
@@ -116,6 +115,13 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Mon Aug 14 2006 Peter Jones <pjones@redhat.com> - 5.1.4-1
+- Fix requires for libbdevid
+- Make it safe to call nashLogger and nashLoggerV with no context.
+
+* Mon Aug 14 2006 Mark McLoughlin <markmc@redhat.com> - 5.1.3-2
+- Fix compile error
+
 * Fri Aug 11 2006 Bill Nottingham <notting@redhat.com> - 5.1.3-1
 - replace various sed/grep/cut/head calls with bash & awk equivalents
 - fix a typo
