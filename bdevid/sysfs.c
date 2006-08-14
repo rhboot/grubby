@@ -41,7 +41,7 @@ struct bdevid_sysfs_node *bdevid_sysfs_find_node(char *file)
     if (stat(file, &sb) < 0)
         return NULL;
 
-    if (!(sysfs_dir = nashFindDeviceByDevno(sb.st_rdev)))
+    if (!(sysfs_dir = nashFindDeviceByDevno(NULL, sb.st_rdev)))
         return NULL;
 
     if (!(node = calloc(1, sizeof(*node)))) {
