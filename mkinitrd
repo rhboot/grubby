@@ -36,7 +36,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.5
+VERSION=5.1.6
 
 PROBE="yes"
 MODULES=""
@@ -907,7 +907,7 @@ fi
 # loopfs : filesystem of loopdev
 # loopots : options to mount loopfs
 
-if [ "x$PROBE" == "xyes" -o -n "${loopfs}" ] || [[ "$rootopts" =~ "loop" ]]; then
+if [ -n "${loopfs}" ] || [[ "$rootopts" =~ "loop" ]]; then
     	# FIXME: probe this somehow?
 	
 	rootdev=/dev/loop0
