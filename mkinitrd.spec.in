@@ -118,7 +118,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 * Mon Aug 14 2006 Bill Nottingham <notting@redhat.com> - 5.1.6-1
-- don't make every loop device /dev/loop0. Eep.
+- don't make every root device /dev/loop0. Eep.
 
 * Mon Aug 14 2006 Peter Jones <pjones@redhat.com> - 5.1.5-1
 - Provide libbdevid.
