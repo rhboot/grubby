@@ -116,31 +116,22 @@ extern int getDevNumFromProc(char * file, char * device);
 
 extern int stringsort(const void *v0, const void *v1);
 
-static void __attribute__((used))
-udelay(long long usecs)
+static inline void
+udelayspec(struct timespec rem)
 {
-    struct timespec rem = {0,0}, req = {0,0};
-    struct timespec *reqp = &req, *remp = &rem, *tmp;
-
-    while (usecs > 999999) {
-        rem.tv_sec++;
-        usecs -= 999999;
-    }
-    rem.tv_nsec = usecs * 1000;
-
-    do {
-        tmp = reqp;
-        reqp = remp;
-        remp = tmp;
-        errno = 0;
-    } while (nanosleep(reqp, remp) == -1 && errno == EINTR);
+    while (nanosleep(&rem, &rem) == -1 && errno == EINTR)
+        ;
 }
 
-#define udelayspec(ts) ({                                       \
-        long long __delay = (ts.tv_nsec - (ts.tv_nsec % 1000))  \
-                          + (ts.tv_sec * 1000000);              \
-        udelay(__delay);                                        \
-    })
+static inline void
+udelay(long long usecs)
+{
+    struct timespec rem = {0,0};
+
+    rem.tv_sec = usecs / 1000000;
+    rem.tv_nsec = (usecs % 1000000) * 1000;
+    udelayspec(rem);
+}
 
 extern char *readlink_malloc(const char *filename);
 

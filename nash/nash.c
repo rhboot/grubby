@@ -1719,12 +1719,8 @@ usage:
     if (!file)
         goto usage;
 
-    interval_ts.tv_sec = 0;
-    while (interval > 999) {
-        interval_ts.tv_sec += 1;
-        interval -= 999;
-    }
-    interval_ts.tv_nsec = interval * 1000000;
+    interval_ts.tv_sec = interval / 1000;
+    interval_ts.tv_nsec = (interval % 1000) * 1000000;
 
     if (do_poll)
         rc = stabilizedPoll(file, iterations, interval_ts, 10);
