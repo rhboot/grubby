@@ -1614,9 +1614,9 @@ stabilizedMtime(char *path, int iterations, struct timespec interval, int goal)
             eprintf("stabilized: stat %s: %m\n", path);
             return -1;
         }
-        eprintf("last: %ld.%ld sb: %ld.%ld now: %ld.%ld\n", last.tv_sec, last.tv_nsec, sb.st_mtime, sb.st_atim.tv_nsec, now.tv_sec, now.tv_usec * 1000);
+        eprintf("last: %ld.%ld sb: %ld.%ld now: %ld.%ld\n", last.tv_sec, last.tv_nsec, sb.st_mtime, sb.st_mtim.tv_nsec, now.tv_sec, now.tv_usec * 1000);
         if (sb.st_mtime == last.tv_sec
-                && sb.st_atim.tv_nsec == last.tv_nsec) {
+                && sb.st_mtim.tv_nsec == last.tv_nsec) {
             if (++count == goal)
                 return changed;
         } else {
@@ -1625,8 +1625,8 @@ stabilizedMtime(char *path, int iterations, struct timespec interval, int goal)
         }
 
         udelayspec(interval);
-        last.tv_sec = sb.st_atim.tv_sec;
-        last.tv_nsec = sb.st_atim.tv_nsec;
+        last.tv_sec = sb.st_mtim.tv_sec;
+        last.tv_nsec = sb.st_mtim.tv_nsec;
         if (iterations != -1)
             iterations--;
     } while (iterations == -1 || iterations > 0);
