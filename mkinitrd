@@ -58,6 +58,7 @@ verbose=""
 img_vers=""
 builtins=""
 modulefile=/etc/modules.conf
+withusb=1
 rc=0
 
 IMAGESIZE=8000
@@ -194,10 +195,15 @@ findmodule() {
             -a "$modName" != "uhci-hcd" \
             -a "$modName" != "ohci-hcd" \
             -a "$modName" != "ehci-hcd" ]; then
+        withusb=1
         findmodule ehci-hcd
         findmodule ohci-hcd
         findmodule uhci-hcd
-        modName="$usbModName"
+
+        case "$MODULES " in
+            *"MOUNT_PROC_USB"*) ;;
+            *) MODULES="$MODULES MOUNT_PROC_USB " ;;
+        esac
         usbModName=""
     fi
 
@@ -574,6 +580,10 @@ while [ $# -gt 0 ]; do
             unset usbmodule
             ;;
 
+        --without-usb)
+            withusb=0
+            ;;
+
         --with*)
             if [ "$1" != "${1##--with=}" ]; then
                 modname=${1##--with=}
@@ -805,6 +815,13 @@ fi
 for n in $PREMODS; do
         findmodule $n
 done
+
+if [ -n "$withusb" ]; then
+    findmodule uhci-hcd
+    findmodule ohci-hcd
+    findmodule ehci-hcd
+    MODULES="$MODULES MOUNT_PROC_USB"
+fi
 
 if [ -n "$forcescsi" -o -z "$noscsi" -a "x$PROBE" == "xyes" ]; then
     if [ ! -f $modulefile ]; then
@@ -1141,6 +1158,11 @@ emit "echo Creating block device nodes."
 emit "mkblkdevs"
 
 for MODULE in $MODULES; do
+    if [ "$MODULE" = "MOUNT_PROC_USB" ]; then
+        emit "mount -t usbfs /proc/bus/usb /proc/bus/usb"
+        continue
+    fi
+
     text=""
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
     fullmodule=`echo $MODULE | sed "s|.*/||"`
@@ -1151,10 +1173,6 @@ for MODULE in $MODULES; do
         vecho "Adding module $module$text with options $options"
     else
         vecho "Adding module $module$text"
-    fi
-
-    if [ "$module" = "usb-storage" -o "$module" = "ub" ]; then
-        emit "mount -t usbfs /proc/bus/usb /proc/bus/usb"
     fi
 
     emit "echo \"Loading $fullmodule module\""
