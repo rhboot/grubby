@@ -1094,7 +1094,7 @@ static int
 switchrootCommand(char * cmd, char * end)
 {
     /*  Don't try to unmount the old "/", there's no way to do it. */
-    const char *umounts[] = { "/dev", "/proc", "/proc/bus/usb", "/sys", NULL };
+    const char *umounts[] = { "/dev", "/proc", "/sys", NULL };
     const char *initprogs[] = { "/sbin/init", "/etc/init",
                                 "/bin/init", "/bin/sh", NULL };
     char *init, **initargs;
@@ -1118,8 +1118,6 @@ switchrootCommand(char * cmd, char * end)
     for (; umounts[i] != NULL; i++) {
         qprintf("unmounting old %s\n", umounts[i]);
         if (umount2(umounts[i], MNT_DETACH) < 0) {
-            if (errno == EINVAL && !strcmp(umounts[i], "/proc/bus/usb"))
-                continue;
             eprintf("ERROR unmounting old %s: %m\n",umounts[i]);
             eprintf("forcing unmount of %s\n", umounts[i]);
             umount2(umounts[i], MNT_FORCE);
