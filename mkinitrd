@@ -187,15 +187,24 @@ findmodule() {
         findmodule ohci1394
         modName="sbp2"
     elif [ "$modName" = "usb-storage" -o "$modName" = "ub" ]; then
-        findmodule ehci_hcd
-        findmodule ohci_hcd
-        findmodule uhci_hcd
-    else
-        moduledep $modName
-        for i in $deps; do
-            findmodule $i
-        done
+        usbModName="$modName"
     fi
+
+    if [ -n "$usbModName" \
+            -a "$modName" != "uhci-hcd" \
+            -a "$modName" != "ohci-hcd" \
+            -a "$modName" != "ehci-hcd" ]; then
+        findmodule ehci-hcd
+        findmodule ohci-hcd
+        findmodule uhci-hcd
+        modName="$usbModName"
+        usbModName=""
+    fi
+
+    moduledep $modName
+    for i in $deps; do
+        findmodule $i
+    done
 
     for modExt in o.gz o ko ; do
         for modDir in /lib/modules/$kernel/updates /lib/modules/$kernel ; do
@@ -555,8 +564,14 @@ while [ $# -gt 0 ]; do
             fi
             ;;
 
-        --with-usb)
-            basicmodules="$basicmodules usb-storage"
+        --with-usb*)
+            if [ "$1" != "${1##--with-usb=}" ]; then
+                usbmodule=${1##--with-usb=}
+            else
+                usbmodule="usb-storage"
+            fi
+            basicmodules="$basicmodules $usbmodule"
+            unset usbmodule
             ;;
 
         --with*)
@@ -1125,42 +1140,29 @@ emit "hotplug"
 emit "echo Creating block device nodes."
 emit "mkblkdevs"
 
-MOUNTUSB=""
-for MODULE in $MODULES; do
-    module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
-    if [ "$module" = "usbcore" -o "$module" = "usb-storage" ]; then
-        if [ "$module" == "usbcore" ]; then
-            fullmodule=`echo $MODULE | sed "s|.*/||"`
-            options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
-            emit "insmod /lib/$fullmodule $options"
-        fi
-        MOUNTUSB=1
-    fi
-done
-
-if [ -n "$MOUNTUSB" ]; then
-    emit "mount -t usbfs /proc/bus/usb /proc/bus/usb"
-fi
-
 for MODULE in $MODULES; do
     text=""
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
     fullmodule=`echo $MODULE | sed "s|.*/||"`
 
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
-
+    
     if [ -n "$options" ]; then
         vecho "Adding module $module$text with options $options"
     else
         vecho "Adding module $module$text"
     fi
 
+    if [ "$module" = "usb-storage" -o "$module" = "ub" ]; then
+        emit "mount -t usbfs /proc/bus/usb /proc/bus/usb"
+    fi
+
     emit "echo \"Loading $fullmodule module\""
     emit "insmod /lib/$fullmodule $options"
-
+        
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
-    if [ "$module" = "usb-storage" ]; then
+    if [ "$module" = "usb-storage" -o "$module" = "ub" ]; then
         emit "echo Waiting for driver initialization."
         emit "stabilized /proc/bus/usb/devices"
     fi
