@@ -112,21 +112,9 @@ usage () {
 }
 
 moduledep() {
-    if [ ! -f "/lib/modules/$kernel/modules.dep" ]; then
-        error "No dep file found for kernel $kernel"
-        exit 1
-    fi
-
     vecho -n "Looking for deps of module $1"
-    deps=$(awk 'BEGIN { searched=ARGV[2]; ARGV[2]=""; rc=1 } \
-                function modname(filename) { match(filename, /\/([^\/]+)\.k?o:?$/, ret); return ret[1] } \
-                function show() { if (orig == searched) { print dep; orig=""; rc=0; exit } } \
-                /^\/lib/ { show(); \
-                           orig=modname($1); dep=""; \
-                           if ($2) { for (i = 2; i <= NF; i++) { dep=sprintf("%s %s", dep, modname($i)); } } } \
-                /^	/ { dep=sprintf("%s %s", dep, modname($1));  } \
-                END      { show(); exit(rc) }' /lib/modules/$kernel/modules.dep $1)
-    [ -n "$deps" ] && vecho ":$deps" || vecho
+    deps=$(modprobe --set-version $kernel --show-depends $1 2>/dev/null| awk '/^insmod / { print gensub(".*/","","g",$2) }' | while read foo ; do [ "${foo%%.ko}" != "$1" ] && echo -n "${foo%%.ko} " ; done)
+    [ -n "$deps" ] && vecho ": $deps" || vecho
 }
 
 findone() {
@@ -312,9 +300,9 @@ findstoragedriverinsys () {
         [ "$PWD" = "/sys/devices" ] && return
         cd ..
     done
-    modalias=$(cat modalias)
-    for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
-        findmodule ${driver%%.ko}
+    moduledep $(cat modalias)
+    for driver in $deps ; do
+        findmodule $driver
     done
 }
 
@@ -354,8 +342,9 @@ findnetdriver() {
 	else
 	    modalias=$(ethtool -i $device | awk '/^driver:/ { print $2 }')
  	fi
-        for driver in $(modprobe --set-version $kernel --show-depends $modalias 2>/dev/null| awk '{ print gensub(".*/","","g",$2) }') ; do
-            findmodule ${driver%%.ko}
+        moduledep $modalias
+        for driver in $deps ; do
+            findmodule $driver
         done
     done
 }
