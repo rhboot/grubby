@@ -1126,7 +1126,7 @@ mknod /dev/ptmx c 5 2
 mknod /dev/rtc c 10 135
 EOF
 if [ "$(uname -m)" == "ia64" ]; then
-    emit "mknod $MNTIMAGE/dev/efirtc c 10 136"
+    emit "mknod /dev/efirtc c 10 136"
 fi
 
 # XXX really we need to openvt too, in case someting changes the
