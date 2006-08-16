@@ -49,7 +49,6 @@ NET_LIST=""
 CONFMODS="$MODULES"
 MODULES=""
 
-withusb=yes
 compress=1
 allowmissing=""
 target=""
@@ -187,6 +186,10 @@ findmodule() {
         findmodule ieee1394
         findmodule ohci1394
         modName="sbp2"
+    elif [ "$modName" = "usb-storage" -o "$modName" = "ub" ]; then
+        findmodule ehci_hcd
+        findmodule ohci_hcd
+        findmodule uhci_hcd
     else
         moduledep $modName
         for i in $deps; do
@@ -553,11 +556,7 @@ while [ $# -gt 0 ]; do
             ;;
 
         --with-usb)
-            withusb=yes
-            ;;
-
-        --without-usb)
-            withusb=no
+            basicmodules="$basicmodules usb-storage"
             ;;
 
         --with*)
@@ -791,46 +790,6 @@ fi
 for n in $PREMODS; do
         findmodule $n
 done
-
-needusb=""
-if [ -n "$withusb" -a "x$PROBE" == "xyes" ]; then
-    # If / or /boot is on a USB device include the driver. With root by
-    # label we could still get some odd behaviors
-    for fs in / /boot ; do
-        esc=$(echo $fs | sed 's,/,\\/,g')
-        dev=$(mount | awk "/ on ${esc} / { print \$1 }" | sed 's/[0-9]*$//' | cut -d/ -f3)
-        if [ "$dev" != "${dev##sd}" ]; then
-            if [ `which kudzu 2>/dev/null` ]; then
-                host=$(kudzu --probe -b scsi |
-                gawk '/^device: '${dev}'/,/^host:/ { if (/^host/) { print $2; exit; } }')
-                if [ -d /proc/scsi/usb-storage-${host} -o -f /proc/scsi/usb-storage/${host} ]; then
-                    needusb=1
-                fi
-            fi
-        fi
-    done
-fi
-
-if [ -n "$needusb" -a "x$PROBE" == "xyes" ]; then
-    drivers=$(awk '/^alias[[:space:]]+usb-controller[0-9]* / { print $3}' < $modulefile)
-    useUSB=0
-    if [ -n "$drivers" ]; then
-        useUSB=1
-        for driver in $drivers; do
-            findmodule $driver
-        done
-    fi
-    for x in $(awk '/^[eou]hci_hcd/ { print $1 }' /proc/modules | tac) ; do
-        useUSB=1
-        findmodule $(echo $x | sed 's/_/-/')
-    done
-    if [ "$useUSB" == "1" ]; then
-        findmodule usbcore
-        findmodule scsi_mod
-        findmodule sd_mod
-        findmodule usb-storage
-    fi
-fi
 
 if [ -n "$forcescsi" -o -z "$noscsi" -a "x$PROBE" == "xyes" ]; then
     if [ ! -f $modulefile ]; then
