@@ -1614,7 +1614,7 @@ stabilizedMtime(char *path, int iterations, struct timespec interval, int goal)
             eprintf("stabilized: stat %s: %m\n", path);
             return -1;
         }
-        vprintf("last: %ld.%ld sb: %ld.%ld now: %ld.%ld\n", last.tv_sec, last.tv_nsec, sb.st_mtime, sb.st_mtim.tv_nsec, now.tv_sec, now.tv_usec * 1000);
+        qprintf("last: %ld.%ld sb: %ld.%ld now: %ld.%ld\n", last.tv_sec, last.tv_nsec, sb.st_mtime, sb.st_mtim.tv_nsec, now.tv_sec, now.tv_usec * 1000);
         if (sb.st_mtime == last.tv_sec
                 && sb.st_mtim.tv_nsec == last.tv_nsec) {
             if (++count == goal)
@@ -1667,7 +1667,7 @@ stabilizedPoll(char *path, int iterations, struct timespec interval, int goal)
             if (errno != EINTR)
                 return -1;
         }
-        vprintf("rc: %d pd.revent: %d\n", rc, pd.revents);
+        qprintf("rc: %d pd.revent: %d\n", rc, pd.revents);
         if (pd.revents) {
             changed = 1;
             count = 0;
