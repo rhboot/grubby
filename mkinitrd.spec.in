@@ -118,6 +118,10 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Wed Aug 16 2006 Peter Jones <pjones@redhat.com> - 5.1.8-1
+- Use modprobe to find module deps (#202559, #202596)
+- Fix typo for /dev/efirtc (#202110)
+
 * Wed Aug 16 2006 Peter Jones <pjones@redhat.com> - 5.1.7-1
 - Make "stabilized" work better (patch from Alexandre Oliva)
 - Rewrite usb handling (notting and pjones)
