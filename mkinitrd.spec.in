@@ -118,6 +118,9 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Fri Aug 17 2006 Peter Jones <pjones@redhat.com> - 5.1.9-1
+- Fix "MOUNT_PROC_USB" warning
+
 * Wed Aug 16 2006 Peter Jones <pjones@redhat.com> - 5.1.8-1
 - Use modprobe to find module deps (#202559, #202596)
 - Fix typo for /dev/efirtc (#202110)

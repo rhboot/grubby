@@ -36,7 +36,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.8
+VERSION=5.1.9
 
 PROBE="yes"
 MODULES=""
@@ -988,7 +988,7 @@ done
 
 finddmmods
 
-vecho "Using modules:$MODULES"
+vecho "Using modules:" $(sed 's/ MOUNT_PROC_USB//' <<< "$MODULES")
 
 MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
 IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
@@ -1060,6 +1060,9 @@ inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
+    if [ "$MODULE" = "MOUNT_PROC_USB" ]; then
+        continue;
+    fi
     if [ -x /usr/bin/strip ]; then
         /usr/bin/strip -g $verbose $MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
     else
