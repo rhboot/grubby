@@ -63,7 +63,6 @@ C header files and library for functionality exported by libnash.
 Python bindings for libbdevid.
 
 %prep
-%setup -q -c -a 0
 %setup -q -c -a 1
 
 %build
@@ -118,6 +117,9 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Tue Aug 22 2006 Peter Jones <pjones@redhat.com>
+- Fix %%setup args
+
 * Fri Aug 17 2006 Peter Jones <pjones@redhat.com> - 5.1.9-1
 - Fix "MOUNT_PROC_USB" warning
 
