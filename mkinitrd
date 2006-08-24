@@ -471,7 +471,7 @@ handleraid() {
 }
 
 handlelvordev() {
-    local vg=`lvs --noheadings -o vg_name $1 2>/dev/null`
+    local vg=`lvm.static lvs --ignorelockingfailure --noheadings -o vg_name $1 2>/dev/null`
     if [ -n "$vg" ]; then
         vg=`echo $vg` # strip whitespace
         case " $vg_list " in
@@ -479,7 +479,7 @@ handlelvordev() {
             ;;
         *)
             vg_list="$vg_list $vg"
-            for device in `vgdisplay -v $vg 2>/dev/null | sed -n 's/PV Name//p'`; do
+            for device in `lvm.static vgdisplay --ignorelockingfailure -v $vg 2>/dev/null | sed -n 's/PV Name//p'`; do
                 findstoragedriver ${device##/dev/}
             done
             ;;

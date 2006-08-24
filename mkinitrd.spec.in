@@ -119,6 +119,8 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Tue Aug 22 2006 Peter Jones <pjones@redhat.com>
 - Fix %%setup args
+- Work around lvm locking problems when clvm is installed (#203904)
+- Work around lvm segfault by always using lvm.static
 
 * Fri Aug 17 2006 Peter Jones <pjones@redhat.com> - 5.1.9-1
 - Fix "MOUNT_PROC_USB" warning
