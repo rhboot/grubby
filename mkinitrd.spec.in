@@ -127,6 +127,7 @@ rm -rf $RPM_BUILD_ROOT
   loading emission, not with a sentinal value
 - do forced finding of devices *after* auto-detection of the root fs, so
   we're not blindsided by bogus scsi_hostadapter aliases and the like.
+- move nashDm* functions to libnash so stuff in block.c can call them.
 
 * Tue Aug 29 2006 David Cantrell <dcantrell@redhat.com> - 5.1.9-2
 - BuildRequires parted-devel >= 1.7.1-15
