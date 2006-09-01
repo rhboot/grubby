@@ -17,7 +17,7 @@ Requires: /bin/sh, /sbin/insmod.static, /sbin/losetup
 Requires: fileutils, grep, mount, gzip, tar, mktemp >= 1.5-5, findutils, lvm2
 Requires: filesystem >= 2.1.0, cpio, device-mapper, initscripts >= 8.22-1
 Requires: e2fsprogs >= 1.38-12, glib2, libselinux, libsepol
-BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-9, pkgconfig, glib2-devel
+BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-15, pkgconfig, glib2-devel
 BuildRequires: libdhcp4client-devel, libdhcp6client-devel, libdhcp-devel >= 1.9
 BuildRequires: device-mapper libselinux-devel libsepol-devel, python-devel >= %{pyver}
 %ifnarch s390 s390x
@@ -129,6 +129,9 @@ rm -rf $RPM_BUILD_ROOT
 - Fix %%setup args
 - Work around lvm locking problems when clvm is installed (#203904)
 - Work around lvm segfault by always using lvm.static
+
+* Tue Aug 29 2006 David Cantrell <dcantrell@redhat.com> - 5.1.9-2
+- BuildRequires parted-devel >= 1.7.1-15
 
 * Fri Aug 17 2006 Peter Jones <pjones@redhat.com> - 5.1.9-1
 - Fix "MOUNT_PROC_USB" warning
