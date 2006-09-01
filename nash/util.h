@@ -33,6 +33,40 @@
 
 extern nashContext *_nash_context;
 
+static int
+getDevNumFromProc(char * file, char * device)
+{
+    char buf[32768];
+    char * start, *end;
+    int num;
+    int fd;
+
+    if ((fd = open(file, O_RDONLY)) == -1) {
+        return -1;
+    }
+
+    num = read(fd, buf, sizeof(buf));
+    if (num < 1) {
+        close(fd);
+        return -1;
+    }
+    buf[num] = '\0';
+    close(fd);
+
+    start = buf;
+    end = strchr(start, '\n');
+    while (start && end) {
+        int off;
+        *end++ = '\0';
+        if (sscanf(start, "%d %n", &num, &off) &&
+                strncmp(device, start + off, strlen(device)) == 0)
+            return num;
+        start = end;
+        end = strchr(start, '\n');
+    }
+    return -1;
+}
+
 static int __attribute__((used))
 setFdCoe(int fd, int enable)
 {

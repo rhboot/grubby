@@ -25,42 +25,6 @@
 #include "util.h"
 
 int
-getDevNumFromProc(char * file, char * device)
-{
-    char buf[32768];
-    char * start, *end;
-    int num;
-    int fd;
-
-    if ((fd = open(file, O_RDONLY)) == -1) {
-        eprintf("can't open file %s: %s\n", file, strerror(errno));
-        return -1;
-    }
-
-    num = read(fd, buf, sizeof(buf));
-    if (num < 1) {
-        close(fd);
-        eprintf("failed to read %s: %s\n", file, strerror(errno));
-        return -1;
-    }
-    buf[num] = '\0';
-    close(fd);
-
-    start = buf;
-    end = strchr(start, '\n');
-    while (start && end) {
-        int off;
-        *end++ = '\0';
-        if (sscanf(start, "%d %n", &num, &off) &&
-                strncmp(device, start + off, strlen(device)) == 0)
-            return num;
-        start = end;
-        end = strchr(start, '\n');
-    }
-    return -1;
-}
-
-int
 stringsort(const void *v0, const void *v1)
 {
     const char * const *s0=v0, * const *s1=v1;
