@@ -826,6 +826,26 @@ dm_list_sorted(const char **names)
     return 0;
 }
 
+char *
+nashDmGetDevName(dev_t devno)
+{
+    struct dm_iter *iter;
+    struct dm_iter_object *obj;
+    char *ret = NULL;
+
+    if (!(iter = dm_iter_begin(NULL)))
+        return NULL;
+
+    while ((obj = dm_iter_next(iter, 1)) && (obj->devno != devno))
+        ;
+
+    if (obj)
+        asprintf(&ret, "/dev/mapper/%s", obj->name);
+
+    dm_iter_destroy(iter);
+    return ret;
+}
+
 /*
  * vim:ts=8:sw=4:sts=4:et
  */

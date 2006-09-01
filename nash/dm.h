@@ -45,6 +45,9 @@ nashDmHasParts(const char *name);
 extern void
 nashDmFreeTree(void);
 
+extern char *
+nashDmGetDevName(dev_t devno);
+
 extern void
 dm_cleanup(void);
 
