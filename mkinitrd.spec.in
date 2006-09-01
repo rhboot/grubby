@@ -120,6 +120,10 @@ rm -rf $RPM_BUILD_ROOT
 * Fri Sep  1 2006 Peter Jones <pjones@redhat.com> - 5.1.10-1
 - Fix label scanning on dm devices (based on a patch from Hans de Goede)
   (#204763)
+- handle the /proc/bus/usb mounting with a state machine in the module
+  loading emission, not with a sentinal value
+- do forced finding of devices *after* auto-detection of the root fs, so
+  we're not blindsided by bogus scsi_hostadapter aliases and the like.
 
 * Tue Aug 22 2006 Peter Jones <pjones@redhat.com>
 - Fix %%setup args

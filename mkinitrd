@@ -188,10 +188,6 @@ findmodule() {
         findmodule ohci-hcd
         findmodule uhci-hcd
 
-        case "$MODULES " in
-            *"MOUNT_PROC_USB"*) ;;
-            *) MODULES="$MODULES MOUNT_PROC_USB " ;;
-        esac
         usbModName=""
     fi
 
@@ -809,38 +805,6 @@ if [ -n "$withusb" ]; then
     findmodule uhci-hcd
     findmodule ohci-hcd
     findmodule ehci-hcd
-    MODULES="$MODULES MOUNT_PROC_USB"
-fi
-
-if [ -n "$forcescsi" -o -z "$noscsi" -a "x$PROBE" == "xyes" ]; then
-    if [ ! -f $modulefile ]; then
-        modulefile=/etc/conf.modules
-    fi
-
-    if [ -f $modulefile ]; then
-        scsimodules=`grep "alias[[:space:]]\+scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
-
-        if [ -n "$scsimodules" ]; then
-            for n in $scsimodules; do
-    # for now allow scsi modules to come from anywhere.  There are some
-    # RAID controllers with drivers in block/
-                findmodule $n
-            done
-        fi
-    fi
-fi
-
-# If we have ide devices and module ide, do the right thing
-ide=/proc/ide/ide*
-if [ -n "$forceide" -o -n "$ide" -a "x$PROBE" == "xyes" ]; then
-    findmodule -ide-disk
-fi
-
-# If we have dasd devices, include the necessary modules (S/390)
-if [ "x$PROBE" == "xyes" -a -d /proc/dasd ]; then
-    findmodule -dasd_mod
-    findmodule -dasd_eckd_mod
-    findmodule -dasd_fba_mod
 fi
 
 if [ "x$PROBE" == "xyes" ]; then
@@ -879,6 +843,37 @@ if [ "x$PROBE" == "xyes" ]; then
     if [ "$swsuspdev" = "${swsuspdev##LABEL=}" ]; then
         handlelvordev $swsuspdev
     fi
+fi
+
+if [ -n "$forcescsi" -o -z "$noscsi" -a "x$PROBE" == "xyes" ]; then
+    if [ ! -f $modulefile ]; then
+        modulefile=/etc/conf.modules
+    fi
+
+    if [ -f $modulefile ]; then
+        scsimodules=`grep "alias[[:space:]]\+scsi_hostadapter" $modulefile | grep -v '^[ 	]*#' | LC_ALL=C sort -u | awk '{ print $3 }'`
+
+        if [ -n "$scsimodules" ]; then
+            for n in $scsimodules; do
+    # for now allow scsi modules to come from anywhere.  There are some
+    # RAID controllers with drivers in block/
+                findmodule $n
+            done
+        fi
+    fi
+fi
+
+# If we have ide devices and module ide, do the right thing
+ide=/proc/ide/ide*
+if [ -n "$forceide" -o -n "$ide" -a "x$PROBE" == "xyes" ]; then
+    findmodule -ide-disk
+fi
+
+# If we have dasd devices, include the necessary modules (S/390)
+if [ "x$PROBE" == "xyes" -a -d /proc/dasd ]; then
+    findmodule -dasd_mod
+    findmodule -dasd_eckd_mod
+    findmodule -dasd_fba_mod
 fi
 
 # Loopback root support
@@ -988,7 +983,7 @@ done
 
 finddmmods
 
-vecho "Using modules:" $(sed 's/ MOUNT_PROC_USB//' <<< "$MODULES")
+vecho "Using modules: $MODULES"
 
 MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
 IMAGE=`mktemp ${TMPDIR}/initrd.img.XXXXXX`
@@ -1060,9 +1055,6 @@ inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
-    if [ "$MODULE" = "MOUNT_PROC_USB" ]; then
-        continue;
-    fi
     if [ -x /usr/bin/strip ]; then
         /usr/bin/strip -g $verbose $MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
     else
@@ -1149,14 +1141,10 @@ emit "hotplug"
 emit "echo Creating block device nodes."
 emit "mkblkdevs"
 
+usb_mounted="prep"
 for MODULE in $MODULES; do
-    if [ "$MODULE" = "MOUNT_PROC_USB" ]; then
-        emit "mount -t usbfs /proc/bus/usb /proc/bus/usb"
-        continue
-    fi
-
     text=""
-    module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
+    module=`echo $MODULE | sed -e "s|.*/||" -e "s/.k\?o$//"`
     fullmodule=`echo $MODULE | sed "s|.*/||"`
 
     options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
@@ -1165,6 +1153,18 @@ for MODULE in $MODULES; do
         vecho "Adding module $module$text with options $options"
     else
         vecho "Adding module $module$text"
+    fi
+
+    # we mount usbfs before the first module *after* the HCDs
+    if [ "$usb_mounted" == "prep" ]; then
+        if [[ "$module" =~ ".hci[_-]hcd" ]]; then
+            usb_mounted="no"
+        fi
+    elif [ "$usb_mounted" == "no" ]; then
+        if [[ ! "$module" =~ ".hci[_-]hcd" ]]; then
+            usb_mounted=yes
+            emit "mount -t usbfs /proc/bus/usb /proc/bus/usb"
+        fi
     fi
 
     emit "echo \"Loading $fullmodule module\""
@@ -1192,6 +1192,7 @@ EOF
         done
     fi
 done
+unset usb_mounted
 
 if [ -n "$vg_list" ]; then
     emit "echo Making device-mapper control node"
