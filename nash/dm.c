@@ -27,16 +27,12 @@
 #include <libdevmapper.h>
 #include <parted/parted.h>
 
+#include <nash.h>
+
 #include "dm.h"
 #include "lib.h"
 #include "block.h"
 #include "util.h"
-
-void
-dm_cleanup(void)
-{
-    dm_lib_exit();
-}
 
 static inline int
 nashDmTaskNew(int type, const char *name, struct dm_task **task)
@@ -256,7 +252,7 @@ nashPartedExceptionHandler(PedException *ex)
 }
 
 int
-nashDmCreatePartitions(char *path)
+nashDmCreatePartitions(nashContext *nc, char *path)
 {
     PedDevice *dev;
     PedDisk *disk;
@@ -285,7 +281,7 @@ nashDmCreatePartitions(char *path)
     parent_uuid = nashDmGetUUID(namestart);
 
     old_handler = ped_exception_get_handler();
-    nash_parted_context = _nash_context;
+    nash_parted_context = nc;
     ped_exception_set_handler(nashPartedExceptionHandler);
 
     dev = ped_device_get(path);
@@ -596,7 +592,7 @@ dm_iter_next(struct dm_iter *iter, int descend)
 }
 
 static void
-dm_print_rmparts(const char *name)
+dm_print_rmparts(nashContext *nc, const char *name)
 {
     static int major;
     struct dm_task *task;
@@ -620,7 +616,7 @@ dm_print_rmparts(const char *name)
 
     for (i=0; i < deps->count; i++) {
         if (major(deps->device[i]) != major) {
-            char *path = nashFindDeviceByDevno(_nash_context, deps->device[i]);
+            char *path = nashFindDeviceByDevno(nc, deps->device[i]);
             if (path)
                 printf("rmparts %s\n", path);
         }
@@ -629,7 +625,7 @@ dm_print_rmparts(const char *name)
 }
 
 static int
-open_part(const char *name, PedDevice **dev, PedDisk **disk)
+open_part(nashContext *nc, const char *name, PedDevice **dev, PedDisk **disk)
 {
     int open = 0;
     char *path = NULL;
@@ -639,7 +635,7 @@ open_part(const char *name, PedDevice **dev, PedDisk **disk)
     asprintf(&path, "/dev/mapper/%s", name);
 
     old_handler = ped_exception_get_handler();
-    nash_parted_context = _nash_context;
+    nash_parted_context = nc;
     ped_exception_set_handler(nashPartedExceptionHandler);
     nashPartedErrorDisplay = 0;
 
@@ -673,7 +669,8 @@ out:
 }
 
 static int
-dm_submap_has_part(const struct dm_iter_object const *parent, PedGeometry *geom)
+dm_submap_has_part(nashContext *nc, const struct dm_iter_object const *parent,
+        PedGeometry *geom)
 {
     int nonlinear = 0;
     int haspart = 0;
@@ -727,7 +724,7 @@ dm_submap_has_part(const struct dm_iter_object const *parent, PedGeometry *geom)
             name = dm_tree_node_get_name(cnode);
             if (!name)
                 continue;
-            if (open_part(name, &dev, &disk) < 0)
+            if (open_part(nc, name, &dev, &disk) < 0)
                 continue;
 
             part = ped_disk_next_partition(disk, NULL);
@@ -761,7 +758,7 @@ dm_submap_has_part(const struct dm_iter_object const *parent, PedGeometry *geom)
 }
 
 static int
-dm_should_partition(const struct dm_iter_object const *obj)
+dm_should_partition(nashContext *nc, const struct dm_iter_object const *obj)
 {
     PedDevice *dev = NULL;
     PedDisk *disk = NULL;
@@ -771,11 +768,11 @@ dm_should_partition(const struct dm_iter_object const *obj)
     int display = nashPartedErrorDisplay;
 
     old_handler = ped_exception_get_handler();
-    nash_parted_context = _nash_context;
+    nash_parted_context = nc;
     ped_exception_set_handler(nashPartedExceptionHandler);
     nashPartedErrorDisplay = 0;
 
-    if (open_part(obj->name, &dev, &disk) < 0)
+    if (open_part(nc, obj->name, &dev, &disk) < 0)
         goto out;
 
     part = ped_disk_next_partition(disk, NULL);
@@ -789,7 +786,7 @@ dm_should_partition(const struct dm_iter_object const *obj)
             continue;
         if (!ped_partition_is_active(part))
             continue;
-        if (dm_submap_has_part(obj, &part->geom))
+        if (dm_submap_has_part(nc, obj, &part->geom))
             ret = 0;
     }
 out:
@@ -804,7 +801,7 @@ out:
 }
 
 int
-dm_list_sorted(const char **names)
+nashDmListSorted(nashContext *nc, const char **names)
 {
     struct dm_iter *iter;
     struct dm_iter_object *obj;
@@ -816,9 +813,9 @@ dm_list_sorted(const char **names)
 
     newnames = calloc(1, sizeof (char *));
     while ((obj = dm_iter_next(iter, 1))) {
-        dm_print_rmparts(obj->name);
+        dm_print_rmparts(nc, obj->name);
         printf("create %s\n", obj->name);
-        if (dm_should_partition(obj))
+        if (dm_should_partition(nc, obj))
             printf("part %s\n", obj->name);
     }
 

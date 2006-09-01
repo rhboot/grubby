@@ -29,7 +29,7 @@ extern int
 nashDmRemove(char *name);
 
 extern int
-nashDmCreatePartitions(char *path);
+nashDmCreatePartitions(nashContext *nc, char *path);
 
 #if 0 /* notyet */
 extern int
@@ -37,7 +37,7 @@ nashDmRemovePartitions(char *name);
 #endif
 
 extern int
-dm_list_sorted(const char **names);
+nashDmListSorted(nashContext *nc, const char **names);
 
 extern int
 nashDmHasParts(const char *name);
@@ -47,8 +47,5 @@ nashDmFreeTree(void);
 
 extern char *
 nashDmGetDevName(dev_t devno);
-
-extern void
-dm_cleanup(void);
 
 #endif /* NASH_PRIV_DM_H */
