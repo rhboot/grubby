@@ -20,6 +20,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <argz.h>
+#include <libdevmapper.h>
 #include <nash.h>
 #include "lib.h"
 
@@ -99,6 +100,7 @@ nashNewContext(void) {
 void
 _nashFreeContext(nashContext **nc)
 {
+    dm_lib_exit();
     if (nc && *nc) {
         nashContext *c = *nc;
         while (c->fw_pathz)
