@@ -8,7 +8,7 @@ Release: 1
 License: GPL
 Group: System Environment/Base
 Source0: mkinitrd-%{version}.tar.bz2
-%define BDEVID_VERSION 0.4
+%define BDEVID_VERSION 0.5
 Source1: bdevid-%{BDEVID_VERSION}.tar.bz2
 
 ExclusiveOs: Linux
