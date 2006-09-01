@@ -54,6 +54,8 @@
 
 #include <asm/unistd.h>
 
+#include <libdevmapper.h>
+
 #include <nash.h>
 
 #include "lib.h"
@@ -530,7 +532,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
             /* child */
             int errnum;
 
-            dm_cleanup(); /* ARRGH */
+            dm_lib_exit(); /* ARRGH */
             if (killHp)
                 nashHotplugKill(_nash_context);
             dup2(stdoutFd, 1);
@@ -1219,7 +1221,7 @@ switchrootCommand(char * cmd, char * end)
     if (access(initargs[0], X_OK)) {
         eprintf("WARNING: can't access %s\n", initargs[0]);
     }
-    dm_cleanup(); /* ARRGH */
+    dm_lib_exit(); /* ARRGH */
     execv(initargs[0], initargs);
 
     eprintf("exec of init (%s) failed!!!: %m\n", initargs[0]);
@@ -2016,7 +2018,7 @@ dmCommand(char *cmd, char *end)
         if (!cmd)
             goto usage;
 
-        if (nashDmCreatePartitions(name))
+        if (nashDmCreatePartitions(_nash_context, name))
             return 0;
         return 1;
     } else if (!strcmp(action, "get_uuid")) {
@@ -2053,7 +2055,7 @@ dmCommand(char *cmd, char *end)
             }
         }
 
-        n = dm_list_sorted(names);
+        n = nashDmListSorted(_nash_context, names);
         if (names)
             free(names);
         if (n)
