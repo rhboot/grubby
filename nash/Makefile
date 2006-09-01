@@ -2,10 +2,10 @@ TOPDIR ?= $(shell pwd)/../
 export TOPDIR
 
 TARGETS = nash libnash.pc
-OBJECTS = util.o dm.o linkdetect.o nash.o network.o nfsmount.o \
+OBJECTS = util.o linkdetect.o nash.o network.o nfsmount.o \
 	  nfsmount_clnt.o nfsmount_xdr.o dns.o block_priv.o
 
-libnash_OBJECTS = lib.o hotplug.o wrap.o block.o uevent.o
+libnash_OBJECTS = lib.o hotplug.o wrap.o block.o uevent.o dm.o
 
 include ../Makefile.inc
 
