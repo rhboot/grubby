@@ -97,6 +97,27 @@ nashNewContext(void) {
     return nc;
 }
 
+int
+nashBdevidInit(nashContext *nc) {
+    if (nc->bdevid)
+        return 0;
+
+    if (!(nc->bdevid = bdevid_new(NULL)))
+        return -1;
+
+    bdevid_module_load_all(nc->bdevid);
+
+    return 0;
+}
+
+void
+nashBdevidFinish(nashContext *nc) {
+    if (nc->bdevid) {
+        bdevid_destroy(nc->bdevid);
+        nc->bdevid = NULL;
+    }
+}
+
 void
 _nashFreeContext(nashContext **nc)
 {
@@ -105,6 +126,8 @@ _nashFreeContext(nashContext **nc)
         nashContext *c = *nc;
         while (c->fw_pathz)
             argz_delete(&c->fw_pathz, &c->fw_pathz_len, c->fw_pathz);
+        if (c->bdevid)
+            nashBdevidFinish(c);
         if (c->cache)
             nashBlockFinish(c);
         free(c);
