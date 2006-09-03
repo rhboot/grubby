@@ -21,6 +21,9 @@
 #include <string.h>
 #include <argz.h>
 #include <libdevmapper.h>
+
+#include <bdevid.h>
+
 #include <nash.h>
 #include "lib.h"
 
@@ -97,17 +100,17 @@ nashNewContext(void) {
     return nc;
 }
 
-int
+struct bdevid *
 nashBdevidInit(nashContext *nc) {
     if (nc->bdevid)
-        return 0;
+        return nc->bdevid;
 
     if (!(nc->bdevid = bdevid_new(NULL)))
-        return -1;
+        return NULL;
 
     bdevid_module_load_all(nc->bdevid);
 
-    return 0;
+    return nc->bdevid;
 }
 
 void
