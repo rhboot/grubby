@@ -48,9 +48,33 @@ int bdevid_register_probe(struct bdevid_module *m, struct bdevid_probe_ops *ops)
 /* end probe registration */
 /* begin loading and unloading */
 
+static void bdevid_probe_unload_cb(gpointer data, gpointer user_data)
+{
+    struct bdevid_module *m = user_data;
+    g_ptr_array_remove(m->probes, data);
+    free(data);
+}
+
 int bdevid_module_unload(struct bdevid *b, char *name)
 {
-    /* XXX write me */
+    struct bdevid_module *mod = NULL;
+
+    mod = g_hash_table_lookup(b->modules, (gconstpointer)name);
+    if (mod) {
+        if (mod->probes) {
+            g_ptr_array_foreach(mod->probes, bdevid_probe_unload_cb, mod);
+            g_ptr_array_free(mod->probes, TRUE);
+        }
+
+        if (mod->bdevid)
+            g_hash_table_remove(b->modules, (gconstpointer)mod->name);
+
+        if (mod->dlh)
+            dlclose(mod->dlh);
+
+        free(mod);
+    }
+
     return 0;
 }
 
@@ -176,9 +200,31 @@ int bdevid_module_load_all(struct bdevid *b)
     return 0;
 }
 
+static gboolean
+bdevid_module_unload_cb(gpointer key, gpointer value, gpointer priv)
+{
+    struct bdevid_module *mod = (struct bdevid_module *)value;
+    struct bdevid *b = (struct bdevid *)priv;
+
+    if (mod->probes) {
+        g_ptr_array_foreach(mod->probes, bdevid_probe_unload_cb, mod);
+        g_ptr_array_free(mod->probes, TRUE);
+    }
+
+    if (mod->bdevid)
+        g_hash_table_remove(b->modules, (gconstpointer)mod->name);
+
+    if (mod->dlh)
+        dlclose(mod->dlh);
+
+    free(mod);
+
+    return TRUE;
+}
+
 int bdevid_module_unload_all(struct bdevid *b)
 {
-    /* XXX write me */
+    g_hash_table_foreach_remove(b->modules, bdevid_module_unload_cb, b);
     return 0;
 }
 
