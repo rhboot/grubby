@@ -2,7 +2,7 @@
 TOPDIR = $(shell pwd)
 export TOPDIR
 
-SUBDIRS = nash grubby
+SUBDIRS = nash bdevid grubby
 
 include Makefile.inc
 
