@@ -92,16 +92,7 @@ void bdevid_destroy(struct bdevid *b)
 {
     if (b) {
         if (b->modules) {
-#if 0
-        while (b->nmodules) {
-            /* XXX fix this up */
-            struct bdevid_module *bm = b->modules[0];
-            struct modloader_module *mm = bm->modloader_module;
-
-            bdevid_module_remove(bm);
-            bdevid_module_dest(mm);
-        }
-#endif
+            bdevid_module_unload_all(b);
             g_hash_table_destroy(b->modules);
         }
 
