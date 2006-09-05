@@ -16,7 +16,6 @@
 #define _GNU_SOURCE 1
 
 #include <alloca.h>
-#include <blkent.h>
 #include <stdio.h>
 #include <stdio_ext.h>
 #include <string.h>
@@ -24,11 +23,13 @@
 #include <sys/types.h>
 #include <argz.h>
 
+#include "blkent.h"
+
 #if 0
 struct blkent {
     char *blk_name;     /* symbolic block device name */
     char *blk_type;     /* rule type */
-    char *blk_rule;     /* rule */
+    char *blk_opts;     /* opts */
 };
 #endif
 
@@ -154,7 +155,8 @@ __getblkent_r(FILE *stream, struct blkent *bp, char *buffer, int bufsiz)
     bp->blk_type = cp != NULL ? decode_name(cp) : (char *) "";
     if (head)
         head += strspn(head, " \t");
-    bp->blk_rule = head;
+    cp = strsep(&head, " \t");
+    bp->blk_opts = cp != NULL ? decode_name(cp) : (char *) "";
 
     funlockfile(stream);
     return bp;
@@ -223,15 +225,14 @@ int __addblkent(FILE *stream, const struct blkent *blk)
     if (fseek(stream, 0, SEEK_END))
         return 1;
 
-    /* Encode spaces and tabs in the names.  */
     encode_name(blkcopy.blk_name);
     encode_name(blkcopy.blk_type);
-    encode_name(blkcopy.blk_rule);
+    encode_name(blkcopy.blk_opts);
 
     return (fprintf(stream, "%s %s %s\n",
                 blkcopy.blk_name,
                 blkcopy.blk_type,
-                blkcopy.blk_rule)
+                blkcopy.blk_opts)
             < 0 ? 1 : 0);
 }
 int addblkent(FILE *stream, const struct blkent *blk)
@@ -270,64 +271,31 @@ getblkent(FILE *stream)
     return __getblkent_r(stream, &b, getblkent_buffer, BUFFER_SIZE);
 }
 
-char **
-__getblkdevs(struct blkent *bp)
+char *
+__hasblkopt (const struct blkent *blk, const char *opt)
 {
-    char *initial[] = { 0 };
-    char *argz = NULL;
-    size_t argz_len = 0;
-    char *head;
-    char **ret = NULL;
-    char **rt;
+  const size_t optlen = strlen (opt);
+  char *rest = blk->blk_opts, *p;
 
-    if (argz_create(initial, &argz, &argz_len) != 0)
-        return NULL;
+  while ((p = strstr (rest, opt)) != NULL)
+    {
+      if (p == rest
+          || (p[-1] == ';'
+              && (p[optlen] == '\0' ||
+                  p[optlen] == '='  ||
+                  p[optlen] == ';')))
+        return p;
 
-    head = bp->blk_rule;
-    while (head) {
-        head += strspn(head, "$");
-        if (head[0] && head[1]) {
-            char *cp;
-            error_t err = 0;
-
-            cp = strsep(&head, " \t");
-            if (cp)
-                err = argz_add(&argz, &argz_len, decode_name(cp + 1));
-            if (head)
-                *(head-1) = ' ';
-            if (err != 0)
-                goto err;
-        }
+      rest = strchr (rest, ';');
+      if (rest == NULL)
+        break;
+      ++rest;
     }
 
-    ret = calloc(argz_count(argz, argz_len) + 1, sizeof (char *));
-    if (!ret)
-        goto err;
-    argz_extract(argz, argz_len, ret);
-
-    for (rt = ret; *rt; rt++) {
-        char *new = NULL, *old = *rt;
-        *rt = NULL;
-        if (!(new = strdup(old)))
-            goto err;
-        *rt = new;
-    }
-
-    return ret;
-err:
-    if (ret) {
-        for (rt = ret; *rt; rt++) {
-            free(*rt);
-        }
-        free(ret);
-    }
-    while (argz)
-        argz_delete(&argz, &argz_len, argz);
-    return NULL;
+  return NULL;
 }
-char **
-getblkdevs(struct blkent *bp)
-    __attribute__((weak, alias("__getblkdevs")));
+char *hasblkopt (const struct blkent *blk, const char *opt)
+    __attribute__((weak, alias("__hasblkopt")));
 
 /*
  * vim:ts=8:sw=4:sts=4:et
