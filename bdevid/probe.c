@@ -160,18 +160,21 @@ int bdevid_probe(struct bdevid *b, char *file, bdevid_probe_cb cb, void *priv)
         .priv = priv,
     };
 
-    struct bdevid_sysfs_node *node;
+    struct bdevid_sysfs_node *node = NULL;
     
     if (!(node = bdevid_sysfs_find_node(file)))
         return -1;
 
     bdev.name = bdevid_sysfs_get_name(node);
     bdev.sysfs_dir = bdevid_sysfs_get_dir(node);
-    
-    if ((bdev.fd = open(file, O_RDWR|O_NONBLOCK)) < 0)
+
+    if ((bdev.fd = open(file, O_RDWR|O_NONBLOCK)) < 0) {
+        bdevid_sysfs_free_node(node);
         return bdev.fd;
+    }
 
     g_hash_table_foreach(b->modules, bdevid_probe_module_cb, &pd);
+    bdevid_sysfs_free_node(node);
     return 1;
 }
 /*
