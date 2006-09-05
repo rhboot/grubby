@@ -33,8 +33,10 @@ $(shell pwd)/version.h: $(TOPDIR)/mkinitrd $(TOPDIR)/Makefile.inc \
 .PHONY:: subdirs $(SUBDIRS) staticlibs clean all
 subdirs :: $(shell pwd)/version.h
 subdirs ::
-	for n in $(SUBDIRS) ; do make -C $$n staticlibs || exit 1 ; done
-	for n in $(SUBDIRS) ; do make -C $$n all || exit 1 ; done
+	@if [ -n "$(SUBDIRS)" ]; then \
+	for n in $(SUBDIRS) ; do make -C $$n staticlibs || exit 1 ; done ; \
+	for n in $(SUBDIRS) ; do make -C $$n all || exit 1 ; done ; \
+	fi
 
 staticlibs :: $(shell pwd)/version.h $(LIBS)
 
