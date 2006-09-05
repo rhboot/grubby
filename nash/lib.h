@@ -26,6 +26,10 @@
 #include <signal.h>
 #include <blkid/blkid.h>
 
+#include "blkent.h"
+
+struct nashDevice;
+
 struct nashContext_s {
     nashLogger_t logger;
     int testing;
@@ -44,7 +48,12 @@ struct nashContext_s {
 
     int hp_parentfd;
     int hp_childfd;
+
+    struct bdevid *bdevid;
+    struct nashDevice **devs;
 };
+
+extern int nashWaitForDevice(nashContext *, struct blkent **, char *device);
 
 #ifndef _GNU_SOURCE_DEFINED
 #undef _GNU_SOURCE

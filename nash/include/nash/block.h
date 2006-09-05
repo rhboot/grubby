@@ -48,13 +48,18 @@ extern char *nashAGetPathBySpec(nashContext *c, const char * spec);
     })
 
 typedef struct nash_block_dev *nashBdev;
+extern void nashBdevFreePtr(nashBdev *);
+#define nashBdevFree(p) nashBdevFreePtr(&(p))
+extern nashBdev nashBdevDup(nashBdev);
+int nashBdevCmp(struct nash_block_dev *a, struct nash_block_dev *b);
+
 typedef struct nash_block_dev_iter *nashBdevIter;
 
-extern nashBdevIter nashBdevIterNew(nashContext *, const char *path, int poll);
+extern nashBdevIter nashBdevIterNew(nashContext *, const char *path);
+extern nashBdevIter nashBdevIterNewPoll(nashContext *, const char *path,
+    struct timespec *timeout);
 extern void nashBdevIterEnd(nashBdevIter *iter);
 extern int nashBdevIterNext(nashBdevIter iter, nashBdev *dev);
-extern int nashBdevIterNextTimeout(nashBdevIter iter, nashBdev *dev,
-    struct timespec timeout);
 extern int nashBdevRemovable(nashBdev bdev);
 
 #ifndef _GNU_SOURCE_DEFINED

@@ -22,7 +22,7 @@ extern nashContext *nashNewContext(void);
 extern void _nashFreeContext(nashContext **);
 #define nashFreeContext(x) _nashFreeContext(&(x))
 
-extern int nashBdevidInit(nashContext *nc);
+extern struct bdevid *nashBdevidInit(nashContext *nc);
 extern void nashBdevidFinish(nashContext *nc);
 
 #endif /* NASH_LIB_H */
