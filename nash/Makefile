@@ -19,6 +19,9 @@ CFLAGS += $(shell pkg-config --cflags libdhcp)
 nash:: version.h $(OBJECTS) libnash.a
 	$(CC) $(LDFLAGS) -static -o $@ $^ $(LIBS)
 
+nash.dynamic:: version.h $(OBJECTS) libnash.a
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
 libnash.a : $(libnash_OBJECTS)
 	$(AR) crs $@ $^
 
