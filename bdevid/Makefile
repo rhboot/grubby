@@ -48,12 +48,17 @@ clean::
 	rm -f *.o *.a *.so.* *.so *.pc bdevid
 
 install: all
-	mkdir -p $(BUILDROOT)/sbin
-	mkdir -p $(BUILDROOT)/usr/$(LIB)
-	mkdir -p $(BUILDROOT)/usr/$(LIB)/pkgconfig
-	mkdir -p $(BUILDROOT)/usr/include/bdevid
-	install -m 755 bdevid $(BUILDROOT)/sbin
-	install -m 644 libbdevid.a $(BUILDROOT)/usr/$(LIB)
-	install -m 644 libbdevid.pc $(BUILDROOT)/usr/$(LIB)/pkgconfig
-	install -m 644 include/bdevid.h $(BUILDROOT)/usr/include
-	install -m 644 include/bdevid/*.h $(BUILDROOT)/usr/include/bdevid
+	mkdir -p $(DESTDIR)/sbin
+	mkdir -p $(DESTDIR)/$(LIB)/bdevid
+	mkdir -p $(DESTDIR)/usr/$(LIB)
+	mkdir -p $(DESTDIR)/usr/$(LIB)/pkgconfig
+	mkdir -p $(DESTDIR)/usr/include/bdevid
+	install -m 755 bdevid $(DESTDIR)/sbin
+	install -m 644 libbdevid.a $(DESTDIR)/usr/$(LIB)
+	install -m 644 libbdevid.pc $(DESTDIR)/usr/$(LIB)/pkgconfig
+	install -m 644 include/bdevid.h $(DESTDIR)/usr/include
+	install -m 644 include/bdevid/*.h $(DESTDIR)/usr/include/bdevid
+	cp -av $(foreach mod,$(MODULES),$(mod).so) $(DESTDIR)/$(LIB)/bdevid/
+	for x in ${SUBDIRS} ; do \
+		$(MAKE) -C $$x install ; \
+	done

@@ -17,8 +17,8 @@ pybdevid.so :: $(pybdevid_OBJECTS)
 		-o $@ -lbdevid -ldl $^
 	
 install : all
-	@install -m 0755 -d $(BUILDROOT)/$(SITELIB)
-	@cp -av pybdevid.so $(BUILDROOT)/$(SITELIB)/bdevid.so
+	@install -m 0755 -d $(DESTDIR)/$(SITELIB)
+	@cp -av pybdevid.so $(DESTDIR)/$(SITELIB)/bdevid.so
 
 clean ::
 	@rm -vf $(pybdevid_OBJECTS) pybdevid.so

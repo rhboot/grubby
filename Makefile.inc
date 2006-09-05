@@ -20,7 +20,7 @@ LDFLAGS ?= -Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
 
 mandir = usr/share/man
 
-all:: $(TARGETS) $(SUBDIRS)
+all:: $(TARGETS) subdirs
 
 $(shell pwd)/version.h: $(TOPDIR)/mkinitrd $(TOPDIR)/Makefile.inc \
 		$(TOPDIR)/Makefile $(shell pwd)/Makefile
@@ -30,13 +30,13 @@ $(shell pwd)/version.h: $(TOPDIR)/mkinitrd $(TOPDIR)/Makefile.inc \
 	@echo '#endif' >> version.h
 	@echo '#define VERSION' \"$(VERSION)\" >> version.h
 
-.PHONY:: $(SUBDIRS) objects clean all
-$(SUBDIRS):: $(shell pwd)/version.h
-	make -C $@ objects
-$(SUBDIRS)::
-	make -C $@ all
+.PHONY:: subdirs $(SUBDIRS) staticlibs clean all
+subdirs :: $(shell pwd)/version.h
+subdirs ::
+	for n in $(SUBDIRS) ; do make -C $$n staticlibs || exit 1 ; done
+	for n in $(SUBDIRS) ; do make -C $$n all || exit 1 ; done
 
-objects :: $(shell pwd)/version.h $(OBJECTS)
+staticlibs :: $(shell pwd)/version.h $(LIBS)
 
 $(OBJECTS): %.o : %.c
 	$(CC) $(CFLAGS) -c -o $@ $<

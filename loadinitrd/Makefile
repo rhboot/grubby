@@ -21,5 +21,5 @@ clean:
 	rm -f loadinitrd loadinitrd.o 
 
 install:
-	mkdir -p $(BUILDROOT)/sbin
-	install -m 755 -s loadinitrd $(BUILDROOT)/sbin/loadinitrd
+	mkdir -p $(DESTDIR)/sbin
+	install -m 755 -s loadinitrd $(DESTDIR)/sbin/loadinitrd

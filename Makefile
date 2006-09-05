@@ -10,16 +10,16 @@ test: all
 	cd grubby; make test
 
 install:
-	for n in $(SUBDIRS); do make -C $$n install BUILDROOT=$(BUILDROOT); done
+	for n in $(SUBDIRS); do make -C $$n install DESTDIR=$(DESTDIR); done
 	for i in sbin $(mandir)/man8; do \
-		if [ ! -d $(BUILDROOT)/$$i ]; then \
-			mkdir -p $(BUILDROOT)/$$i; \
+		if [ ! -d $(DESTDIR)/$$i ]; then \
+			mkdir -p $(DESTDIR)/$$i; \
 		fi; \
 	done
-	sed 's/%VERSIONTAG%/$(VERSION)/' < mkinitrd > $(BUILDROOT)/sbin/mkinitrd
-	install -m755 installkernel $(BUILDROOT)/sbin/installkernel
-	chmod 755 $(BUILDROOT)/sbin/mkinitrd
-	install -m644 mkinitrd.8 $(BUILDROOT)/$(mandir)/man8/mkinitrd.8
+	sed 's/%VERSIONTAG%/$(VERSION)/' < mkinitrd > $(DESTDIR)/sbin/mkinitrd
+	install -m755 installkernel $(DESTDIR)/sbin/installkernel
+	chmod 755 $(DESTDIR)/sbin/mkinitrd
+	install -m644 mkinitrd.8 $(DESTDIR)/$(mandir)/man8/mkinitrd.8
 
 archive:
 	cvs tag -F $(CVSTAG) .
