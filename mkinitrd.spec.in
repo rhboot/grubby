@@ -70,7 +70,7 @@ make LIB=%{_lib} test
 %install
 rm -rf $RPM_BUILD_ROOT
 make LIB=%{_lib} DESTDIR=$RPM_BUILD_ROOT mandir=%{_mandir} install
-rm -f $RPM_BUILD_ROOT/sbin/bdevid
+rm -f $RPM_BUILD_ROOT/sbin/bdevid $RPM_BUILD_ROOT/%{_includedir}/blkent.h
 
 %clean
 rm -rf $RPM_BUILD_ROOT
