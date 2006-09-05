@@ -32,6 +32,17 @@ struct bdevid_sysfs_node {
     char *dir;
 };
 
+void bdevid_sysfs_free_node(struct bdevid_sysfs_node *node)
+{
+    if (node) {
+        if (node->dir) {
+            free(node->dir);
+            node->dir = NULL;
+        }
+        free(node);
+    }
+}
+
 struct bdevid_sysfs_node *bdevid_sysfs_find_node(char *file)
 {
     struct stat sb;
