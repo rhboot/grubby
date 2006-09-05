@@ -63,10 +63,10 @@ C header files and library for functionality exported by libnash.
 Python bindings for libbdevid.
 
 %prep
-%setup -q -c -a 1
+rm -rf mkinitrd-%{version} bdevid-%{BDEVID_VERSION}
+%setup -D -q -b 1
 
 %build
-cd mkinitrd-%{version}
 make LIB=%{_lib}
 make LIB=%{_lib} test
 if [ $? != 0 ]; then exit 1; fi
@@ -79,7 +79,6 @@ make LIB=%{_lib}
 
 %install
 rm -rf $RPM_BUILD_ROOT
-cd mkinitrd-%{version}
 make LIB=%{_lib} BUILDROOT=$RPM_BUILD_ROOT mandir=%{_mandir} install
 cd ../bdevid-%{BDEVID_VERSION}
 make LIB=%{_lib} DESTDIR=$RPM_BUILD_ROOT install
