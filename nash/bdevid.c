@@ -21,25 +21,19 @@
 #include "lib.h"
 
 struct bdevid;
-struct bdevid *bdevid_new_stub(char *env) { return NULL; }
-struct bdevid *bdevid_new(char *env)
-    __attribute__ ((weak, alias("bdevid_new_stub")));
-int bdevid_module_load_all_stub(struct bdevid *bd) { return -1; }
-int bdevid_module_load_all(struct bdevid *bd)
-    __attribute__ ((weak, alias("bdevid_module_load_all_stub")));
-void bdevid_destroy_stub(struct bdevid *bd) { return; }
-void bdevid_destroy(struct bdevid *bd)
-    __attribute__ ((weak, alias("bdevid_destroy_stub")));
 
 struct bdevid *
 nashBdevidInit(nashContext *nc) {
     if (nc->bdevid)
         return nc->bdevid;
 
-    if (!(nc->bdevid = bdevid_new(NULL)))
+    if (!nc->bdevid_new || !nc->bdevid_module_load_all || !nc->bdevid_destroy)
         return NULL;
 
-    bdevid_module_load_all(nc->bdevid);
+    if (!(nc->bdevid = nc->bdevid_new(NULL)))
+        return NULL;
+
+    nc->bdevid_module_load_all(nc->bdevid);
 
     return nc->bdevid;
 }
@@ -47,7 +41,8 @@ nashBdevidInit(nashContext *nc) {
 void
 nashBdevidFinish(nashContext *nc) {
     if (nc->bdevid) {
-        bdevid_destroy(nc->bdevid);
+        if (nc->bdevid_destroy)
+            nc->bdevid_destroy(nc->bdevid);
         nc->bdevid = NULL;
     }
 }
