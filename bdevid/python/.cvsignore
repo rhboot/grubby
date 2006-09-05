@@ -3,4 +3,3 @@
 *.a
 *.so.*
 version.h
-libbdevid.pc
