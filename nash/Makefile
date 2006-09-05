@@ -1,28 +1,34 @@
 TOPDIR ?= $(shell pwd)/../
 export TOPDIR
 
+LIBS	= libnash.a
 TARGETS = nash libnash.pc
 OBJECTS = util.o linkdetect.o nash.o network.o nfsmount.o \
-	  nfsmount_clnt.o nfsmount_xdr.o dns.o block_priv.o
+	  nfsmount_clnt.o nfsmount_xdr.o dns.o block_priv.o \
+	  blkent.o
+
+bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o
+bdevid_OBJECTS = $(foreach obj,$(bdevid_OBJECTS),$(TOPDIR)/bdevid/${obj})
 
 libnash_OBJECTS = lib.o hotplug.o wrap.o block.o uevent.o dm.o
+
 
 include ../Makefile.inc
 
 CFLAGS += -I$(TOPDIR)/nash/include
 
-LIBS	= -L/$(LIB) -ldevmapper -lparted -lblkid -lselinux -lsepol -luuid
-LIBS	+= -lpopt -lresolv
-LIBS   += $(shell pkg-config --libs libdhcp) -lm
+nash_LIBS = -L/$(LIB) -ldevmapper -lparted -lblkid -lselinux -lsepol -luuid
+nash_LIBS += -lpopt -lresolv
+nash_LIBS += $(shell pkg-config --libs libdhcp) -lm
 CFLAGS += $(shell pkg-config --cflags libdhcp)
 
 nash:: version.h $(OBJECTS) libnash.a
-	$(CC) $(LDFLAGS) -static -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -static -o $@ $^ $(nash_LIBS)
 
 nash.dynamic:: version.h $(OBJECTS) libnash.a
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(nash_LIBS)
 
-libnash.a : $(libnash_OBJECTS)
+libnash.a : $(libnash_OBJECTS) $(libbdevid_objects)
 	$(AR) crs $@ $^
 
 libnash.pc:: libnash.pc.in
@@ -37,7 +43,7 @@ debug::
 debug:: $(shell pwd)/version.h hotplug libnash.a
 	$(MAKE) CFLAGS="$(CFLAGS) -DDEBUG" $(OBJECTS)
 debug:: $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $@ $^ libnash.a $(LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ libnash.a $(nash_LIBS)
 
 clean::
 	rm -f debug hotplug *.o *.a libnash.pc
