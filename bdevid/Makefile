@@ -7,7 +7,7 @@ bdevid_LIBS += $(shell pkg-config --libs glib-2.0)
 bdevid_LIBS += -lnash -lparted -lblkid -luuid -ldevmapper -lselinux -lsepol
 
 command_LIBS := -L. -L$(TOPDIR)/nash -ldl
-command_LIBS += $(shell pkg-config --libs glib-2.0)
+command_LIBS += $(shell pkg-config --libs glib-2.0) -lbdevid
 command_LIBS += -lnash -lparted -lblkid -luuid -ldevmapper -lselinux -lsepol
 
 MODULES = scsi ata usb
@@ -55,6 +55,7 @@ install: all
 	mkdir -p $(DESTDIR)/usr/include/bdevid
 	install -m 755 bdevid $(DESTDIR)/sbin
 	install -m 644 libbdevid.a $(DESTDIR)/usr/$(LIB)
+	install -m 644 libbdevid.so* $(DESTDIR)/usr/$(LIB)
 	install -m 644 libbdevid.pc $(DESTDIR)/usr/$(LIB)/pkgconfig
 	install -m 644 include/bdevid.h $(DESTDIR)/usr/include
 	install -m 644 include/bdevid/*.h $(DESTDIR)/usr/include/bdevid
