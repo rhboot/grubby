@@ -31,11 +31,16 @@ usb_get_sysfs_device(struct bdevid_bdev *bdev)
 
     /* Ewww.  This whole function is just disgusting.  It might not even
        work on devices other than my test drive.  No idea. */
-    if (asprintf(&device, "%s/device", bdevid_bdev_get_sysfs_dir(bdev)) < 0)
+
+    if (!(path = bdevid_bdev_get_sysfs_dir(bdev)))
+        return NULL;
+    if (asprintf(&device, "%s/device", path) < 0)
         return NULL;
 
     path = canonicalize_file_name(device);
     free(device);
+    if (!path)
+        return NULL;
 
     device = strrchr(path, '/');
     device[0] = '\0';
