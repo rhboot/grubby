@@ -104,6 +104,14 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Tue Sep  5 2006 Peter Jones <pjones@redhat.com> - 5.1.11-1
+- Pull in bdevid properly (not two sources any more)
+- Lots of minor bugfixes, leak fixups, etc.
+- Updates for new iScsi userland (katzj)
+- ata and usb device id probes in bdevid
+- preliminary work for boot-time device identification.
+- Fixes for network driver selection (katzj)
+
 * Fri Sep  1 2006 Peter Jones <pjones@redhat.com> - 5.1.10-1
 - Fix %%setup args
 - Work around lvm locking problems when clvm is installed (#203904)
