@@ -7,10 +7,10 @@ OBJECTS = grubby.o
 include ../Makefile.inc
 
 CFLAGS := $(CFLAGS) -iquote../nash/ -I../nash/include/ $(RPM_OPT_FLAGS)
-LDFLAGS := $(CFLAGS) -Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
+LDFLAGS := -Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
 	-Wl,--wrap,pipe
 
-LIBS = -lparted -lblkid -luuid -lpopt -ldevmapper -lselinux -lsepol
+grubby_LIBS = -lparted -lblkid -luuid -lpopt -ldevmapper -lselinux -lsepol
 
 test: all
 	@./test.sh
@@ -25,5 +25,6 @@ install: all
 	fi
 
 grubby:: $(OBJECTS) ../nash/libnash.a
-	$(CC) $(LDFLAGS) -o $@ $^ -Wl,-Bstatic $(LIBS) -Wl,-Bdynamic
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ \
+		-Wl,-Bstatic $(grubby_LIBS) -Wl,-Bdynamic
 
