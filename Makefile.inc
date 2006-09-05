@@ -15,7 +15,7 @@ ARCH := $(patsubst ppc%,ppc,$(ARCH))
 
 CC = gcc
 CFLAGS ?= -Wall -Werror -g -D_FORTIFY_SOURCE=2 -Wno-unused-function -fPIC
-LDFLAGS ?= $(CFLAGS) -Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
+LDFLAGS ?= -Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
 	-Wl,--wrap,pipe
 
 mandir = usr/share/man
@@ -28,14 +28,15 @@ $(shell pwd)/version.h: $(TOPDIR)/mkinitrd $(TOPDIR)/Makefile.inc \
 	@echo '#ifdef VERSION' > version.h
 	@echo '#undef VERSION' >> version.h
 	@echo '#endif' >> version.h
-	@echo '#define' VERSION \"$(VERSION)\" >> version.h
+	@echo '#define VERSION' \"$(VERSION)\" >> version.h
 
-$(TARGETS):: $(shell pwd)/version.h
-	for n in $(SUBDIRS); do make -C $$n all ; done
-
-.PHONY:: $(SUBDIRS)
+.PHONY:: $(SUBDIRS) objects clean all
+$(SUBDIRS):: $(shell pwd)/version.h
+	make -C $@ objects
 $(SUBDIRS)::
 	make -C $@ all
+
+objects :: $(shell pwd)/version.h $(OBJECTS)
 
 $(OBJECTS): %.o : %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
