@@ -72,6 +72,7 @@ probe_visitor(struct bdevid_probe_result *result, void *priv)
         return -1;
 
     printf("DEV=\"%s\"", dev); 
+    free(dev);
     for (i = 0; attrs[i]; i++) {
         char *value = NULL;
 
