@@ -29,7 +29,7 @@ bdevid :: command.o libbdevid.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS)
 
 $(foreach lib,$(MODULES),$(lib).so) :: %.so : %.o
-	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -o $@ $< $($*_LIBS) -lbdevid $(bdevid_LIBS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-shared,-Bsymbolic,-soname="$*.so.$(VERSION)" -o $@ $< -Wl,-Bstatic -static $($*_LIBS) -lbdevid $(bdevid_LIBS)
 
 libbdevid.so.$(VERSION) : $(bdevid_OBJECTS)
 	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$(shell basename $@)" -o $@ $^ $(bdevid_LIBS)
