@@ -8,8 +8,6 @@ Release: 1
 License: GPL
 Group: System Environment/Base
 Source0: mkinitrd-%{version}.tar.bz2
-%define BDEVID_VERSION 0.5
-Source1: bdevid-%{BDEVID_VERSION}.tar.bz2
 
 ExclusiveOs: Linux
 Prereq: dev
@@ -63,25 +61,15 @@ C header files and library for functionality exported by libnash.
 Python bindings for libbdevid.
 
 %prep
-rm -rf mkinitrd-%{version} bdevid-%{BDEVID_VERSION}
-%setup -D -q -b 1
+%setup -q -n mkinitrd-%{version}
 
 %build
 make LIB=%{_lib}
 make LIB=%{_lib} test
-if [ $? != 0 ]; then exit 1; fi
-cd ..
-cp -a mkinitrd-%{version}/nash/libnash.a bdevid-%{BDEVID_VERSION}/bdevid/
-cp -a mkinitrd-%{version}/nash/include/nash* \
-	bdevid-%{BDEVID_VERSION}/include/
-cd bdevid-%{BDEVID_VERSION}
-make LIB=%{_lib}
 
 %install
 rm -rf $RPM_BUILD_ROOT
-make LIB=%{_lib} BUILDROOT=$RPM_BUILD_ROOT mandir=%{_mandir} install
-cd ../bdevid-%{BDEVID_VERSION}
-make LIB=%{_lib} DESTDIR=$RPM_BUILD_ROOT install
+make LIB=%{_lib} DESTDIR=$RPM_BUILD_ROOT mandir=%{_mandir} install
 rm -f $RPM_BUILD_ROOT/sbin/bdevid
 
 %clean
