@@ -361,7 +361,7 @@ iscsi_set_parameters() {
         exit 1
     fi
 
-    nit_name=$(grep "^InitiatorName=" /etc/initiatorname.iscsi | \
+    nit_name=$(grep "^InitiatorName=" /etc/iscsi/initiatorname.iscsi | \
         sed -e "s/^InitiatorName=//")
 
     iscsi_get_rec_val $path "node.name"; tgt_name=${result}
@@ -400,7 +400,7 @@ emit_iscsi () {
         for dev in ${iscsi_devs}; do
             iscsi_set_parameters $dev
             # recid is not really used, just use 0 for it
-            emit "/bin/iscsistart -r 0 -t ${tgt_name} -i ${nit_name} \
+            emit "/bin/iscsistart -t ${tgt_name} -i ${nit_name} \
                 -g ${tpgt} -a ${tgt_ipaddr} ${chap} ${chap_pw} \
                 ${chap_in} ${chap_in_pw}"
         done
