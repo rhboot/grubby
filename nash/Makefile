@@ -5,7 +5,7 @@ LIBS	= libnash.a
 TARGETS = nash libnash.pc
 OBJECTS = util.o linkdetect.o nash.o network.o nfsmount.o \
 	  nfsmount_clnt.o nfsmount_xdr.o dns.o block_priv.o \
-	  blkent.o
+	  blkent.o waitdev.o
 
 libnash_OBJECTS = lib.o hotplug.o wrap.o block.o uevent.o dm.o bdevid.o
 

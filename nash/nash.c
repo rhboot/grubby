@@ -1,14 +1,13 @@
 /*
  * nash.c
  *
- * Simple code to load modules, mount root, and get things going. Uses
- * dietlibc to keep things small.
+ * Code to load modules, mount root, and get things going.
  *
  * Erik Troan (ewt@redhat.com)
  * Jeremy Katz (katzj@redhat.com)
  * Peter Jones (pjones@redhat.com)
  *
- * Copyright 2002-2005 Red Hat Software
+ * Copyright 2002-2006 Red Hat, Inc.
  *
  * This software may be freely redistributed under the terms of the GNU
  * General Public License, version 2.
@@ -2269,6 +2268,77 @@ networkCommand(char *cmd, char *end)
     return rc;
 }
 
+
+static int
+waitdevCommand(char *cmd, char *end)
+{
+    static struct blkent **blkents = NULL;
+    char *device = NULL;
+    int rc = 0;
+
+    if (!(cmd = getArg(cmd, end, &device))) {
+        eprintf("waitdev: device expected\n");
+        return 1;
+    }
+    
+    if (cmd < end) {
+        eprintf("waitdev: unexpected arguments\n");
+        return 1;
+    }
+
+    if (!blkents) {
+        int m = 0;
+        FILE *blktab = NULL;
+
+        if (!(blktab = setblkent("/etc/blktab", "r"))) {
+            eprintf("waitdev: couldn't open /etc/blktab\n");
+            return 1;
+        }
+
+        blkents = calloc(m+1, sizeof (struct blkent));
+        do {
+            struct blkent **newents = NULL;
+            struct blkent *be = NULL, *nbe = NULL;
+
+            if (!(be = getblkent(blktab)))
+                break;
+    
+            rc = 1;
+            if (!(nbe = alloca(sizeof (*nbe)
+                                + strlen(be->blk_name) + 1
+                                + strlen(be->blk_type) + 1
+                                + strlen(be->blk_opts) + 1)))
+                break;
+
+            if (!(newents = realloc(blkents, sizeof (struct blkent) * (m+2))))
+                break;
+            blkents = newents;
+
+            memcpy(nbe, be, sizeof (*nbe));
+            nbe->blk_name = (void *)nbe + sizeof(*nbe);
+            strcpy(nbe->blk_name, be->blk_name);
+            nbe->blk_type = nbe->blk_name + strlen(nbe->blk_name) + 1;
+            strcpy(nbe->blk_type, be->blk_type);
+            nbe->blk_opts = nbe->blk_type + strlen(nbe->blk_type) + 1;
+            strcpy(nbe->blk_opts, be->blk_opts);
+            blkents[m++] = nbe;
+            blkents[m] = NULL;
+            rc = 0;
+        } while (1);
+
+        endblkent(blktab);
+        if (rc) {
+            if (blkents)
+                free(blkents);
+        }
+    }
+
+    if (!rc && nashWaitForDevice(_nash_context, blkents, device) < 0)
+        rc = 1;
+
+    return rc;
+}
+
 static int
 setQuietCommand(char * cmd, char * end)
 {
@@ -2328,6 +2398,7 @@ static const struct commandHandler handlers[] = {
     { "status", statusCommand },
     { "switchroot", switchrootCommand },
     { "umount", umountCommand },
+    { "waitdev", waitdevCommand },
     { NULL, },
 };
 
