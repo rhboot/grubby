@@ -1,66 +1,59 @@
-include $(TOPDIR)/Makefile.tmpl
+TOPDIR ?= $(shell pwd)/../
+export TOPDIR
 
-LIBS = bdevid
-MODULES =
-MODULES += scsi ata
-
-bdevid_LIBS := -L. -ldl
+bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o
+bdevid_LIBS := -L. -L$(TOPDIR)/nash -ldl
 bdevid_LIBS += $(shell pkg-config --libs glib-2.0)
 bdevid_LIBS += -lnash -lparted -lblkid -luuid -ldevmapper -lselinux -lsepol
-bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o
 
-command_LIBS := -L. -ldl
+command_LIBS := -L. -L$(TOPDIR)/nash -ldl
 command_LIBS += $(shell pkg-config --libs glib-2.0)
 command_LIBS += -lnash -lparted -lblkid -luuid -ldevmapper -lselinux -lsepol
 
+MODULES = scsi ata usb
+OBJECTS = $(bdevid_OBJECTS)
+LIBS	= libbdevid.a libbdevid.pc
+TARGETS = bdevid libbdevid.so
+TARGETS += $(foreach dso, $(MODULES), ${dso}.so)
+SUBDIRS = python
+
+include ../Makefile.inc
+
+CFLAGS += -I$(TOPDIR)/nash/include -I$(TOPDIR)/bdevid/include
 CFLAGS += $(shell pkg-config --cflags glib-2.0)
 CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"/$(LIB)/bdevid/:/usr/$(LIB)/bdevid/\""
 
-all :: $(OBJDIR)
-all :: $(foreach lib,${LIBS},$(OBJDIR)/lib${lib}.so $(OBJDIR)/lib${lib}.a)
-all :: $(foreach mod,${MODULES},$(OBJDIR)/${mod}.so)
-all :: libbdevid.pc
-all :: $(OBJDIR)/bdevid
+LDFLAGS += -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid
 
-$(OBJDIR)/bdevid : command.o $(OBJDIR)/libbdevid.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS) -L$(OBJDIR) -lbdevid
+bdevid :: command.o libbdevid.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS) -lbdevid
 
-$(foreach lib,$(MODULES),$(OBJDIR)/$(lib).so) : $(OBJDIR)/%.so : %.o
-	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -L$(OBJDIR) -o $@ $< $($*_LIBS) -lbdevid $(bdevid_LIBS)
+$(foreach lib,$(MODULES),$(lib).so) :: %.so : %.o
+	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -o $@ $< $($*_LIBS) -lbdevid $(bdevid_LIBS)
 
-$(OBJDIR)/libbdevid.so.$(VERSION) : $(bdevid_OBJECTS)
+libbdevid.so.$(VERSION) : $(bdevid_OBJECTS)
 	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$(shell basename $@)" -o $@ $^ $(bdevid_LIBS)
 
-$(OBJDIR)/%.so : $(OBJDIR)/%.so.$(VERSION)
+%.so : %.so.$(VERSION)
 	@ln -vsf $(shell basename $<) $@
 
-# XXX doesn't work, not quite sure why...
-#$(foreach lib,$(LIBS),$(OBJDIR)/$(lib).a) : $(OBJDIR)/%.a : $(OBJDIR)/%.a($(%_OBJECTS))
-#	ranlib $@
-$(OBJDIR)/libbdevid.a : $(OBJDIR)/libbdevid.a($(bdevid_OBJECTS))
+libbdevid.a :: libbdevid.a($(bdevid_OBJECTS))
 	ranlib $@
 
-libbdevid.pc: libbdevid.pc.in
-	@sed "s/VERSIONSUBST/$(VERSION)/" < libbdevid.pc.in > libbdevid.pc
-	@chmod 0644 libbdevid.pc
+libbdevid.pc:: libbdevid.pc.in
+	@sed -e "s/VERSIONSUBST/$(VERSION)/" \
+	     -e "s/LIBSUBST/$(LIB)/" < libbdevid.pc.in > libbdevid.pc
 
-install : all
-	@install -m 0755 -d $(DESTDIR)/usr/$(LIB)
-	@cp -av $(OBJDIR)/libbdevid.{so*,a} $(DESTDIR)/usr/$(LIB)/
-	@install -m 0755 -d $(DESTDIR)/usr/$(LIB)/pkgconfig
-	@cp -av libbdevid.pc $(DESTDIR)/usr/$(LIB)/pkgconfig/
-	@install -m 0755 -d $(DESTDIR)/$(LIB)/bdevid
-	@cp -av $(foreach mod,$(MODULES),$(OBJDIR)/$(mod).so) \
-		$(DESTDIR)/$(LIB)/bdevid/
-	@install -m 0755 -d $(DESTDIR)/sbin
-	@cp -av $(OBJDIR)/bdevid $(DESTDIR)/sbin/bdevid
-	@for x in ${SUBDIRS} ; do \
-		$(MAKE) -C $$x install ; \
-	done
+clean::
+	rm -f *.o *.a *.so.* *.so *.pc bdevid
 
-clean ::
-	@rm -vf *.o libbdevid.pc
-	@rm -rvf .objs
-
-.PHONY : clean install
-.SECONDARY : ${foreach lib,${LIBS},lib${lib}.so.${VERSION}}
+install: all
+	mkdir -p $(BUILDROOT)/sbin
+	mkdir -p $(BUILDROOT)/usr/$(LIB)
+	mkdir -p $(BUILDROOT)/usr/$(LIB)/pkgconfig
+	mkdir -p $(BUILDROOT)/usr/include/bdevid
+	install -m 755 bdevid $(BUILDROOT)/sbin
+	install -m 644 libbdevid.a $(BUILDROOT)/usr/$(LIB)
+	install -m 644 libbdevid.pc $(BUILDROOT)/usr/$(LIB)/pkgconfig
+	install -m 644 include/bdevid.h $(BUILDROOT)/usr/include
+	install -m 644 include/bdevid/*.h $(BUILDROOT)/usr/include/bdevid

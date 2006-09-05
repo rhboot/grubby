@@ -2,5 +2,6 @@
 *.so
 *.a
 *.so.*
+bdevid
 version.h
 libbdevid.pc
