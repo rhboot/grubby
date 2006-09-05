@@ -89,7 +89,7 @@ static int ata_get_unique_id(struct bdevid_bdev *bdev, char **id)
     for (len = strlen(rev) -1 ; len >= 0 && rev[len] == ' '; len--)
         rev[len] = '\0';
 
-    if (asprintf(id, "%s %s %s", model, serial, rev) < 0)
+    if (asprintf(id, "%s-%s-%s", model, serial, rev) < 0)
         return -1;
     return 0;
 }
