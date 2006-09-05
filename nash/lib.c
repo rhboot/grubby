@@ -22,8 +22,6 @@
 #include <argz.h>
 #include <libdevmapper.h>
 
-#include <bdevid.h>
-
 #include <nash.h>
 #include "lib.h"
 
@@ -98,27 +96,6 @@ nashNewContext(void) {
     nashSetFileFetcher(nc, NULL);
 
     return nc;
-}
-
-struct bdevid *
-nashBdevidInit(nashContext *nc) {
-    if (nc->bdevid)
-        return nc->bdevid;
-
-    if (!(nc->bdevid = bdevid_new(NULL)))
-        return NULL;
-
-    bdevid_module_load_all(nc->bdevid);
-
-    return nc->bdevid;
-}
-
-void
-nashBdevidFinish(nashContext *nc) {
-    if (nc->bdevid) {
-        bdevid_destroy(nc->bdevid);
-        nc->bdevid = NULL;
-    }
 }
 
 void
