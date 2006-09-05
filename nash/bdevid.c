@@ -20,8 +20,6 @@
 #include <nash.h>
 #include "lib.h"
 
-struct bdevid;
-
 struct bdevid *
 nashBdevidInit(nashContext *nc) {
     if (nc->bdevid)
