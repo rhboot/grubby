@@ -2,7 +2,7 @@ include $(TOPDIR)/Makefile.tmpl
 
 LIBS = bdevid
 MODULES =
-MODULES += scsi
+MODULES += scsi ata
 
 bdevid_LIBS := -L. -ldl
 bdevid_LIBS += $(shell pkg-config --libs glib-2.0)
