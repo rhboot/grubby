@@ -468,6 +468,7 @@ dm_iter_begin(const char **names)
             if (!depp) {
                 obj->ndeps--;
                 j--;
+                dm_task_destroy(task);
                 continue;
             }
             obj->deps[j] = *depp;
