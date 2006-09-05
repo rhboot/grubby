@@ -117,9 +117,11 @@ nashBlockFinish(nashContext *c)
 void
 nashBdevFreePtr(nashBdev *dev)
 {
-    struct nash_block_dev *d = *dev;
-    if (!d)
+    struct nash_block_dev *d;
+    
+    if (!dev || !*dev)
         return;
+    d = *dev;
     if (d->sysfs_path) {
         free(d->sysfs_path);
         d->sysfs_path = NULL;
@@ -169,6 +171,8 @@ struct nash_block_dev_iter {
     struct dirent *dent;
     struct timespec *timeout;
     struct nash_uevent_handler *nh;
+
+    struct nash_block_dev *bdev;
 };
 
 static nashBdevIter
@@ -309,6 +313,8 @@ nashBdevIterEnd(nashBdevIter *iter)
     if (!iter || !*iter)
         return;
 
+    nashBdevFree((*iter)->bdev);
+
     top = block_sysfs_get_top(*iter);
     *iter = (top)->current;
     do {
@@ -360,6 +366,7 @@ nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
         return -1;
 
     nashBdevFreePtr(dev);
+    iter->bdev = NULL;
     top = block_sysfs_get_top(iter);
     iter = top->current;
     do {
@@ -395,8 +402,10 @@ nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
                 asprintf(&name, "%s/%s", iter->dirname, iter->dent->d_name);
                 ret = block_sysfs_try_dir(iter, name, dev);
                 free(name);
-                if (ret >= 0)
+                if (ret >= 0) {
+                    iter->bdev = *dev;
                     return 0;
+                }
 
                 continue;
             }
