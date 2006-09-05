@@ -2278,10 +2278,6 @@ waitdevCommand(char *cmd, char *end)
     char *device = NULL;
     int rc = 0;
 
-    _nash_context->bdevid_new = bdevid_new;
-    _nash_context->bdevid_destroy = bdevid_destroy;
-    _nash_context->bdevid_module_load_all = bdevid_module_load_all;
-
     if (!(cmd = getArg(cmd, end, &device))) {
         eprintf("waitdev: device expected\n");
         return 1;

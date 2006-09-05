@@ -25,13 +25,11 @@ nashBdevidInit(nashContext *nc) {
     if (nc->bdevid)
         return nc->bdevid;
 
-    if (!nc->bdevid_new || !nc->bdevid_module_load_all || !nc->bdevid_destroy)
+    if (!(nc->bdevid = bdevid_new(NULL)))
         return NULL;
+    nc->nashBdevidFinish = nashBdevidFinish;
 
-    if (!(nc->bdevid = nc->bdevid_new(NULL)))
-        return NULL;
-
-    nc->bdevid_module_load_all(nc->bdevid);
+    bdevid_module_load_all(nc->bdevid);
 
     return nc->bdevid;
 }
@@ -39,8 +37,7 @@ nashBdevidInit(nashContext *nc) {
 void
 nashBdevidFinish(nashContext *nc) {
     if (nc->bdevid) {
-        if (nc->bdevid_destroy)
-            nc->bdevid_destroy(nc->bdevid);
+        bdevid_destroy(nc->bdevid);
         nc->bdevid = NULL;
     }
 }

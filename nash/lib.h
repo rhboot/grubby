@@ -50,9 +50,8 @@ struct nashContext_s {
     int hp_childfd;
 
     struct bdevid *bdevid;
-    struct bdevid *(*bdevid_new)(char *);
-    void (*bdevid_destroy)(struct bdevid *);
-    int (*bdevid_module_load_all)(struct bdevid *);
+
+    void (*nashBdevidFinish)(nashContext *nc);
 
     struct nashDevice **devs;
 };
