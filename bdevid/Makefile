@@ -26,7 +26,7 @@ CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"/$(LIB)/bdevid/:/usr/$(LIB)/bdevid/\""
 LDFLAGS += -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid
 
 bdevid :: command.o libbdevid.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS) -lbdevid
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS)
 
 $(foreach lib,$(MODULES),$(lib).so) :: %.so : %.o
 	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -o $@ $< $($*_LIBS) -lbdevid $(bdevid_LIBS)
@@ -55,7 +55,8 @@ install: all
 	mkdir -p $(DESTDIR)/usr/include/bdevid
 	install -m 755 bdevid $(DESTDIR)/sbin
 	install -m 644 libbdevid.a $(DESTDIR)/usr/$(LIB)
-	install -m 644 libbdevid.so* $(DESTDIR)/usr/$(LIB)
+	install -m 644 libbdevid.so.$(VERSION) $(DESTDIR)/usr/$(LIB)
+	ln -sf libbdevid.so.$(VERSION) $(DESTDIR)/usr/$(LIB)/libbdevid.so
 	install -m 644 libbdevid.pc $(DESTDIR)/usr/$(LIB)/pkgconfig
 	install -m 644 include/bdevid.h $(DESTDIR)/usr/include
 	install -m 644 include/bdevid/*.h $(DESTDIR)/usr/include/bdevid
