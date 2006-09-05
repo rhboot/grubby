@@ -156,6 +156,7 @@ bdevidProbeVisitor(struct bdevid_probe_result *result, void *priv)
 }
 
 enum match_level {
+    MATCH_CONFLICT,
     MATCH_NONE,
     MATCH_PARTIAL,
     MATCH_FULL,
@@ -172,6 +173,9 @@ addDevice(nashContext *nc, struct blkent **blkents, nashBdev bdev)
     struct priv priv = {
         .nc = nc,
     };
+
+    if (!bdevid)
+        return -1;
 
     if (devs) {
         for (i = 0; devs[i]->entry != 0; i++) {
@@ -267,7 +271,7 @@ tryAssembleDevice(nashContext *nc, struct blkent **blkents, char *device,
     nashDevice **devs = nc->devs;
     int i;
 
-    for (i = 0; devs[i]->entry != 0; i++) {
+    for (i = 0; devs && devs[i]->entry != 0; i++) {
         nashDevice *dev = devs[i];
 
         if (!strcmp(dev->bdev->dev_path, device)) {
@@ -338,7 +342,7 @@ nashWaitForDevice(nashContext *nc, struct blkent **blkents, char *device)
     printf("done iterating, this is a failure\n");
     
     devs = nc->devs;
-    for (i = 0; devs[i]->entry != 0; i++) {
+    for (i = 0; devs && devs[i]->entry != 0; i++) {
         dev_t devno = devs[i]->bdev->devno;
         printf("%s (%d:%d)\n", devs[i]->bdev->sysfs_path,
                 major(devno), minor(devno));
