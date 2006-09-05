@@ -34,14 +34,13 @@ int bdevid_path_set(struct bdevid *b, char *path)
     size_t old_len = b->module_pathz_len;
     int en;
 
-    b->module_pathz = NULL;
-    b->module_pathz_len = 0;
-
     if (!path) {
-        if (old)
-            free(old);
+        while (b->module_pathz)
+            argz_delete(&b->module_pathz, &b->module_pathz_len,b->module_pathz);
         return 0;
     }
+    b->module_pathz = NULL;
+    b->module_pathz_len = 0;
 
     if (strlen(path) > 1023) {
         errno = E2BIG;
@@ -53,9 +52,10 @@ int bdevid_path_set(struct bdevid *b, char *path)
 
     if (argz_create_sep(new, ':', &b->module_pathz, &b->module_pathz_len) != 0)
         goto out;
+    free(new);
 
-    if (old)
-        free(old);
+    while (old)
+        argz_delete(&old, &old_len, old);
 
     return 0;
 out:
@@ -104,8 +104,9 @@ void bdevid_destroy(struct bdevid *b)
 #endif
             g_hash_table_destroy(b->modules);
         }
-        if (b->module_pathz)
-            free(b->module_pathz);
+
+        while (b->module_pathz)
+            argz_delete(&b->module_pathz, &b->module_pathz_len,b->module_pathz);
         memset(b, '\0', sizeof (*b));
         free(b);
     }
