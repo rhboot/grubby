@@ -444,6 +444,7 @@ static int do_scsi_page80_inquiry(int fd, char **serial, size_t *max_len)
     len = buf[3];
     for (i = 4; i < len + 4; i++, ser_ind++)
         (*serial)[ser_ind] = buf[i];
+
     return 0;
 }
 
@@ -458,7 +459,7 @@ static int scsi_get_devattr(struct bdevid_bdev *bdev, char *attr, char **value)
     char *tmp = NULL;
     FILE *f;
     int n;
-    char buf[1024];
+    char buf[1024], *s;
 
     memset(buf, '\0', sizeof(buf));
 
@@ -479,7 +480,11 @@ static int scsi_get_devattr(struct bdevid_bdev *bdev, char *attr, char **value)
     tmp = NULL;
 
     fclose(f);
-    if (!(tmp = strdup(buf)))
+    s = buf + strcspn(buf, " ");
+    for (n = strlen(s) -1 ; n >= 0 && s[n] == ' '; n--)
+        s[n] = '\0';
+
+    if (!(tmp = strdup(s)))
         goto err;
 
     *value = tmp;
@@ -554,9 +559,10 @@ static struct bdevid_probe_ops scsi_probe_ops = {
     .get_unique_id = scsi_get_unique_id,
 };
 
-static int scsi_init(struct bdevid_module *bm)
+static int scsi_init(struct bdevid_module *bm,
+    bdevid_register_func register_probe)
 {
-    if (bdevid_register_probe(bm, &scsi_probe_ops) == -1)
+    if (register_probe(bm, &scsi_probe_ops) == -1)
         return -1;
     return 0;
 }

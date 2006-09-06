@@ -145,9 +145,10 @@ static struct bdevid_probe_ops usb_probe_ops = {
     .get_unique_id = usb_get_unique_id,
 };
 
-static int usb_module_init(struct bdevid_module *bm)
+static int usb_module_init(struct bdevid_module *bm,
+    bdevid_register_func register_probe)
 {
-    if (bdevid_register_probe(bm, &usb_probe_ops) == -1)
+    if (register_probe(bm, &usb_probe_ops) == -1)
         return -1;
     return 0;
 }

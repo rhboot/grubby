@@ -101,9 +101,10 @@ static struct bdevid_probe_ops ata_probe_ops = {
     .get_unique_id = ata_get_unique_id,
 };
 
-static int ata_init(struct bdevid_module *bm)
+static int ata_init(struct bdevid_module *bm,
+    bdevid_register_func register_probe)
 {
-    if (bdevid_register_probe(bm, &ata_probe_ops) == -1)
+    if (register_probe(bm, &ata_probe_ops) == -1)
         return -1;
     return 0;
 }

@@ -90,7 +90,7 @@ int bdevid_module_load_file_maybe(struct bdevid *b, char *file, char *name)
     if (!(m = calloc(1, sizeof (*m))))
         return -1;
 
-    if (!(m->dlh = dlopen(file, RTLD_LAZY|RTLD_LOCAL)))
+    if (!(m->dlh = dlopen(file, RTLD_NOW|RTLD_LOCAL)))
         goto out;
 
     if (!(ops = dlsym(m->dlh, "bdevid_module_ops")) || !*ops)
@@ -115,7 +115,7 @@ int bdevid_module_load_file_maybe(struct bdevid *b, char *file, char *name)
     if (!(m->probes = g_ptr_array_new()))
         goto out;
 
-    if (m->ops->init(m) < 0)
+    if (m->ops->init(m, bdevid_register_probe) < 0)
         goto out;
 
     return 0;
