@@ -93,8 +93,10 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libnash.a
 %{_libdir}/libbdevid.a
 %{_libdir}/libbdevid.so
+%{_libdir}/libbdevidprobe.a
 %{_libdir}/pkgconfig/libnash.pc
 %{_libdir}/pkgconfig/libbdevid.pc
+%{_libdir}/pkgconfig/libbdevidprobe.pc
 %{_includedir}/nash.h
 %{_includedir}/nash
 %{_includedir}/bdevid.h
@@ -104,7 +106,7 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
-* Tue Sep  5 2006 Peter Jones <pjones@redhat.com> - 5.1.11-1
+* Tue Sep  6 2006 Peter Jones <pjones@redhat.com> - 5.1.11-1
 - Pull in bdevid properly (not two sources any more)
 - Lots of minor bugfixes, leak fixups, etc.
 - Updates for new iScsi userland (katzj)
