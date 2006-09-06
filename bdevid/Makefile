@@ -1,10 +1,12 @@
 TOPDIR ?= $(shell pwd)/../
 export TOPDIR
 
-bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o
+bdevid_OBJECTS = bdevid.o module.o probe.o sysfs.o probelib.o
 bdevid_LIBS := -L. -L$(TOPDIR)/nash -ldl
 bdevid_LIBS += $(shell pkg-config --libs glib-2.0)
 bdevid_LIBS += -lnash -lparted -lblkid -luuid -ldevmapper -lselinux -lsepol
+
+bdevidprobe_OBJECTS = probelib.o
 
 command_LIBS := -L. -L$(TOPDIR)/nash -ldl
 command_LIBS += $(shell pkg-config --libs glib-2.0) -lbdevid
@@ -12,8 +14,9 @@ command_LIBS += -lnash -lparted -lblkid -luuid -ldevmapper -lselinux -lsepol
 
 MODULES = scsi ata usb
 OBJECTS = $(bdevid_OBJECTS)
-LIBS	= libbdevid.a libbdevid.pc
-TARGETS = bdevid libbdevid.so
+LIBS	= libbdevid.a
+TARGETS = libbdevid.a libbdevid.so bdevid libbdevid.pc
+TARGATS += libdevidprobe.a libbdevidprobe.pc
 TARGETS += $(foreach dso, $(MODULES), ${dso}.so)
 SUBDIRS = python
 
@@ -23,16 +26,19 @@ CFLAGS += -I$(TOPDIR)/nash/include -I$(TOPDIR)/bdevid/include
 CFLAGS += $(shell pkg-config --cflags glib-2.0)
 CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"/$(LIB)/bdevid/:/usr/$(LIB)/bdevid/\""
 
-LDFLAGS += -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid
+LDFLAGS := -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid
 
 bdevid :: command.o libbdevid.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS)
 
-$(foreach lib,$(MODULES),$(lib).so) :: %.so : %.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-shared,-Bsymbolic,-soname="$*.so.$(VERSION)" -o $@ $< -Wl,-Bstatic -static $($*_LIBS) -lbdevid $(bdevid_LIBS)
+$(foreach lib,$(MODULES),$(lib).so) :: %.so : %.o libbdevidprobe.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -o $@ $< -shared $($*_LIBS) -lbdevidprobe
 
 libbdevid.so.$(VERSION) : $(bdevid_OBJECTS)
 	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$(shell basename $@)" -o $@ $^ $(bdevid_LIBS)
+
+libbdevidprobe.a : $(bdevidprobe_OBJECTS)
+	$(AR) crs $@ $^
 
 %.so : %.so.$(VERSION)
 	@ln -vsf $(shell basename $<) $@
@@ -40,9 +46,9 @@ libbdevid.so.$(VERSION) : $(bdevid_OBJECTS)
 libbdevid.a :: libbdevid.a($(bdevid_OBJECTS))
 	ranlib $@
 
-libbdevid.pc:: libbdevid.pc.in
+%.pc:: %.pc.in
 	@sed -e "s/VERSIONSUBST/$(VERSION)/" \
-	     -e "s/LIBSUBST/$(LIB)/" < libbdevid.pc.in > libbdevid.pc
+	     -e "s/LIBSUBST/$(LIB)/" < $< > $@
 
 clean::
 	rm -f *.o *.a *.so.* *.so *.pc bdevid
