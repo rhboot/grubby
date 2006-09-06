@@ -22,6 +22,7 @@
 #include <stdio.h>
 
 #include "bdevid.h"
+#include "priv.h"
 
 struct bdevid_probe_result {
     struct bdevid_module *m;
@@ -71,28 +72,6 @@ const char *bdevid_pr_getattr(struct bdevid_probe_result *r, const char *key)
     if (!*buf)
         return NULL;
     return buf;
-}
-
-struct bdevid_bdev {
-    char *file;
-    int fd;
-    char *name;
-    char *sysfs_dir;
-};
-
-char *
-bdevid_bdev_get_sysfs_dir(struct bdevid_bdev *bdev)
-{
-    static char buf[1024] = {0};
-
-    snprintf(buf, 1023, "/sys/block/%s", bdev->sysfs_dir);
-    return buf;
-}
-
-int
-bdevid_bdev_get_fd(struct bdevid_bdev *bdev)
-{
-    return bdev->fd;
 }
 
 struct bdevid_probe_data {
