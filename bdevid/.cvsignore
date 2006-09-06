@@ -4,4 +4,4 @@
 *.so.*
 bdevid
 version.h
-libbdevid.pc
+*.pc
