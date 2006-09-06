@@ -6,10 +6,15 @@
 /* the API for a module */
 
 struct bdevid_module;
+struct bdevid_probe_ops;
+
+typedef int (*bdevid_register_func)(struct bdevid_module *,
+    struct bdevid_probe_ops *);
+
 struct bdevid_module_ops {
     u_int32_t magic;
     char *name;
-    int (*init)(struct bdevid_module *);
+    int (*init)(struct bdevid_module *, bdevid_register_func);
 };
 #define BDEVID_MAGIC 0x07d007f0
 #define BDEVID_MODULE(__ops) \
@@ -21,9 +26,6 @@ struct bdevid_probe_ops {
     int (*get_model)(struct bdevid_bdev *bdev, char **model);
     int (*get_unique_id)(struct bdevid_bdev *bdev, char **id);
 };
-
-extern int bdevid_register_probe(struct bdevid_module *,
-    struct bdevid_probe_ops *ops);
 
 #endif /* BDEVID_MODULE_H */
 
