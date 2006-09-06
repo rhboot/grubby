@@ -16,7 +16,7 @@ MODULES = scsi ata usb
 OBJECTS = $(bdevid_OBJECTS)
 LIBS	= libbdevid.a
 TARGETS = libbdevid.a libbdevid.so bdevid libbdevid.pc
-TARGATS += libdevidprobe.a libbdevidprobe.pc
+TARGETS += libbdevidprobe.a libbdevidprobe.pc
 TARGETS += $(foreach dso, $(MODULES), ${dso}.so)
 SUBDIRS = python
 
@@ -64,6 +64,7 @@ install: all
 	install -m 644 libbdevid.a $(DESTDIR)/usr/$(LIB)
 	install -m 644 libbdevid.so.$(VERSION) $(DESTDIR)/usr/$(LIB)
 	ln -sf libbdevid.so.$(VERSION) $(DESTDIR)/usr/$(LIB)/libbdevid.so
+	install -m 644 libbdevidprobe.pc $(DESTDIR)/usr/$(LIB)/pkgconfig
 	install -m 644 libbdevid.pc $(DESTDIR)/usr/$(LIB)/pkgconfig
 	install -m 644 include/bdevid.h $(DESTDIR)/usr/include
 	install -m 644 include/bdevid/*.h $(DESTDIR)/usr/include/bdevid
