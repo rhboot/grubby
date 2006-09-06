@@ -8,13 +8,16 @@ include $(TOPDIR)/Makefile.inc
 SITELIB := $(shell python -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)[1:]")
 CFLAGS += -I/usr/include/python2.4
 CFLAGS += -I$(TOPDIR)/nash/include -I$(TOPDIR)/bdevid/include
-LDFLAGS := -shared -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid \
+CFLAGS += $(shell pkg-config --cflags glib-2.0)
+LDFLAGS = -shared -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid
+LDFLAGS += -Wl,-soname="pybdevid.so.$(VERSION)",--as-needed
+LDFLAGS += -lpython2.4 -ldl $(shell pkg-config --libs glib-2.0)
 
 pybdevid_OBJECTS = pybdevid.o
+pybdevid_LIBS = -lbdevid -lnash -ldevmapper -lparted -lblkid
 
 pybdevid.so :: $(pybdevid_OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="pybdevid.so.$(VERSION)" \
-		-o $@ -lbdevid -ldl $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lbdevid $(pybdevid_LIBS)
 	
 install : all
 	@install -m 0755 -d $(DESTDIR)/$(SITELIB)
