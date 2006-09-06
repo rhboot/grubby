@@ -60,6 +60,7 @@ install: all
 	mkdir -p $(DESTDIR)/usr/$(LIB)/pkgconfig
 	mkdir -p $(DESTDIR)/usr/include/bdevid
 	install -m 755 bdevid $(DESTDIR)/sbin
+	install -m 644 libbdevidprobe.a $(DESTDIR)/usr/$(LIB)
 	install -m 644 libbdevid.a $(DESTDIR)/usr/$(LIB)
 	install -m 644 libbdevid.so.$(VERSION) $(DESTDIR)/usr/$(LIB)
 	ln -sf libbdevid.so.$(VERSION) $(DESTDIR)/usr/$(LIB)/libbdevid.so
