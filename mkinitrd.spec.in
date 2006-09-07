@@ -106,6 +106,9 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Thu Sep  7 2006 Peter Jones <pjones@redhat.com> - 5.1.12-1
+- Fix bug in dm dependency scanning (#205635)
+
 * Tue Sep  6 2006 Peter Jones <pjones@redhat.com> - 5.1.11-1
 - Pull in bdevid properly (not two sources any more)
 - Lots of minor bugfixes, leak fixups, etc.
