@@ -447,7 +447,8 @@ dm_iter_begin(const char **names)
         struct dm_deps *deps;
         struct dm_task *task;
 
-        nashDmTaskNew(DM_DEVICE_DEPS, obj->name, &task);
+        if (nashDmTaskNew(DM_DEVICE_DEPS, obj->name, &task) < 0)
+            continue;
 
         deps = dm_task_get_deps(task);
 
@@ -468,11 +469,11 @@ dm_iter_begin(const char **names)
             if (!depp) {
                 obj->ndeps--;
                 j--;
-                dm_task_destroy(task);
                 continue;
             }
             obj->deps[j] = *depp;
         }
+        dm_task_destroy(task);
         qsort(obj->deps, obj->ndeps, sizeof (struct dm_iter_object *),
                 dm_iter_object_devsort);
     }
