@@ -108,6 +108,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Fri Sep  8 2006 Peter Jones <pjones@redhat.com> - 5.1.13-1
 - Fix missing coreutils dep and typo in shell wrapper (#205194)
+- Fix bad mpath test (#204758)
 
 * Thu Sep  7 2006 Peter Jones <pjones@redhat.com> - 5.1.12-1
 - Fix bug in dm dependency scanning (#205635)
