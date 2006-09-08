@@ -36,7 +36,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.13
+VERSION=5.1.14
 
 PROBE="yes"
 MODULES=""
@@ -279,7 +279,7 @@ readlink() {
 }
 
 access() {
-    echo nash-access -w "$1" | /sbin/nash --force --quiet
+    echo nash-access "$1" | /sbin/nash --force --quiet
 }
 
 findstoragedriverinsys () {
