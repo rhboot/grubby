@@ -279,7 +279,7 @@ readlink() {
 }
 
 access() {
-    echo nash-access -w $t | /sbin/nash --force --quiet
+    echo nash-access -w "$1" | /sbin/nash --force --quiet
 }
 
 findstoragedriverinsys () {
