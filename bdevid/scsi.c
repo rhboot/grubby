@@ -473,14 +473,15 @@ static int scsi_get_devattr(struct bdevid_bdev *bdev, char *attr, char **value)
         goto err;
 
     n = strlen(buf);
-    if (buf[n] == '\n')
-        buf[n] = '\0';
+    if (buf[n-1] == '\n')
+        buf[n-1] = '\0';
 
     free(tmp);
     tmp = NULL;
 
     fclose(f);
-    s = buf + strcspn(buf, " ");
+    for (s = buf; s[0] == ' '; s++)
+        ;
     for (n = strlen(s) -1 ; n >= 0 && s[n] == ' '; n--)
         s[n] = '\0';
 

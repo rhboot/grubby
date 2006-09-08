@@ -40,7 +40,8 @@ static int ata_get_model(struct bdevid_bdev *bdev, char **id)
 {
     struct hd_driveid hdid;
     int fd;
-    char model[41];
+    char model[41], rev[9];
+    char *s;
     size_t len;
 
     fd = bdevid_bdev_get_fd(bdev);
@@ -50,12 +51,35 @@ static int ata_get_model(struct bdevid_bdev *bdev, char **id)
 
     model[0] = '\0';
     strncpy(model, (char *)hdid.model, 40);
-    strcpy(model, model + strcspn(model, " "));
-    for (len = strlen(model) -1 ; len >= 0 && model[len] == ' '; len--)
-        model[len] = '\0';
+    for (s = model; s[0] == ' '; s++)
+        ;
+    for (len = strlen(s) -1 ; len >= 0 && s[len] == ' '; len--)
+        s[len] = '\0';
+    if (model != s)
+        strcpy(model, s);
 
-    if (asprintf(id, "%s", model) < 0)
+    rev[0] = '\0';
+    strncpy(rev, (char *)hdid.fw_rev, 8);
+    for (s = rev; s[0] == ' '; s++)
+        ;
+    for (len = strlen(s) -1 ; len >= 0 && s[len] == ' '; len--)
+        s[len] = '\0';
+    if (rev != s)
+        strcpy(rev, s);
+
+    if (!model[0] && !rev[0])
         return -1;
+    else if (model[0] && !rev[0]) {
+        if (!(*id = strdup(model)))
+            return -1;
+        return 0;
+    } else if (rev[0]) {
+        if (asprintf(id, "%s-%s", model, rev) < 0)
+            return -1;
+    } else {
+        if (!(*id = strdup(rev)))
+            return -1;
+    }
     return 0;
 }
 
@@ -63,7 +87,8 @@ static int ata_get_unique_id(struct bdevid_bdev *bdev, char **id)
 {
     struct hd_driveid hdid;
     int fd;
-    char model[41], serial[21], rev[9];
+    char serial[21];
+    char *s;
     size_t len;
 
     fd = bdevid_bdev_get_fd(bdev);
@@ -71,25 +96,18 @@ static int ata_get_unique_id(struct bdevid_bdev *bdev, char **id)
     if (ioctl(fd, HDIO_GET_IDENTITY, &hdid) < 0)
         return -1;
 
-    model[0] = '\0';
-    strncpy(model, (char *)hdid.model, 40);
-    strcpy(model, model + strcspn(model, " "));
-    for (len = strlen(model) -1 ; len >= 0 && model[len] == ' '; len--)
-        model[len] = '\0';
-
     serial[0] = '\0';
     strncpy(serial, (char *)hdid.serial_no, 20);
-    strcpy(serial, serial + strcspn(serial, " "));
-    for (len = strlen(serial) -1 ; len >= 0 && serial[len] == ' '; len--)
-        serial[len] = '\0';
+    for (s = serial; s[0] == ' '; s++)
+        ;
+    for (len = strlen(s) -1 ; len >= 0 && s[len] == ' '; len--)
+        s[len] = '\0';
+    if (serial != s)
+        strcpy(serial, s);
 
-    rev[0] = '\0';
-    strncpy(rev, (char *)hdid.fw_rev, 8);
-    strcpy(rev, rev + strcspn(rev, " "));
-    for (len = strlen(rev) -1 ; len >= 0 && rev[len] == ' '; len--)
-        rev[len] = '\0';
-
-    if (asprintf(id, "%s-%s-%s", model, serial, rev) < 0)
+    if (!serial[0])
+        return -1;
+    if (!(*id = strdup(serial)))
         return -1;
     return 0;
 }

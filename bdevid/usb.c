@@ -42,17 +42,23 @@ usb_get_sysfs_device(struct bdevid_bdev *bdev)
     if (!path)
         return NULL;
 
-    device = strrchr(path, '/');
+    if (!(device = strrchr(path, '/')))
+        goto err;
     device[0] = '\0';
-    device = strrchr(path, '/');
+    if (!(device = strrchr(path, '/')))
+        goto err;
     device[0] = '\0';
-    device = strrchr(path, '/');
+    if (!(device = strrchr(path, '/')))
+        goto err;
     device[0] = '\0';
-    device = strrchr(path, '/');
+    if (!(device = strrchr(path, '/')))
+        goto err;
     device[0] = '\0';
-    device = strrchr(path, '/');
+    if (!(device = strrchr(path, '/')))
+        goto err;
     device[0] = '\0';
-    device = strrchr(path, '/');
+    if (!(device = strrchr(path, '/')))
+        goto err;
 
     if (strncmp(device, "/usb", 4)) {
         free(path);
@@ -62,6 +68,7 @@ usb_get_sysfs_device(struct bdevid_bdev *bdev)
     device[strlen(device)] = '/';
 
     if (asprintf(&tmp, "%s/driver", path) < 0) {
+err:
         free(path);
         return NULL;
     }
@@ -79,10 +86,11 @@ usb_get_sysfs_device(struct bdevid_bdev *bdev)
     }
     free(device);
 
-    device = strrchr(path, '/');
+    if (!(device = strrchr(path, '/'))) {
+        free(path);
+        return NULL;
+    }
     device[0] = '\0';
-
-    device = NULL;
 
     return path;
 }
