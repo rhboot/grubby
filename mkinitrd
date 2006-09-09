@@ -279,7 +279,7 @@ readlink() {
 }
 
 access() {
-    echo nash-access -w "$1" | /sbin/nash --force --quiet
+    echo nash-access "$@" | /sbin/nash --force --quiet
 }
 
 findstoragedriverinsys () {
@@ -778,7 +778,7 @@ modulefile=/etc/modprobe.conf
 TMPDIR=""
 for t in /tmp /var/tmp /root ${PWD}; do
     if [ ! -d $t ]; then continue; fi
-    if ! access $t ; then continue; fi
+    if ! access -w $t ; then continue; fi
 
     fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
     if [ "$fs" != "tmpfs" ]; then
