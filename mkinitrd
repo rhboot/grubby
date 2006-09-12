@@ -437,7 +437,7 @@ handleraid() {
     fi
 
     levels=$(awk "/^$1[	 ]*:/ { print\$4 }" /proc/mdstat)
-    devs=$(awk "/^$1[	 ]*:/ { print gensub(\"\\[[0-9]*\\]\",\"\",\"g\",gensub(\"^md.*raid[0-9]*\",\"\",\"1\")) }" /proc/mdstat)
+    devs=$(awk "/^$1[	 ]*:/ { print gensub(\"[[0-9]*]\",\"\",\"g\",gensub(\"^md.*raid[0-9]*\",\"\",\"1\")) }" /proc/mdstat)
 
     for level in $levels ; do
         case $level in

@@ -106,6 +106,9 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Tue Sep 12 2006 Peter Jones <pjones@redhat.com>
+- Fix escaping error in md-handler's awk script
+
 * Fri Sep  8 2006 Jesse Keating <jkeating@redhat.com> - 5.1.15-1
 - more typos to fix related to (#205194)
 
