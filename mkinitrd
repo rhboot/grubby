@@ -96,7 +96,7 @@ usage () {
 
     $cmd "usage: `basename $0` [--version] [--help] [-v] [-f] [--preload <module>]"
     $cmd "       [--force-ide-probe] [--force-scsi-probe | --omit-scsi-modules]"
-    $cmd "       [--image-version] [--force-scsi-probe | --omit-raid-modules]"
+    $cmd "       [--image-version] [--force-raid-probe | --omit-raid-modules]"
     $cmd "       [--with=<module>] [--force-lvm-probe | --omit-lvm-modules]"
     $cmd "       [--builtin=<module>] [--omit-dmraid] [--net-dev=<interface>]"
     $cmd "       [--fstab=<fstab>] [--nocompress] <initrd-image> <kernel-version>"
