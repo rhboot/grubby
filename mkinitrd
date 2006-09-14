@@ -1,6 +1,5 @@
 #!/bin/bash --norc
-# vim:sts=4:sw=4:ts=8:et
-
+#
 # mkinitrd
 #
 # Copyright 2005 Red Hat, Inc.
