@@ -1181,8 +1181,15 @@ for MODULE in $MODULES; do
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
         emit "echo Waiting 2 seconds for driver initialization."
         emit "sleep 2"
-        cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICE SCSIID WWPN SCSILUN FCPLUN; do
-        cemit <<EOF 
+        cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICE TWO THREE FOUR FIVE; do
+	    if [ -z "$FIVE" ]; then
+		WWPN=$TWO
+		FCPLUN=$THREE
+	    else
+		WWPN=$THREE
+		FCPLUN=$FIVE
+	    fi
+	    cemit <<EOF 
 echo -n $WWPN > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/port_add
 echo -n $FCPLUN > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/$WWPN/unit_add
 echo -n 1 > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/online

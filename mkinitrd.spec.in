@@ -106,6 +106,9 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Tue Sep 19 2006 Jeremy Katz <katzj@redhat.com>
+- Handle zfcp.conf not specifying scsiid and scsilun (#198803)
+
 * Tue Sep 12 2006 Peter Jones <pjones@redhat.com>
 - Fix escaping error in md-handler's awk script
 
