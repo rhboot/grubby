@@ -774,17 +774,21 @@ vecho "Creating initramfs"
 modulefile=/etc/modprobe.conf
 
 # find a temporary directory which doesn't use tmpfs
-TMPDIR=""
-for t in /tmp /var/tmp /root ${PWD}; do
-    if [ ! -d $t ]; then continue; fi
-    if ! access -w $t ; then continue; fi
-
-    fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
-    if [ "$fs" != "tmpfs" ]; then
-        TMPDIR=$t
-        break
-    fi
-done
+if [ -z "$loopfs" ]; then
+    TMPDIR="/tmp"
+else
+    TMPDIR=""
+    for t in /tmp /var/tmp /root ${PWD}; do
+        if [ ! -d $t ]; then continue; fi
+        if ! access -w $t ; then continue; fi
+    
+        fs=$(df -T $t 2>/dev/null | awk '{line=$1;} END {printf $2;}')
+        if [ "$fs" != "tmpfs" ]; then
+            TMPDIR=$t
+            break
+        fi
+    done
+fi
 
 if [ -z "$TMPDIR" ]; then
     error "no temporary directory could be found."
