@@ -111,7 +111,7 @@ rm -rf $RPM_BUILD_ROOT
 
 * Wed Sep 20 2006 Peter Jones <pjones@redhat.com>
 - Don't require non-tmpfs tmpdir unless we're using loopback
-- Fix symlink chasing for yaboot.conf in grubby
+- Fix symlink chasing for yaboot.conf in grubby (#207302)
 
 * Tue Sep 19 2006 Jeremy Katz <katzj@redhat.com>
 - Handle zfcp.conf not specifying scsiid and scsilun (#198803)
