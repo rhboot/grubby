@@ -106,6 +106,9 @@ rm -rf $RPM_BUILD_ROOT
 /%{python_sitelib}/bdevid.so
 
 %changelog
+* Thu Sep 21 2006 Peter Jones <pjones@redhat.com> - 5.1.17-1
+- Fix module dependency probing when there's no modalias
+
 * Wed Sep 20 2006 Peter Jones <pjones@redhat.com> - 5.1.16-1
 - Don't require non-tmpfs tmpdir unless we're using loopback
 - Fix symlink chasing for yaboot.conf in grubby (#207302)

@@ -302,6 +302,7 @@ findstoragedriverinsys () {
         cd ..
     done
     moduledep $(cat modalias)
+    [ -z "$deps" -a -L driver/module ] && deps=$(basename $(readlink driver/module))
     for driver in $deps ; do
         findmodule $driver
     done
