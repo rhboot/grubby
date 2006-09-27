@@ -24,6 +24,7 @@ Requires: dmraid
 %ifarch ppc
 Requires: ppc64-utils >= 0.3-1
 %endif
+Requires: nash = %{version}-%{release}
 BuildRoot: %{_tmppath}/%{name}-root
 Provides: libbdevid = %{version}-%{release}
 Obsoletes: libbdevid < %{version}-%{release}
@@ -54,11 +55,18 @@ Group: System Environment/Libraries
 Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper, mkinitrd
 Requires: python >= %{pyver}
 
+%package -n nash
+Summary: nash shell
+Group: System Environment/Base
+
 %description devel
 C header files and library for functionality exported by libnash.
 
 %description -n libbdevid-python
 Python bindings for libbdevid.
+
+%description -n nash
+nash shell used by initrd
 
 %prep
 %setup -q -n mkinitrd-%{version}
@@ -79,8 +87,6 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %attr(755,root,root) /sbin/mkinitrd
 %attr(644,root,root) %{_mandir}/man8/mkinitrd.8*
-%attr(755,root,root) /sbin/nash
-%attr(644,root,root) %{_mandir}/man8/nash.8*
 %config %attr(755,root,root) /sbin/installkernel
 %attr(755,root,root) /sbin/new-kernel-pkg
 %attr(755,root,root) /sbin/grubby
@@ -105,7 +111,15 @@ rm -rf $RPM_BUILD_ROOT
 %files -n libbdevid-python
 /%{python_sitelib}/bdevid.so
 
+%files -n nash
+%defattr(-,root,root)
+%attr(644,root,root) %{_mandir}/man8/nash.8*
+%attr(755,root,root) /sbin/nash
+
 %changelog
+* Wed Sep 27 2006 Peter Jones <pjones@redhat.com> - 5.1.18-1
+- Split nash into its own package to work around dep sorting issue on install.
+
 * Thu Sep 21 2006 Peter Jones <pjones@redhat.com> - 5.1.17-1
 - Fix module dependency probing when there's no modalias
 
