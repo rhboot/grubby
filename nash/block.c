@@ -251,6 +251,7 @@ block_sysfs_try_dir(nashBdevIter iter, char *sysfs_path, nashBdev *dev)
 {
     int ret;
     dev_t devno = 0;
+    char *bang = NULL;
 
     if ((ret = nashParseSysfsDevno(sysfs_path, &devno)) < 0)
         return ret;
@@ -261,6 +262,8 @@ block_sysfs_try_dir(nashBdevIter iter, char *sysfs_path, nashBdev *dev)
     tmp->devno = devno;
     tmp->sysfs_path = strdup(sysfs_path);
     asprintf(&tmp->dev_path, "/dev/%s", iter->dent->d_name);
+    while ((bang = strchr(tmp->dev_path, '!')))
+        *bang = '/';
     *dev = tmp;
     return 0;
 }

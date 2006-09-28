@@ -117,6 +117,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
+* Thu Sep 28 2006 Peter Jones <pjones@redhat.com> - 5.1.19-1
+- Fix booting on non-LVM devices where sysfs uses a '!' in the device path,
+  such as cciss.  (#201875, #196360)
+
 * Wed Sep 27 2006 Peter Jones <pjones@redhat.com> - 5.1.18-1
 - Split nash into its own package to work around dep sorting issue on install.
 
