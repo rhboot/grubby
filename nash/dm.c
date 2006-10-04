@@ -85,7 +85,7 @@ nashDmGetType(const char *name)
 
     ret = -1;
     do {
-        u_int64_t start, length;
+        uint64_t start, length;
         char *params;
         char *tmp = NULL;
 
@@ -671,7 +671,7 @@ out:
 }
 
 static int
-dm_submap_has_part(nashContext *nc, const struct dm_iter_object const *parent,
+dm_submap_has_part(nashContext *nc, const struct dm_iter_object *parent,
         PedGeometry *geom)
 {
     int nonlinear = 0;
@@ -707,7 +707,7 @@ dm_submap_has_part(nashContext *nc, const struct dm_iter_object const *parent,
             continue;
 
         do {
-            u_int64_t start, length;
+            uint64_t start, length;
             char *type, *params;
             const char *name = NULL;
             PedDevice *dev = NULL;
@@ -760,7 +760,7 @@ dm_submap_has_part(nashContext *nc, const struct dm_iter_object const *parent,
 }
 
 static int
-dm_should_partition(nashContext *nc, const struct dm_iter_object const *obj)
+dm_should_partition(nashContext *nc, const struct dm_iter_object *obj)
 {
     PedDevice *dev = NULL;
     PedDisk *disk = NULL;
