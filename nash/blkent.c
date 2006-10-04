@@ -46,8 +46,9 @@ __setblkent(const char *file, const char *mode)
        I/O functions.  */
     size_t modelen = strlen(mode);
     char newmode[modelen + 2];
+    FILE *result = NULL;
     memcpy(mempcpy(newmode, mode, modelen), "c", 2);
-    FILE *result = fopen(file, newmode);
+    result = fopen(file, newmode);
 
     if (result != NULL)
         __fsetlocking(result, FSETLOCKING_BYCALLER);
@@ -76,7 +77,7 @@ decode_name(char *buf)
 {
     char *rp = buf;
     char *wp = buf;
-    do
+    do {
         if (rp[0] == '\\' && rp[1] == '0' && rp[2] == '4' && rp[3] == '0') {
             /* \040 is a SPACE. */
             *wp++ = ' ';
@@ -110,7 +111,7 @@ decode_name(char *buf)
         } else
             *wp++ = *rp;
 
-    while (*rp++ != '\0');
+    } while (*rp++ != '\0');
 
     return buf;
 }
@@ -188,7 +189,7 @@ getblkent_r(FILE *stream, struct blkent *bp, char *buffer, int bufsiz)
 	rp = name;							      \
 	name = wp = (char *) alloca (strlen (name) * 4 + 1);		      \
 									      \
-	do								      \
+	do {								      \
 	  if (*rp == ' ')						      \
 	    {								      \
 	      *wp++ = '\\';						      \
@@ -213,7 +214,7 @@ getblkent_r(FILE *stream, struct blkent *bp, char *buffer, int bufsiz)
 	    }								      \
 	  else								      \
 	    *wp++ = *rp;						      \
-	while (*rp++ != '\0');						      \
+        } while (*rp++ != '\0');					      \
       }									      \
   } while (0)
 
