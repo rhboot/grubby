@@ -628,7 +628,7 @@ int nfsmount(const char *spec, const char *node, int *flags,
 						 &msock, 0, 0);
 			break;
 		default:
-			mclient = 0;
+			mclient = NULL;
 			}
 			if (mclient) {
 				/* try to mount hostname:dirname */
@@ -664,7 +664,7 @@ int nfsmount(const char *spec, const char *node, int *flags,
 					clnt_perror(mclient, "mount");
 				auth_destroy(mclient->cl_auth);
 				clnt_destroy(mclient);
-				mclient = 0;
+				mclient = NULL;
 				close(msock);
 			} else {
 				if (!running_bg && prevt == 0)
@@ -736,7 +736,7 @@ int nfsmount(const char *spec, const char *node, int *flags,
 		perror("nfs socket");
 		goto fail;
 	}
-	if (bindresvport(fsock, 0) < 0) {
+	if (bindresvport(fsock, NULL) < 0) {
 		perror("nfs bindresvport");
 		goto fail;
 	}

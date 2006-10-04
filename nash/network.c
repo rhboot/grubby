@@ -140,7 +140,7 @@ int nashNetworkCommand(char * cmd) {
         { "ethtool", '\0', POPT_ARG_STRING, &ethtool, 0, NULL, NULL },
         { "mtu", '\0', POPT_ARG_INT, &mtu, 0, NULL, NULL },
         { "hostname", '\0', POPT_ARG_STRING, &hostname, 0, NULL, NULL },
-        { 0, 0, 0, 0, 0, 0, 0 }
+        { NULL, 0, 0, NULL, 0, NULL, NULL }
     };
     
     if (poptParseArgvString(cmd, &argc, (const char ***) &argv) || !argc) {
