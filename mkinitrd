@@ -471,16 +471,24 @@ handleraid() {
     return $start
 }
 
+lvshow() {
+    lvm.static lvs --ignorelockingfailure --noheadings -o vg_name \
+        $1 2>/dev/null | egrep -v '^ *(WARNING:|Volume Groups with)'
+}
+
+vgdisplay() {
+    lvm.static vgdisplay --ignorelockingfailure -v $1 2>/dev/null |
+        sed -n 's/PV Name//p'
+}
+
 handlelvordev() {
-    local vg=`lvm.static lvs --ignorelockingfailure --noheadings -o vg_name $1 2>/dev/null`
+    local vg=(lvshow $1)
     if [ -n "$vg" ]; then
         vg=`echo $vg` # strip whitespace
         case " $vg_list " in
-        *" $vg "*)
-            ;;
-        *)
-            vg_list="$vg_list $vg"
-            for device in `lvm.static vgdisplay --ignorelockingfailure -v $vg 2>/dev/null | sed -n 's/PV Name//p'`; do
+        *" $vg "*) ;;
+        *)  vg_list="$vg_list $vg"
+            for device in $(vgdisplay $vg) ; do
                 findstoragedriver ${device##/dev/}
             done
             ;;
