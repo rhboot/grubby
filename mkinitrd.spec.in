@@ -117,6 +117,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
+* Thu Oct 26 2006 Peter Jones <pjones@redhat.com>
+- Don't reference "netdev" in addnetdev()
+- Only use one IP address for "remoteip" in handlenfs()
+
 * Thu Sep 28 2006 Peter Jones <pjones@redhat.com> - 5.1.19-1
 - Fix booting on non-LVM devices where sysfs uses a '!' in the device path,
   such as cciss.  (#201875, #196360)
