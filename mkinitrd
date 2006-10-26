@@ -24,6 +24,11 @@
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
 #       Peter Jones <pjones@redhat.com>
 
+if [ $UID != 0 ]; then
+    error "mkinitrd must be run as root."
+    exit 1
+fi
+
 export MALLOC_PERTURB_=204
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
@@ -775,11 +780,6 @@ fi
 
 if [ ! -d /lib/modules/$kernel ]; then
     error 'No modules available for kernel "'${kernel}'".'
-    exit 1
-fi
-
-if [ $UID != 0 ]; then
-    error "mkinitrd must be run as root."
     exit 1
 fi
 
