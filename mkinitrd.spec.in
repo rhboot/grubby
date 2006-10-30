@@ -117,7 +117,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
-- Mon Oct 30 2006 Peter Jones <pjones@redhat.com> - 5.1.19.1-1
+* Mon Oct 30 2006 Peter Jones <pjones@redhat.com> - 5.1.19.1-1
 - Merge missing FC6 fixes back into this branch to eliminate regressions.
 
 * Thu Sep 28 2006 Peter Jones <pjones@redhat.com> - 5.1.19-1
