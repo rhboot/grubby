@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "bdevid.h"
 #include "priv.h"
