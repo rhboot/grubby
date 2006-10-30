@@ -118,7 +118,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 - Mon Oct 30 2006 Peter Jones <pjones@redhat.com> - 5.1.19.1-1
-- Merge in close() fix in bdevid probe code from rhel5 branch
+- Merge missing FC6 fixes back into this branch to eliminate regressions.
 
 * Thu Sep 28 2006 Peter Jones <pjones@redhat.com> - 5.1.19-1
 - Fix booting on non-LVM devices where sysfs uses a '!' in the device path,
