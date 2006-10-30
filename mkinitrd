@@ -24,11 +24,6 @@
 #       Guillaume Cottenceau <gc@mandrakesoft.com>
 #       Peter Jones <pjones@redhat.com>
 
-if [ $UID != 0 ]; then
-    error "mkinitrd must be run as root."
-    exit 1
-fi
-
 export MALLOC_PERTURB_=204
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
@@ -40,7 +35,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.19
+VERSION=5.1.19.1
 
 PROBE="yes"
 MODULES=""
@@ -476,24 +471,16 @@ handleraid() {
     return $start
 }
 
-lvshow() {
-    lvm.static lvs --ignorelockingfailure --noheadings -o vg_name \
-        $1 2>/dev/null | egrep -v '^ *(WARNING:|Volume Groups with)'
-}
-
-vgdisplay() {
-    lvm.static vgdisplay --ignorelockingfailure -v $1 2>/dev/null |
-        sed -n 's/PV Name//p'
-}
-
 handlelvordev() {
-    local vg=(lvshow $1)
+    local vg=`lvm.static lvs --ignorelockingfailure --noheadings -o vg_name $1 2>/dev/null`
     if [ -n "$vg" ]; then
         vg=`echo $vg` # strip whitespace
         case " $vg_list " in
-        *" $vg "*) ;;
-        *)  vg_list="$vg_list $vg"
-            for device in $(vgdisplay $vg) ; do
+        *" $vg "*)
+            ;;
+        *)
+            vg_list="$vg_list $vg"
+            for device in `lvm.static vgdisplay --ignorelockingfailure -v $vg 2>/dev/null | sed -n 's/PV Name//p'`; do
                 findstoragedriver ${device##/dev/}
             done
             ;;
@@ -545,14 +532,16 @@ handlenetdev() {
 }
 
 addnetdev() {
-    vecho "Adding network device $1"
-    findnetdriver "$1"
-    net_list="$net_list $1"
+    dev=$1
+
+    vecho "Adding network device $dev"
+    findnetdriver $dev
+    net_list="$net_list $netdev"
 }
 
 handlenfs() {
     remote=${1%%:*}
-    remoteip=$(host $remote | awk '/ address / { print $4 ; exit 0; }')
+    remoteip=$(host $remote | awk '/ address / { print $4 }')
     # assume, if it didn't resolve, that it's an IP
     [ -z "$remoteip" ] && remoteip=$remote
     netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk '{ print $1; exit }'`
@@ -783,6 +772,11 @@ if [ ! -d /lib/modules/$kernel ]; then
     exit 1
 fi
 
+if [ $UID != 0 ]; then
+    error "mkinitrd must be run as root."
+    exit 1
+fi
+
 vecho "Creating initramfs"
 modulefile=/etc/modprobe.conf
 
@@ -835,8 +829,7 @@ if [ "x$PROBE" == "xyes" ]; then
     if [ "$rootfs" == "nfs" -a "x$net_list" == "x" ]; then
         handlenfs $rootdev
     # check if it's root by label
-    elif [ "$rootdev" != "${rootdev##LABEL=}" -a \
-            "$rootdev" != "${rootdev##UUID=}" ]; then
+    elif [ "$rootdev" != "${rootdev##LABEL=}" ]; then
         rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,_netdev//' -e 's/_netdev//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
         devname=$(resolve_device_name $rootdev)
         majmin=$(get_numeric_dev dec $devname)
@@ -856,7 +849,7 @@ if [ "x$PROBE" == "xyes" ]; then
 
     # find the first swap dev which would get used for swsusp
     swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; exit }}' $fstab)
-    if [ "$swsuspdev" == "${swsuspdev##LABEL=}" ]; then
+    if [ "$swsuspdev" = "${swsuspdev##LABEL=}" ]; then
         handlelvordev $swsuspdev
     fi
 fi
