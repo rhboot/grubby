@@ -1366,7 +1366,10 @@ resumeCommand(char * cmd, char * end)
         resumedev = resume;
     }
     n = strcspn(resumedev, " \t\r\n");
-    resumedev[n] = '\0';
+    if (!(resumedev = strndupa(resumedev, n))) {
+        eprintf("Unable to find resume device: %m\n");
+        return 1;
+    }
 
     qprintf("Trying to resume from %s\n", resumedev);
 
