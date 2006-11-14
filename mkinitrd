@@ -816,7 +816,7 @@ for n in $PREMODS; do
         findmodule $n
 done
 
-if [ -n "$withusb" ]; then
+if [ "$withusb" == "1" ]; then
     findmodule uhci-hcd
     findmodule ohci-hcd
     findmodule ehci-hcd

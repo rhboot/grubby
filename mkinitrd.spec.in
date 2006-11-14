@@ -119,6 +119,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 *
 - Don't clobber the kernel command line when handling resume (#215084).
+- Fix test for "withusb" (#215314).
 
 * Thu Oct 26 2006 Peter Jones <pjones@redhat.com>
 - Don't reference "netdev" in addnetdev()
