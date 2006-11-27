@@ -487,7 +487,7 @@ vgdisplay() {
 }
 
 handlelvordev() {
-    local vg=(lvshow $1)
+    local vg=$(lvshow $1)
     if [ -n "$vg" ]; then
         vg=`echo $vg` # strip whitespace
         case " $vg_list " in
