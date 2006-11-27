@@ -1291,7 +1291,7 @@ emit "switchroot"
 
 chmod +x $RCFILE
 
-(cd $MNTIMAGE; findall . | cpio --quiet -c -o) >| $IMAGE || exit 1
+(cd $MNTIMAGE; findall . | cpio -H newc --quiet -o) >| $IMAGE || exit 1
 
 if [ -n "$compress" ]; then
     gzip -9 < $IMAGE >| $target || rc=1
