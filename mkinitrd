@@ -47,6 +47,8 @@ MODULES=""
 PREMODS=""
 DMDEVS=""
 NET_LIST=""
+LD_SO_CONF=/etc/ld.so.conf
+LD_SO_CONF_D=/etc/ld.so.conf.d/
 
 [ -e /etc/sysconfig/mkinitrd ] && . /etc/sysconfig/mkinitrd
 
@@ -64,6 +66,7 @@ builtins=""
 modulefile=/etc/modules.conf
 withusb=1
 rc=0
+dynamic=
 
 IMAGESIZE=8000
 PRESCSIMODS="sd_mod"
@@ -136,6 +139,52 @@ dm_get_uuid() {
 
 resolve_device_name() {
     echo nash-resolveDevice "$1" | /sbin/nash --forcequiet
+}
+
+get_dso_deps() {
+    bin="$1" ; shift
+
+    declare -a FILES
+    declare -a NAMES
+
+    # this is a hack, but the only better way requires binutils or elfutils
+    # be installed.  i.e., we need readelf to find the interpretter.
+    for ldso in /lib*/ld*.so* ; do
+        [ -x $ldso ] || continue
+        $ldso --verify $bin >/dev/null 2>&1 || continue
+
+        # I still hate shell.
+        n=0
+        while read NAME I0 FILE ADDR I1 ; do
+            [ "$FILE" == "not" ] && FILE="$FILE $ADDR"
+            NAMES[$n]="$NAME"
+            FILES[$n]="$FILE"
+            let n++
+        done << EOF
+            $(LD_TRACE_PRELINKING=1 LD_WARN= LD_TRACE_LOADED_OBJECTS=1 \
+                $ldso $bin 2>/dev/null)
+EOF
+    done
+
+    [ ${#FILES} -eq 0 ] && return 1
+
+    n=1
+    while [ $n -lt ${#FILES} ]; do
+        FILE="${FILES[$n]}"
+        if [ "$FILE" == "not found" ]; then
+            cat 1>&2 <<EOF
+There are missing files on your system.  The dynamic object $bin
+requires ${NAMES[$n]} n order to properly function.  mkinitrd cannot continue.
+EOF
+            exit 1
+        fi
+        let n++
+    done
+
+    # we don't want the name of the binary in the list
+    [ "${FILES[0]}" == "$bin" ] && unset FILES[0]
+
+    echo ${FILES[*]}
 }
 
 findmodule() {
@@ -275,13 +324,39 @@ finddmmods() {
     esac
 }
 
+inst_indent=""
 inst() {
-    if [ "$#" != "2" ];then
-        echo "usage: inst <file> <destination>"
-        return
+    if [ "$#" != "2" -a "$#" != "3" ];then
+        echo "usage: inst <file> <root> [<destination file>]"
+        return 1
     fi
-    vecho "$1 -> $2"
-    cp $1 $2
+    local file="$1" ; shift
+    local root="$1" ; shift
+    local dest="$1" ; shift
+    [ -z "$dest" ] && dest="$file"
+    mkdir -p "$root/$(dirname $dest)"
+
+    vecho "$inst_indent$file -> $root/$dest"
+    cp "$file" "$root/$dest"
+
+    local SHEBANG=$(dd if="$file" bs=2 count=1 2>/dev/null)
+    if [ "$SHEBANG" == '#!' ]; then
+        # We're intentionally not playing the "what did this moron run
+        # in his shell script" game.  There's nothing but pain in that.
+        local interp=$(head -1 "$file" | sed 's/^#! *//')
+        inst_indent="$inst_indent  "
+        inst "$interp" "$root"
+        inst_indent=${inst_indent:2}
+        return $?
+    fi
+
+    local DEPS=$(get_dso_deps "$file")
+    for x in $DEPS ; do
+        dynamic=yes
+        vecho "$inst_indent  $(basename $x) -> $root/$x"
+        mkdir -p "$(dirname "$root/$x")"
+        cp "$x" "$root/$x"
+    done
 }
 
 readlink() {
@@ -405,7 +480,7 @@ iscsi_set_parameters() {
 
 emit_iscsi () {
     if [ -n "${iscsi_devs}" ]; then
-        inst /sbin/iscsistart "$MNTIMAGE/bin/iscsistart"
+        inst /sbin/iscsistart "$MNTIMAGE" /bin/iscsistart
         emit "echo Attaching to iSCSI storage"
         for dev in ${iscsi_devs}; do
             iscsi_set_parameters $dev
@@ -558,7 +633,6 @@ handlenfs() {
     netdev=`/sbin/ip route get to $remoteip |sed 's|.*dev \(.*\).*|\1|g' |awk '{ print $1; exit }'`
     addnetdev $netdev
 }
-
 
 while [ $# -gt 0 ]; do
     case $1 in
@@ -1064,10 +1138,11 @@ mkdir -p $MNTIMAGE/sysroot
 ln -s bin $MNTIMAGE/sbin
 
 if [ -e /etc/fstab.sys ]; then
-    inst /etc/fstab.sys "$MNTIMAGE/etc/fstab.sys"
+    inst /etc/fstab.sys "$MNTIMAGE"
 fi
-inst /sbin/nash "$MNTIMAGE/bin/nash"
-inst /sbin/insmod.static "$MNTIMAGE/bin/insmod"
+inst /sbin/nash "$MNTIMAGE" /bin/nash
+inst /sbin/insmod "$MNTIMAGE" /bin/insmod
+
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
@@ -1106,7 +1181,7 @@ fi
 # FIXME -- this can really go poorly with clvm or duplicate vg names.
 # nash should do lvm probing for us and write its own configs.
 if [ -n "$vg_list" ]; then
-    inst /sbin/lvm.static "$MNTIMAGE/bin/lvm"
+    inst /sbin/lvm "$MNTIMAGE" /bin/lvm
     if [ -f /etc/lvm/lvm.conf ]; then
         cp $verbose --parents /etc/lvm/lvm.conf $MNTIMAGE/
     fi
@@ -1290,6 +1365,19 @@ emit "echo Switching to new root and running init."
 emit "switchroot"
 
 chmod +x $RCFILE
+
+if [ "$dynamic" == "yes" ]; then
+    vecho "This initrd has dynamic shared objects."
+    vecho "Adding ld.so configuration files"
+    [ -n "$LD_SO_CONF" ] && inst "$LD_SO_CONF" "$MNTIMAGE" /etc/ld.so.conf
+    mkdir -p $MNTIMAGE/etc/ld.so.conf.d
+    for x in $(find $LD_SO_CONF_D -type f) ; do
+        inst "$x" "$MNTIMAGE" "/etc/ld.so.conf.d/$(basename "$x")"
+    done
+
+    vecho "Running ldconfig"
+    /sbin/ldconfig -r "$MNTIMAGE"
+fi
 
 (cd $MNTIMAGE; findall . | cpio -H newc --quiet -o) >| $IMAGE || exit 1
 

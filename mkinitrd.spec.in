@@ -117,7 +117,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
-*
+* Handle dynamic executables and libraries
 - Don't clobber the kernel command line when handling resume (#215084).
 - Fix test for "withusb" (#215314).
 
