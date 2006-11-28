@@ -66,7 +66,7 @@ builtins=""
 modulefile=/etc/modules.conf
 withusb=1
 rc=0
-dynamic=
+dynamic=""
 
 IMAGESIZE=8000
 PRESCSIMODS="sd_mod"
@@ -141,8 +141,10 @@ resolve_device_name() {
     echo nash-resolveDevice "$1" | /sbin/nash --forcequiet
 }
 
+DSO_DEPS=""
 get_dso_deps() {
     bin="$1" ; shift
+    DSO_DEPS=""
 
     declare -a FILES
     declare -a NAMES
@@ -154,7 +156,7 @@ get_dso_deps() {
         $ldso --verify $bin >/dev/null 2>&1 || continue
 
         # I still hate shell.
-        n=0
+        declare -i n=0
         while read NAME I0 FILE ADDR I1 ; do
             [ "$FILE" == "not" ] && FILE="$FILE $ADDR"
             NAMES[$n]="$NAME"
@@ -166,10 +168,17 @@ get_dso_deps() {
 EOF
     done
 
-    [ ${#FILES} -eq 0 ] && return 1
+    [ ${#FILES[*]} -eq 0 ] && return 1
 
-    n=1
-    while [ $n -lt ${#FILES} ]; do
+    # we don't want the name of the binary in the list
+    if [ "${FILES[0]}" == "$bin" ]; then
+        FILES[0]=""
+        NAMES[0]=""
+        [ ${#FILES[*]} -eq 1 ] && return 1
+    fi
+
+    declare -i n=0
+    while [ $n -lt ${#FILES[*]} ]; do
         FILE="${FILES[$n]}"
         if [ "$FILE" == "not found" ]; then
             cat 1>&2 <<EOF
@@ -178,13 +187,11 @@ requires ${NAMES[$n]} n order to properly function.  mkinitrd cannot continue.
 EOF
             exit 1
         fi
+        dynamic="yes"
         let n++
     done
 
-    # we don't want the name of the binary in the list
-    [ "${FILES[0]}" == "$bin" ] && unset FILES[0]
-
-    echo ${FILES[*]}
+    DSO_DEPS="${FILES[@]}"
 }
 
 findmodule() {
@@ -332,33 +339,39 @@ access() {
     echo nash-access "$@" | /sbin/nash --force --quiet
 }
 
-inst_indent=""
+indent_chars=""
 inst() {
     if [ "$#" != "2" -a "$#" != "3" ];then
         echo "usage: inst <file> <root> [<destination file>]"
         return 1
     fi
     local file="$1" ; shift
-    local root="$1" ; shift
-    local dest="$1" ; shift
-    [ -z "$dest" ] && dest="$file"
+    local root="${1%%/}/" ; shift
+    local dest="${1##/}" ; shift
+    [ -z "$dest" ] && dest="${file##/}"
+
+    local old_indent_chars=${indent_chars}
+    indent_chars="${indent_chars}  "
+    indent=${indent_chars:2}
+
     mkdir -p "$root/$(dirname $dest)"
 
     local RET=0
-    local target=$(readlink "$file")
-    if [ "$dest" != "$target" ]; then
-        if [ ! -e "$root/$dest" ]; then
-            vecho "$inst_indent$file -> $root/$dest"
-            cp -aP "$file" "$root/$dest"
+    local target=""
+    [ -L "$file" ] && target=$(readlink "$file")
+    if [ -n "$target" -a "$dest" != "$target" ]; then
+        if [ -e "$root$dest" ]; then
+            #vecho "${indent}$root/$dest already exists"
+            RET=0
+        else
+            vecho "${indent}$file -> $root$dest"
+            ln -sf "$target" "$root$dest"
+
+            inst "$target" "$root"
+            RET=$?
+            indent_chars=${old_indent_chars}
+            return $RET
         fi
-        inst_indent="$inst_indent  "
-        inst "$target" "$root"
-        RET=$?
-        inst_indent=${inst_indent:2}
-        return $RET
-    elif [ "$file" != "$target" ]; then
-        [ -e "$root/$dest" ] || inst "$target" "$root" "$dest"
-        return $?
     fi
 
     local SHEBANG=$(dd if="$file" bs=2 count=1 2>/dev/null)
@@ -366,29 +379,33 @@ inst() {
         # We're intentionally not playing the "what did this moron run
         # in his shell script" game.  There's nothing but pain in that.
         local interp=$(head -1 "$file" | sed 's/^#! *//')
-        inst_indent="$inst_indent  "
         inst "$interp" "$root"
         RET=$?
-        inst_indent=${inst_indent:2}
+        indent_chars=${old_indent_chars}
         return $RET
     fi
 
-    local DEPS=$(get_dso_deps "$file")
-    for x in $DEPS ; do
-        dynamic=yes
-        if [ ! -e "$root/$x" ]; then
-            vecho "$inst_indent  $(basename $x) -> $root/$x"
-            mkdir -p "$(dirname "$root/$x")"
-            cp -aP "$x" "$root/$x"
-        fi
-        target=$(readlink "$x")
-        if [ "$target" != "$x" ]; then
-            vecho "target: '$target' x: '$x'"
-            inst_indent="$inst_indent  "
+    if [ -e "$root$dest" ]; then
+        #vecho "${indent}$root$dest already exists"
+        RET=0
+    else
+        if [ -n "$target" -a -L "$target" ]; then
             inst "$target" "$root"
-            inst_indent=${inst_indent:2}
+            RET=$?
+        else
+            vecho "${indent}$file -> $root$dest"
+            cp -aL "$file" "$root$dest"
+
+            get_dso_deps "$file"
+            local DEPS="$DSO_DEPS"
+            for x in $DEPS ; do
+                inst "$x" "$root"
+            done
+            RET=$?
         fi
-    done
+    fi
+    indent_chars=${old_indent_chars}
+    return $RET
 }
 
 findstoragedriverinsys () {
@@ -1095,8 +1112,6 @@ for n in $CONFMODS; do
     findmodule $n
 done
 
-finddmmods
-
 vecho "Using modules: $MODULES"
 
 MNTIMAGE=`mktemp -d ${TMPDIR}/initrd.XXXXXX`
@@ -1161,13 +1176,15 @@ mkdir -p $MNTIMAGE/sys
 mkdir -p $MNTIMAGE/sysroot
 ln -s bin $MNTIMAGE/sbin
 
+vecho "Building initrd in $MNTIMAGE"
+inst /sbin/nash "$MNTIMAGE" /bin/nash
+ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
+
+inst /sbin/insmod "$MNTIMAGE" /bin/insmod
+
 if [ -e /etc/fstab.sys ]; then
     inst /etc/fstab.sys "$MNTIMAGE"
 fi
-inst /sbin/nash "$MNTIMAGE" /bin/nash
-inst /sbin/insmod "$MNTIMAGE" /bin/insmod
-
-ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 for MODULE in $MODULES; do
     if [ -x /usr/bin/strip ]; then
@@ -1391,8 +1408,8 @@ emit "switchroot"
 chmod +x $RCFILE
 
 if [ "$dynamic" == "yes" ]; then
-    vecho "This initrd has dynamic shared objects."
-    vecho "Adding ld.so configuration files"
+    vecho "This initrd uses dynamic shared objects."
+    vecho "Adding dynamic linker configuration files."
     [ -n "$LD_SO_CONF" ] && inst "$LD_SO_CONF" "$MNTIMAGE" /etc/ld.so.conf
     mkdir -p $MNTIMAGE/etc/ld.so.conf.d
     for x in $(find $LD_SO_CONF_D -type f) ; do
@@ -1406,9 +1423,6 @@ if [ "$dynamic" == "yes" ]; then
         exit 1
     fi
 fi
-
-error tmpdir is $MNTIMAGE
-exit 1
 
 (cd $MNTIMAGE; findall . | cpio -H newc --quiet -o) >| $IMAGE || exit 1
 
