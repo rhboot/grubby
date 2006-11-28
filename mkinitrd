@@ -324,6 +324,14 @@ finddmmods() {
     esac
 }
 
+readlink() {
+    echo nash-readlink "$1" | /sbin/nash --force --quiet
+}
+
+access() {
+    echo nash-access "$@" | /sbin/nash --force --quiet
+}
+
 inst_indent=""
 inst() {
     if [ "$#" != "2" -a "$#" != "3" ];then
@@ -336,8 +344,22 @@ inst() {
     [ -z "$dest" ] && dest="$file"
     mkdir -p "$root/$(dirname $dest)"
 
-    vecho "$inst_indent$file -> $root/$dest"
-    cp "$file" "$root/$dest"
+    local RET=0
+    local target=$(readlink "$file")
+    if [ "$dest" != "$target" ]; then
+        if [ ! -e "$root/$dest" ]; then
+            vecho "$inst_indent$file -> $root/$dest"
+            cp -aP "$file" "$root/$dest"
+        fi
+        inst_indent="$inst_indent  "
+        inst "$target" "$root"
+        RET=$?
+        inst_indent=${inst_indent:2}
+        return $RET
+    elif [ "$file" != "$target" ]; then
+        [ -e "$root/$dest" ] || inst "$target" "$root" "$dest"
+        return $?
+    fi
 
     local SHEBANG=$(dd if="$file" bs=2 count=1 2>/dev/null)
     if [ "$SHEBANG" == '#!' ]; then
@@ -346,25 +368,27 @@ inst() {
         local interp=$(head -1 "$file" | sed 's/^#! *//')
         inst_indent="$inst_indent  "
         inst "$interp" "$root"
+        RET=$?
         inst_indent=${inst_indent:2}
-        return $?
+        return $RET
     fi
 
     local DEPS=$(get_dso_deps "$file")
     for x in $DEPS ; do
         dynamic=yes
-        vecho "$inst_indent  $(basename $x) -> $root/$x"
-        mkdir -p "$(dirname "$root/$x")"
-        cp "$x" "$root/$x"
+        if [ ! -e "$root/$x" ]; then
+            vecho "$inst_indent  $(basename $x) -> $root/$x"
+            mkdir -p "$(dirname "$root/$x")"
+            cp -aP "$x" "$root/$x"
+        fi
+        target=$(readlink "$x")
+        if [ "$target" != "$x" ]; then
+            vecho "target: '$target' x: '$x'"
+            inst_indent="$inst_indent  "
+            inst "$target" "$root"
+            inst_indent=${inst_indent:2}
+        fi
     done
-}
-
-readlink() {
-    echo nash-readlink "$1" | /sbin/nash --force --quiet
-}
-
-access() {
-    echo nash-access "$@" | /sbin/nash --force --quiet
 }
 
 findstoragedriverinsys () {
@@ -1377,7 +1401,14 @@ if [ "$dynamic" == "yes" ]; then
 
     vecho "Running ldconfig"
     /sbin/ldconfig -r "$MNTIMAGE"
+    if [ $? -ne 0 ]; then
+        error tmpdir is $MNTIMAGE
+        exit 1
+    fi
 fi
+
+error tmpdir is $MNTIMAGE
+exit 1
 
 (cd $MNTIMAGE; findall . | cpio -H newc --quiet -o) >| $IMAGE || exit 1
 
