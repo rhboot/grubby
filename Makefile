@@ -17,6 +17,7 @@ grubby_LIBS += -lparted -lblkid -luuid -lpopt -ldevmapper -lselinux -lsepol
 grubby_LIBS += $(shell pkg-config --libs libdhcp glib-2.0)
 
 test: all
+	@export TOPDIR=$(TOPDIR)
 	@./test.sh
 
 install: all
