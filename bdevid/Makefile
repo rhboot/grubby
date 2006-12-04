@@ -16,7 +16,7 @@ MODULES = scsi ata usb
 OBJECTS = $(bdevid_OBJECTS)
 LIBS = libbdevid.so
 TARGETS = libbdevid.pc libbdevidprobe.pc bdevid
-TARGETS = libbdevidprobe.a
+TARGETS += libbdevidprobe.a
 TARGETS += $(foreach dso, $(MODULES), ${dso}.so)
 SUBDIRS = python
 
