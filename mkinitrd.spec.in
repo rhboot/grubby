@@ -1,3 +1,6 @@
+%define pyver %(%{__python} -c "import sys; print sys.version[:3]")
+%{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)[1:]")}
+
 Summary: Creates an initial ramdisk image for preloading modules.
 Name: mkinitrd
 Version: VERSIONSUBST
@@ -15,6 +18,7 @@ Requires: e2fsprogs >= 1.38-12, glib2, libselinux, libsepol, coreutils
 BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-15, pkgconfig, glib2-devel
 BuildRequires: libdhcp4client-devel, libdhcp6client-devel, libdhcp-devel >= 1.9
 BuildRequires: device-mapper libselinux-devel libsepol-devel, python-devel
+BuildRequires: python
 %ifnarch s390 s390x
 Requires: dmraid
 %endif
