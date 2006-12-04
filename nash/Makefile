@@ -20,10 +20,10 @@ nash_LIBS += -ldevmapper -lparted -lblkid -lselinux -lsepol
 nash_LIBS += -luuid -lpopt -lresolv -lbdevid -ldl
 nash_LIBS += $(shell pkg-config --libs libdhcp glib-2.0) -lm
 
-nash :: version.h $(OBJECTS) libnash.so
+nash :: version.h $(OBJECTS) libnash.so.$(VERSION)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(nash_LIBS)
 
-libnash.so : libnash.so.$(VERSION)
+libnash.so : libnash.so.$(VERSION) nash
 	ln -sf $< $@
 
 libnash.so.$(VERSION) :: $(libnash_OBJECTS)
