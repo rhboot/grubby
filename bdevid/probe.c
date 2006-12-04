@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "bdevid.h"
 #include "priv.h"
@@ -154,6 +155,7 @@ int bdevid_probe(struct bdevid *b, char *file, bdevid_probe_cb cb, void *priv)
 
     g_hash_table_foreach(b->modules, bdevid_probe_module_cb, &pd);
     bdevid_sysfs_free_node(node);
+    close(bdev.fd);
     return 1;
 }
 /*
