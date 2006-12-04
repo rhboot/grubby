@@ -119,6 +119,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Mon Dec  4 2006 Peter Jones <pjones@redhat.com> - 6.0.1-1
+- Fix library soname and link error.
+
 * Mon Dec  4 2006 Peter Jones <pjones@redhat.com> - 6.0-1
 - Merge in close() fix in bdevid probe code from rhel5 branch
 - Try to load raid456 module as well as individual level-based modules
