@@ -3,6 +3,11 @@
 # test.sh -- grubby regression tests
 # 
 
+if [ -n "$TOPDIR" ]; then
+    LD_LIBRARY_PATH="$TOPDIR/nash:$TOPDIR/bdevid:/usr/lib:/lib"
+    export LD_LIBRARY_PATH
+fi
+
 #----------------------------------------------------------------------
 # Global vars
 #----------------------------------------------------------------------
