@@ -14,7 +14,8 @@ command_LIBS += -lnash -lparted -lblkid -luuid -ldevmapper -lselinux -lsepol
 
 MODULES = scsi ata usb
 OBJECTS = $(bdevid_OBJECTS)
-TARGETS = libbdevid.pc libbdevidprobe.pc libbdevid.so bdevid
+LIBS = libbdevid.so
+TARGETS = libbdevid.pc libbdevidprobe.pc bdevid
 TARGETS = libbdevidprobe.a
 TARGETS += $(foreach dso, $(MODULES), ${dso}.so)
 SUBDIRS = python

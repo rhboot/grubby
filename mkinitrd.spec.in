@@ -93,8 +93,7 @@ rm -rf $RPM_BUILD_ROOT
 
 %files devel
 %defattr(-,root,root)
-%{_libdir}/libnash.a
-%{_libdir}/libbdevid.a
+%{_libdir}/libnash.so
 %{_libdir}/libbdevid.so
 %{_libdir}/libbdevidprobe.a
 %{_libdir}/pkgconfig/libnash.pc
@@ -112,6 +111,8 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 %attr(755,root,root) /sbin/nash
+%{_libdir}/libnash.so.*
+%{_libdir}/libbdevid.so.*
 
 %changelog
 * Mon Dec  4 2006 Peter Jones <pjones@redhat.com> - 6.0-1
