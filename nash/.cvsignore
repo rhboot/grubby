@@ -3,3 +3,4 @@ debug
 hotplug
 version.h
 libnash.pc
+libnash.so*
