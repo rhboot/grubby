@@ -118,11 +118,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
-* Mon Dec  4 2006 Peter Jones <pjones@redhat.com> - 5.1.19.1-1
+* Mon Dec  4 2006 Peter Jones <pjones@redhat.com> - 5.1.19.0.1-1
 - Merge in close() fix in bdevid probe code from rhel5 branch
 - Try to load raid456 module as well as individual level-based modules
 - more sophisticated modalias probing, so we get new storage drivers better
   (patch from notting)
+- painful version number
 
 * Thu Sep 28 2006 Peter Jones <pjones@redhat.com> - 5.1.19-1
 - Fix booting on non-LVM devices where sysfs uses a '!' in the device path,
