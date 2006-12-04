@@ -29,6 +29,5 @@ install: all
 	fi
 
 grubby:: $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ \
-		-Wl,-Bstatic $(grubby_LIBS) -Wl,-Bdynamic
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(grubby_LIBS)
 
