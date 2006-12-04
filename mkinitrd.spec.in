@@ -54,7 +54,7 @@ Requires: glibc-devel, pkgconfig, e2fsprogs-devel, mkinitrd, glib2-devel
 Summary: Python bindings for libbdevid
 Group: System Environment/Libraries
 Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper, mkinitrd
-Requires: python >= %{pyver}
+Requires: python
 
 %package -n nash
 Summary: nash shell
