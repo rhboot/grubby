@@ -297,14 +297,15 @@ findstoragedriverinsys () {
         handleiscsi "$PWD"
         return
     fi
-    while [ ! -f modalias ]; do
-        [ "$PWD" = "/sys/devices" ] && return
+    while [ "$PWD" != "/sys/devices" ]; do
+        if [ -f modalias ]; then
+            [ -z "$deps" -a -L driver/module ] && \
+                deps=$(basename $(readlink driver/module))
+            for driver in $deps ; do
+                findmodule $driver
+            done
+        fi
         cd ..
-    done
-    moduledep $(cat modalias)
-    [ -z "$deps" -a -L driver/module ] && deps=$(basename $(readlink driver/module))
-    for driver in $deps ; do
-        findmodule $driver
     done
 }
 
@@ -457,6 +458,7 @@ handleraid() {
             ;;
         raid[01456] | raid10)
             findmodule $level
+            findmodule raid456
             start=1
             ;;
         *)
