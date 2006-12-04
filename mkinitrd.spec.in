@@ -117,9 +117,15 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
-* Handle dynamic executables and libraries
+* Mon Dec  4 2006 Peter Jones <pjones@redhat.com> - 6.0-1
+- Merge in close() fix in bdevid probe code from rhel5 branch
+- Try to load raid456 module as well as individual level-based modules
+- more sophisticated modalias probing, so we get new storage drivers better
+  (patch from notting)
+- Handle dynamic executables and libraries
 - Don't clobber the kernel command line when handling resume (#215084).
 - Fix test for "withusb" (#215314).
+- Link dynamically
 
 * Thu Oct 26 2006 Peter Jones <pjones@redhat.com>
 - Don't reference "netdev" in addnetdev()
