@@ -14,20 +14,22 @@ include ../Makefile.inc
 CFLAGS += -I$(TOPDIR)/nash/include -I$(TOPDIR)/bdevid/include
 CFLAGS += $(shell pkg-config --cflags libdhcp glib-2.0)
 
+LDFLAGS += -Wl,-rpath-link,$(TOPDIR)/bdevid:$(TOPDIR)/nash
+
 nash_LIBS = -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid -L/$(LIB)
 nash_LIBS += -lnash
 nash_LIBS += -ldevmapper -lparted -lblkid -lselinux -lsepol
 nash_LIBS += -luuid -lpopt -lresolv -lbdevid -ldl
 nash_LIBS += $(shell pkg-config --libs libdhcp glib-2.0) -lm
 
-nash :: version.h $(OBJECTS) libnash.so.$(VERSION)
+nash :: version.h $(OBJECTS) libnash.so
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(nash_LIBS)
 
-libnash.so : libnash.so.$(VERSION) nash
+libnash.so : libnash.so.$(VERSION)
 	ln -sf $< $@
 
 libnash.so.$(VERSION) :: $(libnash_OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -shared -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="$(shell basename $@)" -shared -o $@ $^
 
 libnash.pc:: libnash.pc.in
 	@sed -e "s/VERSIONSUBST/$(VERSION)/" \
@@ -44,7 +46,7 @@ debug:: $(OBJECTS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(nash_LIBS)
 
 clean::
-	rm -f nash nash.dynamic debug hotplug *.o *.a libnash.pc
+	rm -f nash nash.dynamic debug hotplug *.so *.so.* *.o *.a libnash.pc
 
 install:
 	mkdir -p $(DESTDIR)/sbin

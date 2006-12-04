@@ -26,7 +26,8 @@ CFLAGS += -I$(TOPDIR)/nash/include -I$(TOPDIR)/bdevid/include
 CFLAGS += $(shell pkg-config --cflags glib-2.0)
 CFLAGS += "-DBDEVID_DEFAULT_SEARCH_PATH=\"/$(LIB)/bdevid/:/usr/$(LIB)/bdevid/\""
 
-LDFLAGS := -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid
+LDFLAGS += -Wl,-rpath-link,$(TOPDIR)/nash:$(TOPDIR)/bdevid
+LDFLAGS += -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid
 
 bdevid :: command.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS)
