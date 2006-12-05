@@ -420,6 +420,7 @@ findstoragedriverinsys () {
     fi
     while [ "$PWD" != "/sys/devices" ]; do
         if [ -f modalias ]; then
+            modalias $(cat modalias)
             [ -z "$deps" -a -L driver/module ] && \
                 deps=$(basename $(readlink driver/module))
             for driver in $deps ; do
