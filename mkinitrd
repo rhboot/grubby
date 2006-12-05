@@ -40,7 +40,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=6.0.1
+VERSION=6.0.2
 
 PROBE="yes"
 MODULES=""
@@ -420,7 +420,7 @@ findstoragedriverinsys () {
     fi
     while [ "$PWD" != "/sys/devices" ]; do
         if [ -f modalias ]; then
-            modalias $(cat modalias)
+            moduledep $(cat modalias)
             [ -z "$deps" -a -L driver/module ] && \
                 deps=$(basename $(readlink driver/module))
             for driver in $deps ; do

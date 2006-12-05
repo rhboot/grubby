@@ -119,6 +119,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Tue Dec  5 2006 Peter Jones <pjones@redhat.com> - 6.0.2-1
+- Fix typo introduced in merge (patch from notting)
+
 * Mon Dec  4 2006 Peter Jones <pjones@redhat.com> - 6.0.1-1
 - Fix library soname and link error.
 
