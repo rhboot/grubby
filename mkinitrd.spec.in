@@ -118,6 +118,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Thu Dec 14 2006 Peter Jones <pjones@redhat.com> - 6.0.4-1
+- use "stabilized" with the new pata drivers so we don't race.
+
 * Thu Dec  7 2006 Jeremy Katz <katzj@redhat.com> - 6.0.3-1
 - build against arbitrary pythons and rebuild for python 2.5
 
