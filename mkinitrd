@@ -40,7 +40,7 @@ export PATH
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=6.0.4
+VERSION=6.0.5
 
 PROBE="yes"
 MODULES=""
@@ -1333,7 +1333,7 @@ echo -n 1 > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/online
 EOF
         done
     fi
-    if [ "${module::5}" == "pata_" -o "$module" == "ata_piix" ]; then
+    if [ "${module::5}" == "pata_" -o "$module" == "ata_piix" -o "$module" == "ahci" -o "${module::5}" == "sata_" ]; then
         emit "echo Waiting for driver initialization."
         emit "stabilized --hash --interval 250 /proc/scsi/scsi"
     fi
