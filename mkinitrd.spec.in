@@ -30,19 +30,9 @@ Provides: libbdevid = %{version}-%{release}
 Obsoletes: libbdevid < %{version}-%{release}
 
 %description
-Mkinitrd creates filesystem images for use as initial ramdisk (initrd)
-images.  These ramdisk images are often used to preload the block
-device modules (SCSI or RAID) needed to access the root filesystem.
-
-In other words, generic kernels can be built without drivers for any
-SCSI adapters which load the SCSI driver as a module.  Since the
-kernel needs to read those modules, but in this case it isn't able to
-address the SCSI adapter, an initial ramdisk is used.  The initial
-ramdisk is loaded by the operating system loader (normally LILO) and
-is available to the kernel as soon as the ramdisk is loaded.  The
-ramdisk image loads the proper SCSI adapter and allows the kernel to
-mount the root filesystem.  The mkinitrd program creates such a
-ramdisk using information found in the /etc/modules.conf file.
+mkinitrd creates filesystem images for use as initial ram filesystem
+(initramfs) images.  These images are used to find and mount the root
+filesystem.
 
 %package devel
 Summary: C header files and library for functionality exported by libnash.
