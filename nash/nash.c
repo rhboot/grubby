@@ -66,6 +66,7 @@
 #include "net.h"
 #define HAVE_NFS 1
 #include "sundries.h"
+#include "adler32.h"
 
 /* Need to tell loop.h what the actual dev_t type is. */
 #undef dev_t
@@ -603,6 +604,27 @@ lnCommand(char *cmd, char *end)
     }
 
     return 0;
+}
+
+static uint32_t
+checksumFile(int fd)
+{
+    char buf[16384] = { 0 };
+    size_t s;
+    uint32_t a = 0;
+
+    if (lseek(fd, 0, SEEK_SET) < 0) {
+        eprintf("error seeking: %m\n");
+        return 0;
+    }
+
+    while ((s = read(fd, buf, 16384)) >= 0) {
+        if (s == 0)
+            return a;
+
+        a = adler32(a, buf, s);
+    }
+    return a;
 }
 
 static int
@@ -1690,23 +1712,64 @@ stabilizedPoll(char *path, int iterations, struct timespec interval, int goal)
 }
 
 static int
+stabilizedHash(char *path, int iterations, struct timespec interval,
+    int goal)
+{
+    int fd;
+    uint32_t last = -1;
+    int count = 0, changed = 0;
+    int ret = -1;
+
+    if ((fd = open(path, O_RDONLY)) < 0) {
+        eprintf("stabilized: open %s: %m\n", path);
+        return -1;
+    }
+
+    do {
+        uint32_t a32 = checksumFile(fd);
+
+        if (a32 == last) {
+            if (++count == goal) {
+                ret = changed;
+                break;
+            }
+        } else {
+            changed = 1;
+            count = 0;
+        }
+        last = a32;
+
+        udelayspec(interval);
+
+        if (iterations != -1)
+            iterations--;
+    } while (iterations == -1 || iterations > 0);
+
+    close(fd);
+    return ret;
+}
+
+static int
 stabilizedCommand(char *cmd, char *end)
 {
     struct timespec interval_ts = {0,0};
     int iterations=-1;
     long long interval=750;
     char *buf = NULL, *file = NULL;
-    int rc, do_poll = 0;
+    int rc, do_poll = 0, do_hash = 0;
 
     while ((cmd = getArg(cmd, end, &buf))) {
         if (!strcmp(buf, "--poll")) {
             do_poll = 1;
             continue;
+        } else if (!strcmp(buf, "--hash")) {
+            do_hash = 1;
+            continue;
         }
         if (!strcmp(buf, "--iterations")) {
             if (!(cmd = getArg(cmd, end, &buf))) {
 usage:
-                eprintf("usage: stabilized [--poll] [ --iterations N ] "
+                eprintf("usage: stabilized [--poll|--hash] [ --iterations N ] "
                         "[ --interval MILLISECS ] <file>\n");
                 return 1;
             }
@@ -1732,6 +1795,8 @@ usage:
 
     if (do_poll)
         rc = stabilizedPoll(file, iterations, interval_ts, 10);
+    else if (do_hash)
+        rc = stabilizedHash(file, iterations, interval_ts, 10);
     else
         rc = stabilizedMtime(file, iterations, interval_ts, 10);
 

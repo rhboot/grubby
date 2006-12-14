@@ -1333,6 +1333,10 @@ echo -n 1 > /sys/bus/ccw/drivers/zfcp/${DEVICE/0x/}/online
 EOF
         done
     fi
+    if [ "${module::5}" == "pata_" -o "$module" == "ata_piix" ]; then
+        emit "echo Waiting for driver initialization."
+        emit "stabilized --hash --interval 250 /proc/scsi/scsi"
+    fi
 done
 unset usb_mounted
 
