@@ -91,6 +91,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/new-kernel-pkg
 %attr(755,root,root) /sbin/grubby
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
+%attr(755,root,root) %dir %{_sysconfdir}/mkinitrd
 /%{_lib}/bdevid
 %{_libdir}/libbdevid.so.*
 
@@ -117,6 +118,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
+* Fri Dec 15 2006 Peter Jones <pjones@redhat.com> - 5.1.19.2-1
+- Honor installing with 'nompath' (#219483)
+
+* Wed Dec  6 2006 Peter Jones <pjones@redhat.com> - 5.1.19.1-2
+- Rebuild for new libparted (#218624)
+
 * Mon Oct 30 2006 Peter Jones <pjones@redhat.com> - 5.1.19.1-1
 - Merge missing FC6 fixes back into this branch to eliminate regressions.
 

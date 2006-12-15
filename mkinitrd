@@ -31,11 +31,13 @@ export PATH
 
 . /etc/rc.d/init.d/functions
 
+LC_COLLATE=C
+export LC_COLLATE
 # Set the umask. For iscsi, the initrd can contain platintext
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.19.1
+VERSION=5.1.19.2
 
 PROBE="yes"
 MODULES=""
@@ -43,7 +45,11 @@ PREMODS=""
 DMDEVS=""
 NET_LIST=""
 
-[ -e /etc/sysconfig/mkinitrd ] && . /etc/sysconfig/mkinitrd
+CFG_DIR=${MKINITRD_CONFIG_DIR:-/etc/sysconfig/mkinitrd}
+cfgs="$CFG_DIR/*[^~]"
+for cfg in $cfgs ; do
+    [ -x $cfg ] && . $cfg
+done
 
 CONFMODS="$MODULES"
 MODULES=""
@@ -58,6 +64,11 @@ img_vers=""
 builtins=""
 modulefile=/etc/modules.conf
 withusb=1
+if [ "$MULTIPATH" == "no" ]; then
+    withmpath=0
+else
+    withmpath=1
+fi
 rc=0
 
 IMAGESIZE=8000
@@ -953,6 +964,7 @@ if [ -n "$testdm" -a -x /sbin/dmsetup -a -e /dev/mapper/control ]; then
     
             case "$TYPE" in
                 multipath|emc)
+                    [ "$withmpath" == "0" ] && continue
                     # ugggh.  We could try to fish the module name out, but it
                     # requires real parsing... 
                     # XXX also covered by #132001

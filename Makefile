@@ -11,6 +11,7 @@ test: all
 
 install:
 	for n in $(SUBDIRS); do make -C $$n install DESTDIR=$(DESTDIR); done
+	mkdir $(DESTDIR)/etc/sysconfig/mkinitrd
 	for i in sbin $(mandir)/man8; do \
 		if [ ! -d $(DESTDIR)/$$i ]; then \
 			mkdir -p $(DESTDIR)/$$i; \
