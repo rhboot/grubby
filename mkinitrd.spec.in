@@ -108,6 +108,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Tue Dec 19 2006 Peter Jones <pjones@redhat.com> - 6.0.6-1
+- Fix LABEL handling
+
 * Thu Dec 14 2006 Jeremy Katz <katzj@redhat.com> - 6.0.5-1
 - use "stabilized" with ahci and sata_* as well 
 
