@@ -108,6 +108,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Wed Jan  3 2007 Jeremy Katz <katzj@redhat.com>
+- don't create /dev/tty* on s390 (#209204)
+
 * Tue Dec 19 2006 Peter Jones <pjones@redhat.com> - 6.0.6-1
 - Fix LABEL handling
 
