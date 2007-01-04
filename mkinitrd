@@ -1167,6 +1167,7 @@ emit "echo Creating block device nodes."
 emit "mkblkdevs"
 
 usb_mounted="prep"
+scsi=""
 for MODULE in $MODULES; do
     text=""
     module=`echo $MODULE | sed -e "s|.*/||" -e "s/.k\?o$//"`
@@ -1198,12 +1199,15 @@ for MODULE in $MODULES; do
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" -o "$module" = "ub" ]; then
-        emit "echo Waiting for driver initialization."
-        emit "stabilized /proc/bus/usb/devices"
+	emit "echo Waiting for driver initialization."
+	emit "stabilized /proc/bus/usb/devices"
     fi
     if [ "$module" = "sbp2" ]; then
-        emit "echo Waiting for driver initialization."
-        emit "stabilized /sys/bus/ieee1394/drivers/sbp2"
+	emit "echo Waiting for driver initialization."
+	emit "stabilized /sys/bus/ieee1394/drivers/sbp2"
+    fi
+    if [ "$module" = "scsi_mod" ]; then
+	scsi="yes"
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
         emit "echo Waiting 2 seconds for driver initialization."
@@ -1225,6 +1229,12 @@ EOF
     fi
 done
 unset usb_mounted
+
+if [ -n "$scsi" ]; then
+    emit "echo Waiting for driver initialization."
+    emit "stabilized --hash --interval 250 /proc/scsi/scsi"
+fi
+
 
 if [ -n "$vg_list" ]; then
     emit "echo Making device-mapper control node"
