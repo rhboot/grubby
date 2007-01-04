@@ -37,7 +37,7 @@ export LC_COLLATE
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.19.2
+VERSION=5.1.19.3
 
 PROBE="yes"
 MODULES=""
@@ -362,8 +362,11 @@ findnetdriver() {
 }
 
 iscsi_get_rec_val() {
-    result=$(/sbin/iscsiadm --show -m node -M ${1} | grep "^${2} = " | \
-        sed -e s'/.* = //')
+
+    # The open-iscsi 742 release changed to using flat files in
+    # /var/lib/iscsi.
+
+    result=$(grep "^${2} = " "$1" |  sed -e s'/.* = //')
 }
 
 iscsi_set_parameters() {
@@ -372,18 +375,23 @@ iscsi_set_parameters() {
 
     # Check once before getting explicit values, so we can output a decent
     # error message.
-    if ! /sbin/iscsiadm -m node -M ${path} > /dev/null ; then
+    declare -a iparams=( $(/sbin/iscsiadm -m session 2>/dev/null) )
+    if [[ -z "${iparams[*]}" ]]; then
         echo Unable to find iscsi record for $path
         exit 1
     fi
-
     nit_name=$(grep "^InitiatorName=" /etc/iscsi/initiatorname.iscsi | \
         sed -e "s/^InitiatorName=//")
 
-    iscsi_get_rec_val $path "node.name"; tgt_name=${result}
-    iscsi_get_rec_val $path "node.tpgt"; tpgt=${result}
-    iscsi_get_rec_val $path "node.conn\[0\].address"; tgt_ipaddr=${result}
-    iscsi_get_rec_val $path "node.conn\[0\].port"; tgt_port=${result}
+    tgt_name=${iparams[3]}
+    # edit ipaddr:port,portalgrp -> ipaddr,port,portalgrp
+    iportal=${iparams[2]/:/,}
+    declare -a ipt=( $(echo ${iportal//,/ }) )
+    tgt_ipaddr=${ipt[0]}
+    tgt_port=${ipt[1]}
+    tpgt=${ipt[2]}
+
+    path=/var/lib/iscsi/nodes/${tgt_name}/${tgt_ipaddr},${tgt_port}
 
     # Note: we get chap secrets (passwords) in plaintext, and also store
     # them in the initrd.

@@ -117,8 +117,12 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
-* Thu Jan  4 2007 Jeremy Katz <katzj@redhat.com> - VERSIONSUBST-1
+* Thu Jan  4 2007 Jeremy Katz <katzj@redhat.com> - 5.1.19.3-1
 - don't create /dev/tty* on s390 (#209204)
+- handle multi-line options (#209447)
+- ensure that scsi devices have stabilized to ensure the rootdev 
+  is available (#213039)
+- iscsi tools changed their syntax somewhat (#221088)
 
 * Fri Dec 15 2006 Peter Jones <pjones@redhat.com> - 5.1.19.2-1
 - Honor installing with 'nompath' (#219483)
