@@ -117,6 +117,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
+* Thu Jan  4 2007 Jeremy Katz <katzj@redhat.com> - VERSIONSUBST-1
+- don't create /dev/tty* on s390 (#209204)
+
 * Fri Dec 15 2006 Peter Jones <pjones@redhat.com> - 5.1.19.2-1
 - Honor installing with 'nompath' (#219483)
 
