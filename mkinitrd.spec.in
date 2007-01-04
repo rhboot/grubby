@@ -110,6 +110,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Thu Jan  4 2007 Jeremy Katz <katzj@redhat.com>
 - handle multiline options (#209447)
+- iscsi tools changed their syntax (#221088)
 
 * Wed Jan  3 2007 Jeremy Katz <katzj@redhat.com>
 - don't create /dev/tty* on s390 (#209204)
