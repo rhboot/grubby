@@ -848,7 +848,7 @@ if [ "x$PROBE" == "xyes" ]; then
     if [ "$rootfs" == "nfs" -a "x$net_list" == "x" ]; then
         handlenfs $rootdev
     # check if it's root by label
-    elif [ "$rootdev" != "${rootdev##LABEL=}" -o
+    elif [ "$rootdev" != "${rootdev##LABEL=}" -o \
             "$rootdev" != "${rootdev##UUID=}" ]; then
         rootopts=$(echo $rootopts | sed -e 's/^r[ow],//' -e 's/,_netdev//' -e 's/_netdev//' -e 's/,r[ow],$//' -e 's/,r[ow],/,/' -e 's/^r[ow]$/defaults/' -e 's/$/,ro/')
         devname=$(resolve_device_name $rootdev)
@@ -869,7 +869,7 @@ if [ "x$PROBE" == "xyes" ]; then
 
     # find the first swap dev which would get used for swsusp
     swsuspdev=$(awk '/^[ \t]*[^#]/ { if ($3 == "swap") { print $1; exit }}' $fstab)
-    if [ "$swsuspdev" = "${swsuspdev##LABEL=}" -o
+    if [ "$swsuspdev" = "${swsuspdev##LABEL=}" -o \
             "$swsuspdev" = "${swsuspdev##UUID=}" ]; then
         handlelvordev $swsuspdev
     fi

@@ -117,6 +117,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
+* XXX XXX XX 2007 Peter Jones <pjones@redhat.com> - 5.1.19.4-1
+- Fix LABEL/UUID handling in mkinitrd (#222106)
+
 * Thu Jan  4 2007 Jeremy Katz <katzj@redhat.com> - 5.1.19.3-1
 - don't create /dev/tty* on s390 (#209204)
 - handle multi-line options (#209447)
