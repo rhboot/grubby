@@ -37,7 +37,7 @@ export LC_COLLATE
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.19.3
+VERSION=5.1.19.4
 
 PROBE="yes"
 MODULES=""
