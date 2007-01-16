@@ -117,6 +117,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
+* Mon Jan 15 2007 Peter Jones <pjones@redhat.com> - 5.1.19.5-1
+- Use a different method of getting iscsi info
+  Resolves: #221088
+
 * Thu Jan 11 2007 Peter Jones <pjones@redhat.com> - 5.1.19.4-1
 - Fix LABEL/UUID handling in mkinitrd
   Resolves: #222106
