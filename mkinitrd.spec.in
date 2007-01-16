@@ -90,7 +90,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/new-kernel-pkg
 %attr(755,root,root) /sbin/grubby
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
-%attr(755,root,root) %dir %{_sysconfdir}/mkinitrd
+%attr(755,root,root) %dir %{_sysconfdir}/sysconfig/mkinitrd
 /%{_lib}/bdevid
 %{_libdir}/libbdevid.so.*
 
