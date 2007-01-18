@@ -37,7 +37,7 @@ export LC_COLLATE
 # password (chap secret), so only allow read by owner.
 umask 077
 
-VERSION=5.1.19.5
+VERSION=5.1.19.6
 
 PROBE="yes"
 MODULES=""
@@ -1158,9 +1158,11 @@ fi
 # XXX really we need to openvt too, in case someting changes the
 # color palette and then changes vts on fbcon before gettys start.
 # (yay, fbcon bugs!)
-for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 ; do
-    emit "mknod /dev/tty$i c 4 $i"
-done
+if ! echo "$(uname -m)" | grep -q "s390"; then 
+    for i in 0 1 2 3 4 5 6 7 8 9 10 11 12 ; do
+        emit "mknod /dev/tty$i c 4 $i"
+    done
+fi
 
 for i in 0 1 2 3 ; do
     emit "mknod /dev/ttyS$i c 4 $(($i + 64))"

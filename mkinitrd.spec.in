@@ -117,6 +117,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
+* Thu Jan 18 2007 Peter Jones <pjones@redhat.com> - 5.1.19.6-1
+- Don't create /dev/ttyN on s390*
+  Resolves: #209204
+
 * Mon Jan 15 2007 Peter Jones <pjones@redhat.com> - 5.1.19.5-1
 - Use a different method of getting iscsi info
   Resolves: #221088
