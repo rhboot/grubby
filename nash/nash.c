@@ -1602,7 +1602,7 @@ showLabelsCommand(char *cmd, char *end)
         eprintf("showlabels: unexpected arguments\n");
         return 1;
     }
-    block_show_labels(_nash_context);
+    block_show_labels(_nash_context, 0);
     return 0;
 }
 

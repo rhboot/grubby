@@ -28,7 +28,7 @@
 #include "util.h"
 
 void
-block_show_labels(nashContext *c)
+block_show_labels(nashContext *c, int removables)
 {
     nashBdevIter biter;
     nashBdev dev = NULL;
@@ -42,7 +42,7 @@ block_show_labels(nashContext *c)
         const char *type, *data;
         char *label=NULL, *uuid=NULL;
 
-        if (nashBdevRemovable(dev))
+        if (!removables && nashBdevRemovable(dev))
             continue;
 
         smartmknod(dev->dev_path, S_IFBLK | 0700, dev->devno);

@@ -28,7 +28,7 @@ struct nash_block_dev {
     dev_t devno;
 };
 
-extern void block_show_labels(nashContext *c);
+extern void block_show_labels(nashContext *c, int removables);
 
 extern void sysfs_blkdev_probe(nashContext *c, const char *dirname);
 
