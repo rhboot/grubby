@@ -70,6 +70,8 @@ nashDmGetInfo(const char *name, struct dm_task **task, struct dm_info *info)
     return 0;
 }
 
+/* XXX this should be refactored so that it's given a specific map,
+ * not just a name */
 static char *
 nashDmGetType(const char *name)
 {
@@ -77,7 +79,7 @@ nashDmGetType(const char *name)
     char *type = NULL;
     int ret;
 
-    struct dm_task *task;
+    struct dm_task *task = NULL;
 
     ret = nashDmTaskNew(DM_DEVICE_TABLE, name, &task);
     if (ret < 0)
@@ -90,9 +92,8 @@ nashDmGetType(const char *name)
         char *tmp = NULL;
 
         next = dm_get_next_target(task, next, &start, &length, &tmp, &params);
-        if (!type) {
+        if (!type && tmp)
             type = strdup(tmp);
-        }
     } while (next);
 
     dm_task_destroy(task);

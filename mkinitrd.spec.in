@@ -112,6 +112,7 @@ rm -rf $RPM_BUILD_ROOT
 - Fix UUID handling on resume devices.
 - Don't require that a driver be modular when looking up its name in sysfs.
 - Make removable devices conditionally considered when scanning labels.
+- Fix handling of dm devices without device tables.
 
 * Thu Jan  4 2007 Jeremy Katz <katzj@redhat.com>
 - handle multiline options (#209447)
