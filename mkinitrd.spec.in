@@ -108,6 +108,10 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Mon Jan 22 2007 Peter Jones <pjones@redhat.com> - 6.0.7-1
+- Fix UUID handling on resume devices.
+- Don't require that a driver be modular when looking up its name in sysfs.
+
 * Thu Jan  4 2007 Jeremy Katz <katzj@redhat.com>
 - handle multiline options (#209447)
 - iscsi tools changed their syntax (#221088)
