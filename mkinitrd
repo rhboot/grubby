@@ -671,7 +671,7 @@ for MODULE in $MODULES; do
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
     fullmodule=`echo $MODULE | sed "s|.*/||"`
 
-    options=`sed -n -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
+    options=`sed -n -e ':a' -e '/\\\\$/N; s/\\\\\n//; ta' -e "s/^options[ 	][ 	]*$module[ 	][ 	]*//p" $modulefile 2>/dev/null`
 
     if [ -n "$verbose" ]; then
 	if [ -n "$options" ]; then
