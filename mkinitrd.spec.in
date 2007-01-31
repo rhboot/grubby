@@ -61,6 +61,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
 
 %changelog
+* Fri Jan 31 2007 Peter Jones <pjones@redhat.com> - 4.2.1.10-1
+- Allow use of usb devices as the root filesystem (#202070)
+
 * Thu Jan 30 2007 Peter Jones <pjones@redhat.com> - 4.2.1.9-1
 - Fix handling of modprobe options when they span multiple lines (#126351)
 

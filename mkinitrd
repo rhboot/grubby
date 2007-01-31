@@ -28,8 +28,9 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:$PATH
 export PATH
 
-VERSION=4.2.1.9
+VERSION=4.2.1.10
 
+withusb=1
 compress=1
 allowmissing=""
 target=""
@@ -122,12 +123,24 @@ findmodule() {
 	findmodule ieee1394
 	findmodule ohci1394
 	modName="sbp2"
-    else
-	moduledep $modName
-	for i in $deps; do
-	    findmodule $i
-	done
+    elif [ "$modName" = "usb-storage" ]; then
+	usbModName="$modName"
     fi
+    if [ -n "$usbModName" \
+            -a "$modName" != "uhci-hcd" \
+            -a "$modName" != "ohci-hcd" \
+            -a "$modName" != "ehci-hcd" ]; then
+        withusb=1
+        findmodule ehci-hcd
+        findmodule ohci-hcd
+        findmodule uhci-hcd
+
+        usbModName=""
+    fi
+    moduledep $modName
+    for i in $deps; do
+	findmodule $i
+    done
 
     for modExt in o.gz o ko ; do
 	if [ -d /lib/modules/$kernel/updates ]; then
@@ -195,6 +208,9 @@ while [ $# -gt 0 ]; do
 	--with-usb)
 	    withusb=yes
 	    ;;
+	--without-usb)
+		withusb=no
+		;;
 
 	--with*)
 	    if echo $1 | grep -q '=' ; then
@@ -666,6 +682,7 @@ echo -n "/sbin/hotplug" > /proc/sys/kernel/hotplug
 EOF
 fi
 
+usb_mounted="prep"
 for MODULE in $MODULES; do
     text=""
     module=`echo $MODULE | sed "s|.*/||" | sed "s/.k\?o$//"`
@@ -679,14 +696,31 @@ for MODULE in $MODULES; do
 	fi
         echo "Loading module $module$text"
     fi
+    # we mount usbfs before the first module *after* the HCDs
+    if [ "$usb_mounted" == "prep" ]; then
+        if [[ "$module" =~ ".hci[_-]hcd" ]]; then
+            usb_mounted="no"
+        fi
+    elif [ "$usb_mounted" == "no" ]; then
+        if [[ ! "$module" =~ ".hci[_-]hcd" ]]; then
+            usb_mounted=yes
+            echo "mount -t usbfs /proc/bus/usb /proc/bus/usb" >> $RCFILE
+        fi
+    fi
     echo "echo \"Loading $fullmodule module\"" >> $RCFILE
     echo "insmod /lib/$fullmodule $options" >> $RCFILE
 
     # Hack - we need a delay after loading usb-storage to give things
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" ]; then
-	echo "sleep 5" >> $RCFILE
+        echo "echo \"Waiting for driver initialization.\"" >> $RCFILE 
+        echo "stabilized /proc/bus/usb/devices" >> $RCFILE
     fi
+    if [ "$module" = "sbp2" ]; then
+        echo "echo \"Waiting for driver initialization.\"" >> $RCFILE
+        echo "stabilized /sys/bus/ieee1394/drivers/sbp2" >> $RCFILE
+    fi
+
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
         echo "sleep 2" >> $RCFILE
         cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICE SCSIID WWPN SCSILUN FCPLUN; do
