@@ -108,6 +108,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Thu Feb  1 2007 Peter Jones <pjones@redhat.com>
+- Add support for ">>" in nash for better debugging of thaw from hibernate.
+
 * Mon Jan 22 2007 Peter Jones <pjones@redhat.com> - 6.0.7-1
 - Fix UUID handling on resume devices.
 - Don't require that a driver be modular when looking up its name in sysfs.

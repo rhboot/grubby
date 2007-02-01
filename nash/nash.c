@@ -481,7 +481,7 @@ static int
 otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
 {
     char ** args;
-    char ** nextArg;
+    char ** nextArg, **tmpArg;
     int wpid;
     int status = 0;
     char * stdoutFile = NULL;
@@ -509,11 +509,16 @@ otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
     *nextArg = NULL;
 
     /* if the next-to-last arg is a >, redirect the output properly */
-    if (((nextArg - args) >= 2) && !strcmp(*(nextArg - 2), ">")) {
+    tmpArg = nextArg - 2;
+    if (((nextArg - args) >= 2) && (!strcmp(*tmpArg, ">") ||
+                                    !strcmp(*tmpArg, ">>"))) {
+        int flags = O_CREAT | O_RDWR;
         stdoutFile = *(nextArg - 1);
         *(nextArg - 2) = NULL;
 
-        stdoutFd = open(stdoutFile, O_CREAT | O_RDWR | O_TRUNC, 0600);
+        if (*tmpArg[1] == '\0')
+            flags |= O_TRUNC;
+        stdoutFd = open(stdoutFile, flags, 0600);
         if (stdoutFd < 0) {
             eprintf("nash: failed to open %s: %m\n", stdoutFile);
             return 1;
