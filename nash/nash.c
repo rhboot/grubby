@@ -523,6 +523,7 @@ otherCommand(char * bin, char * cmd, char * end, int doFork, int killHp)
             eprintf("nash: failed to open %s: %m\n", stdoutFile);
             return 1;
         }
+        lseek(stdoutFd, 0, SEEK_END);
         setFdCoe(stdoutFd, 0);
     }
 
