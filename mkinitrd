@@ -1181,7 +1181,7 @@ if [ -z "$MNTIMAGE" -o -z "$IMAGE" ]; then
 fi
 
 mkdir -p $MNTIMAGE
-mkdir -p $MNTIMAGE/lib
+mkdir -p $MNTIMAGE/lib/firmware
 mkdir -p $MNTIMAGE/bin
 mkdir -p $MNTIMAGE/etc
 mkdir -p $MNTIMAGE/dev
@@ -1206,6 +1206,11 @@ for MODULE in $MODULES; do
     else
         cp $verbose -a $MODULE $MNTIMAGE/lib
     fi
+    for fw in $(/sbin/modinfo -F firmware $MODULE 2>/dev/null); do
+        if [ -f /lib/firmware/$fw ]; then
+            cp $verbose -a /lib/firmware/$fw $MNTIMAGE/lib/firmware/
+        fi
+    done
 done
 
 # mknod'ing the devices instead of copying them works both with and

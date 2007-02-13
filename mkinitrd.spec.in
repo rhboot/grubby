@@ -108,6 +108,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Tue Feb 13 2007 Peter Jones <pjones@redhat.com>
+- Query modules for firmware and try to copy it into the image.
+
 * Thu Feb  1 2007 Peter Jones <pjones@redhat.com>
 - Add support for ">>" in nash for better debugging of thaw from hibernate.
 
