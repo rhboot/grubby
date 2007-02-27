@@ -130,6 +130,21 @@ rm -rf $RPM_BUILD_ROOT
 * Wed Jan  3 2007 Jeremy Katz <katzj@redhat.com>
 - don't create /dev/tty* on s390 (#209204)
 
+* Thu Feb 08 2007 David Cantrell <dcantrell@redhat.com> - 6.0.6-6
+- Rebuild for new libdhcp4client and new libdhcp6client
+
+* Mon Feb 05 2007 Alasdair Kergon <agk@redhat.com> - 6.0.6-5
+- Add build dependency on new device-mapper-devel package.
+
+* Fri Feb 02 2007 David Cantrell <dcantrell@redhat.com> - 6.0.6-4
+- Rebuild for new libdhcp
+
+* Mon Jan 29 2007 David Cantrell <dcantrell@redhat.com> - 6.0.6-3
+- Rebuild for new libdhcp4client
+
+* Tue Jan 16 2007 Jesse Keating <jkeating@redhat.com> - 6.0.6-2
+- rebuild for new parted
+
 * Tue Dec 19 2006 Peter Jones <pjones@redhat.com> - 6.0.6-1
 - Fix LABEL handling
 
