@@ -16,7 +16,7 @@ Requires: filesystem >= 2.1.0, cpio, device-mapper, initscripts >= 8.22-1
 Requires: e2fsprogs >= 1.38-12, glib2, libselinux, libsepol, coreutils
 BuildRequires: popt e2fsprogs-devel parted-devel >= 1.7.1-15, pkgconfig, glib2-devel
 BuildRequires: libdhcp4client-devel, libdhcp6client-devel, libdhcp-devel >= 1.9
-BuildRequires: device-mapper libselinux-devel libsepol-devel, python-devel
+BuildRequires: device-mapper-devel libselinux-devel libsepol-devel, python-devel
 BuildRequires: python
 %ifnarch s390 s390x
 Requires: dmraid
@@ -41,12 +41,15 @@ Requires: nash = %{version}-%{release}
 %package -n libbdevid-python
 Summary: Python bindings for libbdevid
 Group: System Environment/Libraries
-Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper
+Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper-libs
 Requires: python, nash = %{version}-%{release}
 
 %package -n nash
 Summary: nash shell
 Group: System Environment/Base
+Requires: parted, device-mapper-libs, libsepol, libselinux, e2fsprogs-libs
+Requires: popt, libdhcp, libnl, libdhcp4client, libdhcp6client, glib2
+Requires: openssl, zlib
 Provides: libbdevid = %{version}-%{release}
 Obsoletes: libbdevid < %{version}-%{release}
 
