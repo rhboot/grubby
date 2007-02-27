@@ -26,8 +26,6 @@ Requires: ppc64-utils >= 0.3-1
 %endif
 Requires: nash = %{version}-%{release}
 BuildRoot: %{_tmppath}/%{name}-root
-Provides: libbdevid = %{version}-%{release}
-Obsoletes: libbdevid < %{version}-%{release}
 
 %description
 mkinitrd creates filesystem images for use as initial ram filesystem
@@ -38,16 +36,19 @@ filesystem.
 Summary: C header files and library for functionality exported by libnash.
 Group: Development/Libraries
 Requires: glibc-devel, pkgconfig, e2fsprogs-devel, mkinitrd, glib2-devel
+Requires: nash = %{version}-%{release}
 
 %package -n libbdevid-python
 Summary: Python bindings for libbdevid
 Group: System Environment/Libraries
-Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper, mkinitrd
-Requires: python
+Requires: glib2, e2fsprogs, libselinux, libsepol, device-mapper
+Requires: python, nash = %{version}-%{release}
 
 %package -n nash
 Summary: nash shell
 Group: System Environment/Base
+Provides: libbdevid = %{version}-%{release}
+Obsoletes: libbdevid < %{version}-%{release}
 
 %description devel
 C header files and library for functionality exported by libnash.
@@ -81,8 +82,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/new-kernel-pkg
 %attr(755,root,root) /sbin/grubby
 %attr(644,root,root) %{_mandir}/man8/grubby.8*
-/%{_lib}/bdevid
-%{_libdir}/libbdevid.so.*
 
 %files devel
 %defattr(-,root,root)
@@ -104,10 +103,14 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %attr(644,root,root) %{_mandir}/man8/nash.8*
 %attr(755,root,root) /sbin/nash
+/%{_lib}/bdevid
 %{_libdir}/libnash.so.*
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Tue Feb 27 2007 Peter Jones <pjones@redhat.com> - 6.0.8-1
+- nash and mkinitrd shouldn't both provide libbdevid.so.*
+
 * Tue Feb 13 2007 Peter Jones <pjones@redhat.com>
 - Query modules for firmware and try to copy it into the image.
 
