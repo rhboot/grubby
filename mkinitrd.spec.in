@@ -111,6 +111,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Wed Feb 28 2007 Peter Jones <pjones@redhat.com>
+- Fix linking error on bdevid probe modules
+
 * Tue Feb 27 2007 Peter Jones <pjones@redhat.com> - 6.0.8-1
 - nash and mkinitrd shouldn't both provide libbdevid.so.*
 

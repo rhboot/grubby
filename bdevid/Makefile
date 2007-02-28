@@ -32,8 +32,8 @@ LDFLAGS += -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid
 bdevid :: command.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $< $(command_LIBS)
 
-$(foreach lib,$(MODULES),$(lib).so) :: %.so : %.o libbdevidprobe.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -o $@ $< -shared $($*_LIBS) -lbdevidprobe
+$(foreach lib,$(MODULES),$(lib).so) :: %.so : %.o ../nash/wrap.o libbdevidprobe.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -Wl,-soname="$*.so.$(VERSION)" -o $@ $< ../nash/wrap.o -shared $($*_LIBS) -lbdevidprobe
 
 libbdevid.so.$(VERSION) : $(bdevid_OBJECTS)
 	$(CC) $(CFLAGS) -shared $(LDFLAGS) -Wl,-soname="$(shell basename $@)" -o $@ $^ $(bdevid_LIBS)
