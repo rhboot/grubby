@@ -118,6 +118,9 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) /sbin/nash
 
 %changelog
+* Mon Mar 12 2007 Peter Jones <pjones@redhat.com> - 5.1.19.0.3-1
+- Fix permissions on libbdevid.so.*, so find-requires picks it up properly.
+
 * Tue Dec  5 2006 Peter Jones <pjones@redhat.com> - 5.1.19.0.2-1
 - Fix typo introduced in merge (patch from notting)
 
