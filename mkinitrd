@@ -235,6 +235,10 @@ findmodule() {
         findmodule ieee1394
         findmodule ohci1394
         modName="sbp2"
+    elif [ "$modName" = "fw-sbp2" ]; then
+        findmodule fw-core
+        findmodule fw-ohci
+        modName="fw-sbp2"
     elif [ "$modName" = "gfs2" ]; then
         findmodule lock_nolock
         modName="gfs2"
