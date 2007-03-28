@@ -22,9 +22,6 @@ extern nashContext *nashNewContext(void);
 extern void _nashFreeContext(nashContext **);
 #define nashFreeContext(x) _nashFreeContext(&(x))
 
-extern struct bdevid *nashBdevidInit(nashContext *nc);
-extern void nashBdevidFinish(nashContext *nc);
-
 #endif /* NASH_LIB_H */
 /*
  * vim:ts=8:sw=4:sts=4:et
