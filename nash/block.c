@@ -230,16 +230,16 @@ err:
 }
 
 nashBdevIter
-nashBdevIterNewPoll(nashContext *c, const char *path,
+nashBdevIterNewPoll(nashContext *nc, const char *path,
                        struct timespec *timeout)
 {
-    return _nashBdevIterNew(c, path, timeout);
+    return _nashBdevIterNew(nc, path, timeout);
 }
 
 nashBdevIter
-nashBdevIterNew(nashContext *c, const char *path)
+nashBdevIterNew(nashContext *nc, const char *path)
 {
-    return _nashBdevIterNew(c, path, NULL);
+    return _nashBdevIterNew(nc, path, NULL);
 }
 
 static int
@@ -433,13 +433,13 @@ nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
 }
 
 char *
-nashFindDeviceByDevno(nashContext *c, dev_t devno)
+nashFindDeviceByDevno(nashContext *nc, dev_t devno)
 {
     nashBdevIter biter;
     nashBdev dev = NULL;
     char *path = NULL;
 
-    biter = nashBdevIterNew(c, "/sys/block");
+    biter = nashBdevIterNew(nc, "/sys/block");
     while (nashBdevIterNext(biter, &dev) >= 0) {
         if (dev->devno == devno) {
             path = strdup(strrchr(dev->dev_path, '/')+1);
@@ -451,13 +451,13 @@ nashFindDeviceByDevno(nashContext *c, dev_t devno)
 }
 
 static char *
-block_find_fs_by_keyvalue(nashContext *c, const char *key, const char *value)
+block_find_fs_by_keyvalue(nashContext *nc, const char *key, const char *value)
 {
     nashBdevIter biter;
     nashBdev dev = NULL;
     blkid_dev bdev = NULL;
 
-    biter = nashBdevIterNew(c, "/sys/block");
+    biter = nashBdevIterNew(nc, "/sys/block");
     while(nashBdevIterNext(biter, &dev) >= 0) {
         blkid_tag_iterate titer;
         const char *type, *data;
@@ -466,7 +466,7 @@ block_find_fs_by_keyvalue(nashContext *c, const char *key, const char *value)
         if (!strncmp(dev->dev_path, "/dev/dm-", 8))
             dmname = nashDmDevGetName(dev->devno);
         name = dmname ? dmname : dev->dev_path;
-        bdev = blkid_get_dev(c->cache, name, BLKID_DEV_NORMAL);
+        bdev = blkid_get_dev(nc->cache, name, BLKID_DEV_NORMAL);
         if (dmname)
             free(dmname);
         if (!bdev)
@@ -488,28 +488,28 @@ block_find_fs_by_keyvalue(nashContext *c, const char *key, const char *value)
 }
 
 char *
-nashFindFsByLabel(nashContext *c, const char *label)
+nashFindFsByLabel(nashContext *nc, const char *label)
 {
-    return block_find_fs_by_keyvalue(c, "LABEL", label);
+    return block_find_fs_by_keyvalue(nc, "LABEL", label);
 }
 
 char *
-nashFindFsByUUID(nashContext *c, const char *uuid)
+nashFindFsByUUID(nashContext *nc, const char *uuid)
 {
-    return block_find_fs_by_keyvalue(c, "UUID", uuid);
+    return block_find_fs_by_keyvalue(nc, "UUID", uuid);
 }
 
 char *
-nashFindFsByName(nashContext *c, const char *name)
+nashFindFsByName(nashContext *nc, const char *name)
 {
     blkid_dev bdev = NULL;
 
     if (!access("/sys/block", F_OK)) {
         /* populate the whole cache */
-        block_find_fs_by_keyvalue(c, "unlikely","unlikely");
+        block_find_fs_by_keyvalue(nc, "unlikely","unlikely");
 
         /* now look our device up */
-        bdev = blkid_get_dev(c->cache, name, BLKID_DEV_NORMAL);
+        bdev = blkid_get_dev(nc->cache, name, BLKID_DEV_NORMAL);
     }
 
     if (bdev)
@@ -521,26 +521,26 @@ nashFindFsByName(nashContext *c, const char *name)
 }
 
 char *
-nashAGetPathBySpec(nashContext *c, const char * spec)
+nashAGetPathBySpec(nashContext *nc, const char * spec)
 {
     char *path;
 
-    nashBlockInit(c);
+    nashBlockInit(nc);
     if (!strncmp(spec, "LABEL=", 6))
-        path = nashFindFsByLabel(c, spec+6);
+        path = nashFindFsByLabel(nc, spec+6);
     else if (!strncmp(spec, "UUID=", 5))
-        path = nashFindFsByUUID(c, spec+5);
+        path = nashFindFsByUUID(nc, spec+5);
     else
-        path = nashFindFsByName(c, spec);
-    nashBlockFinish(c);
+        path = nashFindFsByName(nc, spec);
+    nashBlockFinish(nc);
 
     return path;
 }
 
 int
-nashMkPathBySpec(nashContext *c, const char *spec, const char *path)
+nashMkPathBySpec(nashContext *nc, const char *spec, const char *path)
 {
-    char *existing = nashGetPathBySpec(c, spec);
+    char *existing = nashGetPathBySpec(nc, spec);
     struct stat sb;
 
     if (!existing || stat(existing, &sb) < 0 || !S_ISBLK(sb.st_mode))
