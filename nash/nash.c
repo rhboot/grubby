@@ -109,8 +109,6 @@
 #define MNT_DETACH 0x2
 #endif
 
-#define MAX(a, b) ((a) > (b) ? a : b)
-
 #define PATH "/usr/bin:/bin:/sbin:/usr/sbin"
 static char * env[] = {
     "PATH=" PATH,
@@ -1616,15 +1614,15 @@ static int
 sleepCommand(char * cmd, char * end)
 {
     char *delaystr;
-    long long delay;
+    struct timespec delay = { 0, 0 };
 
     if (!(cmd = getArg(cmd, end, &delaystr))) {
         eprintf("sleep: delay expected\n");
         return 1;
     }
 
-    delay = strtoll(delaystr, NULL, 0);
-    udelay(delay * 1000000);
+    delay.tv_sec = strtoll(delaystr, NULL, 0);
+    udelayspec(delay);
 
     return 0;
 }
