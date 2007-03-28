@@ -514,8 +514,13 @@ handle_events(nashContext *nc)
 
     memset(&uevent, '\0', sizeof (uevent));
 
-    while ((ret = nashGetUEventPoll(uh, &timeout, &uevent, &pd, 1)) >= 0 &&
-            !doexit) {
+    while (1) {
+        ret = nashGetUEventPoll(uh, &timeout, &uevent, &pd, 1);
+        if (doexit || (ret < 0 && errno != EINTR))
+            break;
+        else if (ret <= 0)
+            continue;
+
         seqnum = handle_single_uevent(nc, &uevent, seqnum);
         if (uevent.msg)
             free(uevent.msg);
@@ -563,6 +568,7 @@ handle_events(nashContext *nc)
             rc = 0;
             pd.revents = 0;
         }
+        usectospec(-1, &timeout);
     }
     if (nc->hp_childfd >= 0)
         close(nc->hp_childfd);
