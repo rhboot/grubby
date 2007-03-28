@@ -2152,13 +2152,18 @@ usage:
 static int
 mkDMNodCommand(char * cmd, char * end)
 {
-    int major = getDevNumFromProc("/proc/devices", "misc");
-    int minor = getDevNumFromProc("/proc/misc", "device-mapper");
+    int n = -1;
+    dev_t devno = makedev(-1,-1);
+    char *name = "device-mapper";
+    int major, minor;
 
-    if ((major == -1) || (minor == -1)) {
+    if ((n = getDevsFromProc(n, S_IFCHR, &name, &devno)) < 0) {
         eprintf("Unable to find device-mapper major/minor\n");
         return 1;
     }
+
+    major = major(devno);
+    minor = minor(devno);
 
     if (!access("/dev/mapper/control", R_OK)) {
         struct stat sb;
@@ -2170,8 +2175,7 @@ mkDMNodCommand(char * cmd, char * end)
         unlink("/dev/mapper/control");
     }
 
-    if (smartmknod("/dev/mapper/control", S_IFCHR | 0600,
-                   makedev(major, minor))) {
+    if (smartmknod("/dev/mapper/control", S_IFCHR | 0600, devno)) {
         eprintf("failed to create /dev/mapper/control\n");
         return 1;
     }

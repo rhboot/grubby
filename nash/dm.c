@@ -597,14 +597,14 @@ dm_iter_next(struct dm_iter *iter, int descend)
 static void
 dm_print_rmparts(nashContext *nc, const char *name)
 {
-    static int major;
+    char *dm = "device-mapper";
+    dev_t devno = makedev(-1,-1);
     struct dm_task *task;
     struct dm_deps *deps;
     int ret, i;
 
-    if (!major)
-        major = getDevNumFromProc("/proc/devices", "device-mapper");
-    if (!major)
+    i = -1;
+    if ((i = getDevsFromProc(i, S_IFBLK, &dm, &devno)) < 0)
         return;
 
     ret = nashDmTaskNew(DM_DEVICE_DEPS, name, &task);
@@ -618,7 +618,7 @@ dm_print_rmparts(nashContext *nc, const char *name)
     }
 
     for (i=0; i < deps->count; i++) {
-        if (major(deps->device[i]) != major) {
+        if (major(deps->device[i]) != major(devno)) {
             char *path = nashFindDeviceByDevno(nc, deps->device[i]);
             if (path)
                 printf("rmparts %s\n", path);
