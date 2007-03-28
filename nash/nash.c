@@ -2346,73 +2346,58 @@ networkCommand(char *cmd, char *end)
     return rc;
 }
 
+static void nash_load_blktab(nashContext *nc, char *file)
+{
+    return;
+}
 
 static int
 waitdevCommand(char *cmd, char *end)
 {
-    static struct blkent **blkents = NULL;
     char *device = NULL;
+    long long timeout = -2;
     int rc = 0;
 
-    if (!(cmd = getArg(cmd, end, &device))) {
-        eprintf("waitdev: device expected\n");
-        return 1;
+    while (1) {
+        if (!(cmd = getArg(cmd, end, &device))) {
+            eprintf("waitdev: block device name expected\n");
+            return 1;
+        }
+        if (timeout == -2 && !strncmp(device, "--timeout", 9)) {
+            char *to_str = NULL;
+
+            if (device[9] == '=') {
+                to_str = &device[10];
+            } else {
+                if (!(cmd = getArg(cmd, end, &to_str))) {
+                    eprintf("waitdev: value expected\n");
+                    return 1;
+                }
+            }
+            errno = 0;
+            timeout = strtoll(to_str, NULL, 0);
+            if ((timeout == LLONG_MIN || timeout == LLONG_MAX) && errno != 0){
+                eprintf("waitdev: \"%s\": %m\n", to_str);
+                return 1;
+            }
+        } else {
+            break;
+        }
     }
-    
+
+    if (timeout == -2)
+        timeout = -1;
+
     if (cmd < end) {
         eprintf("waitdev: unexpected arguments\n");
         return 1;
     }
 
-    if (!blkents) {
-        int m = 0;
-        FILE *blktab = NULL;
+    nash_load_blktab(_nash_context, "/etc/blktab");
 
-        if (!(blktab = setblkent("/etc/blktab", "r"))) {
-            eprintf("waitdev: couldn't open /etc/blktab\n");
-            return 1;
-        }
-
-        blkents = calloc(m+1, sizeof (struct blkent));
-        do {
-            struct blkent **newents = NULL;
-            struct blkent *be = NULL, *nbe = NULL;
-
-            if (!(be = getblkent(blktab)))
-                break;
-    
-            rc = 1;
-            if (!(nbe = alloca(sizeof (*nbe)
-                                + strlen(be->blk_name) + 1
-                                + strlen(be->blk_type) + 1
-                                + strlen(be->blk_opts) + 1)))
-                break;
-
-            if (!(newents = realloc(blkents, sizeof (struct blkent) * (m+2))))
-                break;
-            blkents = newents;
-
-            memcpy(nbe, be, sizeof (*nbe));
-            nbe->blk_name = (void *)nbe + sizeof(*nbe);
-            strcpy(nbe->blk_name, be->blk_name);
-            nbe->blk_type = nbe->blk_name + strlen(nbe->blk_name) + 1;
-            strcpy(nbe->blk_type, be->blk_type);
-            nbe->blk_opts = nbe->blk_type + strlen(nbe->blk_type) + 1;
-            strcpy(nbe->blk_opts, be->blk_opts);
-            blkents[m++] = nbe;
-            blkents[m] = NULL;
-            rc = 0;
-        } while (1);
-
-        endblkent(blktab);
-        if (rc) {
-            if (blkents)
-                free(blkents);
-        }
-    }
-
-    if (!rc && nashWaitForDevice(_nash_context, blkents, device) < 0)
-        rc = 1;
+    rc = 1;
+    if (nashWaitForDevice(_nash_context, device, timeout) > 0)
+        rc = 0;
 
     return rc;
 }

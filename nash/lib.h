@@ -52,9 +52,11 @@ struct nashContext_s {
     int hp_childfd;
 
     struct nashDevice **devs;
+
+    nashBdevIter waitdev_iter;
 };
 
-extern int nashWaitForDevice(nashContext *, struct blkent **, char *device);
+extern int nashWaitForDevice(nashContext *, char *device, long long timeout);
 
 #ifndef _GNU_SOURCE_DEFINED
 #undef _GNU_SOURCE
