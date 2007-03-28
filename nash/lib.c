@@ -106,8 +106,6 @@ _nashFreeContext(nashContext **nc)
         nashContext *c = *nc;
         while (c->fw_pathz)
             argz_delete(&c->fw_pathz, &c->fw_pathz_len, c->fw_pathz);
-        if (c->bdevid && c->nashBdevidFinish)
-            c->nashBdevidFinish(c);
         if (c->cache)
             nashBlockFinish(c);
         free(c);

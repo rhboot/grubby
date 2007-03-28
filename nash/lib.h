@@ -51,10 +51,6 @@ struct nashContext_s {
     int hp_parentfd;
     int hp_childfd;
 
-    struct bdevid *bdevid;
-
-    void (*nashBdevidFinish)(nashContext *nc);
-
     struct nashDevice **devs;
 };
 
