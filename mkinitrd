@@ -1435,6 +1435,8 @@ fi
 
 emit "echo Switching to new root and running init."
 emit "switchroot"
+emit "echo Booting has failed."
+emit "sleep -1"
 
 chmod +x $RCFILE
 
