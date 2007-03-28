@@ -36,7 +36,6 @@
 #include <nash.h>
 #include "lib.h"
 #include "block.h"
-#include "util.h"
 #include "dm.h"
 
 int
@@ -197,7 +196,7 @@ block_sysfs_iterate_destroy(nashBdevIter iter)
 }
 
 static nashBdevIter
-_nashBdevIterNew(nashContext *c, const char *path, struct timespec *timeout)
+_nashBdevIterNew(nashContext *nc, const char *path, struct timespec *timeout)
 {
     const char *dirpath = path ? path : "/sys/block";
     nashBdevIter iter = NULL;
@@ -205,7 +204,7 @@ _nashBdevIterNew(nashContext *c, const char *path, struct timespec *timeout)
     if (!(iter = calloc(1, sizeof(*iter))))
         return NULL;
 
-    iter->nc = c;
+    iter->nc = nc;
     iter->parent = NULL;
     iter->current = iter;
     iter->dent = NULL;
@@ -214,7 +213,7 @@ _nashBdevIterNew(nashContext *c, const char *path, struct timespec *timeout)
     iter->dirname = strdup(dirpath);
 
     if (timeout) {
-        if (!(iter->nh = nashUEventHandlerNew(c)))
+        if (!(iter->nh = nashUEventHandlerNew(nc)))
             goto err;
     }
 
