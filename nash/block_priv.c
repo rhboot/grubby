@@ -37,7 +37,7 @@ block_show_labels(nashContext *c, int removables)
     nashBlockInit(c);
     if (!(biter = nashBdevIterNew(c, "/sys/block")))
         goto out;
-    while(nashBdevIterNext(biter, &dev) >= 0) {
+    while (nashBdevIterNext(biter, &dev) > 0) {
         blkid_tag_iterate titer;
         const char *type, *data;
         char *label=NULL, *uuid=NULL;
@@ -50,7 +50,7 @@ block_show_labels(nashContext *c, int removables)
         if (!bdev)
             continue;
         titer = blkid_tag_iterate_begin(bdev);
-        while(blkid_tag_next(titer, &type, &data) >= 0) {
+        while (blkid_tag_next(titer, &type, &data) >= 0) {
             if (!strcmp(type, "LABEL"))
                 label = strdup(data);
             if (!strcmp(type, "UUID"))
@@ -82,7 +82,7 @@ sysfs_blkdev_probe(nashContext *c, const char *dirname)
     nashBdev dev = NULL;
 
     iter = nashBdevIterNew(c, dirname);
-    while(nashBdevIterNext(iter, &dev) >= 0)
+    while (nashBdevIterNext(iter, &dev) > 0)
         smartmknod(dev->dev_path, S_IFBLK | 0700, dev->devno);
     nashBdevIterEnd(&iter);
 }

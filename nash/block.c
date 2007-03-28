@@ -24,6 +24,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stddef.h>
 
 #include <argz.h>
 #include <envz.h>
@@ -165,8 +166,7 @@ struct nash_block_dev_iter {
     DIR *dir;
     char *dirname;
     struct dirent *dent;
-    struct timespec *timeout;
-    struct nash_uevent_handler *nh;
+    struct timespec timeout;
 
     struct nash_block_dev *bdev;
 };
@@ -208,13 +208,14 @@ _nashBdevIterNew(nashContext *nc, const char *path, struct timespec *timeout)
     iter->parent = NULL;
     iter->current = iter;
     iter->dent = NULL;
-    iter->timeout = timeout;
-
     iter->dirname = strdup(dirpath);
 
-    if (timeout) {
-        if (!(iter->nh = nashUEventHandlerNew(nc)))
+    if (timeout && (timeout->tv_sec != 0 && timeout->tv_nsec != 0)) {
+        if (!nc->uh && !(nc->uh = nashUEventHandlerNew(nc)))
             goto err;
+        iter->timeout = *timeout;
+    } else {
+        usectospec(0, &iter->timeout);
     }
 
     if (!(iter->dir = opendir(iter->dirname)))
@@ -222,8 +223,6 @@ _nashBdevIterNew(nashContext *nc, const char *path, struct timespec *timeout)
 
     return iter;
 err:
-    if (iter->nh)
-        nashUEventHandlerDestroy(iter->nh);
     block_sysfs_iterate_destroy(iter);
     free(iter);
     return NULL;
@@ -248,12 +247,13 @@ block_sysfs_try_dir(nashBdevIter iter, char *sysfs_path, nashBdev *dev)
     int ret;
     dev_t devno = 0;
     char *bang = NULL;
+    nashBdev tmp = NULL;
 
     if ((ret = nashParseSysfsDevno(sysfs_path, &devno)) < 0)
         return ret;
 
     /* we can't just assign it to *dev, or gcc decides it's unused */
-    nashBdev tmp = calloc(1, sizeof (struct nash_block_dev));
+    tmp = calloc(1, sizeof (struct nash_block_dev));
     tmp->type = ADD;
     tmp->devno = devno;
     tmp->sysfs_path = strdup(sysfs_path);
@@ -336,7 +336,12 @@ _nashBdevUEventIter(nashBdevIter iter, nashBdev *dev, struct timespec timeout)
         iter->dirname = NULL;
     }
 
-    while ((ret = nashGetUEvent(iter->nh, &timeout, &uevent)) >= 0) {
+    while (1) {
+        ret = nashGetUEvent(iter->nc->uh, &timeout, &uevent);
+        if (ret < 0 && errno == EINTR)
+            continue;
+        else if (ret <= 0)
+            break;
         ret = block_try_uevent(&uevent, dev);
         if (uevent.msg)
             free(uevent.msg);
@@ -349,7 +354,6 @@ _nashBdevUEventIter(nashBdevIter iter, nashBdev *dev, struct timespec timeout)
             return 0;
     }
 
-    nashUEventHandlerDestroy(iter->nh);
     return -1;
 }
 
@@ -360,23 +364,28 @@ nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
     nashBdevIter parent;
     char *name;
     struct stat sb;
+    struct timespec now;
+    struct timespec timeout, deadline;
+    int rc;
 
     if (!iter)
-        return -1;
+        return 0;
 
     nashBdevFreePtr(dev);
     iter->bdev = NULL;
     top = block_sysfs_get_top(iter);
     iter = top->current;
+
+    gettimespecofday(&now);
+    timeout = iter->timeout;
+    tsadd(&now, &timeout, &deadline);
     do {
         /* if we have an open dir, we're still iterating directories */
         if (iter->dir) {
-            iter->dent = readdir(iter->dir);
-
-            if (iter->dent != NULL &&
+            while ((iter->dent = readdir(iter->dir)) && 
                     (!strcmp(iter->dent->d_name, ".") ||
                      !strcmp(iter->dent->d_name, "..")))
-                continue;
+                ;
 
             if (iter->dent == NULL) {
                 int ret;
@@ -403,7 +412,7 @@ nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
                 free(name);
                 if (ret >= 0) {
                     iter->bdev = *dev;
-                    return 0;
+                    return 1;
                 }
 
                 continue;
@@ -422,14 +431,28 @@ nashBdevIterNext(nashBdevIter iter, nashBdev *dev)
             continue;
         }
 
-        /* we only ever get here if we're done iterating directories */
-        if (iter->timeout && _nashBdevUEventIter(iter, dev,*iter->timeout) >= 0)
-            return 0;
+        /* we only ever get this far if we're done iterating directories */
 
-        break;
-    } while (1);
+        /* if the iter didn't get uevent handler during instantiation, then 
+         * we're not polling on hotplug, so bail now */
+        if (!iter->nc->uh)
+            break;
+
+        gettimespecofday(&now);
+        if (tsGT(&now, &deadline))
+            return -1;
+
+        timeout = iter->timeout;
+        if ((rc = _nashBdevUEventIter(iter, dev, timeout)) == 0)
+            return 1;
+        
+        gettimespecofday(&now);
+    } while (tsLE(&now, &deadline));
+    /* if we've timed out, we don't want to say we're done */
+    if (tsGT(&now, &deadline))
+        return -1;
     /* and we only ever get here if we're done iterating _everything_ */
-    return -1;
+    return 0;
 }
 
 char *
@@ -440,7 +463,7 @@ nashFindDeviceByDevno(nashContext *nc, dev_t devno)
     char *path = NULL;
 
     biter = nashBdevIterNew(nc, "/sys/block");
-    while (nashBdevIterNext(biter, &dev) >= 0) {
+    while (nashBdevIterNext(biter, &dev) > 0) {
         if (dev->devno == devno) {
             path = strdup(strrchr(dev->dev_path, '/')+1);
             break;
@@ -458,7 +481,7 @@ block_find_fs_by_keyvalue(nashContext *nc, const char *key, const char *value)
     blkid_dev bdev = NULL;
 
     biter = nashBdevIterNew(nc, "/sys/block");
-    while(nashBdevIterNext(biter, &dev) >= 0) {
+    while (nashBdevIterNext(biter, &dev) > 0) {
         blkid_tag_iterate titer;
         const char *type, *data;
         char *dmname = NULL, *name = NULL;

@@ -51,7 +51,7 @@ struct nashContext_s {
     int hp_parentfd;
     int hp_childfd;
 
-    struct nashDevice **devs;
+    struct nash_uevent_handler *uh;
 
     nashBdevIter waitdev_iter;
 };
