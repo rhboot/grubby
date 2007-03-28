@@ -464,7 +464,7 @@ block_find_fs_by_keyvalue(nashContext *c, const char *key, const char *value)
         char *dmname = NULL, *name = NULL;
 
         if (!strncmp(dev->dev_path, "/dev/dm-", 8))
-            dmname = nashDmGetDevName(dev->devno);
+            dmname = nashDmDevGetName(dev->devno);
         name = dmname ? dmname : dev->dev_path;
         bdev = blkid_get_dev(c->cache, name, BLKID_DEV_NORMAL);
         if (dmname)

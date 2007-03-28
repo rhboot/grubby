@@ -46,6 +46,9 @@ extern void
 nashDmFreeTree(void);
 
 extern char *
-nashDmGetDevName(dev_t devno);
+nashDmDevGetName(dev_t devno);
+
+extern char *
+nashDmDevGetType(dev_t devno);
 
 #endif /* NASH_PRIV_DM_H */

@@ -826,12 +826,29 @@ nashDmListSorted(nashContext *nc, const char **names)
     return 0;
 }
 
+static int devno_is_dm(dev_t devno)
+{
+    int ret = 0, i = -1;
+    char *type = NULL;
+
+    while ((i = getDevsFromProc(i, S_IFBLK, &type, &devno)) >= 0) {
+        if (type && !strcmp(type, "device-mapper"))
+            ret = 1;
+        type = NULL;
+    }
+
+    return ret;
+}
+
 char *
-nashDmGetDevName(dev_t devno)
+nashDmDevGetName(dev_t devno)
 {
     struct dm_iter *iter;
     struct dm_iter_object *obj;
     char *ret = NULL;
+
+    if (!devno_is_dm(devno))
+        return NULL;
 
     if (!(iter = dm_iter_begin(NULL)))
         return NULL;
@@ -844,6 +861,31 @@ nashDmGetDevName(dev_t devno)
 
     dm_iter_destroy(iter);
     return ret;
+}
+
+char *
+nashDmDevGetType(dev_t devno)
+{
+    static char buf[32];
+    struct dm_iter *iter;
+    struct dm_iter_object *obj;
+
+    if (!devno_is_dm(devno))
+        return NULL;
+
+    if (!(iter = dm_iter_begin(NULL)))
+        return NULL;
+
+    while ((obj = dm_iter_next(iter, 1)) && (obj->devno != devno))
+        ;
+
+    if (obj) {
+        strncpy(buf, obj->type, 31);
+        dm_iter_destroy(iter);
+        return buf;
+    }
+    dm_iter_destroy(iter);
+    return NULL;
 }
 
 /*
