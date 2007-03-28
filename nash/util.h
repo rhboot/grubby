@@ -360,6 +360,12 @@ extern int eprintf(const char *format, ...)
         syscall(SYS_ppoll, fds, nfds, timeout, sigmask, nsigs)
 #endif
 
+#define save_errno(tmp, unsafe_code) ({     \
+        (tmp) = errno ;                     \
+        unsafe_code ;                       \
+        errno = (tmp) ;                     \
+    })
+
 #ifndef _GNU_SOURCE_DEFINED
 #undef _GNU_SOURCE
 #else
