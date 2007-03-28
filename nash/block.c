@@ -100,25 +100,22 @@ nashParseSysfsDevno(const char *path, dev_t *dev)
     return 0;
 }
 
-void
-nashBlockInit(nashContext *c)
+void nashBlockInit(nashContext *c)
 {
     if (blkid_get_cache(&c->cache, "/etc/blkid/blkid.tab") < 0)
         blkid_get_cache(&c->cache, NULL);
 }
 
-void
-nashBlockFinish(nashContext *c)
+void nashBlockFinish(nashContext *c)
 {
     blkid_put_cache(c->cache);
     c->cache = NULL;
 }
 
-void
-nashBdevFreePtr(nashBdev *dev)
+void nashBdevFreePtr(nashBdev *dev)
 {
     struct nash_block_dev *d;
-    
+
     if (!dev || !*dev)
         return;
     d = *dev;
@@ -589,70 +586,6 @@ nashDisablePartitions(const char *devname)
         ret += block_disable_partition(fd, partno);
     return ret ? ret : -1;
 }
-
-#if 0
-int nashGetBlockIdentifier(nashContext *nc,
-                           nashBlockIdentifierType type,
-                           nashBlockIdentifier *id,
-                           char *path)
-{
-    nashBdevIter biter;
-    nashBdev dev = NULL;
-    blkid_dev bdev = NULL;
-    int rc = -1;
-
-    nashBlockInit(nc);
-    if (!(biter = nashBdevIterNew(nc, "/sys/block", 1)))
-        goto out;
-
-
-out:
-    if (biter)
-        nashBdevIterEnd(&biter);
-    nashBlockFinish(nc);
-    return rc;
-}
-#endif
-
-#if 0
-int main(void)
-{
-#if 1
-    char *dev;
-
-    nashBlockInit();
-
-    dev = nashFindFsByLabel("/");
-    printf("dev: %s\n", dev);
-    free(dev);
-
-    nashBlockFinish();
-
-    return 0;
-#else
-    blkid_cache cache;
-    blkid_dev_iterate diter;
-    blkid_dev dev;
-    char *devname;
-
-    blkid_get_cache(&cache, NULL);
-
-    dev = blkid_get_dev(cache, "/dev/hda3", BLKID_DEV_NORMAL);
-    diter = blkid_dev_iterate_begin(cache);
-    while(blkid_dev_next(diter, &dev) >= 0) {
-        blkid_tag_iterate titer;
-        const char *type, *value;
-
-        titer = blkid_tag_iterate_begin(dev);
-        while(blkid_tag_next(titer, &type, &value) >= 0) {
-            printf("type: %s value: %s\n", type, value);
-        }
-        blkid_tag_iterate_end(titer);
-    }
-    blkid_dev_iterate_end(diter);
-#endif
-}
-#endif
 
 /*
  * vim:ts=8:sw=4:sts=4:et
