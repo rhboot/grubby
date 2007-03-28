@@ -21,14 +21,14 @@
 struct blkent {
     char *blk_name;     /* symbolic block device name */
     char *blk_type;     /* rule type */
-    char *blk_rule;     /* rule */
+    char *blk_opts;     /* opts */
 };
 
 extern FILE *setblkent(const char *file, const char *mode);
 
 extern struct blkent *getblkent(FILE *stream);
 
-extern struct blkent *getblkent_r (FILE *stream,
+extern struct blkent *getblkent_r(FILE *stream,
                                    struct blkent *result,
                                    char *buffer,
                                    int bufsize);
@@ -37,7 +37,9 @@ extern int addblkent(FILE *stream, const struct blkent *mnt);
 
 extern int endblkent(FILE *stream);
 
-extern char **getblkdevs(struct blkent *bp);
+extern char *hasblkopt(const struct blkent *blk, const char *opt);
+
+extern char *dupblkopt(char *start, const char *opt);
 #endif /* defined(BLKENT_H) */
 /*
  * vim:ts=8:sw=4:sts=4:et

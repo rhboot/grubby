@@ -273,10 +273,10 @@ getblkent(FILE *stream)
 }
 
 char *
-__hasblkopt (const struct blkent *blk, const char *opt)
+__hasblkopt (char *start, const char *opt)
 {
   const size_t optlen = strlen (opt);
-  char *rest = blk->blk_opts, *p;
+  char *rest = start, *p;
 
   while ((p = strstr (rest, opt)) != NULL)
     {
@@ -296,7 +296,40 @@ __hasblkopt (const struct blkent *blk, const char *opt)
   return NULL;
 }
 char *hasblkopt (const struct blkent *blk, const char *opt)
-    __attribute__((weak, alias("__hasblkopt")));
+{
+    return __hasblkopt(blk->blk_opts, opt);
+}
+
+char *dupblkopt(char *start, const char *opt)
+{
+    const size_t optlen = strlen (opt);
+    size_t pos;
+    char *rest = start;
+    char *value = NULL;
+
+    while ((rest = __hasblkopt(rest, opt))) {
+        if (rest != start && rest[-1] != ';')
+            continue;
+        rest += optlen;
+        if (rest[0] == '\0')
+            return strdup(rest);
+        if (rest[0] == ';')
+            return strdup("");
+        if (rest[0] == '=') {
+            rest++;
+            if (!rest)
+                return strdup("");
+            pos = strcspn(rest, ";");
+            value = strndup(rest, pos);
+//                (rest[pos] == '\0')
+//                    ? pos :
+//                    (pos ? pos : 0));
+            return value;
+        }
+        rest++;
+    }
+    return strdup("");
+}
 
 /*
  * vim:ts=8:sw=4:sts=4:et
