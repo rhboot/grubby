@@ -111,6 +111,9 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libbdevid.so.*
 
 %changelog
+* Wed Mar 28 2007 Peter Jones <pjones@redhat.com>
+- Fix perms on libbdevid
+
 * Fri Mar 23 2007 Jeremy Katz <katzj@redhat.com>
 - handle new firewire stack (#231708)
 
