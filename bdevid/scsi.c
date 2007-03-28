@@ -450,6 +450,28 @@ static int do_scsi_page80_inquiry(int fd, char **serial, size_t *max_len)
 
 static int result_ok(char **serial, size_t *len)
 {
+    int i = 0;
+    int j = 0;
+
+    (*serial)[*len-1] = '\0';
+    while (1) {
+        i += strcspn(*serial + i, " ");
+        if (i == 0 || (i <= *len && (*serial)[i] == '\0'))
+            break;
+
+        j = strspn(*serial + i, " ") + i;
+
+        if (j >= *len - 1 || (*serial)[j] == '\0') {
+            (*serial)[j] = '\0';
+            break;
+        }
+
+        if (i && i < j && j < *len) {
+            (*serial)[i] = '-';
+            memmove(*serial + i + 1, *serial + j, *len - j);
+        }
+        i = j;
+    }
     return 1;
 }
 

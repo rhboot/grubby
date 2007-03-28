@@ -28,7 +28,7 @@
 
 static int ata_get_vendor(struct bdevid_bdev *bdev, char **vendor)
 {
-    char *v = strdup("");
+    char *v = strdup("1ATA");
     if (v) {
         *vendor = v;
         return 0;
@@ -41,31 +41,31 @@ static int ata_get_model(struct bdevid_bdev *bdev, char **id)
     struct hd_driveid hdid;
     int fd;
     char model[41], rev[9];
-    char *s;
-    size_t len;
+    int i;
 
     fd = bdevid_bdev_get_fd(bdev);
 
     if (ioctl(fd, HDIO_GET_IDENTITY, &hdid) < 0)
         return -1;
 
-    model[0] = '\0';
     strncpy(model, (char *)hdid.model, 40);
-    for (s = model; s[0] == ' '; s++)
-        ;
-    for (len = strlen(s) -1 ; len >= 0 && s[len] == ' '; len--)
-        s[len] = '\0';
-    if (model != s)
-        strcpy(model, s);
+    model[40] = '\0';
+    for (i = 0; i < 40 && model[i]; ) {
+        if (model[i] == ' ')
+            memmove(model + i, model + i + 1, 40 - i);
+        else
+            i++;
+    }
 
-    rev[0] = '\0';
     strncpy(rev, (char *)hdid.fw_rev, 8);
-    for (s = rev; s[0] == ' '; s++)
-        ;
-    for (len = strlen(s) -1 ; len >= 0 && s[len] == ' '; len--)
-        s[len] = '\0';
-    if (rev != s)
-        strcpy(rev, s);
+    rev[8] = '\0';
+    for (i = 0; i < 8 && rev[i]; ) {
+        if (rev[i] == ' ')
+            memmove(rev + i, rev + i + 1, 8 - i);
+        else
+            i++;
+    }
+    rev[i] = '\0';
 
     if (!model[0] && !rev[0])
         return -1;
