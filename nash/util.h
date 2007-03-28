@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <errno.h>
+#include <unistd.h>
 
 extern nashContext *_nash_context;
 

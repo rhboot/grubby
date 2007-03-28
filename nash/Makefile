@@ -7,7 +7,7 @@ OBJECTS = util.o linkdetect.o nash.o network.o nfsmount.o \
 	  nfsmount_clnt.o nfsmount_xdr.o dns.o block_priv.o \
 	  blkent.o waitdev.o bdevid.o
 
-libnash_OBJECTS = lib.o hotplug.o wrap.o block.o uevent.o dm.o
+libnash_OBJECTS = lib.o hotplug.o wrap.o list.o block.o uevent.o dm.o
 
 include ../Makefile.inc
 

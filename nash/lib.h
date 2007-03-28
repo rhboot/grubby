@@ -26,6 +26,8 @@
 #include <signal.h>
 #include <blkid/blkid.h>
 
+#include "util.h"
+#include "list.h"
 #include "blkent.h"
 
 struct nashDevice;
