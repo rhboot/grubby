@@ -177,6 +177,7 @@ nashGetUEventPoll(struct nash_uevent_handler *handler, struct timespec *timeout,
     int socket = handler->socket;
     struct pollfd *pds;
     struct timespec to = { -1, -1 };
+    int errnum;
     int rc;
     int i;
 
@@ -189,16 +190,26 @@ nashGetUEventPoll(struct nash_uevent_handler *handler, struct timespec *timeout,
     pds[npfds].fd = handler->socket;
 
     to = timeout ? *timeout : to;
-    while ((rc = nash_ppoll(pds, npfds+1, &to, NULL, 0)) < 0) {
-        if (errno != EINTR)
+    while ((rc = nash_ppoll(pds, npfds+1, &to, NULL, 0)) <= 0) {
+        if (rc < 0) {
+            if (errno == EINTR)
+                continue;
+
             nashLogger(nc, NASH_ERROR, "poll returned error: %m\n");
+        } else if (rc == 0) {
+            save_errno(errnum, free(pds));
+            return 0;
+        }
+        break;
     }
     memmove(inpd, pds, npfds * sizeof (*pds));
 
     if (rc == 0) {
         /* timeout */
+        errno = 0;
         *timeout = to;
-        return -1;
+        free(pds);
+        return 0;
     }
 
     for (i = 0; i < npfds+1; i++) {
@@ -206,17 +217,16 @@ nashGetUEventPoll(struct nash_uevent_handler *handler, struct timespec *timeout,
             continue;
 
         if (pds[i].revents) {
-            rc--;
             if (get_netlink_msg(socket, uevent) < 0) {
-                int errnum = errno;
+                errnum = errno;
                 nashLogger(nc, NASH_ERROR, "get_netlink_msg returned %m\n");
-                free(pds);
                 errno = errnum;
-                return -1;
+                rc = -1;
+                break;
             }
         }
     }
-    free(pds);
+    save_errno(errnum, free(pds));
     return rc;
 }
 
