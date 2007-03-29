@@ -28,6 +28,8 @@
 
 #include "util.h"
 #include "list.h"
+#include "devtree.h"
+#include "vitals.h"
 #include "blkent.h"
 
 struct nashDevice;
@@ -52,6 +54,9 @@ struct nashContext_s {
     int hp_childfd;
 
     struct nash_uevent_handler *uh;
+
+    struct nash_dev_tree *devices;
+    struct nash_dev_tree *blktab;
 
     nashBdevIter waitdev_iter;
 };
