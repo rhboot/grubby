@@ -261,6 +261,34 @@ nashDmRemove(char *name)
     return 1;
 }
 
+#if 0
+int nashDmCloneAsError(char *oldname, char *newname)
+{
+    struct dm_task *task = NULL;
+    int errnum;
+    int ret;
+    void *next = NULL;
+
+    if ((ret = nashDmTaskNew(DM_DEVICE_TABLE, oldname, &task)) < 0)
+        return -1;
+
+    do {
+        uint64_t start, length;
+        char *params = NULL;
+        char *type = NULL;
+
+        next = dm_get_next_target(task, next, &start, &length, &type, &params);
+        if (next) {
+            ret = nashDmCreate(newname, NULL, start, length, "error", "");
+            if (!ret)
+                break;
+        }
+    } while (next);
+    dm_task_destroy(task);
+    return ret;
+}
+#endif
+
 static int nashPartedError = 0;
 static int nashPartedErrorDisplay = 1;
 
@@ -459,6 +487,7 @@ dm_iter_begin(const char **names)
 
     task = dm_task_create(DM_DEVICE_LIST);
     if (!task) {
+out:
         free(iter->names);
         free(iter);
         return NULL;
@@ -468,8 +497,10 @@ dm_iter_begin(const char **names)
     do {
         dmnames = (void *)dmnames + next;
 
-        iter->names = realloc(iter->names, sizeof (void *) * (i+1));
-        iter->names[i++] = strdup(dmnames->name);
+        if (dmnames->name) {
+            iter->names = realloc(iter->names, sizeof (void *) * (i+1));
+            iter->names[i++] = strdup(dmnames->name);
+        }
 
         next = dmnames->next;
     } while (next);
@@ -551,9 +582,18 @@ _dm_iter_destroy(struct dm_iter **iterp)
         struct dm_iter_object *obj;
 
         obj = iter->objects[i];
-        free((char *)obj->name);
-        free(obj->type);
-        free(obj->deps);
+        if (obj->name) {
+            free(obj->name);
+            obj->name = NULL;
+        }
+        if (obj->type) {
+            free(obj->type);
+            obj->type = NULL;
+        }
+        if (obj->deps) {
+            free(obj->deps);
+            obj->deps = NULL;
+        }
         free(obj);
     }
 
