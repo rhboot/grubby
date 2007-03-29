@@ -316,7 +316,7 @@ smartmknod(const char * device, mode_t mode, dev_t dev)
     return mknod(buf, mode, dev);
 }
 
-extern int getDevNumFromProc(char * file, char * device);
+extern int getDevsFromProc(int pos, int type, char **name, dev_t *devno);
 
 extern int stringsort(const void *v0, const void *v1);
 
@@ -470,8 +470,7 @@ udelay(long long usecs)
 {
     struct timespec rem = {0,0};
 
-    rem.tv_sec = usecs / 1000000;
-    rem.tv_nsec = (usecs % 1000000) * 1000;
+    usectospec(usecs, &rem);
     udelayspec(rem);
 }
 
@@ -532,6 +531,10 @@ extern int eprintf(const char *format, ...)
         unsafe_code ;                       \
         errno = (tmp) ;                     \
     })
+
+#define xfree(x) ({if (x) { free(x); x = NULL; }})
+#define movptr(x, y) ({(x) = (y); (y) = NULL; })
+#define xmovptr(x, y) ({if (!(y) && (x)) movptr((x),(y));})
 
 #ifndef _GNU_SOURCE_DEFINED
 #undef _GNU_SOURCE
