@@ -29,29 +29,6 @@
 #include "lib.h"
 #include "util.h"
 
-static int nash_dev_tree_add_bdev(nashContext *nc, struct nash_block_dev *bdev)
-{
-    return -1;
-}
-
-static int nash_dev_tree_remove_bdev(nashContext *nc, struct nash_block_dev *bdev)
-{
-    return -1;
-}
-
-struct nash_dev_node;
-static int nash_dev_tree_check_node_complete(nashContext *nc,
-        struct nash_dev_node *child)
-{
-    return -1;
-}
-
-struct nash_dev_node *nash_dev_tree_find_device(nashContext *nc, char *device,
-        int blktab)
-{
-    return NULL;
-}
-
 void
 nashWaitCancel(nashContext *nc)
 {
