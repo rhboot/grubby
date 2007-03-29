@@ -31,6 +31,7 @@
 #include "devtree.h"
 #include "vitals.h"
 #include "blkent.h"
+#include "block.h"
 
 struct nashDevice;
 
