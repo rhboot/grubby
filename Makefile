@@ -12,7 +12,7 @@ LDFLAGS := -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid \
 	-Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
 	-Wl,--wrap,pipe
 
-grubby_LIBS = -lnash
+grubby_LIBS = -lnash -lbdevid
 grubby_LIBS += -lparted -lblkid -luuid -lpopt -ldevmapper -lselinux -lsepol
 grubby_LIBS += $(shell pkg-config --libs libdhcp glib-2.0)
 
