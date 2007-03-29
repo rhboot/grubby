@@ -493,7 +493,10 @@ out:
         return NULL;
     }
     dm_task_run(task);
-    dmnames = dm_task_get_names(task);
+    if (!(dmnames = dm_task_get_names(task))) {
+        dm_task_destroy(task);
+        goto out;
+    }
     do {
         dmnames = (void *)dmnames + next;
 
@@ -583,7 +586,7 @@ _dm_iter_destroy(struct dm_iter **iterp)
 
         obj = iter->objects[i];
         if (obj->name) {
-            free(obj->name);
+            free((char *)obj->name);
             obj->name = NULL;
         }
         if (obj->type) {
