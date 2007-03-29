@@ -110,6 +110,7 @@ void
 _nashFreeContext(nashContext **nc)
 {
     dm_lib_exit();
+    nash_vitals_destroy_probes();
     if (nc && *nc) {
         nashContext *c = *nc;
         while (c->fw_pathz)
