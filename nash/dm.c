@@ -168,11 +168,15 @@ nashDmMapExists(const char *name)
 }
 
 int
-nashDmCreate(char *name, char *uuid, long long start, long long length,
-        char *type, char *params)
+nashDmCreate(nashContext *nc, char *name, char *uuid, long long start,
+        long long length, char *type, char *params)
 {
+    char *real_params;
     struct dm_task *task;
     int rc;
+
+    if (!strncmp(name, "blktab=", 7) || name[0] == '$')
+        name = nash_dev_node_get_dm_name(nc, name);
 
     if (nashDmMapExists(name))
         return 1;
@@ -185,7 +189,15 @@ nashDmCreate(char *name, char *uuid, long long start, long long length,
     if (uuid)
         dm_task_set_uuid(task, uuid);
 
-    dm_task_add_target(task, start, length, type, params);
+#if 0
+    printf("old rule: %s %Ld %Ld %s %s\n", name, start, length, type, params);
+    real_params = nash_dev_tree_replace_dm_params(nc, start, length, params);
+    printf("new rule: %s %Ld %Ld %s %s\n", name, start, length, type, real_params);
+#else
+    real_params = nash_dev_tree_replace_dm_params(nc, start, length, params);
+#endif
+    dm_task_add_target(task, start, length, type, real_params);
+    free(real_params);
 
     rc = dm_task_run(task);
     dm_task_destroy(task);
@@ -197,6 +209,34 @@ nashDmCreate(char *name, char *uuid, long long start, long long length,
 
     return 1;
 }
+
+#if 0
+int nashDmCloneAsError(char *oldname, char *newname)
+{
+    struct dm_task *task = NULL;
+    int errnum;
+    int ret;
+    void *next = NULL;
+
+    if ((ret = nashDmTaskNew(DM_DEVICE_TABLE, oldname, &task)) < 0)
+        return -1;
+
+    do {
+        uint64_t start, length;
+        char *params = NULL;
+        char *type = NULL;
+
+        next = dm_get_next_target(task, next, &start, &length, &type, &params);
+        if (next) {
+            ret = nashDmCreate(newname, NULL, start, length, "error", "");
+            if (!ret)
+                break;
+        }
+    } while (next);
+    dm_task_destroy(task);
+    return ret;
+}
+#endif
 
 int
 nashDmRemove(char *name)
@@ -330,7 +370,7 @@ nashDmCreatePartitions(nashContext *nc, char *path)
                 }
             }
 
-            nparts += nashDmCreate(name, uuid, 0, part->geom.length,
+            nparts += nashDmCreate(nc, name, uuid, 0, part->geom.length,
                     "linear", table);
 
             free(uuid);
