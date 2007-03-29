@@ -83,8 +83,9 @@ nashNewContext(void) {
         return NULL;
     }
     if (argz_create_sep(tmp, ':', &nc->fw_pathz, &nc->fw_pathz_len) != 0) {
+err:
         free(tmp);
-        free(nc);
+        _nashFreeContext(&nc);
         return NULL;
     }
     nc->hp_parent_pid = -1;
@@ -93,7 +94,14 @@ nashNewContext(void) {
     nc->hp_parentfd = -1;
     nc->hp_childfd = -1;
 
+    if ((nc->blktab = nash_dev_tree_alloc(nc)) < 0)
+        goto err;
+    if ((nc->devices = nash_dev_tree_alloc(nc)) < 0)
+        goto err;
+
     nashSetFileFetcher(nc, NULL);
+
+    nash_vitals_initialize_probes();
 
     return nc;
 }
@@ -106,6 +114,14 @@ _nashFreeContext(nashContext **nc)
         nashContext *c = *nc;
         while (c->fw_pathz)
             argz_delete(&c->fw_pathz, &c->fw_pathz_len, c->fw_pathz);
+        if (c->uh) {
+            nashUEventHandlerDestroy(c->uh);
+            c->uh = NULL;
+        }
+        if (c->devices)
+            nash_dev_tree_free_ptr(c, &c->devices);
+        if (c->blktab)
+            nash_dev_tree_free_ptr(c, &c->blktab);
         if (c->cache)
             nashBlockFinish(c);
         free(c);
