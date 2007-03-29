@@ -34,7 +34,9 @@
 #include <errno.h>
 #include <unistd.h>
 
-extern nashContext *_nash_context;
+struct nashContext_s;
+
+extern struct nashContext_s *_nash_context;
 
 #define DEV_TYPE_NAME_EQUALS   0x1
 #define DEV_TYPE_NAME_BEGINS   0x2
@@ -237,7 +239,7 @@ static inline int getDevsFromProc(int pos, int type, char **name, dev_t *devno)
     return -1;
 }
 
-static int __attribute__((used))
+static inline int
 setFdCoe(int fd, int enable)
 {
     int rc;
@@ -256,7 +258,7 @@ setFdCoe(int fd, int enable)
     return rc;
 }
 
-static int __attribute__((used))
+static inline int
 readFD (int fd, char **buf)
 {
     char *p;
@@ -290,7 +292,7 @@ readFD (int fd, char **buf)
     return filesize;
 }
 
-static int __attribute__((used))
+static inline int
 smartmknod(const char * device, mode_t mode, dev_t dev)
 {
     char buf[PATH_MAX];
