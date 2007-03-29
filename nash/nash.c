@@ -2594,19 +2594,19 @@ sendParentAlarm(nashContext *nc, int usec)
 
 static void traceback(int signum)
 {
-    void *array[20];
+    void *array[40];
     size_t size;
     char **strings;
     size_t i;
 
     signal(SIGSEGV, SIG_DFL);
 
-    size = backtrace(array, 20);
+    size = backtrace(array, 40);
     strings = backtrace_symbols(array, size);
 
-    printf("nash received SIGSEGV!  Backtrace:\n");
+    fprintf(stderr, "nash received SIGSEGV!  Backtrace:\n");
     for (i = 0; i < size; i++)
-        printf("%s\n", strings[i]);
+        fprintf(stderr, "%s (%p)\n", strings ? strings[i] : "", array[i]);
 
     free(strings);
     exit(1);
