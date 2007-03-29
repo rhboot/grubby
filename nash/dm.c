@@ -41,7 +41,7 @@ nashDmTaskNew(int type, const char *name, struct dm_task **task)
 
     *task = dm_task_create(type);
     if (!*task)
-        return 1;
+        return -1;
     if (name)
         dm_task_set_name(*task, name);
     ret = dm_task_run(*task);
@@ -77,6 +77,7 @@ nashDmGetType(const char *name)
 {
     void *next = NULL;
     char *type = NULL;
+    int err;
     int ret;
 
     struct dm_task *task = NULL;
@@ -85,6 +86,7 @@ nashDmGetType(const char *name)
     if (ret < 0)
         return NULL;
 
+    err = 0;
     ret = -1;
     do {
         uint64_t start, length;
@@ -92,12 +94,16 @@ nashDmGetType(const char *name)
         char *tmp = NULL;
 
         next = dm_get_next_target(task, next, &start, &length, &tmp, &params);
-        if (!type && tmp)
+        if (tmp && !strcmp(tmp, "error")) {
+            err = 1;
+        } else if (!type && tmp) {
             type = strdup(tmp);
+        }
     } while (next);
 
     dm_task_destroy(task);
-    task = NULL;
+    if (!type && err)
+        return strdup("error");
     return type;
 }
 
@@ -122,7 +128,7 @@ nashDmGetUUID(const char *name)
     return uuid;
 }
 
-static dev_t
+dev_t
 nashDmGetDev(const char *name)
 {
     struct dm_task *task;

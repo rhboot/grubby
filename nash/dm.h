@@ -21,6 +21,9 @@
 extern char *
 nashDmGetUUID(const char *name);
 
+extern dev_t
+nashDmGetDev(const char *name);
+
 extern int
 nashDmCreate(char *name, char *uuid, long long start, long long length,
         char *type, char *params);
