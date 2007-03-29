@@ -2019,11 +2019,13 @@ err:
     return 0;
 }
 
+extern void print_dev_tree(nashContext *nc, int blktab);
 static int
 dmCommand(char *cmd, char *end)
 {
     char *action = NULL;
     char *name = NULL;
+    int rc;
 
     cmd = getArg(cmd, end, &action);
     if (!cmd)
@@ -2078,11 +2080,26 @@ dmCommand(char *cmd, char *end)
         c = strchr(params, '\n');
         if (c)
             *c = '\0';
-        if (nashDmCreate(name, uuid, start, length, type, params))
-            return 0;
+        if (nash_list_len(_nash_context->blktab->devs) > 0) {
+            rc = nash_dev_tree_setup_device(_nash_context, name);
+            if (rc == -1) {
+                eprintf("Could not create device %s\n", name);
+                print_dev_tree(_nash_context, 0);
+                print_dev_tree(_nash_context, 1);
+                rc = 1;
+            } else if (rc >= 0) {
+                if (rc == 0)
+                    eprintf("Creating device %s in degraded state\n", name);
+                rc = nashDmCreate(_nash_context, name, uuid, start, length,
+                        type, params);
+            }
+        } else {
+            rc = nashDmCreate(_nash_context, name, uuid, start, length, type,
+                params);
+        }
         if (c)
             *c = '\n';
-        return 1;
+        return rc;
     } else if (!strcmp(action, "remove")) {
         cmd = getArg(cmd, end, &name);
         if (!cmd)
@@ -2348,11 +2365,6 @@ networkCommand(char *cmd, char *end)
     rc = nashNetworkCommand(ncmd);
     free(ncmd);
     return rc;
-}
-
-static void nash_load_blktab(nashContext *nc, char *file)
-{
-    return;
 }
 
 static int
