@@ -5,9 +5,12 @@ LIBS	= libnash.so
 TARGETS = nash libnash.pc
 OBJECTS = util.o linkdetect.o nash.o network.o nfsmount.o \
 	  nfsmount_clnt.o nfsmount_xdr.o dns.o block_priv.o \
-	  blkent.o waitdev.o
+	  waitdev.o
 
-libnash_OBJECTS = lib.o hotplug.o wrap.o list.o block.o uevent.o dm.o
+libnash_OBJECTS = lib.o hotplug.o wrap.o list.o block.o uevent.o dm.o \
+		devtree.o vitals.o blkent.o
+
+#libnash_OBJECTS = lib.o hotplug.o wrap.o list.o block.o uevent.o dm.o
 
 include ../Makefile.inc
 
@@ -17,7 +20,7 @@ CFLAGS += $(shell pkg-config --cflags libdhcp glib-2.0)
 LDFLAGS += -Wl,-rpath-link,$(TOPDIR)/bdevid:$(TOPDIR)/nash
 
 nash_LIBS = -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid -L/$(LIB)
-nash_LIBS += -lnash
+nash_LIBS += -lnash -lbdevid
 nash_LIBS += -ldevmapper -lparted -lblkid -lselinux -lsepol
 nash_LIBS += -luuid -lpopt -lresolv -lbdevid -ldl
 nash_LIBS += $(shell pkg-config --libs libdhcp glib-2.0) -lm
