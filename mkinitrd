@@ -281,21 +281,6 @@ findmodule() {
         usbModName=""
     fi
 
-    locatemodule scsi_wait_scan
-    if [ -n "$fmPath" -a -f "$fmPath" ]; then
-        if [ "$modName" = "usb-storage"      \
-                -o "$modName" = "ub"         \
-                -o "$modName" = "sbp2"       \
-                -o "${modName::5}" == "pata_"\
-                -o "$modName" == "ata_piix"  \
-                -o "$modName" == "ahci"      \
-                -o "${modName::5}" == "sata_"\
-                -o "$modName" == "ibmvscsic" ]; then
-            scsi_wait_scan="yes"
-        elif [ "$modName" = "zfcp" -a -f /etc/zfcp.conf ]; then
-            scsi_wait_scan="yes"
-        fi
-    fi
 
     deps=""
     moduledep $modName
@@ -334,6 +319,10 @@ findmodule() {
         for n in $PRESCSIMODS ; do
             findmodule $n
         done
+        locatemodule scsi_wait_scan
+        if [ -n "$fmPath" -a -f "$fmPath" ]; then
+            scsi_wait_scan="yes"
+        fi
         if [ "$scsi_wait_scan" == "yes" ]; then
             moduledep scsi_wait_scan
             for i in $deps ; do
@@ -1239,14 +1228,6 @@ if [ -e /etc/fstab.sys ]; then
     inst /etc/fstab.sys "$MNTIMAGE"
 fi
 
-do_scsi_wait_scan()
-{
-    if [ "$scsi_wait_scan" == "yes" ]; then
-        emit "insmod /lib/scsi_wait_scan.ko"
-        emit "rmmod scsi_wait_scan"
-    fi
-}
-
 installmodule()
 {
     if [ -x /usr/bin/strip ]; then
@@ -1389,17 +1370,14 @@ for MODULE in $MODULES; do
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" -o "$module" = "ub" ]; then
         emit "echo Waiting for driver initialization."
-        do_scsi_wait_scan
         emit "stabilized /proc/bus/usb/devices"
     fi
     if [ "$module" = "sbp2" ]; then
         emit "echo Waiting for driver initialization."
-        do_scsi_wait_scan
         emit "stabilized /sys/bus/ieee1394/drivers/sbp2"
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
         emit "echo Waiting 2 seconds for driver initialization."
-        do_scsi_wait_scan
         emit "sleep 2"
         cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICE TWO THREE FOUR FIVE; do
 	    if [ -z "$FIVE" ]; then
@@ -1418,7 +1396,6 @@ EOF
     fi
     if [ "${module::5}" == "pata_" -o "$module" == "ata_piix" -o "$module" == "ahci" -o "${module::5}" == "sata_" -o "$module" == "ibmvscsic" ]; then
         emit "echo Waiting for driver initialization."
-        do_scsi_wait_scan
         emit "stabilized --hash --interval 250 /proc/scsi/scsi"
     fi
 done
@@ -1438,6 +1415,11 @@ if [ -n "$net_list" ]; then
 fi
 
 emit_iscsi
+
+if [ "$scsi_wait_scan" == "yes" ]; then
+    emit "insmod /lib/scsi_wait_scan.ko"
+    emit "rmmod scsi_wait_scan"
+fi
 
 # HACK: module loading + device creation isn't necessarily synchronous...
 # this will make sure that we have all of our devices before trying
