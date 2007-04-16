@@ -860,6 +860,8 @@ static struct grubConfig * readConfig(const char * inName,
 
 	    if (entry) cfg->defaultImage = i;
 	}
+    } else {
+        cfg->defaultImage = 0;
     }
 
     return cfg;
