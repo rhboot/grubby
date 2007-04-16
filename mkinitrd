@@ -120,8 +120,27 @@ usage () {
 
 moduledep() {
     vecho -n "Looking for deps of module $1"
+    deps=""
     deps=$(modprobe --set-version $kernel --show-depends $1 2>/dev/null| awk '/^insmod / { print gensub(".*/","","g",$2) }' | while read foo ; do [ "${foo%%.ko}" != "$1" ] && echo -n "${foo%%.ko} " ; done)
     [ -n "$deps" ] && vecho ": $deps" || vecho
+}
+
+locatemodule() {
+    fmPath=$(modprobe --set-version $kernel --show-depends $1 2>/dev/null | awk '/^insmod / { print $2; }' | tail -1)
+    if [ -n "$fmPath" -a -f "$fmPath" ]; then
+        return 0
+    fi
+    for modExt in o.gz o ko ; do
+        for modDir in /lib/modules/$kernel/updates /lib/modules/$kernel ; do
+            if [ -d $modDir ]; then
+                fmPath=$(findone $modDir -name $1.$modExt)
+                if [ -n "$fmPath" -a -f "$fmPath" ]; then
+                    return 0
+                fi
+            fi
+        done
+    done
+    return 1
 }
 
 findone() {
@@ -194,6 +213,7 @@ EOF
     DSO_DEPS="${FILES[@]}"
 }
 
+scsi_wait_scan="no"
 findmodule() {
     skiperrors=""
 
@@ -261,21 +281,29 @@ findmodule() {
         usbModName=""
     fi
 
+    locatemodule scsi_wait_scan
+    if [ -n "$fmPath" -a -f "$fmPath" ]; then
+        if [ "$modName" = "usb-storage"      \
+                -o "$modName" = "ub"         \
+                -o "$modName" = "sbp2"       \
+                -o "${modName::5}" == "pata_"\
+                -o "$modName" == "ata_piix"  \
+                -o "$modName" == "ahci"      \
+                -o "${modName::5}" == "sata_"\
+                -o "$modName" == "ibmvscsic" ]; then
+            scsi_wait_scan="yes"
+        elif [ "$modName" = "zfcp" -a -f /etc/zfcp.conf ]; then
+            scsi_wait_scan="yes"
+        fi
+    fi
+
+    deps=""
     moduledep $modName
     for i in $deps; do
         findmodule $i
     done
 
-    for modExt in o.gz o ko ; do
-        for modDir in /lib/modules/$kernel/updates /lib/modules/$kernel ; do
-            if [ -d $modDir ]; then
-                fmPath=$(findone $modDir -name $modName.$modExt)
-                if [ -f "$fmPath" ]; then
-                    break 2
-                fi
-            fi
-        done
-    done
+    locatemodule $modName
 
     if [ ! -f $fmPath ]; then
         if [ -n "$skiperrors" ]; then
@@ -306,6 +334,12 @@ findmodule() {
         for n in $PRESCSIMODS ; do
             findmodule $n
         done
+        if [ "$scsi_wait_scan" == "yes" ]; then
+            moduledep scsi_wait_scan
+            for i in $deps ; do
+                findmodule $i
+            done
+        fi
     fi
 }
 
@@ -1199,22 +1233,36 @@ inst /sbin/nash "$MNTIMAGE" /bin/nash
 ln -s /sbin/nash $MNTIMAGE/sbin/modprobe
 
 inst /sbin/insmod "$MNTIMAGE" /bin/insmod
+inst /sbin/rmmod "$MNTIMAGE" /bin/rmmod
 
 if [ -e /etc/fstab.sys ]; then
     inst /etc/fstab.sys "$MNTIMAGE"
 fi
 
-for MODULE in $MODULES; do
-    if [ -x /usr/bin/strip ]; then
-        /usr/bin/strip -g $verbose $MODULE -o $MNTIMAGE/lib/$(basename $MODULE)
-    else
-        cp $verbose -a $MODULE $MNTIMAGE/lib
+do_scsi_wait_scan()
+{
+    if [ "$scsi_wait_scan" == "yes" ]; then
+        emit "insmod /lib/scsi_wait_scan.ko"
+        emit "rmmod scsi_wait_scan"
     fi
-    for fw in $(/sbin/modinfo -F firmware $MODULE 2>/dev/null); do
+}
+
+installmodule()
+{
+    if [ -x /usr/bin/strip ]; then
+        /usr/bin/strip -g $verbose $1 -o $MNTIMAGE/lib/$(basename $1)
+    else
+        cp $verbose -a $1 $MNTIMAGE/lib
+    fi
+    for fw in $(/sbin/modinfo -F firmware $1 2>/dev/null); do
         if [ -f /lib/firmware/$fw ]; then
             cp $verbose -a /lib/firmware/$fw $MNTIMAGE/lib/firmware/
         fi
     done
+}
+
+for MODULE in $MODULES; do
+    installmodule $MODULE
 done
 
 # mknod'ing the devices instead of copying them works both with and
@@ -1300,6 +1348,14 @@ emit "hotplug"
 emit "echo Creating block device nodes."
 emit "mkblkdevs"
 
+if [ "$scsi_wait_scan" == "yes" ]; then
+    locatemodule scsi_wait_scan
+    if [ -n "$fmPath" -a -f "$fmPath" ]; then
+        vecho "Adding module scsi_wait_scan"
+        installmodule $fmPath
+    fi
+fi
+
 usb_mounted="prep"
 for MODULE in $MODULES; do
     text=""
@@ -1333,14 +1389,17 @@ for MODULE in $MODULES; do
     #        time to settle down before we start looking a block devices
     if [ "$module" = "usb-storage" -o "$module" = "ub" ]; then
         emit "echo Waiting for driver initialization."
+        do_scsi_wait_scan
         emit "stabilized /proc/bus/usb/devices"
     fi
     if [ "$module" = "sbp2" ]; then
         emit "echo Waiting for driver initialization."
+        do_scsi_wait_scan
         emit "stabilized /sys/bus/ieee1394/drivers/sbp2"
     fi
     if [ "$module" = "zfcp" -a -f /etc/zfcp.conf ]; then
         emit "echo Waiting 2 seconds for driver initialization."
+        do_scsi_wait_scan
         emit "sleep 2"
         cat /etc/zfcp.conf | grep -v "^#" | tr "A-Z" "a-z" | while read DEVICE TWO THREE FOUR FIVE; do
 	    if [ -z "$FIVE" ]; then
@@ -1359,6 +1418,7 @@ EOF
     fi
     if [ "${module::5}" == "pata_" -o "$module" == "ata_piix" -o "$module" == "ahci" -o "${module::5}" == "sata_" -o "$module" == "ibmvscsic" ]; then
         emit "echo Waiting for driver initialization."
+        do_scsi_wait_scan
         emit "stabilized --hash --interval 250 /proc/scsi/scsi"
     fi
 done
