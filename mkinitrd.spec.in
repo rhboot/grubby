@@ -113,6 +113,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Mon Apr 16 2007 Peter Jones <pjones@redhat.com> - 6.0.9-1
 - Use scsi_wait_scan.ko with scsi storage modules (#220470)
+- Fix handling of config files with no 'default' line in grubby
 
 * Wed Mar 28 2007 Peter Jones <pjones@redhat.com>
 - Fix perms on libbdevid
