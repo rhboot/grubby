@@ -12,7 +12,6 @@ fi
 # Global vars
 #----------------------------------------------------------------------
 
-read dum1 version dum2 <<<'$Revision$'
 cmd=${0##*/}
 opt_bootloader=*
 opt_verbose=false
@@ -22,7 +21,6 @@ usage: test.sh [ -hv ]
     -b B   --bootloader=B  Test bootloader B instead of all
     -h     --help          Show this help message
     -v     --verbose       Verbose output
-           --version       Show version information
 EOT
 declare -i pass=0 fail=0
 testing=
@@ -67,14 +65,13 @@ done
 #----------------------------------------------------------------------
 
 # Use /usr/bin/getopt which supports GNU-style long options
-args=$(getopt -o b:hv --long bootloader,help,verbose,version -n "$cmd" -- "$@") || exit
+args=$(getopt -o b:hv --long bootloader,help,verbose -n "$cmd" -- "$@") || exit
 eval set -- "$args"
 while true; do
     case $1 in
 	-b|--bootloader) opt_bootloader=$2; shift 2 ;;
 	-h|--help) echo "$usage"; exit 0 ;;
 	-v|--verbose) opt_verbose=true; shift ;;
-	--version) echo "$cmd $version"; exit 0 ;;
         --) shift; break ;;
         *) echo "failed to process cmdline args" >&2; exit 1 ;;
     esac
