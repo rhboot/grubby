@@ -29,6 +29,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <execinfo.h>
+#include <signal.h>
 
 #include "version.h"
 
@@ -2471,6 +2473,21 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
     return 0;
 }
 
+static void traceback(int signum)
+{
+    void *array[40];
+    size_t size;
+
+    signal(SIGSEGV, SIG_DFL);
+    memset(array, '\0', sizeof (array));
+    size = backtrace(array, 40);
+
+    fprintf(stderr, "grubby recieved SIGSEGV!  Backtrace (%ld):\n",
+            (unsigned long)size);
+    backtrace_symbols_fd(array, size, STDERR_FILENO);
+    exit(1);
+}
+
 int main(int argc, const char ** argv) {
     poptContext optCon;
     char * grubConfig = NULL;
@@ -2579,6 +2596,7 @@ int main(int argc, const char ** argv) {
 	{ 0, 0, 0, 0, 0 }
     };
 
+    signal(SIGSEGV, traceback);
     _nash_context = nashNewContext();
 
     optCon = poptGetContext("grubby", argc, argv, options, 0);
