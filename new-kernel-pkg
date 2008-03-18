@@ -96,7 +96,7 @@ usage() {
     echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2 
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
     echo "       [--mbargs=mbargs] [--make-default]" >&2
-    echo "       <--install | --remove | --update> <kernel-version>" >&2
+    echo "       <--install | --remove | --update | --rpmposttrans> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
 }
@@ -185,6 +185,17 @@ install() {
 
 }
 
+rpmposttrans()
+{
+    local files
+    local f
+    files="/etc/kernel/postinst.d/*[^~] /etc/kernel/postinst.d/$version/*[^~]"
+    for f in files ; do
+	[ -f $f -a -x $f ] || continue
+	$f $version $bootPrefix/$kernelName-$version
+    done
+}
+
 remove() {
     # FIXME: is this a good heuristic to find out if we're on iSeries?
     if [ -d /proc/iSeries ]; then
@@ -192,6 +203,14 @@ remove() {
 	rm -f $bootPrefix/$kernelName-$version.img 2>/dev/null
 	return
     fi
+
+    local files
+    local f
+    files="/etc/kernel/postinst.d/*[^~] /etc/kernel/postinst.d/$version/*[^~]"
+    for f in files ; do
+	[ -f $f -a -x $f ] || continue
+	$f $version $bootPrefix/$kernelName-$version
+    done
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
@@ -379,7 +398,7 @@ while [ $# -gt 0 ]; do
 done
 
 # make sure the mode is valid
-if [ "$mode" != "--install" -a "$mode" != "--remove"  -a "$mode" != "--update" ] ; then
+if [ "$mode" != "--install" -a "$mode" != "--remove"  -a "$mode" != "--update" -a "$mode" != "--rpmposttrans" ] ; then
     usage
 fi
 
@@ -451,6 +470,8 @@ elif [ "$mode" == "--remove" ]; then
     remove
 elif [ "$mode" == "--update" ]; then
     update
+elif [ "$mode" == "--rpmposttrans" ]; then
+    rpmposttrans
 fi
 
 exit 0
