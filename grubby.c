@@ -140,7 +140,7 @@ struct keywordTypes grubKeywords[] = {
 };
 
 struct configFileInfo grubConfigType = {
-    "/boot/grub/grub.conf",		    /* defaultConfig */
+    "/etc/grub.conf",			    /* defaultConfig */
     grubKeywords,			    /* keywords */
     1,					    /* defaultIsIndex */
     1,					    /* defaultSupportSaved */

@@ -73,7 +73,7 @@ elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
 else
     # this leaves i?86 and x86_64
     liloConfig=/etc/lilo.conf
-    grubConfig=/boot/grub/grub.conf
+    grubConfig=$(readlink -f /etc/grub.conf 2>/dev/null)
     bootPrefix=/boot
     liloFlag=lilo
     isx86="yes"
