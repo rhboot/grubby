@@ -207,7 +207,7 @@ remove() {
     local files
     local f
     files="/etc/kernel/prerm.d/*[^~] /etc/kernel/prerm.d/$version/*[^~]"
-    for f in files ; do
+    for f in $files ; do
 	[ -f $f -a -x $f ] || continue
 	$f $version $bootPrefix/$kernelName-$version
     done
