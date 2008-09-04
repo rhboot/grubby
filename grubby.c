@@ -305,7 +305,7 @@ struct configFileInfo ziplConfigType = {
     LT_TITLE,				    /* entrySeparator */
     0,					    /* needsBootPrefix */
     1,					    /* argsInQuotes */
-    15,					    /* maxTitleLength */
+    0,					    /* maxTitleLength */
     1,                                      /* titleBracketed */
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
