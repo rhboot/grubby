@@ -237,6 +237,17 @@ struct keywordTypes ziplKeywords[] = {
     { NULL,         0, 0 },
 };
 
+struct keywordTypes extlinuxKeywords[] = {
+    { "label",	    LT_TITLE,	    ' ' },
+    { "root",	    LT_ROOT,	    ' ' },
+    { "default",    LT_DEFAULT,	    ' ' },
+    { "kernel",	    LT_KERNEL,	    ' ' },
+    { "initrd",	    LT_INITRD,      ' ' },
+    { "append",	    LT_KERNELARGS,  ' ' },
+    { "prompt",     LT_UNKNOWN,     ' ' },
+    { NULL,	    0, 0 },
+};
+int useextlinuxmenu;
 struct configFileInfo eliloConfigType = {
     "/boot/efi/EFI/redhat/elilo.conf",	    /* defaultConfig */
     eliloKeywords,			    /* keywords */
@@ -312,6 +323,21 @@ struct configFileInfo ziplConfigType = {
     0,                                      /* mbConcatArgs */
 };
 
+struct configFileInfo extlinuxConfigType = {
+    "/boot/extlinux/extlinux.conf",         /* defaultConfig */
+    extlinuxKeywords,                       /* keywords */
+    0,                                      /* defaultIsIndex */
+    0,                                      /* defaultSupportSaved */
+    LT_TITLE,                               /* entrySeparator */
+    1,                                      /* needsBootPrefix */
+    0,                                      /* argsInQuotes */
+    255,                                    /* maxTitleLength */
+    0,                                      /* titleBracketed */
+    0,                                      /* mbHyperFirst */
+    0,                                      /* mbInitRdIsModule */
+    0,                                      /* mbConcatArgs */
+};
+
 struct grubConfig {
     struct singleLine * theLines;
     struct singleEntry * entries;
@@ -346,6 +372,7 @@ static enum lineType_e getTypeByKeyword(char * keyword,
 					struct configFileInfo * cfi);
 static struct singleLine * getLineByType(enum lineType_e type,
 					 struct singleLine * line);
+static int checkForExtLinux(struct grubConfig * config);
 struct singleLine * addLineTmpl(struct singleEntry * entry,
                                 struct singleLine * tmplLine,
                                 struct singleLine * prevLine,
@@ -2199,6 +2226,36 @@ int checkForGrub(struct grubConfig * config) {
     return checkDeviceBootloader(boot, bootSect);
 }
 
+int checkForExtLinux(struct grubConfig * config) {
+    int fd;
+    unsigned char bootSect[512];
+    char * boot;
+    char executable[] = "/boot/extlinux/extlinux";
+
+    printf("entered: checkForExtLinux()\n");
+
+    if (parseSysconfigGrub(NULL, &boot))
+	return 0;
+
+    /* assume grub is not installed -- not an error condition */
+    if (!boot)
+	return 0;
+
+    fd = open(executable, O_RDONLY);
+    if (fd < 0)
+	/* this doesn't exist if grub hasn't been installed */
+	return 0;
+
+    if (read(fd, bootSect, 512) != 512) {
+	fprintf(stderr, _("grubby: unable to read %s: %s\n"),
+		executable, strerror(errno));
+	return 1;
+    }
+    close(fd);
+
+    return checkDeviceBootloader(boot, bootSect);
+}
+
 static char * getRootSpecifier(char * str) {
     char * idx, * rootspec = NULL;
 
@@ -2427,8 +2484,28 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		break;
 
 	    case LT_TITLE:
-		newLine = addLine(new, config->cfi, LT_TITLE,
-				  config->primaryIndent, newKernelTitle);
+		if( useextlinuxmenu != 0 ){	// We just need useextlinuxmenu to not be zero (set above)
+			char * templabel;
+			int x = 0, y = 0;
+
+			templabel = strdup(newKernelTitle);
+			while( templabel[x]){
+				if( templabel[x] == ' ' ){
+					y = x;
+					while( templabel[y] ){
+						templabel[y] = templabel[y+1];
+						y++;
+					}
+				}
+				x++;
+			}
+			newLine = addLine(new, config->cfi, LT_TITLE,
+					  config->primaryIndent, templabel);
+			free(templabel);
+		}else{
+			newLine = addLine(new, config->cfi, LT_TITLE,
+					  config->primaryIndent, newKernelTitle);
+		}
 		needs &= ~NEED_TITLE;
 		break;
 
@@ -2513,6 +2590,7 @@ int main(int argc, const char ** argv) {
     int badImageOkay = 0;
     int configureLilo = 0, configureELilo = 0, configureGrub = 0;
     int configureYaboot = 0, configureSilo = 0, configureZipl = 0;
+    int configureExtLinux = 0;
     int bootloaderProbe = 0;
     char * updateKernelPath = NULL;
     char * newKernelPath = NULL;
@@ -2569,6 +2647,8 @@ int main(int argc, const char ** argv) {
 	    _("display the path of the default kernel") },
 	{ "elilo", 0, POPT_ARG_NONE, &configureELilo, 0,
 	    _("configure elilo bootloader") },
+	{ "extlinux", 0, POPT_ARG_NONE, &configureExtLinux, 0,
+	    _("configure extlinux bootloader (from syslinux)") },
 	{ "grub", 0, POPT_ARG_NONE, &configureGrub, 0,
 	    _("configure grub bootloader") },
 	{ "info", 0, POPT_ARG_STRING, &kernelInfo, 0,
@@ -2612,6 +2692,8 @@ int main(int argc, const char ** argv) {
 	{ 0, 0, 0, 0, 0 }
     };
 
+    useextlinuxmenu=0;
+
     signal(SIGSEGV, traceback);
     _nash_context = nashNewContext();
 
@@ -2640,7 +2722,8 @@ int main(int argc, const char ** argv) {
     }
 
     if ((configureLilo + configureGrub + configureELilo + 
-		configureYaboot + configureSilo + configureZipl) > 1) {
+		configureYaboot + configureSilo + configureZipl +
+		configureExtLinux ) > 1) {
 	fprintf(stderr, _("grubby: cannot specify multiple bootloaders\n"));
 	return 1;
     } else if (bootloaderProbe && grubConfig) {
@@ -2659,6 +2742,9 @@ int main(int argc, const char ** argv) {
         cfi = &siloConfigType;
     } else if (configureZipl) {
         cfi = &ziplConfigType;
+    } else if (configureExtLinux) {
+	cfi = &extlinuxConfigType;
+	useextlinuxmenu=1;
     }
 
     if (!cfi) {
@@ -2754,7 +2840,7 @@ int main(int argc, const char ** argv) {
     }
 
     if (bootloaderProbe) {
-	int lrc = 0, grc = 0;
+	int lrc = 0, grc = 0, erc = 0;
 	struct grubConfig * lconfig, * gconfig;
 
 	if (!access(grubConfigType.defaultConfig, F_OK)) {
@@ -2773,10 +2859,19 @@ int main(int argc, const char ** argv) {
 		lrc = checkForLilo(lconfig);
 	} 
 
+	if (!access(extlinuxConfigType.defaultConfig, F_OK)) {
+	    lconfig = readConfig(extlinuxConfigType.defaultConfig, &extlinuxConfigType);
+	    if (!lconfig)
+		erc = 1;
+	    else
+		erc = checkForExtLinux(lconfig);
+	} 
+
 	if (lrc == 1 || grc == 1) return 1;
 
 	if (lrc == 2) printf("lilo\n");
 	if (grc == 2) printf("grub\n");
+	if (erc == 2) printf("extlinux\n");
 
 	return 0;
     }
