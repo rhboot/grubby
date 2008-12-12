@@ -869,9 +869,14 @@ static struct grubConfig * readConfig(const char * inName,
                                 extractTitle(line))) break;
                 }
 		i++;
+		entry = NULL;
 	    }
 
-	    if (entry) cfg->defaultImage = i;
+	    if (entry){
+	        cfg->defaultImage = i;
+	    }else{
+	        cfg->defaultImage = -1;
+	    }
 	}
     } else {
         cfg->defaultImage = 0;
