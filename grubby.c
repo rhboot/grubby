@@ -346,6 +346,14 @@ static enum lineType_e getTypeByKeyword(char * keyword,
 					struct configFileInfo * cfi);
 static struct singleLine * getLineByType(enum lineType_e type,
 					 struct singleLine * line);
+struct singleLine * addLineTmpl(struct singleEntry * entry,
+                                struct singleLine * tmplLine,
+                                struct singleLine * prevLine,
+                                const char * val);
+struct singleLine *  addLine(struct singleEntry * entry,
+                             struct configFileInfo * cfi,
+                             enum lineType_e type, char * defaultIndent,
+                             const char * val);
 
 static char * sdupprintf(const char *format, ...)
 #ifdef __GNUC__
