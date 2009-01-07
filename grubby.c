@@ -2219,6 +2219,7 @@ int checkForGrub(struct grubConfig * config) {
     if (read(fd, bootSect, 512) != 512) {
 	fprintf(stderr, _("grubby: unable to read %s: %s\n"),
 		"/boot/grub/stage1", strerror(errno));
+    	close(fd);
 	return 1;
     }
     close(fd);
