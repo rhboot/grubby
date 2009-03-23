@@ -1433,6 +1433,11 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     printf("index=%d\n", index);
 
     line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
+    if (!line) {
+        printf("non linux entry\n");
+        return;
+    }
+
     printf("kernel=%s\n", line->elements[1].item);
 
     if (line->numElements >= 3) {
