@@ -47,3 +47,5 @@ install: all
 grubby:: $(OBJECTS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(grubby_LIBS)
 
+clean:
+	rm -f *.o grubby *~
