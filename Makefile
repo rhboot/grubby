@@ -25,7 +25,7 @@ OBJECTS = grubby.o
 CFLAGS := $(CFLAGS) $(RPM_OPT_FLAGS) -DVERSION='"$(VERSION)"' -Wall -Werror
 LDFLAGS := 
 
-grubby_LIBS = -lbdevid
+grubby_LIBS = -lblkid -lpopt
 grubby_LIBS += $(shell pkg-config --libs glib-2.0)
 
 all: grubby
