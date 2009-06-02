@@ -34,9 +34,7 @@
 #include <libgen.h>
 #include <execinfo.h>
 #include <signal.h>
-
-#include <nash.h>
-static nashContext *_nash_context;
+#include <blkid/blkid.h>
 
 #define DEBUG 0
 
@@ -421,6 +419,19 @@ static struct keywordTypes * getKeywordByType(enum lineType_e type,
 	    return kw;
     }
     return NULL;
+}
+
+static char * getpathbyspec(char *device) {
+    static blkid_cache blkid;
+
+    if (!blkid)
+        blkid_get_cache(&blkid, NULL);
+
+    if (!strncmp(device, "LABEL=", 6))
+        return blkid_get_tag_value(blkid, "LABEL", device+6);
+    else if (!strncmp(device, "UUID=", 5))
+        return blkid_get_tag_value(blkid, "UUID", device+5);
+    return device;
 }
 
 static enum lineType_e getTypeByKeyword(char * keyword, 
@@ -1135,7 +1146,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	}
     }
 
-    dev = nashGetPathBySpec(_nash_context, dev);
+    dev = getpathbyspec(dev);
     if (!dev)
         return 0;
 
@@ -2699,7 +2710,6 @@ int main(int argc, const char ** argv) {
     useextlinuxmenu=0;
 
     signal(SIGSEGV, traceback);
-    _nash_context = nashNewContext();
 
     optCon = poptGetContext("grubby", argc, argv, options, 0);
     poptReadDefaultConfig(optCon, 1);
