@@ -35,8 +35,6 @@
 #include <execinfo.h>
 #include <signal.h>
 
-#include "version.h"
-
 #include <nash.h>
 static nashContext *_nash_context;
 

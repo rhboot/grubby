@@ -17,23 +17,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-TOPDIR ?= $(shell pwd)/../
-export TOPDIR
+VERSION=6.0.86
 
 TARGETS = grubby
 OBJECTS = grubby.o
 
-include ../Makefile.inc
-
-CFLAGS := $(CFLAGS) -iquote../nash/ \
-	-I$(TOPDIR)/nash/include -I$(TOPDIR)/bdevid/include $(RPM_OPT_FLAGS)
-LDFLAGS := -L$(TOPDIR)/nash -L$(TOPDIR)/bdevid \
-	-Wl,--wrap,open,--wrap,fopen,--wrap,opendir,--wrap,socket \
-	-Wl,--wrap,pipe
+CFLAGS := $(CFLAGS) $(RPM_OPT_FLAGS) -DVERSION='"$(VERSION)"' -Wall -Werror
+LDFLAGS := 
 
 grubby_LIBS = -lnash -lbdevid
 grubby_LIBS += -lparted -lblkid -luuid -lpopt -ldevmapper -lselinux -lsepol
-grubby_LIBS += $(shell pkg-config --libs libdhcp glib-2.0)
+grubby_LIBS += $(shell pkg-config --libs glib-2.0)
+
+all: grubby
 
 test: all
 	@export TOPDIR=$(TOPDIR)
