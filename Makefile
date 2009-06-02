@@ -38,6 +38,7 @@ install: all
 	mkdir -p $(DESTDIR)/sbin
 	mkdir -p $(DESTDIR)/$(mandir)/man8
 	install -m 755 new-kernel-pkg $(DESTDIR)/sbin
+	install -m 755 installkernel $(DESTDIR)/sbin
 	if [ -f grubby ]; then \
 		install -m 755 grubby $(DESTDIR)/sbin ; \
 		install -m 644 grubby.8 $(DESTDIR)/$(mandir)/man8 ; \
