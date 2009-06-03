@@ -268,8 +268,13 @@ update() {
 }
 
 mkinitrd() {
-    [ -n "$verbose" ] && echo "creating initrd $initrdfile using $version"
-    /sbin/mkinitrd --allow-missing -f $initrdfile $version
+    if [ -n "$USEDRACUT" -a -x /sbin/dracut ]; then
+        tool="/sbin/dracut"
+    else
+	tool="/sbin/mkinitrd"
+    fi
+    [ -n "$verbose" ] && echo "creating initrd $initrdfile with $tool for $version"
+    $tool --allow-missing -f $initrdfile $version
     rc=$?
     if [ $rc != 0 ]; then
 	echo "mkinitrd failed" >&2
