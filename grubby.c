@@ -427,11 +427,7 @@ static char * getpathbyspec(char *device) {
     if (!blkid)
         blkid_get_cache(&blkid, NULL);
 
-    if (!strncmp(device, "LABEL=", 6))
-        return blkid_get_tag_value(blkid, "LABEL", device+6);
-    else if (!strncmp(device, "UUID=", 5))
-        return blkid_get_tag_value(blkid, "UUID", device+5);
-    return device;
+    return blkid_get_devname(blkid, device, NULL);
 }
 
 static enum lineType_e getTypeByKeyword(char * keyword, 
