@@ -89,13 +89,14 @@ makedefault=""
 package=""
 mbkernel=""
 mbargs=""
+adddracutargs=""
 
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
     echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
     echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2 
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
-    echo "       [--mbargs=mbargs] [--make-default]" >&2
+    echo "       [--mbargs=mbargs] [--make-default] [--add-dracut-args]" >&2
     echo "       <--install | --remove | --update | --rpmposttrans> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -384,6 +385,10 @@ while [ $# -gt 0 ]; do
 	    fi		    
 	    ;;
 
+	--add-dracut-args)
+	    adddracutargs=--add-dracut-args
+	    ;;
+
 	-v)
 	    verbose=-v
 	    ;;
@@ -435,6 +440,26 @@ if [ -z "$initrdfile" ]; then
 
 fi
 [ -n "$verbose" ] && echo "initrdfile is $initrdfile"
+
+# add dracut i18n, keyboard and plymouth kernel args if requested
+if [ -n "$adddracutargs" ]; then
+    . /etc/sysconfig/keyboard 
+    . /etc/sysconfig/i18n
+
+    for i in SYSFONT SYSFONTACM UNIMAP LANG KEYTABLE; do
+        val=$(eval echo \$$i)
+        [ -n "$val" ] && kernargs="$kernargs $i=$val"
+    done
+
+    if [ -n "$KEYBOARDTYPE" -a "$KEYBOARDTYPE" != "pc" ]; then
+         kernargs="$kernargs KEYBOARDTYPE=$KEYBOARDTYPE"
+    fi
+
+    if [ -x /usr/sbin/plymouth-set-default-theme ]; then
+        theme=$(/usr/sbin/plymouth-set-default-theme)
+        [ -n "$theme" ] && kernargs="$kernargs rd_plytheme=$theme"
+    fi
+fi
 
 # set this as the default if we have the package and it matches
 if [ "$mode" == "--install" -a "$UPDATEDEFAULT" == "yes" -a -n "$package" -a -n "$DEFAULTKERNEL" -a "$package" == "$DEFAULTKERNEL" ]; then
