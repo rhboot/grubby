@@ -443,8 +443,8 @@ fi
 
 # add dracut i18n, keyboard and plymouth kernel args if requested
 if [ -n "$adddracutargs" ]; then
-    . /etc/sysconfig/keyboard 
-    . /etc/sysconfig/i18n
+    [ -r /etc/sysconfig/keyboard ] && . /etc/sysconfig/keyboard 
+    [ -r /etc/sysconfig/i18n ] && . /etc/sysconfig/i18n
 
     for i in SYSFONT SYSFONTACM UNIMAP LANG KEYTABLE; do
         val=$(eval echo \$$i)
