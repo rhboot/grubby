@@ -360,7 +360,8 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 		       struct configFileInfo * cfi);
 static char * getRootSpecifier(char * str);
 static void insertElement(struct singleLine * line,
-			  const char * item, int insertHere);
+			  const char * item, int insertHere,
+			  struct configFileInfo * cfi);
 static void removeElement(struct singleLine * line, int removeHere);
 static struct keywordTypes * getKeywordByType(enum lineType_e type,
 					      struct configFileInfo * cfi);
@@ -372,7 +373,8 @@ static int checkForExtLinux(struct grubConfig * config);
 struct singleLine * addLineTmpl(struct singleEntry * entry,
                                 struct singleLine * tmplLine,
                                 struct singleLine * prevLine,
-                                const char * val);
+                                const char * val,
+				struct configFileInfo * cfi);
 struct singleLine *  addLine(struct singleEntry * entry,
                              struct configFileInfo * cfi,
                              enum lineType_e type, char * defaultIndent,
@@ -1607,7 +1609,9 @@ int displayInfo(struct grubConfig * config, char * kernel,
 struct singleLine * addLineTmpl(struct singleEntry * entry,
 				struct singleLine * tmplLine,
 				struct singleLine * prevLine,
-				const char * val) {
+				const char * val,
+				struct configFileInfo * cfi)
+{
     struct singleLine * newLine = lineDup(tmplLine);
 
     if (val) {
@@ -1616,7 +1620,7 @@ struct singleLine * addLineTmpl(struct singleEntry * entry,
 	 */
 	if (newLine->numElements > 1)
 	    removeElement(newLine, 1);
-	insertElement(newLine, val, 1);
+	insertElement(newLine, val, 1, cfi);
 
 	/* but try to keep the rootspec from the template... sigh */
 	if (tmplLine->type & (LT_HYPER|LT_KERNEL|LT_MBMODULE|LT_INITRD)) {
@@ -1697,7 +1701,7 @@ struct singleLine *  addLine(struct singleEntry * entry,
     else
 	tmpl.indent = prev->indent;
 
-    return addLineTmpl(entry, &tmpl, prev, val);
+    return addLineTmpl(entry, &tmpl, prev, val, cfi);
 }
 
 void removeLine(struct singleEntry * entry, struct singleLine * line) {
@@ -1723,7 +1727,11 @@ void removeLine(struct singleEntry * entry, struct singleLine * line) {
 }
 
 static void insertElement(struct singleLine * line,
-			  const char * item, int insertHere) {
+			  const char * item, int insertHere,
+			  struct configFileInfo * cfi)
+{
+    struct keywordTypes * kw;
+    char indent[2] = "";
 
     /* sanity check */
     if (insertHere > line->numElements) {
@@ -1740,17 +1748,23 @@ static void insertElement(struct singleLine * line,
 	    sizeof(*line->elements));
     line->elements[insertHere].item = strdup(item);
 
+    kw = getKeywordByType(line->type, cfi);
+
+    if (line->numElements == 0) {
+	indent[0] = '\0';
+    } else if (insertHere == 0) {
+	indent[0] = kw->nextChar;
+    } else {
+	indent[0] = ' ';
+    }
+
     if (insertHere > 0 && line->elements[insertHere-1].indent[0] == '\0') {
 	/* move the end-of-line forward */
 	line->elements[insertHere].indent = 
 	    line->elements[insertHere-1].indent;
-	line->elements[insertHere-1].indent = strdup(" ");
+	line->elements[insertHere-1].indent = strdup(indent);
     } else {
-	/* technically this should honor nextChar from keywordTypes 
-	 * when insertHere == 0, but oh well
-	 */
-	line->elements[insertHere].indent = 
-	    strdup(insertHere == line->numElements ? "" : " ");
+	line->elements[insertHere].indent = strdup(indent);
     }
 
     line->numElements++;
@@ -1904,7 +1918,7 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 		/* assume all existing args are kernel args,
 		 * prepend -- to make it official
 		 */
-		insertElement(line, "--", firstElement);
+		insertElement(line, "--", firstElement, cfg->cfi);
 		i = firstElement;
 	    }
 	    if (!multibootArgs) {
@@ -1968,7 +1982,7 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 
 	    else {
 		/* insert/append */
-		insertElement(line, *arg, i);
+		insertElement(line, *arg, i, cfg->cfi);
 		usedElements = realloc(usedElements, line->numElements *
 				       sizeof(*usedElements));
 		memmove(&usedElements[i + 1], &usedElements[i],
@@ -2369,7 +2383,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 			    tmplLine->elements[0].item = strdup(mbm_kw->key);
 			}
 			newLine = addLineTmpl(new, tmplLine, newLine,
-					      newKernelPath + strlen(prefix));
+					      newKernelPath + strlen(prefix), config->cfi);
 			needs &= ~NEED_KERNEL;
 		    }
 		    if (needs & NEED_MB) { /* !mbHyperFirst */
@@ -2380,7 +2394,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    }
 		} else if (needs & NEED_KERNEL) {
 		    newLine = addLineTmpl(new, tmplLine, newLine, 
-					  newKernelPath + strlen(prefix));
+					  newKernelPath + strlen(prefix), config->cfi);
 		    needs &= ~NEED_KERNEL;
 		}
 
@@ -2388,7 +2402,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		       tmplLine->numElements >= 2) {
 		if (needs & NEED_MB) {
 		    newLine = addLineTmpl(new, tmplLine, newLine, 
-					  newMBKernel + strlen(prefix));
+					  newMBKernel + strlen(prefix), config->cfi);
 		    needs &= ~NEED_MB;
 		}
 
@@ -2398,13 +2412,13 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    if (needs & NEED_KERNEL) {
 			newLine = addLineTmpl(new, tmplLine, newLine, 
 					      newKernelPath + 
-					      strlen(prefix));
+					      strlen(prefix), config->cfi);
 			needs &= ~NEED_KERNEL;
 		    } else if (config->cfi->mbInitRdIsModule &&
 			       (needs & NEED_INITRD)) {
 			newLine = addLineTmpl(new, tmplLine, newLine,
 					      newKernelInitrd + 
-					      strlen(prefix));
+					      strlen(prefix), config->cfi);
 			needs &= ~NEED_INITRD;
 		    }
 		} else if (needs & NEED_KERNEL) {
@@ -2416,7 +2430,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    tmplLine->elements[0].item = 
 			strdup(getKeywordByType(LT_KERNEL, config->cfi)->key);
 		    newLine = addLineTmpl(new, tmplLine, newLine, 
-					  newKernelPath + strlen(prefix));
+					  newKernelPath + strlen(prefix), config->cfi);
 		    needs &= ~NEED_KERNEL;
 		} else if (needs & NEED_INITRD) {
 		    /* template is multi but new is not,
@@ -2427,7 +2441,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    tmplLine->elements[0].item = 
 			strdup(getKeywordByType(LT_INITRD, config->cfi)->key);
 		    newLine = addLineTmpl(new, tmplLine, newLine, 
-					  newKernelInitrd + strlen(prefix));
+					  newKernelInitrd + strlen(prefix), config->cfi);
 		    needs &= ~NEED_INITRD;
 		}
 
@@ -2448,7 +2462,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    }
 		} else if (needs & NEED_INITRD) {
 		    newLine = addLineTmpl(new, tmplLine, newLine,
-					  newKernelInitrd + strlen(prefix));
+					  newKernelInitrd + strlen(prefix), config->cfi);
 		    needs &= ~NEED_INITRD;
 		}
 
@@ -2456,7 +2470,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		       (needs & NEED_TITLE)) {
 		if (tmplLine->numElements >= 2) {
 		    newLine = addLineTmpl(new, tmplLine, newLine, 
-					  newKernelTitle);
+					  newKernelTitle, config->cfi);
 		    needs &= ~NEED_TITLE;
 		} else if (tmplLine->numElements == 1 &&
 			   config->cfi->titleBracketed) {
@@ -2468,7 +2482,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 
 	    } else {
 		/* pass through other lines from the template */
-		newLine = addLineTmpl(new, tmplLine, newLine, NULL);
+		newLine = addLineTmpl(new, tmplLine, newLine, NULL, config->cfi);
 	    }
 	}
 
@@ -2563,7 +2577,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 							      config->cfi)) ?
 			  LT_MBMODULE : LT_INITRD, 
 			  config->secondaryIndent, 
-			  newKernelInitrd + strlen(prefix));
+			  newKernelInitrd + strlen(prefix), config->cfig);
 	needs &= ~NEED_INITRD;
     }
 
