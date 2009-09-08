@@ -46,6 +46,7 @@
 
 #define _(A) (A)
 
+#define MAX_EXTRA_INITRDS	  16	/* code segment checked by --bootloader-probe */
 #define CODE_SEG_SIZE	  128	/* code segment checked by --bootloader-probe */
 
 /* comments get lumped in with indention */
@@ -122,6 +123,7 @@ struct configFileInfo {
     int mbHyperFirst;
     int mbInitRdIsModule;
     int mbConcatArgs;
+    int mbAllowExtraInitRds;
 };
 
 struct keywordTypes grubKeywords[] = {
@@ -149,6 +151,7 @@ struct configFileInfo grubConfigType = {
     1,                                      /* mbHyperFirst */
     1,                                      /* mbInitRdIsModule */
     0,                                      /* mbConcatArgs */
+    1,                                      /* mbAllowExtraInitRds */
 };
 
 struct keywordTypes yabootKeywords[] = {
@@ -258,6 +261,7 @@ struct configFileInfo eliloConfigType = {
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
     1,                                      /* mbConcatArgs */
+    0,                                      /* mbAllowExtraInitRds */
 };
 
 struct configFileInfo liloConfigType = {
@@ -273,6 +277,7 @@ struct configFileInfo liloConfigType = {
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
     0,                                      /* mbConcatArgs */
+    0,                                      /* mbAllowExtraInitRds */
 };
 
 struct configFileInfo yabootConfigType = {
@@ -288,6 +293,7 @@ struct configFileInfo yabootConfigType = {
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
     0,                                      /* mbConcatArgs */
+    1,                                      /* mbAllowExtraInitRds */
 };
 
 struct configFileInfo siloConfigType = {
@@ -303,6 +309,7 @@ struct configFileInfo siloConfigType = {
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
     0,                                      /* mbConcatArgs */
+    0,                                      /* mbAllowExtraInitRds */
 };
 
 struct configFileInfo ziplConfigType = {
@@ -318,6 +325,7 @@ struct configFileInfo ziplConfigType = {
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
     0,                                      /* mbConcatArgs */
+    0,                                      /* mbAllowExtraInitRds */
 };
 
 struct configFileInfo extlinuxConfigType = {
@@ -333,6 +341,7 @@ struct configFileInfo extlinuxConfigType = {
     0,                                      /* mbHyperFirst */
     0,                                      /* mbInitRdIsModule */
     0,                                      /* mbConcatArgs */
+    1,                                      /* mbAllowExtraInitRds */
 };
 
 struct grubConfig {
@@ -1808,6 +1817,8 @@ static void insertElement(struct singleLine * line,
 	indent[0] = '\0';
     } else if (insertHere == 0) {
 	indent[0] = kw->nextChar;
+    } else if (kw->separatorChar != '\0') {
+	indent[0] = kw->separatorChar;
     } else {
 	indent[0] = ' ';
     }
@@ -2347,10 +2358,52 @@ static char * getRootSpecifier(char * str) {
     return rootspec;
 }
 
+static char * getInitrdVal(struct grubConfig * config,
+			   const char * prefix, struct singleLine *tmplLine,
+			   const char * newKernelInitrd,
+			   char ** extraInitrds, int extraInitrdCount)
+{
+    char *initrdVal, *end;
+    int i;
+    size_t totalSize;
+    size_t prefixLen;
+    char separatorChar;
+
+    prefixLen = strlen(prefix);
+    totalSize = strlen(newKernelInitrd) - prefixLen;
+
+    for (i = 0; i < extraInitrdCount; i++) {
+	totalSize += sizeof(separatorChar);
+	totalSize += strlen(extraInitrds[i]) - prefixLen;
+    }
+
+    initrdVal = end = malloc(totalSize);
+
+    end = stpcpy (end, newKernelInitrd + prefixLen);
+    separatorChar = getKeywordByType(LT_INITRD, config->cfi)->separatorChar;
+    for (i = 0; i < extraInitrdCount; i++) {
+	const char *extraInitrd;
+	int j;
+
+	extraInitrd = extraInitrds[i] + prefixLen;
+	/* Don't add entries that are already there */
+	for (j = 2; j < tmplLine->numElements; j++)
+		if (strcmp(extraInitrd, tmplLine->elements[j].item) == 0) break;
+
+	if (j != tmplLine->numElements) continue;
+
+	*end++ = separatorChar;
+	end = stpcpy(end, extraInitrd);
+    }
+
+    return initrdVal;
+}
+
 int addNewKernel(struct grubConfig * config, struct singleEntry * template, 
 	         const char * prefix,
 		 char * newKernelPath, char * newKernelTitle,
 		 char * newKernelArgs, char * newKernelInitrd,
+		 char ** extraInitrds, int extraInitrdCount,
                  char * newMBKernel, char * newMBKernelArgs) {
     struct singleEntry * new;
     struct singleLine * newLine = NULL, * tmplLine = NULL, * masterLine = NULL;
@@ -2470,9 +2523,13 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 			needs &= ~NEED_KERNEL;
 		    } else if (config->cfi->mbInitRdIsModule &&
 			       (needs & NEED_INITRD)) {
+			char *initrdVal;
+			initrdVal = getInitrdVal(config, prefix, tmplLine,
+						 newKernelInitrd, extraInitrds,
+						 extraInitrdCount);
 			newLine = addLineTmpl(new, tmplLine, newLine,
-					      newKernelInitrd + 
-					      strlen(prefix), config->cfi);
+					      initrdVal, config->cfi);
+			free(initrdVal);
 			needs &= ~NEED_INITRD;
 		    }
 		} else if (needs & NEED_KERNEL) {
@@ -2487,6 +2544,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 					  newKernelPath + strlen(prefix), config->cfi);
 		    needs &= ~NEED_KERNEL;
 		} else if (needs & NEED_INITRD) {
+		    char *initrdVal;
 		    /* template is multi but new is not,
 		     * insert the initrd in the second module slot
 		     */
@@ -2494,8 +2552,9 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    free(tmplLine->elements[0].item);
 		    tmplLine->elements[0].item = 
 			strdup(getKeywordByType(LT_INITRD, config->cfi)->key);
-		    newLine = addLineTmpl(new, tmplLine, newLine, 
-					  newKernelInitrd + strlen(prefix), config->cfi);
+		    initrdVal = getInitrdVal(config, prefix, tmplLine, newKernelInitrd, extraInitrds, extraInitrdCount);
+		    newLine = addLineTmpl(new, tmplLine, newLine, initrdVal, config->cfi);
+		    free(initrdVal);
 		    needs &= ~NEED_INITRD;
 		}
 
@@ -2509,14 +2568,20 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		     * it will be inserted following the template.
 		     */
 		    if (!needs & NEED_KERNEL) {
+			char *initrdVal;
+	
+			initrdVal = getInitrdVal(config, prefix, tmplLine, newKernelInitrd, extraInitrds, extraInitrdCount);
 			newLine = addLine(new, config->cfi, LT_MBMODULE,
 					  config->secondaryIndent, 
 					  newKernelInitrd + strlen(prefix));
+			free(initrdVal);
 			needs &= ~NEED_INITRD;
 		    }
 		} else if (needs & NEED_INITRD) {
-		    newLine = addLineTmpl(new, tmplLine, newLine,
-					  newKernelInitrd + strlen(prefix), config->cfi);
+		    char *initrdVal;
+		    initrdVal = getInitrdVal(config, prefix, tmplLine, newKernelInitrd, extraInitrds, extraInitrdCount);
+		    newLine = addLineTmpl(new, tmplLine, newLine, initrdVal, config->cfi);
+		    free(initrdVal);
 		    needs &= ~NEED_INITRD;
 		}
 
@@ -2626,12 +2691,15 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	needs &= ~NEED_MB;
     }
     if (needs & NEED_INITRD) {
+	char *initrdVal;
+	initrdVal = getInitrdVal(config, prefix, tmplLine, newKernelInitrd, extraInitrds, extraInitrdCount);
 	newLine = addLine(new, config->cfi,
 			  (new->multiboot && getKeywordByType(LT_MBMODULE,
 							      config->cfi)) ?
 			  LT_MBMODULE : LT_INITRD, 
 			  config->secondaryIndent, 
-			  newKernelInitrd + strlen(prefix), config->cfig);
+			  initrdVal);
+	free(initrdVal);
 	needs &= ~NEED_INITRD;
     }
 
@@ -2672,6 +2740,7 @@ int main(int argc, const char ** argv) {
     int configureYaboot = 0, configureSilo = 0, configureZipl = 0;
     int configureExtLinux = 0;
     int bootloaderProbe = 0;
+    int extraInitrdCount = 0;
     char * updateKernelPath = NULL;
     char * newKernelPath = NULL;
     char * removeKernelPath = NULL;
@@ -2687,6 +2756,7 @@ int main(int argc, const char ** argv) {
     char * defaultKernel = NULL;
     char * removeArgs = NULL;
     char * kernelInfo = NULL;
+    char * extraInitrds[MAX_EXTRA_INITRDS] = { NULL };
     const char * chptr = NULL;
     struct configFileInfo * cfi = NULL;
     struct grubConfig * config;
@@ -2736,6 +2806,8 @@ int main(int argc, const char ** argv) {
 	    _("kernel-path") },
 	{ "initrd", 0, POPT_ARG_STRING, &newKernelInitrd, 0,
 	    _("initrd image for the new kernel"), _("initrd-path") },
+	{ "extra-initrd", 'i', POPT_ARG_STRING, NULL, 'i',
+	    _("auxilliary initrd image for things other than the new kernel"), _("initrd-path") },
 	{ "lilo", 0, POPT_ARG_NONE, &configureLilo, 0,
 	    _("configure lilo bootloader") },
 	{ "make-default", 0, 0, &makeDefault, 0,
@@ -2784,6 +2856,14 @@ int main(int argc, const char ** argv) {
 	  case 'v':
 	    printf("grubby version %s\n", VERSION);
 	    exit(0);
+	    break;
+	  case 'i':
+	    if (extraInitrdCount < MAX_EXTRA_INITRDS) {
+	    	extraInitrds[extraInitrdCount++] = strdup(poptGetOptArg(optCon));
+	    } else {
+		fprintf(stderr, _("grubby: extra initrd maximum is %d\n"), extraInitrdCount);
+		return 1;
+	    }
 	    break;
 	}
     }
@@ -2865,7 +2945,7 @@ int main(int argc, const char ** argv) {
 	return 1;
     } else if (!newKernelPath && (newKernelTitle  || newKernelInitrd ||
 				  newKernelInitrd || copyDefault     ||
-				  makeDefault)) {
+				  makeDefault || extraInitrdCount > 0)) {
 	fprintf(stderr, _("grubby: kernel path expected\n"));
 	return 1;
     }
@@ -2916,6 +2996,12 @@ int main(int argc, const char ** argv) {
 	}
     } else {
 	bootPrefix = "";
+    }
+
+    if (!cfi->mbAllowExtraInitRds &&
+	extraInitrdCount > 0) {
+	fprintf(stderr, _("grubby: %s doesn't allow multiple initrds\n"), cfi->defaultConfig);
+	return 1;
     }
 
     if (bootloaderProbe) {
@@ -2993,6 +3079,7 @@ int main(int argc, const char ** argv) {
                     removeArgs, newMBKernelArgs, removeMBKernelArgs)) return 1;
     if (addNewKernel(config, template, bootPrefix, newKernelPath, 
                      newKernelTitle, newKernelArgs, newKernelInitrd, 
+                     extraInitrds, extraInitrdCount,
                      newMBKernel, newMBKernelArgs)) return 1;
     
 
