@@ -91,6 +91,7 @@ package=""
 mbkernel=""
 mbargs=""
 adddracutargs=""
+addplymouthinitrd=""
 
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd] [--dracut]" >&2 
@@ -98,6 +99,7 @@ usage() {
     echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2 
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
     echo "       [--mbargs=mbargs] [--make-default] [--add-dracut-args]" >&2
+    echo "       [--add-plymouth-initrd]" >&2
     echo "       <--install | --remove | --update | --rpmposttrans> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -114,6 +116,10 @@ install() {
     if [ -f $initrdfile ]; then
 	[ -n "$verbose" ] && echo "found $initrdfile and using it with grubby"
 	INITRD="--initrd $initrdfile"
+
+	if [ -n "$addplymouthinitrd" ]; then
+	    INITRD="$INITRD --extra-initrd $bootPrefix/initrd-plymouth.img"
+	fi
     fi
 
     # FIXME: is this a good heuristic to find out if we're on iSeries?
@@ -392,6 +398,10 @@ while [ $# -gt 0 ]; do
 
 	--add-dracut-args)
 	    adddracutargs=--add-dracut-args
+	    ;;
+
+	--add-plymouth-initrd)
+	    addplymouthinitrd=--add-plymouth-initrd
 	    ;;
 
 	-v)
