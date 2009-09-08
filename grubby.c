@@ -106,6 +106,7 @@ struct keywordTypes {
     char * key;
     enum lineType_e type;
     char nextChar;
+    char separatorChar;
 };
 
 struct configFileInfo {
@@ -129,7 +130,7 @@ struct keywordTypes grubKeywords[] = {
     { "default",    LT_DEFAULT,	    ' ' },
     { "fallback",   LT_FALLBACK,    ' ' },
     { "kernel",	    LT_KERNEL,	    ' ' },
-    { "initrd",	    LT_INITRD,	    ' ' },
+    { "initrd",	    LT_INITRD,	    ' ',	' ' },
     { "module",     LT_MBMODULE,    ' ' },
     { "kernel",     LT_HYPER,       ' ' },
     { NULL,	    0, 0 },
@@ -181,7 +182,7 @@ struct keywordTypes yabootKeywords[] = {
     { "partition",  LT_GENERIC,	    '=' },
     { "device",	    LT_GENERIC,	    '=' },
     { "fstype",	    LT_GENERIC,	    '=' },
-    { "initrd",	    LT_INITRD,	    '=' },
+    { "initrd",	    LT_INITRD,	    '=',	';' },
     { "append",	    LT_KERNELARGS,  '=' },
     { "boot",	    LT_BOOT,	    '=' },
     { "lba",	    LT_LBA,	    ' ' },
@@ -238,7 +239,7 @@ struct keywordTypes extlinuxKeywords[] = {
     { "root",	    LT_ROOT,	    ' ' },
     { "default",    LT_DEFAULT,	    ' ' },
     { "kernel",	    LT_KERNEL,	    ' ' },
-    { "initrd",	    LT_INITRD,      ' ' },
+    { "initrd",	    LT_INITRD,      ' ',	',' },
     { "append",	    LT_KERNELARGS,  ' ' },
     { "prompt",     LT_UNKNOWN,     ' ' },
     { NULL,	    0, 0 },
@@ -676,6 +677,59 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 		line->type = LT_WHITESPACE;
 		line->numElements = 0;
 	    }
+	} else {
+		struct keywordTypes *kw;
+
+		kw = getKeywordByType(line->type, cfi);
+
+		/* space isn't the only separator, we need to split
+		 * elements up more
+		 */
+		if (!isspace(kw->separatorChar)) {
+		    int i;
+		    char indent[2] = "";
+		    indent[0] = kw->separatorChar;
+		    for (i = 1; i < line->numElements; i++) {
+			char *p;
+			int j;
+			int numNewElements;
+
+			numNewElements = 0;
+			p = line->elements[i].item;
+			while (*p != '\0') {
+				if (*p == kw->separatorChar)
+					numNewElements++;
+				p++;
+			}
+			if (line->numElements + numNewElements >= elementsAlloced) {
+				elementsAlloced += numNewElements + 5;
+				line->elements = realloc(line->elements,
+					    sizeof(*line->elements) * elementsAlloced);
+			}
+
+			for (j = line->numElements; j > i; j--) {
+				line->elements[j + numNewElements] = line->elements[j];
+			}
+			line->numElements += numNewElements;
+
+			p = line->elements[i].item;
+			while (*p != '\0') {
+
+				while (*p != kw->separatorChar && *p != '\0') p++;
+				if (*p == '\0') {
+					break;
+				}
+
+				free(line->elements[i].indent);
+				line->elements[i].indent = strdup(indent);
+				*p++ = '\0';
+				i++;
+				line->elements[i].item = strdup(p);
+				line->elements[i].indent = strdup("");
+				p = line->elements[i].item;
+			}
+		    }
+		}
 	}
     }
 
