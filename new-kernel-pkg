@@ -82,6 +82,7 @@ fi
 mode=""
 version=""
 initrd=""
+dracut=""
 initrdfile=""
 moddep=""
 verbose=""
@@ -92,7 +93,7 @@ mbargs=""
 adddracutargs=""
 
 usage() {
-    echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd]" >&2 
+    echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd] [--dracut]" >&2 
     echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
     echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2 
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
@@ -269,7 +270,7 @@ update() {
 }
 
 mkinitrd() {
-    if [ -n "$USEDRACUT" -a -x /sbin/dracut ]; then
+    if [ -n "$dracut" ]; then
         tool="/sbin/dracut -f $initrdfile $version"
     else
 	tool="/sbin/mkinitrd --allow-missing -f $initrdfile $version"
@@ -307,6 +308,10 @@ while [ $# -gt 0 ]; do
 
 	--rminitrd)
 	    initrd="remove"
+	    ;;
+
+	--dracut)
+	    dracut=--dracut
 	    ;;
 
 	--initrdfile*)
@@ -432,17 +437,22 @@ fi
 
 # set the initrd file based on arch; ia64 is the only currently known oddball
 if [ -z "$initrdfile" ]; then
+    INITRD_NAME_PREFIX="initrd"
+    if [ -n "$dracut" ]; then
+	INITRD_NAME_PREFIX="initramfs"
+    fi
+
     if [ `uname -m` = "ia64" ]; then
-	initrdfile="/boot/efi/EFI/redhat/initrd-$version.img"
+	initrdfile="/boot/efi/EFI/redhat/$INITRD_NAME_PREFIX-$version.img"
     else
-	initrdfile="/boot/initrd-$version.img"
+	initrdfile="/boot/$INITRD_NAME_PREFIX-$version.img"
     fi
 
 fi
 [ -n "$verbose" ] && echo "initrdfile is $initrdfile"
 
 # add dracut i18n, keyboard and plymouth kernel args if requested
-if [ -n "$adddracutargs" ]; then
+if [ -n "$dracut" -o -n "$adddracutargs" ]; then
     [ -r /etc/sysconfig/keyboard ] && . /etc/sysconfig/keyboard 
     [ -r /etc/sysconfig/i18n ] && . /etc/sysconfig/i18n
 
