@@ -474,11 +474,6 @@ if [ -n "$dracut" -o -n "$adddracutargs" ]; then
     if [ -n "$KEYBOARDTYPE" -a "$KEYBOARDTYPE" != "pc" ]; then
          kernargs="$kernargs KEYBOARDTYPE=$KEYBOARDTYPE"
     fi
-
-    if [ -x /usr/sbin/plymouth-set-default-theme ]; then
-        theme=$(/usr/sbin/plymouth-set-default-theme)
-        [ -n "$theme" ] && kernargs="$kernargs rd_plytheme=$theme"
-    fi
 fi
 
 # set this as the default if we have the package and it matches
