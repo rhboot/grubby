@@ -282,6 +282,10 @@ grubTest grub.1 add/g1.3 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/ --copy-default
 grubTest grub.1 add/g1.4 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default
+grubTest grub.1 add/g1.5 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --extra-initrd=/boot/extra-initrd --boot-filesystem=/
+grubTest grub.1 add/g1.6 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --extra-initrd=/boot/extra-initrd --boot-filesystem=/boot
 grubTest grub.2 add/g2.1 --add-kernel=/boot/vmlinuz-2.4.7-2	    \
     --initrd=/boot/initrd-2.4.7-new.img --boot-filesystem=/boot --copy-default \
     --title="Red Hat Linux (2.4.7-2)"					    \
