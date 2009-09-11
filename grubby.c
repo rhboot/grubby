@@ -2388,12 +2388,14 @@ static char * getInitrdVal(struct grubConfig * config,
 
 	extraInitrd = extraInitrds[i] + prefixLen;
 	/* Don't add entries that are already there */
-	for (j = 2; j < tmplLine->numElements; j++)
+	if (tmplLine != NULL) {
+	    for (j = 2; j < tmplLine->numElements; j++)
 		if (strcmp(extraInitrd, tmplLine->elements[j].item) == 0)
-			break;
+		    break;
 
-	if (j != tmplLine->numElements)
+	    if (j != tmplLine->numElements)
 		continue;
+	}
 
 	*end++ = separatorChar;
 	end = stpcpy(end, extraInitrd);
@@ -2695,7 +2697,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
     }
     if (needs & NEED_INITRD) {
 	char *initrdVal;
-	initrdVal = getInitrdVal(config, prefix, tmplLine, newKernelInitrd, extraInitrds, extraInitrdCount);
+	initrdVal = getInitrdVal(config, prefix, NULL, newKernelInitrd, extraInitrds, extraInitrdCount);
 	newLine = addLine(new, config->cfi,
 			  (new->multiboot && getKeywordByType(LT_MBMODULE,
 							      config->cfi)) ?
