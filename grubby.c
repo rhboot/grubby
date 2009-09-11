@@ -2573,7 +2573,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 			initrdVal = getInitrdVal(config, prefix, tmplLine, newKernelInitrd, extraInitrds, extraInitrdCount);
 			newLine = addLine(new, config->cfi, LT_MBMODULE,
 					  config->secondaryIndent, 
-					  newKernelInitrd + strlen(prefix));
+					  initrdVal);
 			free(initrdVal);
 			needs &= ~NEED_INITRD;
 		    }
