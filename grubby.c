@@ -2370,7 +2370,7 @@ static char * getInitrdVal(struct grubConfig * config,
     char separatorChar;
 
     prefixLen = strlen(prefix);
-    totalSize = strlen(newKernelInitrd) - prefixLen;
+    totalSize = strlen(newKernelInitrd) - prefixLen + 1 /* \0 */;
 
     for (i = 0; i < extraInitrdCount; i++) {
 	totalSize += sizeof(separatorChar);
@@ -2380,6 +2380,7 @@ static char * getInitrdVal(struct grubConfig * config,
     initrdVal = end = malloc(totalSize);
 
     end = stpcpy (end, newKernelInitrd + prefixLen);
+
     separatorChar = getKeywordByType(LT_INITRD, config->cfi)->separatorChar;
     for (i = 0; i < extraInitrdCount; i++) {
 	const char *extraInitrd;
