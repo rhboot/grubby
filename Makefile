@@ -1,7 +1,7 @@
 #
 # Makefile
 #
-# Copyright 2007-2008 Red Hat, Inc.  All rights reserved.
+# Copyright 2007-2009 Red Hat, Inc.  All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,3 +49,25 @@ grubby:: $(OBJECTS)
 
 clean:
 	rm -f *.o grubby *~
+
+GITTAG = $(VERSION)-1
+
+test-archive:
+	@rm -rf /tmp/grubby-$(VERSION) /tmp/grubby-$(VERSION)-tmp
+	@mkdir -p /tmp/grubby-$(VERSION)-tmp
+	@git archive --format=tar $(shell git branch | awk '/^*/ { print $$2 }') | ( cd /tmp/grubby-$(VERSION)-tmp/ ; tar x )
+	@git diff | ( cd /tmp/grubby-$(VERSION)-tmp/ ; patch -s -p1 -b -z .gitdiff )
+	@mv /tmp/grubby-$(VERSION)-tmp/ /tmp/grubby-$(VERSION)/
+	@dir=$$PWD; cd /tmp; tar -c --bzip2 -f $$dir/grubby-$(VERSION).tar.bz2 grubby-$(VERSION)
+	@rm -rf /tmp/grubby-$(VERSION)
+	@echo "The archive is in grubby-$(VERSION).tar.bz2"
+
+archive:
+	git tag $(GITTAG) refs/heads/master
+	@rm -rf /tmp/grubby-$(VERSION) /tmp/grubby-$(VERSION)-tmp
+	@mkdir -p /tmp/grubby-$(VERSION)-tmp
+	@git archive --format=tar $(GITTAG) | ( cd /tmp/grubby-$(VERSION)-tmp/ ; tar x )
+	@mv /tmp/grubby-$(VERSION)-tmp/ /tmp/grubby-$(VERSION)/
+	@dir=$$PWD; cd /tmp; tar -c --bzip2 -f $$dir/grubby-$(VERSION).tar.bz2 grubby-$(VERSION)
+	@rm -rf /tmp/grubby-$(VERSION)
+	@echo "The archive is in grubby-$(VERSION).tar.bz2"
