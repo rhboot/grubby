@@ -2389,9 +2389,11 @@ static char * getInitrdVal(struct grubConfig * config,
 	extraInitrd = extraInitrds[i] + prefixLen;
 	/* Don't add entries that are already there */
 	for (j = 2; j < tmplLine->numElements; j++)
-		if (strcmp(extraInitrd, tmplLine->elements[j].item) == 0) break;
+		if (strcmp(extraInitrd, tmplLine->elements[j].item) == 0)
+			break;
 
-	if (j != tmplLine->numElements) continue;
+	if (j != tmplLine->numElements)
+		continue;
 
 	*end++ = separatorChar;
 	end = stpcpy(end, extraInitrd);
