@@ -136,16 +136,8 @@ install() {
 	return
     fi
 
-    # get the root filesystem to use; if it's on a label make sure it's
-    # been configured. if not, get the root device from mount
+    # get the root filesystem to use
     rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
-    short=$(echo $rootdevice | cut -d= -f1)
-    if [ "$short" == "LABEL" -o "$short" == "UUID" ]; then
-	device=$(echo resolveDevice "$rootdevice" | /sbin/nash  --forcequiet)
-	if [ -z "$device" ]; then
-	    rootdevice=$(mount | awk '$3 == "/" { print $1 }')
-	fi
-    fi
 
     if [ -n "$mbkernel" -a -n "$cfgLilo" -a "$liloFlag" != "elilo" ]; then
 	[ -n "$verbose" ] && echo "multiboot specified, not updating lilo.conf"
