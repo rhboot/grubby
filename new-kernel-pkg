@@ -238,9 +238,25 @@ remove() {
 }
 
 update() {
+    if [ ! -f $bootPrefix/$kernelName-$version ] ; then
+	[ -n "$verbose" ] && echo "kernel for $version does not exist, not running grubby"
+	return
+    fi
+
+    INITRD=""
+    if [ -f $initrdfile ]; then
+	[ -n "$verbose" ] && echo "found $initrdfile and using it with grubby"
+	INITRD="--initrd $initrdfile"
+
+	if [ -n "$addplymouthinitrd" ]; then
+	    INITRD="$INITRD --extra-initrd $bootPrefix/initrd-plymouth.img"
+	fi
+    fi
+
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
 	$grubby --update-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}	
     else
@@ -250,6 +266,7 @@ update() {
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $liloConfig"
 	$grubby --update-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}	\
 		     --$liloFlag
