@@ -356,6 +356,8 @@ struct grubConfig {
     struct configFileInfo * cfi;
 };
 
+blkid_cache blkid;
+
 struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index);
 struct singleEntry * findEntryByPath(struct grubConfig * cfg, 
 				     const char * path, const char * prefix,
@@ -434,12 +436,17 @@ static struct keywordTypes * getKeywordByType(enum lineType_e type,
 }
 
 static char * getpathbyspec(char *device) {
-    static blkid_cache blkid;
-
     if (!blkid)
         blkid_get_cache(&blkid, NULL);
 
     return blkid_get_devname(blkid, device, NULL);
+}
+
+static char * getuuidbydev(char *device) {
+    if (!blkid)
+	blkid_get_cache(&blkid, NULL);
+
+    return blkid_get_tag_value(blkid, "UUID", device);
 }
 
 static enum lineType_e getTypeByKeyword(char * keyword, 
@@ -1155,14 +1162,84 @@ static int numEntries(struct grubConfig *cfg) {
     return i;
 }
 
+static char *findDiskForRoot()
+{
+    int fd;
+    char buf[65536];
+    char *devname;
+    char *chptr;
+    int rc;
+
+    if ((fd = open(_PATH_MOUNTED, O_RDONLY)) < 0) {
+        fprintf(stderr, "grubby: failed to open %s: %s\n",
+                _PATH_MOUNTED, strerror(errno));
+        return NULL;
+    }
+
+    rc = read(fd, buf, sizeof(buf) - 1);
+    if (rc <= 0) {
+        fprintf(stderr, "grubby: failed to read %s: %s\n",
+                _PATH_MOUNTED, strerror(errno));
+        close(fd);
+        return NULL;
+    }
+    close(fd);
+    buf[rc] = '\0';
+    chptr = buf;
+
+    while (chptr && chptr != buf+rc) {
+        devname = chptr;
+
+        /*
+         * The first column of a mtab entry is the device, but if the entry is a
+         * special device it won't start with /, so move on to the next line.
+         */
+        if (*devname != '/') {
+            chptr = strchr(chptr, '\n');
+            if (chptr)
+                chptr++;
+            continue;
+        }
+
+        /* Seek to the next space */
+        chptr = strchr(chptr, ' ');
+        if (!chptr) {
+            fprintf(stderr, "grubby: error parsing %s: %s\n",
+                    _PATH_MOUNTED, strerror(errno));
+            return NULL;
+        }
+
+        /*
+         * The second column of a mtab entry is the mount point, we are looking
+         * for '/' obviously.
+         */
+        if (*(++chptr) == '/' && *(++chptr) == ' ') {
+            /*
+             * Move back 2, which is the first space after the device name, set
+             * it to \0 so strdup will just get the devicename.
+             */
+            chptr -= 2;
+            *chptr = '\0';
+            return strdup(devname);
+        }
+
+        /* Next line */
+        chptr = strchr(chptr, '\n');
+        if (chptr)
+            chptr++;
+    }
+
+    return NULL;
+}
+
 int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 		  int skipRemoved, int flags) {
     struct singleLine * line;
     char * fullName;
     int i;
-    struct stat sb, sb2;
     char * dev;
     char * rootspec;
+    char * rootdev;
 
     if (skipRemoved && entry->skip) return 0;
 
@@ -1212,14 +1289,17 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     if (!dev)
         return 0;
 
-    i = stat(dev, &sb);
-    if (i)
+    rootdev = findDiskForRoot();
+    if (!rootdev)
 	return 0;
 
-    stat("/", &sb2);
 
-    if (sb.st_rdev != sb2.st_dev)
+    if (strcmp(getuuidbydev(rootdev), getuuidbydev(dev))) {
+	free(rootdev);
         return 0;
+    }
+
+    free(rootdev);
 
     return 1;
 }
