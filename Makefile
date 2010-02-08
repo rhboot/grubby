@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-VERSION=7.0.11
+VERSION=7.0.12
 
 TARGETS = grubby
 OBJECTS = grubby.o
