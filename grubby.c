@@ -2119,6 +2119,29 @@ int updateImage(struct grubConfig * cfg, const char * image,
     return rc;
 }
 
+int updateInitrd(struct grubConfig * cfg, const char * image,
+                 const char * prefix, const char * initrd) {
+    struct singleEntry * entry;
+    struct singleLine * line, * kernelLine;
+    int index = 0;
+
+    if (!image) return 0;
+
+    for (; (entry = findEntryByPath(cfg, image, prefix, &index)); index++) {
+        kernelLine = getLineByType(LT_KERNEL, entry->lines);
+        if (!kernelLine) continue;
+
+        line = getLineByType(LT_INITRD, entry->lines);
+        if (line)
+            removeLine(entry, line);
+        line = addLine(entry, cfg->cfi, LT_INITRD, kernelLine->indent, initrd);
+        if (!line) return 1;
+        break;
+    }
+
+    return 0;
+}
+
 int checkDeviceBootloader(const char * device, const unsigned char * boot) {
     int fd;
     unsigned char bootSect[512];
@@ -2948,8 +2971,8 @@ int main(int argc, const char ** argv) {
     if (newKernelPath && !newKernelTitle) {
 	fprintf(stderr, _("grubby: kernel title must be specified\n"));
 	return 1;
-    } else if (!newKernelPath && (newKernelTitle  || newKernelInitrd ||
-				  newKernelInitrd || copyDefault     ||
+    } else if (!newKernelPath && (newKernelTitle  || copyDefault ||
+				  (newKernelInitrd && !updateKernelPath)||
 				  makeDefault || extraInitrdCount > 0)) {
 	fprintf(stderr, _("grubby: kernel path expected\n"));
 	return 1;
@@ -3082,6 +3105,10 @@ int main(int argc, const char ** argv) {
     setFallbackImage(config, newKernelPath != NULL);
     if (updateImage(config, updateKernelPath, bootPrefix, newKernelArgs,
                     removeArgs, newMBKernelArgs, removeMBKernelArgs)) return 1;
+    if (updateKernelPath && newKernelInitrd) {
+            if (updateInitrd(config, updateKernelPath, bootPrefix,
+                             newKernelInitrd)) return 1;
+    }
     if (addNewKernel(config, template, bootPrefix, newKernelPath, 
                      newKernelTitle, newKernelArgs, newKernelInitrd, 
                      extraInitrds, extraInitrdCount,
