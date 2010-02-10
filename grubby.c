@@ -2214,6 +2214,11 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
         line = getLineByType(LT_INITRD, entry->lines);
         if (line)
             removeLine(entry, line);
+        if (prefix) {
+            int prefixLen = strlen(prefix);
+            if (!strncmp(initrd, prefix, prefixLen))
+                initrd += prefixLen;
+        }
         line = addLine(entry, cfg->cfi, LT_INITRD, kernelLine->indent, initrd);
         if (!line) return 1;
         break;
