@@ -83,6 +83,7 @@ mode=""
 version=""
 initrd=""
 dracut=""
+dracuthostonly=""
 initrdfile=""
 moddep=""
 verbose=""
@@ -100,6 +101,7 @@ usage() {
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
     echo "       [--mbargs=mbargs] [--make-default] [--add-dracut-args]" >&2
     echo "       [--add-plymouth-initrd]" >&2
+    echo "       [--host-only]" >&2
     echo "       <--install | --remove | --update | --rpmposttrans> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -286,7 +288,7 @@ update() {
 
 mkinitrd() {
     if [ -n "$dracut" ]; then
-        tool="/sbin/dracut -f $initrdfile $version"
+        tool="/sbin/dracut $dracuthostonly -f $initrdfile $version"
     else
 	tool="/sbin/mkinitrd --allow-missing -f $initrdfile $version"
     fi
@@ -327,6 +329,10 @@ while [ $# -gt 0 ]; do
 
 	--dracut)
 	    dracut=--dracut
+	    ;;
+
+	--host-only)
+	    dracuthostonly=-H
 	    ;;
 
 	--initrdfile*)
