@@ -1,0 +1,110 @@
+.TH NEW-KERNEL-PKG 8 "Wed Apr 14 2010"
+.SH NAME
+new-kernel-package \- tool to script kernel installation
+
+.SH SYNOPSIS
+\fBnew-kernel-package\fR [-v] [--mkinitrd] [--rminitrd] [--dracut]
+       [--initrdfile=\fIinitrd-image\fR [--depmod] [--rmmoddep]
+       [--kernel-args=\fIargs\fR] [--remove-args=\fIargs\fR]
+       [--banner=\fIbanner\fR] [--multiboot=\fImultiboot\fR]
+       [--mbargs=\fImbargs\fR] [--make-default] [--add-dracut-args]
+       [--add-plymouth-initrd] [--host-only]
+       <--install | --remove | --update | --rpmposttrans> <kernel-version>
+
+.SH DESCRIPTION
+\fBnew-kernel-pkg\fR is a tool used in packaging to automate the installation
+of a new kernel, including the creation of an initial ram filesystem image,
+updating of bootloader configuration, and other associated tasks.
+
+.SH OPTIONS
+.TP
+\fB-v\fR
+Be verbose.
+
+.TP
+\fB-\-mkinitrd\fR
+Create a new initial ram filesystem image.
+
+.TP
+\fB-\-rminitrd\fR
+Remove an initial ram filesystem image.
+
+.TP
+\fB-\-dracut\fR
+When creating a new initial ram filesystem image, use dracut(8) rather
+than mkinitrd(8).  Used in conjunction with -\-mkinitrd .
+
+.TP
+\fB-\-initrdfile\fR=\fIinitrd-image\fR
+Use the specified file as the initial ram filesystem image.
+
+.TP
+\fB-\-depmod\fR
+Create modules.dep and related files.
+
+.TP
+\fB-\-rmmoddep\fR
+Remove modules.dep and related files.
+
+.TP
+\fB-\-kernel-args\fR=\fIargs\fR
+Use \fIargs\fR as the boot command line for this kernel.
+
+.TP
+\fB-\-remove-args\fR=\fIargs\fR
+Remove specified kernel arguments for this kernel.
+
+.TP
+\fB-\-banner\fR=\fIbanner\fR
+Display \fIbanner\fR as the banner text in the bootloader.
+
+.TP
+\fB-\-multiboot\fR=\fImultiboot-image\fR
+Use \fImultiboot-image\fR as a multiboot image.
+
+.TP
+\fB-\-mbargs\fR=\fImbargs\fR
+Use \fImbargs\fR as arguments to the multiboot image.
+
+.TP
+\fB-\-make-default\fR
+Make this kernel the default boot option.
+
+.TP
+\fB-\-add-dracut-args\fR
+Automatically generate dracut options and add them to the kernel command line.
+
+.TP
+\fB-\-add-plymouth-initrd\fR
+Automatically add plymouth to the initial ram filesystem image.
+
+.TP
+\fB-\-host-only\fR
+Make an initial ram filesystem image that is specific to the running system.
+
+.TP
+\fB-\-install\fR \fIkernel-version\fR
+Install a new kernel.
+
+.TP
+\fB-\-remove\fR \fIkernel-version\fR
+Remove an installed kernel.
+
+.TP
+\fB-\-update\fR \fIkernel-version\fR
+Update the specified kernel.
+
+.TP
+\fB-\-rpmposttrans\fR \fIkernel-version\fR
+Run the rpmposttrans for the specified kernel.
+
+.SH "SEE ALSO"
+.BR grubby(8)
+.BR installkernel(8)
+
+.SH AUTHORS
+.nf
+Erik Troan
+Jeremy Katz
+Peter Jones
+.fi
