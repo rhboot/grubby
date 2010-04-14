@@ -73,3 +73,7 @@ archive:
 	@dir=$$PWD; cd /tmp; tar -c --bzip2 -f $$dir/grubby-$(VERSION).tar.bz2 grubby-$(VERSION)
 	@rm -rf /tmp/grubby-$(VERSION)
 	@echo "The archive is in grubby-$(VERSION).tar.bz2"
+
+upload: archive
+	@scp grubby-$(VERSION).tar.bz2 fedorahosted.org:grubby
+
