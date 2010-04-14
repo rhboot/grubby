@@ -1,0 +1,27 @@
+.TH INSTALLKERNEL 8 "Wed Apr 14 2010"
+.SH NAME
+installkernel \- tool to script kernel installation
+
+.SH SYNOPSIS
+\fBinstallkernel\fR \fI<kernel-version> <bootimage> <mapfile>\fR
+
+.SH DESCRIPTION
+\fBinstallkernel\fR installs a new kernel image onto the system from
+the Linux source tree. It is called by the Linux kernel makefiles when
+\fBmake install\fR is invoked there.
+
+The new kernel is installed into {directory}/vmlinuz-{version}. If a
+symbolic link {directory}/vmlinuz already exists, it is refreshed by
+making a link from {directory}/vmlinuz to the new kernel, and the
+previously installed kernel is available as {directory}/vmlinuz.old.
+
+.SH "SEE ALSO"
+.BR grubby(8)
+.BR new-kernel-pkg(8)
+
+.SH AUTHORS
+.nf
+Erik Troan
+Jeremy Katz
+Peter Jones
+.fi
