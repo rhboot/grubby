@@ -1293,6 +1293,10 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     if (!rootdev)
 	return 0;
 
+    if (!getuuidbydev(rootdev) || !getuuidbydev(dev)) {
+        free(rootdev);
+        return 0;
+    }
 
     if (strcmp(getuuidbydev(rootdev), getuuidbydev(dev))) {
 	free(rootdev);
