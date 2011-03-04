@@ -1,4 +1,4 @@
-#!/bin/bash
+u!/bin/bash
 #
 # new-kernel-pkg
 # Invoked upon installation or removal of a kernel package, the following
@@ -107,6 +107,13 @@ usage() {
     exit 1
 }
 
+run_grub2() {
+    if [ -d /boot/grub2 -a -x /sbin/grub2-mkconfig ];
+        cp /boot/grub2/grub.cfg /boot/grub2/grub.cfg.old
+        /sbin/grub2-mkconfig -o /boot/grub2/grub.cfg
+    fi
+}
+
 install() {
     # XXX kernel should be able to be specified also (or work right on ia64)
     if [ ! -f $bootPrefix/$kernelName-$version ] ; then
@@ -137,6 +144,9 @@ install() {
 	fi
 	return
     fi
+
+    # Run grub2's configuration update in parallel, if it is installed
+    run_grub2()
 
     # get the root filesystem to use
     rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
@@ -206,6 +216,9 @@ remove() {
 	return
     fi
 
+    # Run grub2's configuration update in parallel, if it is installed
+    run_grub2()
+
     local files
     local f
     files="/etc/kernel/prerm.d/*[^~] /etc/kernel/prerm.d/$version/*[^~]"
@@ -254,6 +267,9 @@ update() {
 	    INITRD="$INITRD --extra-initrd $bootPrefix/initrd-plymouth.img"
 	fi
     fi
+
+    # Run grub2's configuration update in parallel, if it is installed
+    run_grub2()
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
