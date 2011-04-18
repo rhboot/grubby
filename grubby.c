@@ -1979,7 +1979,7 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
     const char ** arg;
     int useKernelArgs, useRoot;
     int firstElement;
-    int *usedElements, *usedArgs;
+    int *usedElements;
     int doreplace;
 
     if (!image) return 0;
@@ -2013,9 +2013,6 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 
     useRoot = (getKeywordByType(LT_ROOT, cfg->cfi)
 	       && !multibootArgs);
-
-    for (k = 0, arg = newArgs; *arg; arg++, k++) ;
-    usedArgs = calloc(k, sizeof(*usedArgs));
 
     for (; (entry = findEntryByPath(cfg, image, prefix, &index)); index++) {
 
@@ -2092,7 +2089,6 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
         usedElements = calloc(line->numElements, sizeof(*usedElements));
 
 	for (k = 0, arg = newArgs; *arg; arg++, k++) {
-            if (usedArgs[k]) continue;
 
 	    doreplace = 1;
 	    for (i = firstElement; i < line->numElements; i++) {
@@ -2107,7 +2103,6 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
                     continue;
 		if (!argMatch(line->elements[i].item, *arg)) {
                     usedElements[i]=1;
-                    usedArgs[k]=1;
 		    break;
                 }
             }
@@ -2177,7 +2172,6 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 	}
     }
 
-    free(usedArgs);
     free(newArgs);
     free(oldArgs);
 
