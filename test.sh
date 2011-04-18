@@ -237,6 +237,8 @@ grubTest grub.7 updargs/g7.3 --boot-filesystem=/    \
 grubTest grub.7 updargs/g7.4 --boot-filesystem=/    \
     --update-kernel=/vmlinuz-2.4.7-2 \
     --args "ro root=LABEL=/ console=tty0 console=ttyS1,9600n81 single"
+grubTest grub.7 updargs/g7.5 --boot-filesystem=/    \
+    --update-kernel=ALL --args "root=/dev/hda2"
 grubTest grub.11 updargs/g11.1 --boot-filesystem=/    \
     --update-kernel=/vmlinuz-2.4.7-2smp \
     --args "ro root=LABEL=/ console=tty0 console=ttyS1,9600n81 single"
