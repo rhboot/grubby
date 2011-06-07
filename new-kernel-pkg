@@ -1,4 +1,4 @@
-u!/bin/bash
+#!/bin/bash
 #
 # new-kernel-pkg
 # Invoked upon installation or removal of a kernel package, the following
@@ -108,7 +108,7 @@ usage() {
 }
 
 run_grub2() {
-    if [ -d /boot/grub2 -a -x /sbin/grub2-mkconfig ];
+    if [ -d /boot/grub2 -a -x /sbin/grub2-mkconfig ]; then
         cp /boot/grub2/grub.cfg /boot/grub2/grub.cfg.old
         /sbin/grub2-mkconfig -o /boot/grub2/grub.cfg
     fi
@@ -146,7 +146,7 @@ install() {
     fi
 
     # Run grub2's configuration update in parallel, if it is installed
-    run_grub2()
+    run_grub2
 
     # get the root filesystem to use
     rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
@@ -217,7 +217,7 @@ remove() {
     fi
 
     # Run grub2's configuration update in parallel, if it is installed
-    run_grub2()
+    run_grub2
 
     local files
     local f
@@ -269,7 +269,7 @@ update() {
     fi
 
     # Run grub2's configuration update in parallel, if it is installed
-    run_grub2()
+    run_grub2
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
