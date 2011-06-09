@@ -37,9 +37,11 @@ else
 fi
 
 [ -f /etc/sysconfig/kernel ] && . /etc/sysconfig/kernel
+[ -f /etc/sysconfig/uboot ] && . /etc/sysconfig/uboot
 
 cfgGrub=""
 cfgLilo=""
+cfguBoot=""
 runLilo=""
 grubConfig=""
 
@@ -69,6 +71,18 @@ elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
     liloFlag=zipl
     lilo=/sbin/zipl
     runLilo="yes"
+    isx86=""
+elif [ $ARCH = 'armv7l' ]; then
+    liloConfig=""
+    bootPrefix=/boot
+    ubootDir=${UBOOT_DIR:-"/boot/uboot"}
+    ubootScript=$ubootDir/${UBOOT_SCR:-"boot.scr"}
+    ubootKList=${UBOOT_KLIST:-"klist.txt"}
+    ubootDevice=/dev/${UBOOT_DEVICE:-"mmcblk0p1"}
+    ubootDefaultImage=${UBOOT_UIMAGE:-"uImage"}
+    ubootDefaultInitrd=${UBOOT_UINITRD:-"uInitrd"}
+    mounted=""
+    liloFlag=""
     isx86=""
 else
     # this leaves i?86 and x86_64
@@ -194,7 +208,6 @@ install() {
     else
 	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
     fi
-
 }
 
 rpmposttrans()
@@ -250,6 +263,52 @@ remove() {
     else
 	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
     fi
+
+    if [ -n "$cfguBoot" ]; then
+	[ -n "$verbose" ] && echo "removing $version from $ubootDir..."
+
+	if [ -f $ubootDir/$ubootKList ]; then
+	    tmpKList=`mktemp $ubootDir/$ubootKList.XXXX`
+	    curversion=`tail -n1 $ubootDir/$ubootKList`
+	    sed "/$version/d" $ubootDir/$ubootKList > $tmpKList
+	    newversion=`tail -n1 $tmpKList`
+	    if [ -f $ubootDir/uImage-$newversion -a -f $ubootDir/uInitrd-$newversion ]; then
+		if [ "$curversion" != "$newversion" ]; then
+		    cp -fp $ubootDir/uImage-$newversion $ubootDir/${ubootDefaultImage}
+		    if [ $? -ne 0 ]; then
+			[ -n "$verbose" ] && echo "copy uImage-$newversion error, default kernel not replaced!" && exit
+		    fi
+		    cp -fp $ubootDir/uInitrd-$newversion $ubootDir/${ubootDefaultInitrd}
+		    if [ $? -ne 0 ]; then
+			[ -n "$verbose" ] && echo "copy uInitrd-$newversion error, default Initrd not replaced!" && exit
+		    fi
+		fi
+
+		[ -n "$verbose" ] && echo "removing uImage-$version"
+		if [ -f $ubootDir/uImage-$version ]; then
+		    rm -f $ubootDir/uImage-$version
+		else
+		    [ -n "$verbose" ] && echo "uImage-$version did not exist!"
+		fi
+
+		[ -n "$verbose" ] && echo "removing uInitrd-$version"
+		if [ -f $ubootDir/uInitrd-$version ]; then
+		    rm -f $ubootDir/uInitrd-$version
+		else
+		    [ -n "$verbose" ] && echo "uInitrd-$version did not exist!"
+		fi
+
+		mv $tmpKList $ubootDir/$ubootKList
+	    else
+		[ -n "$verbose" ] && echo "uImage $newversion does not exist!"
+		[ -f $tmpKList ] && rm -f $tmpKList
+	    fi
+        else
+            [ -n "$verbose" ] && echo "No previous kernel version.  uBoot images not removed!"
+        fi
+    else
+	[ -n "$verbose" ] && echo "$ubootScript does not exist, not modifying $ubootDir"
+    fi
 }
 
 update() {
@@ -299,6 +358,34 @@ update() {
 	fi
     else
 	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
+    fi
+
+    if [ -n "$cfguBoot" ]; then
+	[ -n "$verbose" ] && echo "adding $version to $ubootDir..."
+
+	[ -n "$verbose" ] && echo "creating uImage-$version"
+	mkimage -A arm -O linux -T kernel -C none -a 0x80008000 -e 0x80008000 \
+		-n $version -d $bootPrefix/$kernelName-$version $ubootDir/uImage-$version
+
+	[ -n "$verbose" ] && echo "creating uInitrd-$version"
+	mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 \
+		-n initramfs -d $initrdfile $ubootDir/uInitrd-$version
+
+	if [ -f $ubootDir/uImage-$version -a -f $ubootDir/uInitrd-$version ]; then
+	    cp -fp $ubootDir/uImage-$version $ubootDir/${ubootDefaultImage}
+	    if [ $? -ne 0 ]; then
+		[ -n "$verbose" ] && echo "copy uImage-$version error, kernel not installed!" && exit
+	    fi
+	    cp -fp $ubootDir/uInitrd-$version $ubootDir/${ubootDefaultInitrd}
+	    if [ $? -ne 0 ]; then
+		[ -n "$verbose" ] && echo "copy uInitrd-$version error, kernel not installed!" && exit
+	    fi
+	    echo $version >> $ubootDir/$ubootKList
+	else
+	    [ -n "$verbose" ] && echo "cannot make $version the default"
+	fi
+    else
+	[ -n "$verbose" ] && echo "$ubootScript does not exist, not setting up $ubootDir"
     fi
 }
 
@@ -534,6 +621,17 @@ fi
 [ -n "$grubConfig" ] && [ -f "$grubConfig" ] && cfgGrub=1;
 [ -n "$liloConfig" ] && [ -f "$liloConfig" ] && cfgLilo=1;
 
+# if we have a uBoot directory, check if it is mounted.
+# if not, mount it. Then check if a boot script exists.
+if [ -n "$ubootDir" ]; then
+    mountEntry=`mount | grep $ubootDir`
+    if [ -z "$mountEntry" ]; then
+        mount $ubootDevice $ubootDir
+        mounted=1
+    fi
+    [ -f "$ubootScript" ] && cfguBoot=1;
+fi
+
 # if we have a lilo config on an x86 box, see if the default boot loader
 # is lilo to determine if it should be run
 if [ -n "$cfgLilo" -a -n "$isx86" ]; then
@@ -549,5 +647,8 @@ elif [ "$mode" == "--update" ]; then
 elif [ "$mode" == "--rpmposttrans" ]; then
     rpmposttrans
 fi
+
+# if we mounted the uBoot directory, unmount it.
+[ -n "$mounted" ] && umount $ubootDir
 
 exit 0
