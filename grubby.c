@@ -115,7 +115,7 @@ struct configFileInfo {
     struct keywordTypes * keywords;
     int defaultIsIndex;
     int defaultSupportSaved;
-    enum lineType_e entrySeparator;
+    enum lineType_e entryStart;
     int needsBootPrefix;
     int argsInQuotes;
     int maxTitleLength;
@@ -143,7 +143,7 @@ struct configFileInfo grubConfigType = {
     .keywords = grubKeywords,
     .defaultIsIndex = 1,
     .defaultSupportSaved = 1,
-    .entrySeparator = LT_TITLE,
+    .entryStart = LT_TITLE,
     .needsBootPrefix = 1,
     .mbHyperFirst = 1,
     .mbInitRdIsModule = 1,
@@ -247,7 +247,7 @@ int useextlinuxmenu;
 struct configFileInfo eliloConfigType = {
     .defaultConfig = "/boot/efi/EFI/redhat/elilo.conf",
     .keywords = eliloKeywords,
-    .entrySeparator = LT_KERNEL,
+    .entryStart = LT_KERNEL,
     .needsBootPrefix = 1,
     .argsInQuotes = 1,
     .mbConcatArgs = 1,
@@ -256,7 +256,7 @@ struct configFileInfo eliloConfigType = {
 struct configFileInfo liloConfigType = {
     .defaultConfig = "/etc/lilo.conf",
     .keywords = liloKeywords,
-    .entrySeparator = LT_KERNEL,
+    .entryStart = LT_KERNEL,
     .argsInQuotes = 1,
     .maxTitleLength = 15,
 };
@@ -264,7 +264,7 @@ struct configFileInfo liloConfigType = {
 struct configFileInfo yabootConfigType = {
     .defaultConfig = "/etc/yaboot.conf",
     .keywords = yabootKeywords,
-    .entrySeparator = LT_KERNEL,
+    .entryStart = LT_KERNEL,
     .needsBootPrefix = 1,
     .argsInQuotes = 1,
     .maxTitleLength = 15,
@@ -274,7 +274,7 @@ struct configFileInfo yabootConfigType = {
 struct configFileInfo siloConfigType = {
     .defaultConfig = "/etc/silo.conf",
     .keywords = siloKeywords,
-    .entrySeparator = LT_KERNEL,
+    .entryStart = LT_KERNEL,
     .needsBootPrefix = 1,
     .argsInQuotes = 1,
     .maxTitleLength = 15,
@@ -283,7 +283,7 @@ struct configFileInfo siloConfigType = {
 struct configFileInfo ziplConfigType = {
     .defaultConfig = "/etc/zipl.conf",
     .keywords = ziplKeywords,
-    .entrySeparator = LT_TITLE,
+    .entryStart = LT_TITLE,
     .argsInQuotes = 1,
     .titleBracketed = 1,
 };
@@ -291,7 +291,7 @@ struct configFileInfo ziplConfigType = {
 struct configFileInfo extlinuxConfigType = {
     .defaultConfig = "/boot/extlinux/extlinux.conf",
     .keywords = extlinuxKeywords,
-    .entrySeparator = LT_TITLE,
+    .entryStart = LT_TITLE,
     .needsBootPrefix = 1,
     .maxTitleLength = 255,
     .mbAllowExtraInitRds = 1,
@@ -437,9 +437,9 @@ static int isBracketedTitle(struct singleLine * line) {
     return 0;
 }
 
-static int isEntrySeparator(struct singleLine * line,
+static int isEntryStart(struct singleLine * line,
                             struct configFileInfo * cfi) {
-    return line->type == cfi->entrySeparator || line->type == LT_OTHER ||
+    return line->type == cfi->entryStart || line->type == LT_OTHER ||
 	(cfi->titleBracketed && isBracketedTitle(line));
 }
 
@@ -762,7 +762,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    cfg->secondaryIndent = strdup(line->indent);
 	}
 
-	if (isEntrySeparator(line, cfi)) {
+	if (isEntryStart(line, cfi)) {
 	    sawEntry = 1;
 	    if (!entry) {
 		cfg->entries = malloc(sizeof(*entry));
@@ -2673,7 +2673,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	/* don't have a template, so start the entry with the 
 	 * appropriate starting line 
 	 */
-	switch (config->cfi->entrySeparator) {
+	switch (config->cfi->entryStart) {
 	    case LT_KERNEL:
 		if (new->multiboot && config->cfi->mbHyperFirst) {
 		    /* fall through to LT_HYPER */
@@ -2725,7 +2725,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 
     /* add the remainder of the lines, i.e. those that either
      * weren't present in the template, or in the case of no template,
-     * all the lines following the entrySeparator.
+     * all the lines following the entryStart.
      */
     if (needs & NEED_TITLE) {
 	newLine = addLine(new, config->cfi, LT_TITLE, 
