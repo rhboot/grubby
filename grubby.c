@@ -58,22 +58,26 @@ struct lineElement {
 };
 
 enum lineType_e { 
-    LT_WHITESPACE = 1 << 0,
-    LT_TITLE      = 1 << 1,
-    LT_KERNEL     = 1 << 2,
-    LT_INITRD     = 1 << 3,
-    LT_HYPER      = 1 << 4,
-    LT_DEFAULT    = 1 << 5,
-    LT_MBMODULE   = 1 << 6,
-    LT_ROOT       = 1 << 7,
-    LT_FALLBACK   = 1 << 8,
-    LT_KERNELARGS = 1 << 9,
-    LT_BOOT       = 1 << 10,
-    LT_BOOTROOT   = 1 << 11,
-    LT_LBA        = 1 << 12,
-    LT_OTHER      = 1 << 13,
-    LT_GENERIC    = 1 << 14,
-    LT_UNKNOWN    = 1 << 15,
+    LT_WHITESPACE   = 1 << 0,
+    LT_TITLE        = 1 << 1,
+    LT_KERNEL       = 1 << 2,
+    LT_INITRD       = 1 << 3,
+    LT_HYPER        = 1 << 4,
+    LT_DEFAULT      = 1 << 5,
+    LT_MBMODULE     = 1 << 6,
+    LT_ROOT         = 1 << 7,
+    LT_FALLBACK     = 1 << 8,
+    LT_KERNELARGS   = 1 << 9,
+    LT_BOOT         = 1 << 10,
+    LT_BOOTROOT     = 1 << 11,
+    LT_LBA          = 1 << 12,
+    LT_OTHER        = 1 << 13,
+    LT_GENERIC      = 1 << 14,
+    LT_ECHO	    = 1 << 16,
+    LT_MENUENTRY    = 1 << 17,
+    LT_ENTRY_END    = 1 << 18,
+    LT_SET_VARIABLE = 1 << 19,
+    LT_UNKNOWN      = 1 << 20,
 };
 
 struct singleLine {
@@ -101,6 +105,7 @@ struct singleEntry {
 #define NEED_TITLE   (1 << 2)
 #define NEED_ARGS    (1 << 3)
 #define NEED_MB      (1 << 4)
+#define NEED_END     (1 << 5)
 
 #define MAIN_DEFAULT	    (1 << 0)
 #define DEFAULT_SAVED       -2
@@ -112,16 +117,27 @@ struct keywordTypes {
     char separatorChar;
 };
 
+struct configFileInfo;
+
+typedef const char *(*findConfigFunc)(struct configFileInfo *);
+typedef const int (*writeLineFunc)(struct configFileInfo *,
+				struct singleLine *line);
+
 struct configFileInfo {
     char * defaultConfig;
+    findConfigFunc findConfig;
+    writeLineFunc writeLine;
     struct keywordTypes * keywords;
     int defaultIsIndex;
+    int defaultIsVariable;
     int defaultSupportSaved;
     enum lineType_e entryStart;
+    enum lineType_e entryEnd;
     int needsBootPrefix;
     int argsInQuotes;
     int maxTitleLength;
     int titleBracketed;
+    int titlePosition;
     int mbHyperFirst;
     int mbInitRdIsModule;
     int mbConcatArgs;
@@ -146,6 +162,57 @@ struct configFileInfo grubConfigType = {
     .defaultIsIndex = 1,
     .defaultSupportSaved = 1,
     .entryStart = LT_TITLE,
+    .needsBootPrefix = 1,
+    .mbHyperFirst = 1,
+    .mbInitRdIsModule = 1,
+    .mbAllowExtraInitRds = 1,
+};
+
+struct keywordTypes grub2Keywords[] = {
+    { "menuentry",  LT_MENUENTRY,   ' ' },
+    { "}",          LT_ENTRY_END,   ' ' },
+    { "echo",       LT_ECHO,        ' ' },
+    { "set",        LT_SET_VARIABLE,' ', '=' },
+    { "root",       LT_BOOTROOT,    ' ' },
+    { "default",    LT_DEFAULT,     ' ' },
+    { "fallback",   LT_FALLBACK,    ' ' },
+    { "linux",      LT_KERNEL,      ' ' },
+    { "initrd",     LT_INITRD,      ' ', ' ' },
+    { "module",     LT_MBMODULE,    ' ' },
+    { "kernel",     LT_HYPER,       ' ' },
+    { NULL, 0, 0 },
+};
+
+const char *grub2FindConfig(struct configFileInfo *cfi) {
+    static const char *configFiles[] = {
+	"/etc/grub2-efi.cfg",
+	"/etc/grub2.cfg",
+	NULL
+    };
+    static int i = -1;
+
+    if (i == -1) {
+	for (i = 0; configFiles[i] != NULL; i++) {
+	    dbgPrintf("Checking \"%s\": ", configFiles[i]);
+	    if (!access(configFiles[i], R_OK)) {
+		dbgPrintf("found\n");
+		return configFiles[i];
+	    }
+	    dbgPrintf("not found\n");
+	}
+    }
+    return configFiles[i];
+}
+
+struct configFileInfo grub2ConfigType = {
+    .findConfig = grub2FindConfig,
+    .keywords = grub2Keywords,
+    .defaultIsIndex = 1,
+    .defaultSupportSaved = 0,
+    .defaultIsVariable = 1,
+    .entryStart = LT_MENUENTRY,
+    .entryEnd = LT_ENTRY_END,
+    .titlePosition = 1,
     .needsBootPrefix = 1,
     .mbHyperFirst = 1,
     .mbInitRdIsModule = 1,
@@ -326,6 +393,7 @@ static int lineWrite(FILE * out, struct singleLine * line,
 static int getNextLine(char ** bufPtr, struct singleLine * line,
 		       struct configFileInfo * cfi);
 static char * getRootSpecifier(char * str);
+static void requote(struct singleLine *line, struct configFileInfo * cfi);
 static void insertElement(struct singleLine * line,
 			  const char * item, int insertHere,
 			  struct configFileInfo * cfi);
@@ -388,6 +456,13 @@ static struct keywordTypes * getKeywordByType(enum lineType_e type,
 	    return kw;
     }
     return NULL;
+}
+
+static char *getKeyByType(enum lineType_e type, struct configFileInfo * cfi) {
+    struct keywordTypes *kt = getKeywordByType(type, cfi);
+    if (kt)
+	return kt->key;
+    return "unknown";
 }
 
 static char * getpathbyspec(char *device) {
@@ -780,7 +855,21 @@ static struct grubConfig * readConfig(const char * inName,
 	    entry->next = NULL;
 	}
 
-	if (line->type == LT_DEFAULT && line->numElements == 2) {
+	if (line->type == LT_SET_VARIABLE) {
+	    int i;
+	    dbgPrintf("found 'set' command (%d elements): ", line->numElements);
+	    dbgPrintf("%s", line->indent);
+	    for (i = 0; i < line->numElements; i++)
+		dbgPrintf("%s\"%s\"", line->elements[i].indent, line->elements[i].item);
+	    dbgPrintf("\n");
+	    struct keywordTypes *kwType = getKeywordByType(LT_DEFAULT, cfi);
+	    if (kwType && line->numElements == 3 &&
+		    !strcmp(line->elements[1].item, kwType->key)) {
+		dbgPrintf("Line sets default config\n");
+		cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
+		defaultLine = line;
+	    }
+	} else if (line->type == LT_DEFAULT && line->numElements == 2) {
 	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 	    defaultLine = line;
 
@@ -893,13 +982,18 @@ static struct grubConfig * readConfig(const char * inName,
 		entry->lines = line;
 	    else
 		last->next = line;
-	    dbgPrintf("readConfig added %d to %p\n", line->type, entry);
+	    dbgPrintf("readConfig added %s to %p\n", getKeyByType(line->type, cfi), entry);
+
+	    /* we could have seen this outside of an entry... if so, we
+	     * ignore it like any other line we don't grok */
+	    if (line->type == LT_ENTRY_END && sawEntry)
+		sawEntry = 0;
 	} else {
 	    if (!cfg->theLines)
 		cfg->theLines = line;
 	    else
 		last->next = line;
-	    dbgPrintf("readConfig added %d to cfg\n", line->type);
+	    dbgPrintf("readConfig added %s to cfg\n", getKeyByType(line->type, cfi));
 	}
 
 	last = line;
@@ -907,8 +1001,19 @@ static struct grubConfig * readConfig(const char * inName,
 
     free(incoming);
 
+    dbgPrintf("defaultLine is %s\n", defaultLine ? "set" : "unset");
     if (defaultLine) {
-	if (cfi->defaultSupportSaved && 
+	if (cfi->defaultIsVariable) {
+	    char *value = defaultLine->elements[2].item;
+	    while (*value && (*value == '"' || *value == '\'' ||
+		    *value == ' ' || *value == '\t'))
+		value++;
+	    cfg->defaultImage = strtol(value, &end, 10);
+	    while (*end && (*end == '"' || *end == '\'' ||
+		    *end == ' ' || *end == '\t'))
+		end++;
+	    if (*end) cfg->defaultImage = -1;
+	} else if (cfi->defaultSupportSaved && 
 		!strncmp(defaultLine->elements[1].item, "saved", 5)) {
 	    cfg->defaultImage = DEFAULT_SAVED;
 	} else if (cfi->defaultIsIndex) {
@@ -957,8 +1062,13 @@ static void writeDefault(FILE * out, char * indent,
 	fprintf(out, "%sdefault%ssaved\n", indent, separator);
     else if (cfg->defaultImage > -1) {
 	if (cfg->cfi->defaultIsIndex) {
-	    fprintf(out, "%sdefault%s%d\n", indent, separator, 
-		    cfg->defaultImage);
+	    if (cfg->cfi->defaultIsVariable) {
+	        fprintf(out, "%sset default=\"%d\"\n", indent,
+			cfg->defaultImage);
+	    } else {
+		fprintf(out, "%sdefault%s%d\n", indent, separator, 
+			cfg->defaultImage);
+	    }
 	} else {
 	    int image = cfg->defaultImage;
 
@@ -1048,8 +1158,14 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
     }
 
     line = cfg->theLines;
+    struct keywordTypes *defaultKw = getKeywordByType(LT_DEFAULT, cfg->cfi);
     while (line) {
-	if (line->type == LT_DEFAULT) {
+        if (line->type == LT_SET_VARIABLE && defaultKw &&
+		line->numElements == 3 &&
+		!strcmp(line->elements[1].item, defaultKw->key)) {
+	    writeDefault(out, line->indent, line->elements[0].indent, cfg);
+	    needs &= ~MAIN_DEFAULT;
+	} else if (line->type == LT_DEFAULT) {
 	    writeDefault(out, line->indent, line->elements[0].indent, cfg);
 	    needs &= ~MAIN_DEFAULT;
 	} else if (line->type == LT_FALLBACK) {
@@ -1772,9 +1888,36 @@ struct singleLine *  addLine(struct singleEntry * entry,
 	sprintf(tmpl.elements[0].item, "[%s]", val);
 	tmpl.elements[0].indent = "";
 	val = NULL;
+    } else if (type == LT_MENUENTRY) {
+	char *lineend = "--class gnu-linux --class gnu --class os {";
+	if (!val) {
+	    fprintf(stderr, "Line type LT_MENUENTRY requires a value\n");
+	    abort();
+	}
+	kw = getKeywordByType(type, cfi);
+	if (!kw) {
+	    fprintf(stderr, "Looking up keyword for unknown type %d\n", type);
+	    abort();
+	}
+	tmpl.indent = "";
+	tmpl.type = type;
+	tmpl.numElements = 3;
+	tmpl.elements = alloca(sizeof(*tmpl.elements) * tmpl.numElements);
+	tmpl.elements[0].item = kw->key;
+	tmpl.elements[0].indent = alloca(2);
+	sprintf(tmpl.elements[0].indent, "%c", kw->nextChar);
+	tmpl.elements[1].item = (char *)val;
+	tmpl.elements[1].indent = alloca(2);
+	sprintf(tmpl.elements[1].indent, "%c", kw->nextChar);
+	tmpl.elements[2].item = alloca(strlen(lineend)+1);
+	strcpy(tmpl.elements[2].item, lineend);
+	tmpl.elements[2].indent = "";
     } else {
 	kw = getKeywordByType(type, cfi);
-	if (!kw) abort();
+	if (!kw) {
+	    fprintf(stderr, "Looking up keyword for unknown type %d\n", type);
+	    abort();
+	}
 	tmpl.type = type;
 	tmpl.numElements = val ? 2 : 1;
 	tmpl.elements = alloca(sizeof(*tmpl.elements) * tmpl.numElements);
@@ -1798,10 +1941,21 @@ struct singleLine *  addLine(struct singleEntry * entry,
 	if (!line->next && !prev) prev = line;
     }
 
-    if (prev == entry->lines)
-	tmpl.indent = defaultIndent ?: "";
-    else
-	tmpl.indent = prev->indent;
+    struct singleLine *menuEntry;
+    menuEntry = getLineByType(LT_MENUENTRY, entry->lines);
+    if (tmpl.type == LT_ENTRY_END) {
+	if (menuEntry)
+	    tmpl.indent = menuEntry->indent;
+	else
+	    tmpl.indent = defaultIndent ?: "";
+    } else if (tmpl.type != LT_MENUENTRY) {
+	if (menuEntry)
+	    tmpl.indent = "\t";
+	else if (prev == entry->lines)
+	    tmpl.indent = defaultIndent ?: "";
+	else
+	    tmpl.indent = prev->indent;
+    }
 
     return addLineTmpl(entry, &tmpl, prev, val, cfi);
 }
@@ -1826,6 +1980,75 @@ void removeLine(struct singleEntry * entry, struct singleLine * line) {
     }
 
     free(line);
+}
+
+static int isquote(char q)
+{
+    if (q == '\'' || q == '\"')
+	return 1;
+    return 0;
+}
+
+static void requote(struct singleLine *tmplLine, struct configFileInfo * cfi)
+{
+    struct singleLine newLine = {
+	.indent = tmplLine->indent,
+	.type = tmplLine->type,
+	.next = tmplLine->next,
+    };
+    int firstQuotedItem = -1;
+    int quoteLen = 0;
+    int j;
+    int element = 0;
+    char *c;
+
+    c = malloc(strlen(tmplLine->elements[0].item) + 1);
+    strcpy(c, tmplLine->elements[0].item);
+    insertElement(&newLine, c, element++, cfi);
+    free(c);
+    c = NULL;
+
+    for (j = 1; j < tmplLine->numElements; j++) {
+	if (firstQuotedItem == -1) {
+	    quoteLen += strlen(tmplLine->elements[j].item);
+	    
+	    if (isquote(tmplLine->elements[j].item[0])) {
+		firstQuotedItem = j;
+	        quoteLen += strlen(tmplLine->elements[j].indent);
+	    } else {
+		c = malloc(quoteLen + 1);
+		strcpy(c, tmplLine->elements[j].item);
+		insertElement(&newLine, c, element++, cfi);
+		free(c);
+		quoteLen = 0;
+	    }
+	} else {
+	    int itemlen = strlen(tmplLine->elements[j].item);
+	    quoteLen += itemlen;
+	    quoteLen += strlen(tmplLine->elements[j].indent);
+	    
+	    if (isquote(tmplLine->elements[j].item[itemlen - 1])) {
+		c = malloc(quoteLen + 1);
+		c[0] = '\0';
+		for (int i = firstQuotedItem; i < j+1; i++) {
+		    strcat(c, tmplLine->elements[i].item);
+		    strcat(c, tmplLine->elements[i].indent);
+		}
+		insertElement(&newLine, c, element++, cfi);
+		free(c);
+		
+		firstQuotedItem = -1;
+		quoteLen = 0;
+	    }
+	}
+    }
+    while (tmplLine->numElements)
+	removeElement(tmplLine, 0);
+    if (tmplLine->elements)
+	free(tmplLine->elements);
+
+    tmplLine->numElements = newLine.numElements;
+    tmplLine->elements = newLine.elements;
 }
 
 static void insertElement(struct singleLine * line,
@@ -2155,7 +2378,7 @@ int updateImage(struct grubConfig * cfg, const char * image,
 int updateInitrd(struct grubConfig * cfg, const char * image,
                  const char * prefix, const char * initrd) {
     struct singleEntry * entry;
-    struct singleLine * line, * kernelLine;
+    struct singleLine * line, * kernelLine, *endLine = NULL;
     int index = 0;
 
     if (!image) return 0;
@@ -2172,8 +2395,18 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
             if (!strncmp(initrd, prefix, prefixLen))
                 initrd += prefixLen;
         }
+	endLine = getLineByType(LT_ENTRY_END, entry->lines);
+	if (endLine)
+	    removeLine(entry, endLine);
         line = addLine(entry, cfg->cfi, LT_INITRD, kernelLine->indent, initrd);
-        if (!line) return 1;
+        if (!line)
+	    return 1;
+	if (endLine) {
+	    line = addLine(entry, cfg->cfi, LT_ENTRY_END, "", NULL);
+            if (!line)
+		return 1;
+	}
+
         break;
     }
 
@@ -2348,6 +2581,13 @@ int checkForLilo(struct grubConfig * config) {
 	return checkLiloOnRaid(line->elements[1].item, boot);
 
     return checkDeviceBootloader(line->elements[1].item, boot);
+}
+
+int checkForGrub2(struct grubConfig * config) {
+    if (!access("/boot/grub2", R_OK))
+	return 2;
+
+    return 1;
 }
 
 int checkForGrub(struct grubConfig * config) {
@@ -2525,7 +2765,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	    if (*chptr == '#') continue;
 
 	    if (tmplLine->type == LT_KERNEL && 
-		tmplLine->numElements >= 2) {
+		    tmplLine->numElements >= 2) {
 		if (!template->multiboot && (needs & NEED_MB)) {
 		    /* it's not a multiboot template and this is the kernel
 		     * line.  Try to be intelligent about inserting the
@@ -2651,6 +2891,16 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    needs &= ~NEED_INITRD;
 		}
 
+	    } else if (tmplLine->type == LT_MENUENTRY &&
+		       (needs & NEED_TITLE)) {
+		requote(tmplLine, config->cfi);
+		char *nkt = malloc(strlen(newKernelTitle)+3);
+		strcpy(nkt, "'");
+		strcat(nkt, newKernelTitle);
+		strcat(nkt, "'");
+		newLine = addLineTmpl(new, tmplLine, newLine, nkt, config->cfi);
+		free(nkt);
+		needs &= ~NEED_TITLE;
 	    } else if (tmplLine->type == LT_TITLE && 
 		       (needs & NEED_TITLE)) {
 		if (tmplLine->numElements >= 2) {
@@ -2664,7 +2914,25 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 				      tmplLine->indent, newKernelTitle);
 		    needs &= ~NEED_TITLE;
 		}
+	    } else if (tmplLine->type == LT_ECHO) {
+		    requote(tmplLine, config->cfi);
+		    if (tmplLine->numElements > 1 &&
+			    strstr(tmplLine->elements[1].item, "'Loading Linux ")) {
+			char *prefix = "'Loading ";
+			char *newTitle = malloc(strlen(prefix) +
+						strlen(newKernelTitle) + 2);
 
+			strcpy(newTitle, prefix);
+			strcat(newTitle, newKernelTitle);
+			strcat(newTitle, "'");
+			newLine = addLine(new, config->cfi, LT_ECHO,
+					tmplLine->indent, newTitle);
+			free(newTitle);
+		    } else {
+			/* pass through other lines from the template */
+			newLine = addLineTmpl(new, tmplLine, newLine, NULL,
+						config->cfi);
+		    }
 	    } else {
 		/* pass through other lines from the template */
 		newLine = addLineTmpl(new, tmplLine, newLine, NULL, config->cfi);
@@ -2694,6 +2962,18 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		needs &= ~NEED_MB;
 		break;
 
+	    case LT_MENUENTRY: {
+		char *nkt = malloc(strlen(newKernelTitle)+3);
+		strcpy(nkt, "'");
+		strcat(nkt, newKernelTitle);
+		strcat(nkt, "'");
+	        newLine = addLine(new, config->cfi, LT_MENUENTRY,
+				  config->primaryIndent, nkt);
+		free(nkt);
+		needs &= ~NEED_TITLE;
+		needs |= NEED_END;
+		break;
+	    }
 	    case LT_TITLE:
 		if( useextlinuxmenu != 0 ){	// We just need useextlinuxmenu to not be zero (set above)
 			char * templabel;
@@ -2768,6 +3048,11 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	free(initrdVal);
 	needs &= ~NEED_INITRD;
     }
+    if (needs & NEED_END) {
+	newLine = addLine(new, config->cfi, LT_ENTRY_END,
+			config->secondaryIndent, NULL);
+	needs &= ~NEED_END;
+    }
 
     if (needs) {
 	printf(_("grubby: needs=%d, aborting\n"), needs);
@@ -2797,11 +3082,12 @@ static void traceback(int signum)
 
 int main(int argc, const char ** argv) {
     poptContext optCon;
-    char * grubConfig = NULL;
+    const char * grubConfig = NULL;
     char * outputFile = NULL;
     int arg = 0;
     int flags = 0;
     int badImageOkay = 0;
+    int configureGrub2 = 0;
     int configureLilo = 0, configureELilo = 0, configureGrub = 0;
     int configureYaboot = 0, configureSilo = 0, configureZipl = 0;
     int configureExtLinux = 0;
@@ -2867,6 +3153,8 @@ int main(int argc, const char ** argv) {
 	    _("configure extlinux bootloader (from syslinux)") },
 	{ "grub", 0, POPT_ARG_NONE, &configureGrub, 0,
 	    _("configure grub bootloader") },
+	{ "grub2", 0, POPT_ARG_NONE, &configureGrub2, 0,
+	    _("configure grub2 bootloader") },
 	{ "info", 0, POPT_ARG_STRING, &kernelInfo, 0,
 	    _("display boot information for specified kernel"),
 	    _("kernel-path") },
@@ -2946,7 +3234,7 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
-    if ((configureLilo + configureGrub + configureELilo + 
+    if ((configureLilo + configureGrub2 + configureGrub + configureELilo + 
 		configureYaboot + configureSilo + configureZipl +
 		configureExtLinux ) > 1) {
 	fprintf(stderr, _("grubby: cannot specify multiple bootloaders\n"));
@@ -2955,6 +3243,8 @@ int main(int argc, const char ** argv) {
 	fprintf(stderr, 
 	    _("grubby: cannot specify config file with --bootloader-probe\n"));
 	return 1;
+    } else if (configureGrub2) {
+	cfi = &grub2ConfigType;
     } else if (configureLilo) {
 	cfi = &liloConfigType;
     } else if (configureGrub) {
@@ -2984,12 +3274,19 @@ int main(int argc, const char ** argv) {
       #elif __s390x__
         cfi = &ziplConfigtype;
       #else
-	cfi = &grubConfigType;
+        if (grub2FindConfig(&grub2ConfigType))
+	    cfi = &grub2ConfigType;
+	else
+	    cfi = &grubConfigType;
       #endif
     }
 
-    if (!grubConfig) 
-	grubConfig = cfi->defaultConfig;
+    if (!grubConfig) {
+	if (cfi->findConfig)
+	    grubConfig = cfi->findConfig(cfi);
+	if (!grubConfig)
+	    grubConfig = cfi->defaultConfig;
+    }
 
     if (bootloaderProbe && (displayDefault || kernelInfo || newKernelVersion ||
 			  newKernelPath || removeKernelPath || makeDefault ||
@@ -3071,8 +3368,17 @@ int main(int argc, const char ** argv) {
     }
 
     if (bootloaderProbe) {
-	int lrc = 0, grc = 0, erc = 0;
+	int lrc = 0, grc = 0, gr2c = 0, erc = 0;
 	struct grubConfig * lconfig, * gconfig;
+
+	const char *grub2config = grub2FindConfig(&grub2ConfigType);
+	if (grub2config) {
+	    gconfig = readConfig(grub2config, &grub2ConfigType);
+	    if (!gconfig)
+		gr2c = 1;
+	    else
+		gr2c = checkForGrub2(gconfig);
+	} 
 
 	if (!access(grubConfigType.defaultConfig, F_OK)) {
 	    gconfig = readConfig(grubConfigType.defaultConfig, &grubConfigType);
@@ -3098,9 +3404,10 @@ int main(int argc, const char ** argv) {
 		erc = checkForExtLinux(lconfig);
 	} 
 
-	if (lrc == 1 || grc == 1) return 1;
+	if (lrc == 1 || grc == 1 || gr2c == 1) return 1;
 
 	if (lrc == 2) printf("lilo\n");
+	if (gr2c == 2) printf("grub2\n");
 	if (grc == 2) printf("grub\n");
 	if (erc == 2) printf("extlinux\n");
 
@@ -3160,7 +3467,7 @@ int main(int argc, const char ** argv) {
     }
 
     if (!outputFile)
-	outputFile = grubConfig;
+	outputFile = (char *)grubConfig;
 
     return writeConfig(config, outputFile, bootPrefix);
 }
