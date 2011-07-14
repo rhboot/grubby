@@ -139,19 +139,15 @@ struct keywordTypes grubKeywords[] = {
 };
 
 struct configFileInfo grubConfigType = {
-    "/etc/grub.conf",			    /* defaultConfig */
-    grubKeywords,			    /* keywords */
-    1,					    /* defaultIsIndex */
-    1,					    /* defaultSupportSaved */
-    LT_TITLE,				    /* entrySeparator */
-    1,					    /* needsBootPrefix */
-    0,					    /* argsInQuotes */
-    0,					    /* maxTitleLength */
-    0,                                      /* titleBracketed */
-    1,                                      /* mbHyperFirst */
-    1,                                      /* mbInitRdIsModule */
-    0,                                      /* mbConcatArgs */
-    1,                                      /* mbAllowExtraInitRds */
+    .defaultConfig = "/etc/grub.conf",
+    .keywords = grubKeywords,
+    .defaultIsIndex = 1,
+    .defaultSupportSaved = 1,
+    .entrySeparator = LT_TITLE,
+    .needsBootPrefix = 1,
+    .mbHyperFirst = 1,
+    .mbInitRdIsModule = 1,
+    .mbAllowExtraInitRds = 1,
 };
 
 struct keywordTypes yabootKeywords[] = {
@@ -249,99 +245,56 @@ struct keywordTypes extlinuxKeywords[] = {
 };
 int useextlinuxmenu;
 struct configFileInfo eliloConfigType = {
-    "/boot/efi/EFI/redhat/elilo.conf",	    /* defaultConfig */
-    eliloKeywords,			    /* keywords */
-    0,					    /* defaultIsIndex */
-    0,					    /* defaultSupportSaved */
-    LT_KERNEL,				    /* entrySeparator */
-    1,			                    /* needsBootPrefix */
-    1,					    /* argsInQuotes */
-    0,					    /* maxTitleLength */
-    0,                                      /* titleBracketed */
-    0,                                      /* mbHyperFirst */
-    0,                                      /* mbInitRdIsModule */
-    1,                                      /* mbConcatArgs */
-    0,                                      /* mbAllowExtraInitRds */
+    .defaultConfig = "/boot/efi/EFI/redhat/elilo.conf",
+    .keywords = eliloKeywords,
+    .entrySeparator = LT_KERNEL,
+    .needsBootPrefix = 1,
+    .argsInQuotes = 1,
+    .mbConcatArgs = 1,
 };
 
 struct configFileInfo liloConfigType = {
-    "/etc/lilo.conf",			    /* defaultConfig */
-    liloKeywords,			    /* keywords */
-    0,					    /* defaultIsIndex */
-    0,					    /* defaultSupportSaved */
-    LT_KERNEL,				    /* entrySeparator */
-    0,					    /* needsBootPrefix */
-    1,					    /* argsInQuotes */
-    15,					    /* maxTitleLength */
-    0,                                      /* titleBracketed */
-    0,                                      /* mbHyperFirst */
-    0,                                      /* mbInitRdIsModule */
-    0,                                      /* mbConcatArgs */
-    0,                                      /* mbAllowExtraInitRds */
+    .defaultConfig = "/etc/lilo.conf",
+    .keywords = liloKeywords,
+    .entrySeparator = LT_KERNEL,
+    .argsInQuotes = 1,
+    .maxTitleLength = 15,
 };
 
 struct configFileInfo yabootConfigType = {
-    "/etc/yaboot.conf",			    /* defaultConfig */
-    yabootKeywords,			    /* keywords */
-    0,					    /* defaultIsIndex */
-    0,					    /* defaultSupportSaved */
-    LT_KERNEL,				    /* entrySeparator */
-    1,					    /* needsBootPrefix */
-    1,					    /* argsInQuotes */
-    15,					    /* maxTitleLength */
-    0,                                      /* titleBracketed */
-    0,                                      /* mbHyperFirst */
-    0,                                      /* mbInitRdIsModule */
-    0,                                      /* mbConcatArgs */
-    1,                                      /* mbAllowExtraInitRds */
+    .defaultConfig = "/etc/yaboot.conf",
+    .keywords = yabootKeywords,
+    .entrySeparator = LT_KERNEL,
+    .needsBootPrefix = 1,
+    .argsInQuotes = 1,
+    .maxTitleLength = 15,
+    .mbAllowExtraInitRds = 1,
 };
 
 struct configFileInfo siloConfigType = {
-    "/etc/silo.conf",			    /* defaultConfig */
-    siloKeywords,			    /* keywords */
-    0,					    /* defaultIsIndex */
-    0,					    /* defaultSupportSaved */
-    LT_KERNEL,				    /* entrySeparator */
-    1,					    /* needsBootPrefix */
-    1,					    /* argsInQuotes */
-    15,					    /* maxTitleLength */
-    0,                                      /* titleBracketed */
-    0,                                      /* mbHyperFirst */
-    0,                                      /* mbInitRdIsModule */
-    0,                                      /* mbConcatArgs */
-    0,                                      /* mbAllowExtraInitRds */
+    .defaultConfig = "/etc/silo.conf",
+    .keywords = siloKeywords,
+    .entrySeparator = LT_KERNEL,
+    .needsBootPrefix = 1,
+    .argsInQuotes = 1,
+    .maxTitleLength = 15,
 };
 
 struct configFileInfo ziplConfigType = {
-    "/etc/zipl.conf",			    /* defaultConfig */
-    ziplKeywords,			    /* keywords */
-    0,					    /* defaultIsIndex */
-    0,					    /* defaultSupportSaved */
-    LT_TITLE,				    /* entrySeparator */
-    0,					    /* needsBootPrefix */
-    1,					    /* argsInQuotes */
-    0,					    /* maxTitleLength */
-    1,                                      /* titleBracketed */
-    0,                                      /* mbHyperFirst */
-    0,                                      /* mbInitRdIsModule */
-    0,                                      /* mbConcatArgs */
-    0,                                      /* mbAllowExtraInitRds */
+    .defaultConfig = "/etc/zipl.conf",
+    .keywords = ziplKeywords,
+    .entrySeparator = LT_TITLE,
+    .argsInQuotes = 1,
+    .titleBracketed = 1,
 };
 
 struct configFileInfo extlinuxConfigType = {
-    "/boot/extlinux/extlinux.conf",         /* defaultConfig */
-    extlinuxKeywords,                       /* keywords */
-    0,                                      /* defaultIsIndex */
-    0,                                      /* defaultSupportSaved */
-    LT_TITLE,                               /* entrySeparator */
-    1,                                      /* needsBootPrefix */
-    0,                                      /* argsInQuotes */
-    255,                                    /* maxTitleLength */
-    0,                                      /* titleBracketed */
-    0,                                      /* mbHyperFirst */
-    0,                                      /* mbInitRdIsModule */
-    0,                                      /* mbConcatArgs */
-    1,                                      /* mbAllowExtraInitRds */
+    .defaultConfig = "/boot/extlinux/extlinux.conf",
+    .keywords = extlinuxKeywords,
+    .entrySeparator = LT_TITLE,
+    .needsBootPrefix = 1,
+    .maxTitleLength = 255,
+    .mbAllowExtraInitRds = 1,
 };
 
 struct grubConfig {
