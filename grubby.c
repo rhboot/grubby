@@ -36,7 +36,9 @@
 #include <signal.h>
 #include <blkid/blkid.h>
 
+#ifndef DEBUG
 #define DEBUG 0
+#endif
 
 #if DEBUG
 #define dbgPrintf(format, args...) fprintf(stderr, format , ## args)

@@ -22,13 +22,20 @@ VERSION=7.0.18
 TARGETS = grubby
 OBJECTS = grubby.o
 
-CFLAGS := $(CFLAGS) $(RPM_OPT_FLAGS) -DVERSION='"$(VERSION)"' -Wall -Werror
+CC = gcc
+CFLAGS += $(RPM_OPT_FLAGS) -std=gnu99 -Wall -Werror -Wno-error=unused-function -Wno-unused-function
 LDFLAGS := 
 
 grubby_LIBS = -lblkid -lpopt
 grubby_LIBS += $(shell pkg-config --libs glib-2.0)
 
 all: grubby
+
+debug : clean
+	$(MAKE) CFLAGS="${CFLAGS} -DDEBUG=1" all
+
+%.o : %.c
+	$(CC) $(CFLAGS) -DVERSION='"$(VERSION)"' -c -o $@ $<
 
 test: all
 	@export TOPDIR=$(TOPDIR)
