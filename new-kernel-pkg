@@ -39,6 +39,8 @@ fi
 [ -f /etc/sysconfig/kernel ] && . /etc/sysconfig/kernel
 [ -f /etc/sysconfig/uboot ] && . /etc/sysconfig/uboot
 
+cfgGrub2=""
+cfgGrub2Efi=""
 cfgGrub=""
 cfgLilo=""
 cfguBoot=""
@@ -88,6 +90,8 @@ else
     # this leaves i?86 and x86_64
     liloConfig=/etc/lilo.conf
     grubConfig=$(readlink -f /etc/grub.conf 2>/dev/null)
+    grub2Config=$(readlink -f /etc/grub2.cfg 2>/dev/null)
+    grub2EfiConfig=$(readlink -f /etc/grub2-efi.cfg 2>/dev/null)
     bootPrefix=/boot
     liloFlag=lilo
     isx86="yes"
@@ -121,13 +125,6 @@ usage() {
     exit 1
 }
 
-run_grub2() {
-    if [ -d /boot/grub2 -a -x /sbin/grub2-mkconfig ]; then
-        cp /boot/grub2/grub.cfg /boot/grub2/grub.cfg.old
-        /sbin/grub2-mkconfig -o /boot/grub2/grub.cfg
-    fi
-}
-
 install() {
     # XXX kernel should be able to be specified also (or work right on ia64)
     if [ ! -f $bootPrefix/$kernelName-$version ] ; then
@@ -159,9 +156,6 @@ install() {
 	return
     fi
 
-    # Run grub2's configuration update in parallel, if it is installed
-    run_grub2
-
     # get the root filesystem to use
     rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
 
@@ -180,12 +174,50 @@ install() {
 	else
 	    title="Red Hat Linux ($version)"
 	fi
-	$grubby --add-kernel=$bootPrefix/$kernelName-$version \
+	$grubby --grub --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
 	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
     else
-	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
+	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby for grub 0.97"
+    fi
+    if [ -n "$cfgGrub2" ]; then
+	[ -n "$verbose" ] && echo "adding $version to $grub2Config"
+
+	if [ -n "$banner" ]; then
+            title="$banner ($version)"
+	elif [ -f /etc/redhat-release ]; then
+	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
+	else
+	    title="Red Hat Linux ($version)"
+	fi
+	$grubby --grub2 -c $grub2Cfg \
+	    --add-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD --copy-default $makedefault --title "$title" \
+	    ${mbkernel:+--add-multiboot="$mbkernel"} \
+	    ${mbargs:+--mbargs="$mbargs"} \
+	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
+    else
+	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby for grub 2"
+    fi
+    if [ -n "$cfgGrub2Efi" ]; then
+	[ -n "$verbose" ] && echo "adding $version to $grub2EfiConfig"
+
+	if [ -n "$banner" ]; then
+            title="$banner ($version)"
+	elif [ -f /etc/redhat-release ]; then
+	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
+	else
+	    title="Red Hat Linux ($version)"
+	fi
+	$grubby --grub2 -c $grub2EfiCfg \
+	    --add-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD --copy-default $makedefault --title "$title" \
+	    ${mbkernel:+--add-multiboot="$mbkernel"} \
+	    ${mbargs:+--mbargs="$mbargs"} \
+	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
+    else
+	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby for grub 2 with UEFI"
     fi
 
     if [ -n "$cfgLilo" ]; then
@@ -229,9 +261,6 @@ remove() {
 	return
     fi
 
-    # Run grub2's configuration update in parallel, if it is installed
-    run_grub2
-
     local files
     local f
     files="/etc/kernel/prerm.d/*[^~] /etc/kernel/prerm.d/$version/*[^~]"
@@ -242,9 +271,23 @@ remove() {
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
-	$grubby --remove-kernel=$bootPrefix/$kernelName-$version
+	$grubby --grub --remove-kernel=$bootPrefix/$kernelName-$version
     else
-	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
+	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby for grub 0.97"
+    fi
+    if [ -n "$cfgGrub2" ]; then
+	[ -n "$verbose" ] && echo "removing $version from $grub2Config"
+	$grubby --grub2 -c $grub2Config \
+		--remove-kernel=$bootPrefix/$kernelName-$version
+    else
+	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby for grub 2"
+    fi
+    if [ -n "$cfgGrub2Efi" ]; then
+	[ -n "$verbose" ] && echo "removing $version from $grub2EfiConfig"
+	$grubby --grub2 -c $grub2EfiConfig \
+		--remove-kernel=$bootPrefix/$kernelName-$version
+    else
+	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby grub 2 with UEFI"
     fi
 
     if [ -n "$cfgLilo" ]; then
@@ -327,17 +370,36 @@ update() {
 	fi
     fi
 
-    # Run grub2's configuration update in parallel, if it is installed
-    run_grub2
-
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
 	$grubby --update-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
-	    ${removeargs:+--remove-args="$removeargs"}	
+	    ${removeargs:+--remove-args="$removeargs"}
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
+    fi
+
+    if [ -n "$cfgGrub2" ]; then
+	[ -n "$verbose" ] && echo "updating $version from $grub2Config"
+	$grubby --grub2 -c $grub2Config \
+	    --update-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD \
+	    ${kernargs:+--args="$kernargs"} \
+	    ${removeargs:+--remove-args="$removeargs"}
+    else
+	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby"
+    fi
+
+    if [ -n "$cfgGrub2Efi" ]; then
+	[ -n "$verbose" ] && echo "updating $version from $grub2EfiConfig"
+	$grubby --grub2 -c $grub2EfiConfig \
+	    --update-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD \
+	    ${kernargs:+--args="$kernargs"} \
+	    ${removeargs:+--remove-args="$removeargs"}
+    else
+	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby"
     fi
 
     if [ -n "$cfgLilo" ]; then
@@ -619,6 +681,8 @@ fi
 
 
 [ -n "$grubConfig" ] && [ -f "$grubConfig" ] && cfgGrub=1;
+[ -n "$grub2Config" ] && [ -f "$grub2Config" ] && cfgGrub2=1;
+[ -n "$grub2EfiConfig" ] && [ -f "$grub2EfiConfig" ] && cfgGrub2Efi=1;
 [ -n "$liloConfig" ] && [ -f "$liloConfig" ] && cfgLilo=1;
 
 # if we have a uBoot directory, check if it is mounted.
