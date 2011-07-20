@@ -301,6 +301,19 @@ grubTest grub.11 add/g11.1 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default \
     --args='console=tty0 console=ttyS1,9600n81 single'
 
+testing="GRUB2 add kernel"
+grub2Test grub2.1 add/g2-1.1 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot/ --copy-default
+grub2Test grub2.1 add/g2-1.2 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+    --copy-default --make-default
+grub2Test grub2.1 add/g2-1.3 --add-kernel=/boot/new-kernel.img --title='title' \
+    --boot-filesystem=/boot/ --copy-default --make-default
+
+testing="GRUB2 add initrd"
+grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot/
+
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
     --title=newtitle
