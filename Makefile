@@ -23,7 +23,7 @@ TARGETS = grubby
 OBJECTS = grubby.o
 
 CC = gcc
-CFLAGS += $(RPM_OPT_FLAGS) -std=gnu99 -Wall -Werror -Wno-error=unused-function -Wno-unused-function
+CFLAGS += $(RPM_OPT_FLAGS) -std=gnu99 -Wall -Werror -Wno-error=unused-function -Wno-unused-function -ggdb
 LDFLAGS := 
 
 grubby_LIBS = -lblkid -lpopt
