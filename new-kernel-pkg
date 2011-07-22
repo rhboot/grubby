@@ -46,6 +46,8 @@ cfgLilo=""
 cfguBoot=""
 runLilo=""
 grubConfig=""
+grub2Config=""
+grub2EfiConfig=""
 
 ARCH=$(uname -m)
 
@@ -191,7 +193,7 @@ install() {
 	else
 	    title="Red Hat Linux ($version)"
 	fi
-	$grubby --grub2 -c $grub2Cfg \
+	$grubby --grub2 -c $grub2Config \
 	    --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} \
@@ -210,7 +212,7 @@ install() {
 	else
 	    title="Red Hat Linux ($version)"
 	fi
-	$grubby --grub2 -c $grub2EfiCfg \
+	$grubby --grub2 -c $grub2EfiConfig \
 	    --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} \
