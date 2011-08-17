@@ -78,7 +78,8 @@ elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
     lilo=/sbin/zipl
     runLilo="yes"
     isx86=""
-elif [ $ARCH = 'armv7l' ]; then
+elif [ $ARCH = 'armv7l' -o $ARCH = 'armv7hl' ]; then
+    machine=$(grep "^Hardware" /proc/cpuinfo | sed 's/Hardware\s*:\s*//')
     liloConfig=""
     bootPrefix=/boot
     ubootDir=${UBOOT_DIR:-"/boot/uboot"}
@@ -90,6 +91,11 @@ elif [ $ARCH = 'armv7l' ]; then
     mounted=""
     liloFlag=""
     isx86=""
+    if [ "$machine" == "OMAP3 Beagle Board" -o "$machine" == "OMAP4 Panda board" ]; then
+	ubootAddress=0x80008000
+    else
+	ubootAddress=0x00008000
+    fi
 else
     # this leaves i?86 and x86_64
     liloConfig=/etc/lilo.conf
@@ -373,7 +379,7 @@ remove() {
 		[ -f $tmpKList ] && rm -f $tmpKList
 	    fi
         else
-            [ -n "$verbose" ] && echo "No previous kernel version.  uBoot images not removed!"
+            [ -n "$verbose" ] && echo "No previous kernel version.  U-Boot images not removed!"
         fi
     else
 	[ -n "$verbose" ] && echo "$ubootScript does not exist, not modifying $ubootDir"
@@ -461,8 +467,9 @@ update() {
 	[ -n "$verbose" ] && echo "adding $version to $ubootDir..."
 
 	[ -n "$verbose" ] && echo "creating uImage-$version"
-	mkimage -A arm -O linux -T kernel -C none -a 0x80008000 -e 0x80008000 \
-		-n $version -d $bootPrefix/$kernelName-$version $ubootDir/uImage-$version
+	mkimage -A arm -O linux -T kernel -C none -a $ubootAddress \
+		-e $ubootAddress -n $version \
+		-d $bootPrefix/$kernelName-$version $ubootDir/uImage-$version
 
 	[ -n "$verbose" ] && echo "creating uInitrd-$version"
 	mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 \
@@ -732,15 +739,19 @@ fi
 [ -n "$liloConfig" ] && [ -f "$liloConfig" ] && cfgLilo=1;
 [ -n "$extlinuxConfig" ] && [ -f "$extlinuxConfig" ] && cfgExtlinux=1;
 
-# if we have a uBoot directory, check if it is mounted.
-# if not, mount it. Then check if a boot script exists.
+# if we have a U-Boot directory, but no boot script, check if the directory
+# is mounted.  If not, mount it, and then check if a boot script exists.
 if [ -n "$ubootDir" ]; then
-    mountEntry=`mount | grep $ubootDir`
-    if [ -z "$mountEntry" ]; then
-        mount $ubootDevice $ubootDir
-        mounted=1
+    if [ -f "$ubootScript" ]; then
+        cfguBoot=1
+    else
+	mountEntry=`mount | grep $ubootDir`
+	if [ -z "$mountEntry" ]; then
+	    mount $ubootDevice $ubootDir
+	    mounted=1
+	fi
+	[ -f "$ubootScript" ] && cfguBoot=1;
     fi
-    [ -f "$ubootScript" ] && cfguBoot=1;
 fi
 
 # if we have a lilo config on an x86 box, see if the default boot loader
@@ -759,7 +770,7 @@ elif [ "$mode" == "--rpmposttrans" ]; then
     rpmposttrans
 fi
 
-# if we mounted the uBoot directory, unmount it.
+# if we mounted the U-Boot directory, unmount it.
 [ -n "$mounted" ] && umount $ubootDir
 
 exit 0
