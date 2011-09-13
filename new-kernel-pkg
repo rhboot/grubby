@@ -176,7 +176,8 @@ install() {
 	else
 	    title="Red Hat Linux ($version)"
 	fi
-	$grubby --grub --add-kernel=$bootPrefix/$kernelName-$version \
+	$grubby --grub -c $grubConfig \
+	    --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
 	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
@@ -273,7 +274,8 @@ remove() {
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
-	$grubby --grub --remove-kernel=$bootPrefix/$kernelName-$version
+	$grubby --grub -c $grubConfig \
+	    --remove-kernel=$bootPrefix/$kernelName-$version
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby for grub 0.97"
     fi
@@ -374,7 +376,8 @@ update() {
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
-	$grubby --update-kernel=$bootPrefix/$kernelName-$version \
+	$grubby --grub -c $grubConfig \
+	    --update-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}
