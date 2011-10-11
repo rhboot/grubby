@@ -190,6 +190,7 @@ const char *grub2FindConfig(struct configFileInfo *cfi) {
 	NULL
     };
     static int i = -1;
+    static const char *grub_cfg = "/boot/grub/grub.cfg";
 
     if (i == -1) {
 	for (i = 0; configFiles[i] != NULL; i++) {
@@ -198,9 +199,18 @@ const char *grub2FindConfig(struct configFileInfo *cfi) {
 		dbgPrintf("found\n");
 		return configFiles[i];
 	    }
-	    dbgPrintf("not found\n");
 	}
     }
+
+    /* Ubuntu renames grub2 to grub, so check for the grub.d directory
+     * that isn't in grub1, and if it exists, return the config file path
+     * that they use. */
+    if (configFiles[i] == NULL && !access("/etc/grub.d/", R_OK)) {
+	dbgPrintf("found\n");
+	return grub_cfg;
+    }
+
+    dbgPrintf("not found\n");
     return configFiles[i];
 }
 
@@ -2584,7 +2594,7 @@ int checkForLilo(struct grubConfig * config) {
 }
 
 int checkForGrub2(struct grubConfig * config) {
-    if (!access("/boot/grub2", R_OK))
+    if (!access("/etc/grub.d/", R_OK))
 	return 2;
 
     return 1;
