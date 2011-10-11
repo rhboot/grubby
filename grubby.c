@@ -156,8 +156,29 @@ struct keywordTypes grubKeywords[] = {
     { NULL,	    0, 0 },
 };
 
+const char *grubFindConfig(struct configFileInfo *cfi) {
+    static const char *configFiles[] = {
+	"/etc/grub.conf",
+	"/boot/grub/menu.lst",
+	NULL
+    };
+    static int i = -1;
+
+    if (i == -1) {
+	for (i = 0; configFiles[i] != NULL; i++) {
+	    dbgPrintf("Checking \"%s\": ", configFiles[i]);
+	    if (!access(configFiles[i], R_OK)) {
+		dbgPrintf("found\n");
+		return configFiles[i];
+	    }
+	    dbgPrintf("not found\n");
+	}
+    }
+    return configFiles[i];
+}
+
 struct configFileInfo grubConfigType = {
-    .defaultConfig = "/etc/grub.conf",
+    .findConfig = grubFindConfig,
     .keywords = grubKeywords,
     .defaultIsIndex = 1,
     .defaultSupportSaved = 1,
@@ -3390,8 +3411,9 @@ int main(int argc, const char ** argv) {
 		gr2c = checkForGrub2(gconfig);
 	} 
 
-	if (!access(grubConfigType.defaultConfig, F_OK)) {
-	    gconfig = readConfig(grubConfigType.defaultConfig, &grubConfigType);
+	const char *grubconfig = grubFindConfig(&grubConfigType);
+	if (!access(grubconfig, F_OK)) {
+	    gconfig = readConfig(grubconfig, &grubConfigType);
 	    if (!gconfig)
 		grc = 1;
 	    else
