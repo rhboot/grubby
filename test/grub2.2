@@ -35,6 +35,8 @@ function load_video {
 set timeout=5
 ### END /etc/grub.d/00_header ###
 
+set superusers="foo bar  baz"
+
 ### BEGIN /etc/grub.d/10_linux ###
 menuentry 'title' --class gnu-linux --class gnu --class os {
 	load_video

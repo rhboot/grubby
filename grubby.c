@@ -900,13 +900,11 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 					break;
 				}
 
-				free(line->elements[i].indent);
+				line->elements[i + 1].indent = line->elements[i].indent;
 				line->elements[i].indent = strdup(indent);
 				*p++ = '\0';
 				i++;
 				line->elements[i].item = strdup(p);
-				line->elements[i].indent = strdup("");
-				p = line->elements[i].item;
 			}
 		    }
 		}
@@ -994,7 +992,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    dbgPrintf("found 'set' command (%d elements): ", line->numElements);
 	    dbgPrintf("%s", line->indent);
 	    for (i = 0; i < line->numElements; i++)
-		dbgPrintf("%s\"%s\"", line->elements[i].indent, line->elements[i].item);
+		dbgPrintf("\"%s\"%s", line->elements[i].item, line->elements[i].indent);
 	    dbgPrintf("\n");
 	    struct keywordTypes *kwType = getKeywordByType(LT_DEFAULT, cfi);
 	    if (kwType && line->numElements == 3 &&
