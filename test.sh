@@ -211,6 +211,19 @@ grubDisplayTest grub.9 defaultindex/0 --default-index
 grubDisplayTest grub.10 defaultindex/0 --default-index
 grubDisplayTest grub.10 defaultindex/0 --default-index
 
+testing="GRUB display default title"
+grubDisplayTest grub.1 defaulttitle/g.1 --default-title
+grubDisplayTest grub.2 defaulttitle/g.2 --default-title
+grubDisplayTest grub.3 defaulttitle/g.3 --default-title
+grubDisplayTest grub.4 defaulttitle/g.4 --default-title
+grubDisplayTest grub.5 defaulttitle/g.5 --default-title
+grubDisplayTest grub.6 defaulttitle/g.6 --default-title
+grubDisplayTest grub.7 defaulttitle/g.7 --default-title
+grubDisplayTest grub.8 defaulttitle/g.8 --default-title
+grubDisplayTest grub.9 defaulttitle/g.9 --default-title
+grubDisplayTest grub.10 defaulttitle/g.10 --default-title
+grubDisplayTest grub.11 defaulttitle/g.11 --default-title
+
 testing="LILO default directive"
 liloTest lilo.1 default/l1.1 --set-default=/boot/vmlinuz-2.4.18-4
 liloTest lilo.1 default/l1.2 --remove-kernel=/boot/vmlinuz-2.4.18-4smp
@@ -358,6 +371,10 @@ grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
 testing="GRUB2 display default index"
 grub2DisplayTest grub2.1 defaultindex/0 --default-index
 grub2DisplayTest grub2.2 defaultindex/0 --default-index
+
+testing="GRUB display default title"
+grub2DisplayTest grub2.1 defaulttitle/g2.1 --default-title
+grub2DisplayTest grub2.2 defaulttitle/g2.2 --default-title
 
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \

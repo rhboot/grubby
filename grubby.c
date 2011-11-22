@@ -3160,6 +3160,7 @@ int main(int argc, const char ** argv) {
     int copyDefault = 0, makeDefault = 0;
     int displayDefault = 0;
     int displayDefaultIndex = 0;
+    int displayDefaultTitle = 0;
     struct poptOption options[] = {
 	{ "add-kernel", 0, POPT_ARG_STRING, &newKernelPath, 0,
 	    _("add an entry for the specified kernel"), _("kernel-path") },
@@ -3194,6 +3195,8 @@ int main(int argc, const char ** argv) {
 	    _("display the path of the default kernel") },
 	{ "default-index", 0, 0, &displayDefaultIndex, 0,
 	    _("display the index of the default kernel") },
+	{ "default-title", 0, 0, &displayDefaultTitle, 0,
+	    _("display the title of the default kernel") },
 	{ "elilo", 0, POPT_ARG_NONE, &configureELilo, 0,
 	    _("configure elilo bootloader") },
 	{ "extlinux", 0, POPT_ARG_NONE, &configureExtLinux, 0,
@@ -3337,7 +3340,7 @@ int main(int argc, const char ** argv) {
 
     if (bootloaderProbe && (displayDefault || kernelInfo || newKernelVersion ||
 			  newKernelPath || removeKernelPath || makeDefault ||
-			  defaultKernel || displayDefaultIndex)) {
+			  defaultKernel || displayDefaultIndex || displayDefaultTitle)) {
 	fprintf(stderr, _("grubby: --bootloader-probe may not be used with "
 			  "specified option"));
 	return 1;
@@ -3388,7 +3391,7 @@ int main(int argc, const char ** argv) {
 
     if (!removeKernelPath && !newKernelPath && !displayDefault && !defaultKernel
 	&& !kernelInfo && !bootloaderProbe && !updateKernelPath 
-        && !removeMBKernel && !displayDefaultIndex) {
+        && !removeMBKernel && !displayDefaultIndex && !displayDefaultTitle) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -3482,6 +3485,54 @@ int main(int argc, const char ** argv) {
         printf("%s%s\n", bootPrefix, line->elements[1].item + 
                ((rootspec != NULL) ? strlen(rootspec) : 0));
 
+	return 0;
+
+    } else if (displayDefaultTitle) {
+	struct singleLine * line;
+	struct singleEntry * entry;
+
+	if (config->defaultImage == -1) return 0;
+	entry = findEntryByIndex(config, config->defaultImage);
+	if (!entry) return 0;
+
+	if (!configureGrub2) {
+	  line = getLineByType(LT_TITLE, entry->lines);
+	  if (!line) return 0;
+	  printf("%s\n", line->elements[1].item);
+
+	} else {
+	  int i;
+	  size_t len;
+	  char * start;
+	  char * tmp;
+
+	  dbgPrintf("This is GRUB2, default title is embeded in menuentry\n");
+	  line = getLineByType(LT_MENUENTRY, entry->lines);
+	  if (!line) return 0;
+
+	  for (i = 0; i < line->numElements; i++) {
+
+	    if (!strcmp(line->elements[i].item, "menuentry"))
+	      continue;
+
+	    if (*line->elements[i].item == '\'')
+	      start = line->elements[i].item + 1;
+	    else
+	      start = line->elements[i].item;
+
+	    len = strlen(start);
+	    if (*(start + len - 1) == '\'') {
+	      tmp = strdup(start);
+	      *(tmp + len - 1) = '\0';
+	      printf("%s", tmp);
+	      free(tmp);
+	      break;
+	    } else {
+	      printf("%s ", start);
+	    }
+	  }
+	  printf("\n");
+	}
 	return 0;
 
     } else if (displayDefaultIndex) {
