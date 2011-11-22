@@ -27,7 +27,6 @@ CFLAGS += $(RPM_OPT_FLAGS) -std=gnu99 -Wall -Werror -Wno-error=unused-function -
 LDFLAGS := 
 
 grubby_LIBS = -lblkid -lpopt
-grubby_LIBS += $(shell pkg-config --libs glib-2.0)
 
 all: grubby
 
