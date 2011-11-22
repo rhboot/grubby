@@ -69,10 +69,38 @@ oneTest() {
     fi 
 }
 
+# Test feature that display some information, checking that output instead of
+# the generated configuration file
+oneDisplayTest() {
+    typeset mode=$1 cfg=test/$2 correct=test/results/$3
+    shift 3
+
+    echo "$testing ... $mode $cfg $correct"
+    runme=( ./grubby "$mode" --bad-image-okay -c "$cfg" "$@" )
+    if "${runme[@]}" | cmp "$correct" > /dev/null; then
+	(( pass++ ))
+	if $opt_verbose; then
+	    echo -------------------------------------------------------------
+	    echo -n "PASS: "
+	    printf "%q " "${runme[@]}"; echo
+	    "${runme[@]}" | diff -U30 "$cfg" -
+	    echo
+	fi
+    else
+	(( fail++ ))
+	echo -------------------------------------------------------------
+	echo -n "FAIL: "
+	printf "%q " "${runme[@]}"; echo
+	"${runme[@]}" | diff -U30 "$correct" -
+	echo
+    fi
+}
+
 # generate convenience functions
 for b in $(./grubby --help | \
 	sed -n 's/^.*--\([^ ]*\) *configure \1 bootloader$/\1/p'); do
     eval "${b}Test() { [[ \"$b\" == \$opt_bootloader ]] && oneTest --$b \"\$@\"; }"
+    eval "${b}DisplayTest() { [[ \"$b\" == \$opt_bootloader ]] && oneDisplayTest --$b \"\$@\"; }"
 done
 
 #----------------------------------------------------------------------
