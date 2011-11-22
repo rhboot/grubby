@@ -3159,6 +3159,7 @@ int main(int argc, const char ** argv) {
     struct singleEntry * template = NULL;
     int copyDefault = 0, makeDefault = 0;
     int displayDefault = 0;
+    int displayDefaultIndex = 0;
     struct poptOption options[] = {
 	{ "add-kernel", 0, POPT_ARG_STRING, &newKernelPath, 0,
 	    _("add an entry for the specified kernel"), _("kernel-path") },
@@ -3191,6 +3192,8 @@ int main(int argc, const char ** argv) {
 	      "template"), NULL },
 	{ "default-kernel", 0, 0, &displayDefault, 0,
 	    _("display the path of the default kernel") },
+	{ "default-index", 0, 0, &displayDefaultIndex, 0,
+	    _("display the index of the default kernel") },
 	{ "elilo", 0, POPT_ARG_NONE, &configureELilo, 0,
 	    _("configure elilo bootloader") },
 	{ "extlinux", 0, POPT_ARG_NONE, &configureExtLinux, 0,
@@ -3334,7 +3337,7 @@ int main(int argc, const char ** argv) {
 
     if (bootloaderProbe && (displayDefault || kernelInfo || newKernelVersion ||
 			  newKernelPath || removeKernelPath || makeDefault ||
-			  defaultKernel)) {
+			  defaultKernel || displayDefaultIndex)) {
 	fprintf(stderr, _("grubby: --bootloader-probe may not be used with "
 			  "specified option"));
 	return 1;
@@ -3385,7 +3388,7 @@ int main(int argc, const char ** argv) {
 
     if (!removeKernelPath && !newKernelPath && !displayDefault && !defaultKernel
 	&& !kernelInfo && !bootloaderProbe && !updateKernelPath 
-        && !removeMBKernel) {
+        && !removeMBKernel && !displayDefaultIndex) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -3480,6 +3483,11 @@ int main(int argc, const char ** argv) {
                ((rootspec != NULL) ? strlen(rootspec) : 0));
 
 	return 0;
+
+    } else if (displayDefaultIndex) {
+        if (config->defaultImage == -1) return 0;
+        printf("%i\n", config->defaultImage);
+
     } else if (kernelInfo)
 	return displayInfo(config, kernelInfo, bootPrefix);
 

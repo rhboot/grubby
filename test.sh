@@ -198,6 +198,19 @@ grubTest grub.4 default/g4.1 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4
 grubTest grub.4 default/g4.2 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4.7-ac3 --remove-kernel /boot/vmlinuz-2.4.7-2.5 --add-kernel=/boot/new-kernel --copy-default --title New_Title
 grubTest grub.6 default/g6.1 --remove-kernel=/boot/vmlinuz-2.4.7-2.9 --boot-filesystem=/
 
+testing="GRUB display default index"
+grubDisplayTest grub.1 defaultindex/0 --default-index
+grubDisplayTest grub.2 defaultindex/0 --default-index
+grubDisplayTest grub.3 defaultindex/0 --default-index
+grubDisplayTest grub.4 defaultindex/0 --default-index
+grubDisplayTest grub.5 defaultindex/0 --default-index
+grubDisplayTest grub.6 defaultindex/2 --default-index
+grubDisplayTest grub.7 defaultindex/2 --default-index
+grubDisplayTest grub.8 defaultindex/0 --default-index
+grubDisplayTest grub.9 defaultindex/0 --default-index
+grubDisplayTest grub.10 defaultindex/0 --default-index
+grubDisplayTest grub.10 defaultindex/0 --default-index
+
 testing="LILO default directive"
 liloTest lilo.1 default/l1.1 --set-default=/boot/vmlinuz-2.4.18-4
 liloTest lilo.1 default/l1.2 --remove-kernel=/boot/vmlinuz-2.4.18-4smp
@@ -341,6 +354,10 @@ grub2Test grub2.1 add/g2-1.3 --add-kernel=/boot/new-kernel.img --title='title' \
 testing="GRUB2 add initrd"
 grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
     --initrd=/boot/new-initrd --boot-filesystem=/boot/
+
+testing="GRUB2 display default index"
+grub2DisplayTest grub2.1 defaultindex/0 --default-index
+grub2DisplayTest grub2.2 defaultindex/0 --default-index
 
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \

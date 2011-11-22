@@ -5,8 +5,8 @@ grubby \- command line tool for configuring grub, lilo, and elilo
 .SH SYNOPSIS
 \fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR] 
        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
-       [--bootloader-probe] [--config-file \fIpath\fR] 
-       [--copy-default] [--default-kernel] 
+       [--bootloader-probe] [--config-file \fIpath\fR] [--copy-default]
+       [--default-kernel] [--default-index]
        [--grub] [--lilo] [--yaboot] [--silo] [--zipl]
        [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
        [--make-default] [-o path] [--version]
@@ -96,6 +96,10 @@ and initrd path will never be copied.
 .TP
 \fB-\-default-kernel\fR
 Display the full path to the current default kernel and exit.
+
+.TP
+\fB-\-default-index\fR
+Display the numeric index of the current default boot entry and exit.
 
 .TP
 \fB-\-elilo\fR
