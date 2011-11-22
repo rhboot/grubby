@@ -51,6 +51,9 @@
 #define MAX_EXTRA_INITRDS	  16	/* code segment checked by --bootloader-probe */
 #define CODE_SEG_SIZE	  128	/* code segment checked by --bootloader-probe */
 
+#define NOOP_OPCODE 0x90
+#define JMP_SHORT_OPCODE 0xeb
+
 /* comments get lumped in with indention */
 struct lineElement {
     char * item;
@@ -2467,12 +2470,22 @@ int checkDeviceBootloader(const char * device, const unsigned char * boot) {
     if (memcmp(boot, bootSect, 3))
 	return 0;
 
-    if (boot[1] == 0xeb) {
+    if (boot[1] == JMP_SHORT_OPCODE) {
 	offset = boot[2] + 2;
     } else if (boot[1] == 0xe8 || boot[1] == 0xe9) {
 	offset = (boot[3] << 8) + boot[2] + 2;
-    } else if (boot[0] == 0xeb) {
-	offset = boot[1] + 2;
+    } else if (boot[0] == JMP_SHORT_OPCODE) {
+      offset = boot[1] + 2;
+        /*
+	 * it looks like grub, when copying stage1 into the mbr, patches stage1
+	 * right after the JMP location, replacing other instructions such as
+	 * JMPs for NOOPs. So, relax the check a little bit by skipping those
+	 * different bytes.
+	 */
+      if ((bootSect[offset + 1] == NOOP_OPCODE)
+	  && (bootSect[offset + 2] == NOOP_OPCODE)) {
+	offset = offset + 3;
+      }
     } else if (boot[0] == 0xe8 || boot[0] == 0xe9) {
 	offset = (boot[2] << 8) + boot[1] + 2;
     } else {
