@@ -3364,7 +3364,7 @@ int main(int argc, const char ** argv) {
 	defaultKernel = NULL;
     }
 
-    if (!strcmp(grubConfig, "-") && !outputFile) {
+    if (grubConfig && !strcmp(grubConfig, "-") && !outputFile) {
 	fprintf(stderr, _("grubby: output file must be specified if stdin "
 			"is used\n"));
 	return 1;
