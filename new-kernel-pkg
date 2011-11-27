@@ -43,11 +43,13 @@ cfgGrub2=""
 cfgGrub2Efi=""
 cfgGrub=""
 cfgLilo=""
+cfgExtlinux=""
 cfguBoot=""
 runLilo=""
 grubConfig=""
 grub2Config=""
 grub2EfiConfig=""
+extlinuxConfig=""
 
 ARCH=$(uname -m)
 
@@ -94,6 +96,7 @@ else
     grubConfig=$(readlink -f /etc/grub.conf 2>/dev/null)
     grub2Config=$(readlink -f /etc/grub2.cfg 2>/dev/null)
     grub2EfiConfig=$(readlink -f /etc/grub2-efi.cfg 2>/dev/null)
+    extlinuxConfig=$(readlink -f /etc/extlinux.conf 2>/dev/null)
     bootPrefix=/boot
     liloFlag=lilo
     isx86="yes"
@@ -243,6 +246,25 @@ install() {
     else
 	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
     fi
+
+    if [ -n "$cfgExtlinux" ]; then
+	[ -n "$verbose" ] && echo "adding $version to $extlinuxConfig"
+
+	if [ -n "$banner" ]; then
+            title="$banner ($version)"
+	elif [ -f /etc/redhat-release ]; then
+	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
+	else
+	    title="Red Hat Linux ($version)"
+	fi
+	$grubby --extlinux -c $extlinuxConfig \
+	    --add-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD --copy-default $makedefault --title "$title" \
+	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
+	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
+    else
+	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby for extlinux"
+    fi
 }
 
 rpmposttrans()
@@ -356,6 +378,14 @@ remove() {
     else
 	[ -n "$verbose" ] && echo "$ubootScript does not exist, not modifying $ubootDir"
     fi
+
+    if [ -n "$cfgExtlinux" ]; then
+	[ -n "$verbose" ] && echo "removing $version from $extlinuxConfig"
+	$grubby --extlinux -c $extlinuxConfig \
+	    --remove-kernel=$bootPrefix/$kernelName-$version
+    else
+	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby for extlinux"
+    fi
 }
 
 update() {
@@ -453,6 +483,17 @@ update() {
 	fi
     else
 	[ -n "$verbose" ] && echo "$ubootScript does not exist, not setting up $ubootDir"
+    fi
+
+    if [ -n "$cfgExtlinux" ]; then
+	[ -n "$verbose" ] && echo "updating $version from $extlinuxConfig"
+	$grubby --extlinux -c $extlinuxConfig \
+	    --update-kernel=$bootPrefix/$kernelName-$version \
+	    $INITRD \
+	    ${kernargs:+--args="$kernargs"} \
+	    ${removeargs:+--remove-args="$removeargs"}
+    else
+	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby"
     fi
 }
 
@@ -689,6 +730,7 @@ fi
 [ -n "$grub2Config" ] && [ -f "$grub2Config" ] && cfgGrub2=1;
 [ -n "$grub2EfiConfig" ] && [ -f "$grub2EfiConfig" ] && cfgGrub2Efi=1;
 [ -n "$liloConfig" ] && [ -f "$liloConfig" ] && cfgLilo=1;
+[ -n "$extlinuxConfig" ] && [ -f "$extlinuxConfig" ] && cfgExtlinux=1;
 
 # if we have a uBoot directory, check if it is mounted.
 # if not, mount it. Then check if a boot script exists.
