@@ -36,14 +36,14 @@ set timeout=5
 ### END /etc/grub.d/00_header ###
 
 ### BEGIN /etc/grub.d/10_linux ###
-menuentry 'Linux, with Linux 2.6.38.8-32.fc15.x86_64' --class gnu-linux --class gnu --class os {
+menuentry 'Linux, with Fedora 2.6.38.8-32.fc15.x86_64' --class gnu-linux --class gnu --class os {
 	load_video
 	set gfxpayload=keep
 	insmod part_msdos
 	insmod ext2
 	set root='(hd0,msdos1)'
 	search --no-floppy --fs-uuid --set=root df0170c9-7d05-415c-bbd1-d4d503ba0eed
-	echo	'Loading Linux 2.6.38.8-32.fc15.x86_64 ...'
+	echo	'Loading Fedora 2.6.38.8-32.fc15.x86_64 ...'
 	linux	/vmlinuz-2.6.38.8-32.fc15.x86_64 root=/dev/mapper/vg_pjones5-lv_root ro quiet rhgb
 	echo	'Loading initial ramdisk ...'
 	initrd	/initramfs-2.6.38.8-32.fc15.x86_64.img

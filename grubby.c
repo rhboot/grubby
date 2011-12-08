@@ -2960,9 +2960,10 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		}
 	    } else if (tmplLine->type == LT_ECHO) {
 		    requote(tmplLine, config->cfi);
+		    static const char *prefix = "'Loading ";
 		    if (tmplLine->numElements > 1 &&
-			    strstr(tmplLine->elements[1].item, "'Loading Linux ")) {
-			char *prefix = "'Loading ";
+			    strstr(tmplLine->elements[1].item, prefix) &&
+			    masterLine->next && masterLine->next->type == LT_KERNEL) {
 			char *newTitle = malloc(strlen(prefix) +
 						strlen(newKernelTitle) + 2);
 
