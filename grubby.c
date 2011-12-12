@@ -873,7 +873,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    cfg->secondaryIndent = strdup(line->indent);
 	}
 
-	if (isEntryStart(line, cfi)) {
+	if (isEntryStart(line, cfi) || (cfg->entries && !sawEntry)) {
 	    sawEntry = 1;
 	    if (!entry) {
 		cfg->entries = malloc(sizeof(*entry));
