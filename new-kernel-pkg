@@ -499,7 +499,7 @@ update() {
 
 mkinitrd() {
     if [ -n "$dracut" ]; then
-        tool="/sbin/dracut $dracuthostonly -f $initrdfile $version"
+        tool="dracut $dracuthostonly -f $initrdfile $version"
     else
 	tool="/sbin/mkinitrd --allow-missing -f $initrdfile $version"
     fi
