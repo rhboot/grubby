@@ -74,10 +74,15 @@ oneTest() {
 oneDisplayTest() {
     typeset mode=$1 cfg=test/$2 correct=test/results/$3
     shift 3
+    local BIO="--bad-image-okay"
+    if [ "$1" == "--bad-image-bad" ]; then
+        BIO=""
+        shift
+    fi
 
     echo "$testing ... $mode $cfg $correct"
-    runme=( ./grubby "$mode" --bad-image-okay -c "$cfg" "$@" )
-    if "${runme[@]}" | cmp "$correct" > /dev/null; then
+    runme=( ./grubby "$mode" $BIO -c "$cfg" "$@")
+    if "${runme[@]}" 2>&1 | cmp "$correct" > /dev/null; then
 	(( pass++ ))
 	if $opt_verbose; then
 	    echo -------------------------------------------------------------
@@ -374,9 +379,14 @@ testing="GRUB2 display default index"
 grub2DisplayTest grub2.1 defaultindex/0 --default-index
 grub2DisplayTest grub2.2 defaultindex/0 --default-index
 
-testing="GRUB display default title"
+testing="GRUB2 display default title"
 grub2DisplayTest grub2.1 defaulttitle/g2.1 --default-title
 grub2DisplayTest grub2.2 defaulttitle/g2.2 --default-title
+
+testing="GRUB2 display debug failure"
+grub2DisplayTest grub2.1 debug/g2.1 --bad-image-bad --default-kernel --debug
+testing="GRUB2 display debug success"
+grub2DisplayTest grub2.1 debug/g2.1.2 --default-kernel --debug
 
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
