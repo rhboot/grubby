@@ -6,7 +6,7 @@ grubby \- command line tool for configuring grub, lilo, and elilo
 \fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR] 
        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
        [--bootloader-probe] [--config-file \fIpath\fR] [--copy-default]
-       [--default-kernel] [--default-index] [--default-title]
+       [--debug] [--default-kernel] [--default-index] [--default-title]
        [--grub] [--lilo] [--yaboot] [--silo] [--zipl]
        [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
        [--make-default] [-o path] [--version]
@@ -92,6 +92,10 @@ Use \fIpath\fR as the configuration file rather then the default.
 \fBgrubby\fR will copy as much information (such as kernel arguments and
 root device) as possible from the current default kernel. The kernel path
 and initrd path will never be copied.
+
+.TP
+\fB-\-debug\fR
+Display extra debugging information for failures.
 
 .TP
 \fB-\-default-kernel\fR

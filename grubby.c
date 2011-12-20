@@ -46,6 +46,8 @@
 #define dbgPrintf(format, args...)
 #endif
 
+int debug = 0;	/* Currently just for template debugging */
+
 #define _(A) (A)
 
 #define MAX_EXTRA_INITRDS	  16	/* code segment checked by --bootloader-probe */
@@ -1337,6 +1339,34 @@ static char *findDiskForRoot()
     return NULL;
 }
 
+void printEntry(struct singleEntry * entry) {
+    int i;
+    struct singleLine * line;
+
+    for (line = entry->lines; line; line = line->next) {
+	fprintf(stderr, "DBG: %s", line->indent);
+	for (i = 0; i < line->numElements; i++) {
+		fprintf(stderr, "%s%s",
+		    line->elements[i].item, line->elements[i].indent);
+	}
+	fprintf(stderr, "\n");
+    }
+}
+
+void notSuitablePrintf(struct singleEntry * entry, const char *fmt, ...)
+{
+    va_list argp;
+
+    if (!debug)
+	return;
+
+    va_start(argp, fmt);
+    fprintf(stderr, "DBG: Image entry failed: ");
+    vfprintf(stderr, fmt, argp);
+    printEntry(entry);
+    va_end(argp);
+}
+
 int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 		  int skipRemoved, int flags) {
     struct singleLine * line;
@@ -1346,10 +1376,21 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     char * rootspec;
     char * rootdev;
 
-    if (skipRemoved && entry->skip) return 0;
+    if (skipRemoved && entry->skip) {
+	notSuitablePrintf(entry, "marked to skip\n");
+	return 0;
+    }
 
     line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
-    if (!line || line->numElements < 2) return 0;
+    if (!line) {
+	notSuitablePrintf(entry, "no line found\n");
+	return 0;
+    }
+    if (line->numElements < 2) {
+	notSuitablePrintf(entry, "line has only %d elements\n",
+	    line->numElements);
+	return 0;
+    }
 
     if (flags & GRUBBY_BADIMAGE_OKAY) return 1;
 
@@ -1358,8 +1399,10 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     rootspec = getRootSpecifier(line->elements[1].item);
     sprintf(fullName, "%s%s", bootPrefix, 
             line->elements[1].item + (rootspec ? strlen(rootspec) : 0));
-    if (access(fullName, R_OK)) return 0;
-
+    if (access(fullName, R_OK)) {
+	notSuitablePrintf(entry, "access to %s failed\n", fullName);
+	return 0;
+    }
     for (i = 2; i < line->numElements; i++) 
 	if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
     if (i < line->numElements) {
@@ -1377,13 +1420,17 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	    line = getLineByType(LT_KERNELARGS|LT_MBMODULE, entry->lines);
 
             /* failed to find one */
-            if (!line) return 0;
+            if (!line) {
+		notSuitablePrintf(entry, "no line found\n");
+		return 0;
+            }
 
 	    for (i = 1; i < line->numElements; i++) 
 	        if (!strncasecmp(line->elements[i].item, "root=", 5)) break;
 	    if (i < line->numElements)
 	        dev = line->elements[i].item + 5;
 	    else {
+		notSuitablePrintf(entry, "no root= entry found\n");
 		/* it failed too...  can't find root= */
 	        return 0;
             }
@@ -1391,19 +1438,28 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     }
 
     dev = getpathbyspec(dev);
-    if (!dev)
+    if (!getpathbyspec(dev)) {
+        notSuitablePrintf(entry, "can't find blkid entry for %s\n", dev);
         return 0;
+    } else
+	dev = getpathbyspec(dev);
 
     rootdev = findDiskForRoot();
-    if (!rootdev)
+    if (!rootdev) {
+        notSuitablePrintf(entry, "can't find root device\n");
 	return 0;
+    }
 
     if (!getuuidbydev(rootdev) || !getuuidbydev(dev)) {
+        notSuitablePrintf(entry, "uuid missing: rootdev %s, dev %s\n",
+		getuuidbydev(rootdev), getuuidbydev(dev));
         free(rootdev);
         return 0;
     }
 
     if (strcmp(getuuidbydev(rootdev), getuuidbydev(dev))) {
+        notSuitablePrintf(entry, "uuid mismatch: rootdev %s, dev %s\n",
+		getuuidbydev(rootdev), getuuidbydev(dev));
 	free(rootdev);
         return 0;
     }
@@ -3192,6 +3248,8 @@ int main(int argc, const char ** argv) {
 	      "the kernel referenced by the default image does not exist, "
 	      "the first linux entry whose kernel does exist is used as the "
 	      "template"), NULL },
+	{ "debug", 0, 0, &debug, 0,
+	    _("print debugging information for failures") },
 	{ "default-kernel", 0, 0, &displayDefault, 0,
 	    _("display the path of the default kernel") },
 	{ "default-index", 0, 0, &displayDefaultIndex, 0,
