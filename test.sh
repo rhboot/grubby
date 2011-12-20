@@ -81,14 +81,14 @@ oneDisplayTest() {
     fi
 
     echo "$testing ... $mode $cfg $correct"
-    runme=( ./grubby "$mode" $BIO -c "$cfg" "$@")
-    if "${runme[@]}" 2>&1 | cmp "$correct" > /dev/null; then
+    runme=( ./grubby "$mode" $BIO -c "$cfg" "$@" )
+    if "${runme[@]}" |& cmp "$correct" > /dev/null; then
 	(( pass++ ))
 	if $opt_verbose; then
 	    echo -------------------------------------------------------------
 	    echo -n "PASS: "
 	    printf "%q " "${runme[@]}"; echo
-	    "${runme[@]}" | diff -U30 "$cfg" -
+	    "${runme[@]}" |& diff -U30 "$cfg" -
 	    echo
 	fi
     else
@@ -96,7 +96,7 @@ oneDisplayTest() {
 	echo -------------------------------------------------------------
 	echo -n "FAIL: "
 	printf "%q " "${runme[@]}"; echo
-	"${runme[@]}" | diff -U30 "$correct" -
+	"${runme[@]}" |& diff -U30 "$correct" -
 	echo
     fi
 }
@@ -384,9 +384,9 @@ grub2DisplayTest grub2.1 defaulttitle/g2.1 --default-title
 grub2DisplayTest grub2.2 defaulttitle/g2.2 --default-title
 
 testing="GRUB2 display debug failure"
-grub2DisplayTest grub2.1 debug/g2.1 --bad-image-bad --default-kernel --debug
+grub2DisplayTest grub2.1 debug/g2.1 --bad-image-bad --boot-filesystem=/boot --default-kernel --debug
 testing="GRUB2 display debug success"
-grub2DisplayTest grub2.1 debug/g2.1.2 --default-kernel --debug
+grub2DisplayTest grub2.1 debug/g2.1.2 --boot-filesystem=/boot --default-kernel --debug
 
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
