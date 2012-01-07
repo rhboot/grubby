@@ -114,6 +114,7 @@ struct singleEntry {
 
 #define MAIN_DEFAULT	    (1 << 0)
 #define DEFAULT_SAVED       -2
+#define DEFAULT_SAVED_GRUB2 -3
 
 struct keywordTypes {
     char * key;
@@ -327,7 +328,7 @@ struct configFileInfo grub2ConfigType = {
     .findConfig = grub2FindConfig,
     .keywords = grub2Keywords,
     .defaultIsIndex = 1,
-    .defaultSupportSaved = 0,
+    .defaultSupportSaved = 1,
     .defaultIsVariable = 1,
     .entryStart = LT_MENUENTRY,
     .entryEnd = LT_ENTRY_END,
@@ -1122,7 +1123,11 @@ static struct grubConfig * readConfig(const char * inName,
 
     dbgPrintf("defaultLine is %s\n", defaultLine ? "set" : "unset");
     if (defaultLine) {
-	if (cfi->defaultIsVariable) {
+        if (defaultLine->numElements > 2 &&
+	    cfi->defaultSupportSaved &&
+	    !strncmp(defaultLine->elements[2].item,"\"${saved_entry}\"", 16)) {
+	    cfg->defaultImage = DEFAULT_SAVED_GRUB2;
+	} else if (cfi->defaultIsVariable) {
 	    char *value = defaultLine->elements[2].item;
 	    while (*value && (*value == '"' || *value == '\'' ||
 		    *value == ' ' || *value == '\t'))
@@ -1179,6 +1184,8 @@ static void writeDefault(FILE * out, char * indent,
 
     if (cfg->defaultImage == DEFAULT_SAVED)
 	fprintf(out, "%sdefault%ssaved\n", indent, separator);
+    else if (cfg->defaultImage == DEFAULT_SAVED_GRUB2)
+	fprintf(out, "%sset default=\"${saved_entry}\"\n", indent);
     else if (cfg->defaultImage > -1) {
 	if (cfg->cfi->defaultIsIndex) {
 	    if (cfg->cfi->defaultIsVariable) {
@@ -1786,7 +1793,8 @@ void setDefaultImage(struct grubConfig * config, int hasNew,
 
     /* defaultImage now points to what we'd like to use, but before any order 
        changes */
-    if (config->defaultImage == DEFAULT_SAVED) 
+    if ((config->defaultImage == DEFAULT_SAVED) ||
+	(config->defaultImage == DEFAULT_SAVED_GRUB2))
       /* default is set to saved, we don't want to change it */
       return;
 
