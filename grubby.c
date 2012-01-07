@@ -1925,6 +1925,17 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 	    printf("%s%s", line->elements[i].item, line->elements[i].indent);
 	printf("\n");
     }
+
+    line = getLineByType(LT_TITLE, entry->lines);
+    if (line) {
+	printf("title=%s\n", line->elements[1].item);
+    } else {
+	char * title;
+	line = getLineByType(LT_MENUENTRY, entry->lines);
+	title = grub2ExtractTitle(line);
+	if (title)
+	    printf("title=%s\n", title);
+    }
 }
 
 int parseSysconfigGrub(int * lbaPtr, char ** bootPtr) {
