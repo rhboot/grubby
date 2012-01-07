@@ -1853,7 +1853,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
         return;
     }
 
-    printf("kernel=%s\n", line->elements[1].item);
+    printf("kernel=%s%s\n", prefix, line->elements[1].item);
 
     if (line->numElements >= 3) {
 	printf("args=\"");
