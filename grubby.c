@@ -240,6 +240,89 @@ const char *grub2FindConfig(struct configFileInfo *cfi) {
     return configFiles[i];
 }
 
+int sizeOfSingleLine(struct singleLine * line) {
+  int i;
+  int count = 0;
+
+  for (i = 0; i < line->numElements; i++) {
+    int indentSize = 0;
+
+    count = count + strlen(line->elements[i].item);
+
+    indentSize = strlen(line->elements[i].indent);
+    if (indentSize > 0)
+      count = count + indentSize;
+    else
+      /* be extra safe and add room for whitespaces */
+      count = count + 1;
+  }
+
+  /* room for trailing terminator */
+  count = count + 1;
+
+  return count;
+}
+
+char *grub2ExtractTitle(struct singleLine * line) {
+    char * current;
+    char * current_indent;
+    int current_len;
+    int current_indent_len;
+    int i;
+
+    /* bail out if line does not start with menuentry */
+    if (strcmp(line->elements[0].item, "menuentry"))
+      return NULL;
+
+    i = 1;
+    current = line->elements[i].item;
+    current_len = strlen(current);
+
+    /* if second word is quoted, strip the quotes and return single word */
+    if ((*current == '\'') && (*(current + current_len - 1) == '\'')) {
+      char *tmp;
+
+      tmp = strdup(current);
+      *(tmp + current_len - 1) = '\0';
+      return ++tmp;
+    }
+
+    /* if no quotes, return second word verbatim */
+    if (*current != '\'') {
+      return current;
+    }
+
+    /* second element start with a quote, so we have to find the element
+     * whose last character is also quote (assuming it's the closing one) */
+    if (*current == '\'') {
+      int resultMaxSize;
+      char * result;
+
+      resultMaxSize = sizeOfSingleLine(line);
+      result = malloc(resultMaxSize);
+      snprintf(result, resultMaxSize, "%s", ++current);
+
+      i++;
+      for (; i < line->numElements; ++i) {
+	current = line->elements[i].item;
+	current_len = strlen(current);
+	current_indent = line->elements[i].indent;
+	current_indent_len = strlen(current_indent);
+
+	strncat(result, current_indent, current_indent_len);
+	if (*(current + current_len - 1) != '\'') {
+	  strncat(result, current, current_len);
+	} else {
+	  strncat(result, current, current_len - 1);
+	  break;
+	}
+      }
+      return result;
+    }
+
+    return NULL;
+}
+
 struct configFileInfo grub2ConfigType = {
     .findConfig = grub2FindConfig,
     .keywords = grub2Keywords,
@@ -3576,37 +3659,14 @@ int main(int argc, const char ** argv) {
 	  printf("%s\n", line->elements[1].item);
 
 	} else {
-	  int i;
-	  size_t len;
-	  char * start;
-	  char * tmp;
+	  char * title;
 
 	  dbgPrintf("This is GRUB2, default title is embeded in menuentry\n");
 	  line = getLineByType(LT_MENUENTRY, entry->lines);
 	  if (!line) return 0;
-
-	  for (i = 0; i < line->numElements; i++) {
-
-	    if (!strcmp(line->elements[i].item, "menuentry"))
-	      continue;
-
-	    if (*line->elements[i].item == '\'')
-	      start = line->elements[i].item + 1;
-	    else
-	      start = line->elements[i].item;
-
-	    len = strlen(start);
-	    if (*(start + len - 1) == '\'') {
-	      tmp = strdup(start);
-	      *(tmp + len - 1) = '\0';
-	      printf("%s", tmp);
-	      free(tmp);
-	      break;
-	    } else {
-	      printf("%s ", start);
-	    }
-	  }
-	  printf("\n");
+	  title = grub2ExtractTitle(line);
+	  if (title)
+	    printf("%s\n", title);
 	}
 	return 0;
 
