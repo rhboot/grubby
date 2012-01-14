@@ -1367,6 +1367,19 @@ void notSuitablePrintf(struct singleEntry * entry, const char *fmt, ...)
     va_end(argp);
 }
 
+#define beginswith(s, c) ((s) && (s)[0] == (c))
+
+static int endswith(const char *s, char c)
+{
+	int slen;
+
+	if (!s && !s[0])
+		return 0;
+	slen = strlen(s) - 1;
+
+	return s[slen] == c;
+}
+
 int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 		  int skipRemoved, int flags) {
     struct singleLine * line;
@@ -1397,8 +1410,11 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     fullName = alloca(strlen(bootPrefix) + 
 		      strlen(line->elements[1].item) + 1);
     rootspec = getRootSpecifier(line->elements[1].item);
-    sprintf(fullName, "%s%s", bootPrefix, 
-            line->elements[1].item + (rootspec ? strlen(rootspec) : 0));
+    int rootspec_offset = rootspec ? strlen(rootspec) : 0;
+    int hasslash = endswith(bootPrefix, '/') ||
+    	beginswith(line->elements[1].item + rootspec_offset, '/');
+    sprintf(fullName, "%s%s%s", bootPrefix, hasslash ? "" : "/",
+            line->elements[1].item + rootspec_offset);
     if (access(fullName, R_OK)) {
 	notSuitablePrintf(entry, "access to %s failed\n", fullName);
 	return 0;
