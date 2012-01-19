@@ -78,10 +78,10 @@ ln -fs ${RELATIVE_PATH}$INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION $LINK_PATH/$KE
 ln -fs ${RELATIVE_PATH}$INSTALL_PATH/System.map-$KERNEL_VERSION $LINK_PATH/System.map
 
 if [ -n "$cfgLoader" -a -x /sbin/new-kernel-pkg ]; then
-	if [ -x /sbin/dracut ]; then
-		/sbin/new-kernel-pkg --mkinitrd --dracut --host-only --depmod --install $KERNEL_VERSION
+	if [ -n "$(which dracut 2>/dev/null)" ]; then
+		new-kernel-pkg --mkinitrd --dracut --host-only --depmod --install $KERNEL_VERSION
 	else
-		/sbin/new-kernel-pkg --mkinitrd --depmod --install $KERNEL_VERSION
+		new-kernel-pkg --mkinitrd --depmod --install $KERNEL_VERSION
 	fi
-	/sbin/new-kernel-pkg --rpmposttrans $KERNEL_VERSION
+	new-kernel-pkg --rpmposttrans $KERNEL_VERSION
 fi

@@ -501,7 +501,7 @@ mkinitrd() {
     if [ -n "$dracut" ]; then
         tool="dracut $dracuthostonly -f $initrdfile $version"
     else
-	tool="/sbin/mkinitrd --allow-missing -f $initrdfile $version"
+	tool="mkinitrd --allow-missing -f $initrdfile $version"
     fi
     [ -n "$verbose" ] && echo "creating initrd: $tool"
     $tool
