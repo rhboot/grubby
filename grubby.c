@@ -1463,7 +1463,7 @@ static int endswith(const char *s, char c)
 {
 	int slen;
 
-	if (!s && !s[0])
+	if (!s || !s[0])
 		return 0;
 	slen = strlen(s) - 1;
 
