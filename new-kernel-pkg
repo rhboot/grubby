@@ -78,7 +78,7 @@ elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
     lilo=/sbin/zipl
     runLilo="yes"
     isx86=""
-elif [ $ARCH = 'armv7l' -o $ARCH = 'armv7hl' ]; then
+elif [ $ARCH = 'armv7hl' -o $ARCH = 'armv7l' -o $ARCH = 'armv5tel' ]; then
     machine=$(grep "^Hardware" /proc/cpuinfo | sed 's/Hardware\s*:\s*//')
     liloConfig=""
     bootPrefix=/boot
