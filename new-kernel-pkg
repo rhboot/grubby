@@ -60,6 +60,7 @@ if [ $ARCH = 'ia64' ]; then
     isx86=""
 elif [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
     liloConfig=/etc/yaboot.conf
+    grub2Config=$(readlink -f /etc/grub2.cfg 2>/dev/null)
     bootPrefix=/boot
     lilo=/sbin/ybin
     liloFlag=yaboot
