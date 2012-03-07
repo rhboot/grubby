@@ -730,6 +730,18 @@ static int lineWrite(FILE * out, struct singleLine * line,
     if (fprintf(out, "%s", line->indent) == -1) return -1;
 
     for (i = 0; i < line->numElements; i++) {
+	/* Need to handle this, because we strip the quotes from
+	 * menuentry when read it. */
+	if (line->type == LT_MENUENTRY && i == 1) {
+	    if(!isquote(*line->elements[i].item))
+		fprintf(out, "\'%s\'", line->elements[i].item);
+	    else
+		fprintf(out, "%s", line->elements[i].item);
+	    fprintf(out, "%s", line->elements[i].indent);
+
+	    continue;
+	}
+
 	if (i == 1 && line->type == LT_KERNELARGS && cfi->argsInQuotes)
 	    if (fputc('"', out) == EOF) return -1;
 
@@ -1051,7 +1063,71 @@ static struct grubConfig * readConfig(const char * inName,
 		    line->elements[line->numElements - 1].indent;
 	    line->elements[1].item = buf;
 	    line->numElements = 2;
+	} else if (line->type == LT_MENUENTRY && line->numElements > 3) {
+	    /* let --remove-kernel="TITLE=what" work */
+	    len = 0;
+	    char *extras;
+	    char *title;
 
+	    for (i = 1; i < line->numElements; i++) {
+		len += strlen(line->elements[i].item);
+		len += strlen(line->elements[i].indent);
+	    }
+	    buf = malloc(len + 1);
+	    *buf = '\0';
+
+	    /* allocate mem for extra flags. */
+	    extras = malloc(len + 1);
+	    *extras = '\0';
+
+	    /* get title. */
+	    for (i = 0; i < line->numElements; i++) {
+		if (!strcmp(line->elements[i].item, "menuentry"))
+		    continue;
+		if (isquote(*line->elements[i].item))
+		    title = line->elements[i].item + 1;
+		else
+		    title = line->elements[i].item;
+
+		len = strlen(title);
+	        if (isquote(title[len-1])) {
+		    strncat(buf, title,len-1);
+		    break;
+		} else {
+		    strcat(buf, title);
+		    strcat(buf, line->elements[i].indent);
+		}
+	    }
+
+	    /* get extras */
+	    int count = 0;
+	    for (i = 0; i < line->numElements; i++) {
+		if (count == 2) {
+		    strcat(extras, line->elements[i].item);
+		    strcat(extras, line->elements[i].indent);
+		}
+
+		if (!strcmp(line->elements[i].item, "menuentry"))
+		    continue;
+
+		/* count ' or ", there should be two in menuentry line. */
+		if (isquote(*line->elements[i].item))
+		    count++;
+
+		len = strlen(line->elements[i].item);
+
+		if (isquote(line->elements[i].item[len -1]))
+		    count++;
+
+		/* ok, we get the final ' or ", others are extras. */
+            }
+	    line->elements[1].indent =
+		line->elements[line->numElements - 2].indent;
+	    line->elements[1].item = buf;
+	    line->elements[2].indent =
+		line->elements[line->numElements - 2].indent;
+	    line->elements[2].item = extras;
+	    line->numElements = 3;
 	} else if (line->type == LT_KERNELARGS && cfi->argsInQuotes) {
 	    /* Strip off any " which may be present; they'll be put back
 	       on write. This is one of the few (the only?) places that grubby
@@ -1060,13 +1136,13 @@ static struct grubConfig * readConfig(const char * inName,
 	    if (line->numElements >= 2) {
 		int last, len;
 
-		if (*line->elements[1].item == '"')
+		if (isquote(*line->elements[1].item))
 		    memmove(line->elements[1].item, line->elements[1].item + 1,
 			    strlen(line->elements[1].item + 1) + 1);
 
 		last = line->numElements - 1;
 		len = strlen(line->elements[last].item) - 1;
-		if (line->elements[last].item[len] == '"')
+		if (isquote(line->elements[last].item[len]))
 		    line->elements[last].item[len] = '\0';
 	    }
 	}
@@ -1438,7 +1514,19 @@ void printEntry(struct singleEntry * entry) {
     for (line = entry->lines; line; line = line->next) {
 	fprintf(stderr, "DBG: %s", line->indent);
 	for (i = 0; i < line->numElements; i++) {
-		fprintf(stderr, "%s%s",
+	    /* Need to handle this, because we strip the quotes from
+	     * menuentry when read it. */
+	    if (line->type == LT_MENUENTRY && i == 1) {
+		if(!isquote(*line->elements[i].item))
+		    fprintf(stderr, "\'%s\'", line->elements[i].item);
+		else
+		    fprintf(stderr, "%s", line->elements[i].item);
+		fprintf(stderr, "%s", line->elements[i].indent);
+		
+		continue;
+	    }
+	    
+	    fprintf(stderr, "%s%s",
 		    line->elements[i].item, line->elements[i].indent);
 	}
 	fprintf(stderr, "\n");
@@ -1654,7 +1742,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 
 	if (!strncmp(kernel, "TITLE=", 6)) {
 	    prefix = "";
-	    checkType = LT_TITLE;
+	    checkType = LT_TITLE|LT_MENUENTRY;
 	    kernel += 6;
 	}
 
@@ -1670,13 +1758,17 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 				     checkType, line);
 		if (!line) break;  /* not found in this entry */
 
-		if (line && line->numElements >= 2) {
+		if (line && line->type != LT_MENUENTRY &&
+			line->numElements >= 2) {
 		    rootspec = getRootSpecifier(line->elements[1].item);
 		    if (!strcmp(line->elements[1].item + 
 				((rootspec != NULL) ? strlen(rootspec) : 0),
 				kernel + strlen(prefix)))
 			break;
 		}
+		if(line->type == LT_MENUENTRY &&
+			!strcmp(line->elements[1].item, kernel))
+		    break;
 	    }
 
 	    /* make sure this entry has a kernel identifier; this skips
@@ -1768,7 +1860,16 @@ void markRemovedImage(struct grubConfig * cfg, const char * image,
 		      const char * prefix) {
     struct singleEntry * entry;
 
-    if (!image) return;
+    if (!image)
+	return;
+
+    /* check and see if we're removing the default image */
+    if (isdigit(*image)) {
+	entry = findEntryByPath(cfg, image, prefix, NULL);
+	if(entry)
+	    entry->skip = 1;
+	return;
+    }
 
     while ((entry = findEntryByPath(cfg, image, prefix, NULL)))
 	entry->skip = 1;

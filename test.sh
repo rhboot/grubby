@@ -388,6 +388,18 @@ grub2DisplayTest grub2.1 debug/g2.1 --bad-image-bad --boot-filesystem=/boot --de
 testing="GRUB2 display debug success"
 grub2DisplayTest grub2.1 debug/g2.1.2 --boot-filesystem=/boot --default-kernel --debug
 
+testing="GRUB2 remove kernel via index"
+grub2Test grub2.3 remove/g2-1.1 --remove-kernel=1
+
+testing="GRUB2 remove kernel via title"
+grub2Test grub2.3 remove/g2-1.1 --remove-kernel="TITLE=title2"
+
+testing="GRUB2 (submenu) remove kernel via index"
+grub2Test grub2.4 remove/g2-1.2 --remove-kernel=2
+
+testing="GRUB2 (submenu) remove kernel via title"
+grub2Test grub2.4 remove/g2-1.2 --remove-kernel="TITLE=title2"
+
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
     --title=newtitle
