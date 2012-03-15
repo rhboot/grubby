@@ -264,6 +264,13 @@ int sizeOfSingleLine(struct singleLine * line) {
   return count;
 }
 
+static int isquote(char q)
+{
+    if (q == '\'' || q == '\"')
+	return 1;
+    return 0;
+}
+
 char *grub2ExtractTitle(struct singleLine * line) {
     char * current;
     char * current_indent;
@@ -280,48 +287,43 @@ char *grub2ExtractTitle(struct singleLine * line) {
     current_len = strlen(current);
 
     /* if second word is quoted, strip the quotes and return single word */
-    if ((*current == '\'') && (*(current + current_len - 1) == '\'')) {
-      char *tmp;
-
-      tmp = strdup(current);
-      *(tmp + current_len - 1) = '\0';
-      return ++tmp;
+    if (isquote(*current) && isquote(current[current_len - 1])) {
+	char *tmp;
+	
+	tmp = strdup(current);
+	*(tmp + current_len - 1) = '\0';
+	return ++tmp;
     }
 
     /* if no quotes, return second word verbatim */
-    if (*current != '\'') {
-      return current;
-    }
+    if (!isquote(*current))
+	return current;
 
     /* second element start with a quote, so we have to find the element
      * whose last character is also quote (assuming it's the closing one) */
-    if (*current == '\'') {
-      int resultMaxSize;
-      char * result;
-
-      resultMaxSize = sizeOfSingleLine(line);
-      result = malloc(resultMaxSize);
-      snprintf(result, resultMaxSize, "%s", ++current);
-
-      i++;
-      for (; i < line->numElements; ++i) {
+    int resultMaxSize;
+    char * result;
+    
+    resultMaxSize = sizeOfSingleLine(line);
+    result = malloc(resultMaxSize);
+    snprintf(result, resultMaxSize, "%s", ++current);
+    
+    i++;
+    for (; i < line->numElements; ++i) {
 	current = line->elements[i].item;
 	current_len = strlen(current);
 	current_indent = line->elements[i].indent;
 	current_indent_len = strlen(current_indent);
 
 	strncat(result, current_indent, current_indent_len);
-	if (*(current + current_len - 1) != '\'') {
-	  strncat(result, current, current_len);
+	if (!isquote(current[current_len-1])) {
+	    strncat(result, current, current_len);
 	} else {
-	  strncat(result, current, current_len - 1);
-	  break;
+	    strncat(result, current, current_len - 1);
+	    break;
 	}
-      }
-      return result;
     }
-
-    return NULL;
+    return result;
 }
 
 struct configFileInfo grub2ConfigType = {
@@ -2188,13 +2190,6 @@ void removeLine(struct singleEntry * entry, struct singleLine * line) {
     }
 
     free(line);
-}
-
-static int isquote(char q)
-{
-    if (q == '\'' || q == '\"')
-	return 1;
-    return 0;
 }
 
 static void requote(struct singleLine *tmplLine, struct configFileInfo * cfi)
