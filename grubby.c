@@ -1102,7 +1102,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    /* get extras */
 	    int count = 0;
 	    for (i = 0; i < line->numElements; i++) {
-		if (count == 2) {
+		if (count >= 2) {
 		    strcat(extras, line->elements[i].item);
 		    strcat(extras, line->elements[i].indent);
 		}

@@ -370,6 +370,8 @@ grub2Test grub2.1 add/g2-1.3 --add-kernel=/boot/new-kernel.img --title='title' \
     --boot-filesystem=/boot/ --copy-default --make-default
 grub2Test grub2.1 remove/g2-1.4 --remove-kernel=/boot/vmlinuz-2.6.38.2-9.fc15.x86_64 \
     --boot-filesystem=/boot/
+grub2Test grub2.5 add/g2-1.5 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot/ --copy-default
 
 testing="GRUB2 add initrd"
 grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
