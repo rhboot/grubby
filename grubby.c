@@ -1460,6 +1460,8 @@ static char *findDiskForRoot()
     buf[rc] = '\0';
     chptr = buf;
 
+    char *foundanswer = NULL;
+
     while (chptr && chptr != buf+rc) {
         devname = chptr;
 
@@ -1487,19 +1489,21 @@ static char *findDiskForRoot()
          * for '/' obviously.
          */
         if (*(++chptr) == '/' && *(++chptr) == ' ') {
-            /*
-             * Move back 2, which is the first space after the device name, set
-             * it to \0 so strdup will just get the devicename.
-             */
-            chptr -= 2;
-            *chptr = '\0';
-            return strdup(devname);
+            /* remember the last / entry in mtab */
+           foundanswer = devname;
         }
 
         /* Next line */
         chptr = strchr(chptr, '\n');
         if (chptr)
             chptr++;
+    }
+
+    /* Return the last / entry found */
+    if (foundanswer) {
+        chptr = strchr(foundanswer, ' ');
+        *chptr = '\0';
+        return strdup(foundanswer);
     }
 
     return NULL;
