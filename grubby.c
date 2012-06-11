@@ -2978,7 +2978,7 @@ static char * getRootSpecifier(char * str) {
 static char * getInitrdVal(struct grubConfig * config,
 			   const char * prefix, struct singleLine *tmplLine,
 			   const char * newKernelInitrd,
-			   char ** extraInitrds, int extraInitrdCount)
+			   const char ** extraInitrds, int extraInitrdCount)
 {
     char *initrdVal, *end;
     int i;
@@ -3023,10 +3023,10 @@ static char * getInitrdVal(struct grubConfig * config,
 
 int addNewKernel(struct grubConfig * config, struct singleEntry * template, 
 	         const char * prefix,
-		 char * newKernelPath, char * newKernelTitle,
-		 char * newKernelArgs, char * newKernelInitrd,
-		 char ** extraInitrds, int extraInitrdCount,
-                 char * newMBKernel, char * newMBKernelArgs) {
+		 const char * newKernelPath, const char * newKernelTitle,
+		 const char * newKernelArgs, const char * newKernelInitrd,
+		 const char ** extraInitrds, int extraInitrdCount,
+                 const char * newMBKernel, const char * newMBKernelArgs) {
     struct singleEntry * new;
     struct singleLine * newLine = NULL, * tmplLine = NULL, * masterLine = NULL;
     int needs;
@@ -3812,7 +3812,7 @@ int main(int argc, const char ** argv) {
     }
     if (addNewKernel(config, template, bootPrefix, newKernelPath, 
                      newKernelTitle, newKernelArgs, newKernelInitrd, 
-                     extraInitrds, extraInitrdCount,
+                     (const char **)extraInitrds, extraInitrdCount,
                      newMBKernel, newMBKernelArgs)) return 1;
     
 
