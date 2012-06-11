@@ -9,6 +9,15 @@
 # directory where uBoot images and scripts are found
 #UBOOT_DIR=/boot/uboot
 
+# Override the load address when running mkimage on the kernel.
+# OMAP such as Beagleboard and Pandaboard: Use 0x80008000
+# Tegra such as Trimslice: Use 0x00008000
+# IMX such as Efika mx51 smarttop: Use 0x90008000
+# Kirkwood such as Dreamplug, Guruplug, Sheevaplug: Use 0x00008000
+# If left undefined grubby will use defults for Tegra or OMAP depending
+# upon the contents of /proc/cpuinfo.
+#UBOOT_IMGADDR=0x0x00008000
+
 # name of the text file containing the list of installed kernel versions
 # NOTE: The versions are in order of installation.  The last entry should
 #       always be the default boot kernel version.

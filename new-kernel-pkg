@@ -80,7 +80,6 @@ elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
     runLilo="yes"
     isx86=""
 elif [ $ARCH = 'armv7hl' -o $ARCH = 'armv7l' -o $ARCH = 'armv5tel' ]; then
-    machine=$(grep "^Hardware" /proc/cpuinfo | sed 's/Hardware\s*:\s*//')
     liloConfig=""
     bootPrefix=/boot
     ubootDir=${UBOOT_DIR:-"/boot/uboot"}
@@ -92,10 +91,15 @@ elif [ $ARCH = 'armv7hl' -o $ARCH = 'armv7l' -o $ARCH = 'armv5tel' ]; then
     mounted=""
     liloFlag=""
     isx86=""
-    if [ "$machine" == "OMAP3 Beagle Board" -o "$machine" == "OMAP4 Panda board" ]; then
-	ubootAddress=0x80008000
+    if [ -z "$UBOOT_IMGADDR" ]; then
+	machine=$(grep "^Hardware" /proc/cpuinfo | sed 's/Hardware\s*:\s*//')
+	if [ "$machine" == "OMAP3 Beagle Board" -o "$machine" == "OMAP4 Panda board" ]; then
+	    ubootAddress=0x80008000
+	else
+	    ubootAddress=0x00008000
+	fi
     else
-	ubootAddress=0x00008000
+	ubootAddress="$UBOOT_IMGADDR"
     fi
 else
     # this leaves i?86 and x86_64
