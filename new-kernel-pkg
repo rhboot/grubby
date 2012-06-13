@@ -82,7 +82,7 @@ elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
 elif [ $ARCH = 'armv7hl' -o $ARCH = 'armv7l' -o $ARCH = 'armv5tel' ]; then
     liloConfig=""
     bootPrefix=/boot
-    ubootDir=${UBOOT_DIR:-"/boot/uboot"}
+    ubootDir=${UBOOT_DIR:-"/boot"}
     ubootScript=$ubootDir/${UBOOT_SCR:-"boot.scr"}
     ubootKList=${UBOOT_KLIST:-"klist.txt"}
     ubootDevice=/dev/${UBOOT_DEVICE:-"mmcblk0p1"}
@@ -350,7 +350,7 @@ remove() {
 	if [ -f $ubootDir/$ubootKList ]; then
 	    tmpKList=`mktemp $ubootDir/$ubootKList.XXXX`
 	    curversion=`tail -n1 $ubootDir/$ubootKList`
-	    sed "/$version/d" $ubootDir/$ubootKList > $tmpKList
+	    sed "/$version$/d" $ubootDir/$ubootKList > $tmpKList
 	    newversion=`tail -n1 $tmpKList`
 	    if [ -f $ubootDir/uImage-$newversion -a -f $ubootDir/uInitrd-$newversion ]; then
 		if [ "$curversion" != "$newversion" ]; then

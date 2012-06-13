@@ -7,7 +7,7 @@
 #          been installed may cause removing a kernel image to fail.
 
 # directory where uBoot images and scripts are found
-#UBOOT_DIR=/boot/uboot
+#UBOOT_DIR=/boot
 
 # Override the load address when running mkimage on the kernel.
 # OMAP such as Beagleboard and Pandaboard: Use 0x80008000
