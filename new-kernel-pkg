@@ -79,7 +79,7 @@ elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
     lilo=/sbin/zipl
     runLilo="yes"
     isx86=""
-elif [ $ARCH = 'armv7hl' -o $ARCH = 'armv7l' -o $ARCH = 'armv5tel' ]; then
+elif [[ ${ARCH} =~ armv[5|7].*l ]] ; then
     liloConfig=""
     bootPrefix=/boot
     ubootDir=${UBOOT_DIR:-"/boot"}
@@ -92,9 +92,12 @@ elif [ $ARCH = 'armv7hl' -o $ARCH = 'armv7l' -o $ARCH = 'armv5tel' ]; then
     liloFlag=""
     isx86=""
     if [ -z "$UBOOT_IMGADDR" ]; then
-	machine=$(grep "^Hardware" /proc/cpuinfo | sed 's/Hardware\s*:\s*//')
-	if [ "$machine" == "OMAP3 Beagle Board" -o "$machine" == "OMAP4 Panda board" ]; then
+	machine=${MACHINE:-`grep "^Hardware" /proc/cpuinfo | sed 's/Hardware\s*:\s*//'`}
+	# A few machines use an alternate kernel load address
+	if [[ "$machine" =~ ^OMAP[3|4].* ]]; then
 	    ubootAddress=0x80008000
+	elif [[ "$machine" =~ ^Efika\ MX.* ]]; then
+	    ubootAddress=0x90008000
 	else
 	    ubootAddress=0x00008000
 	fi
