@@ -242,10 +242,9 @@ const char *grub2FindConfig(struct configFileInfo *cfi) {
 }
 
 int sizeOfSingleLine(struct singleLine * line) {
-  int i;
   int count = 0;
 
-  for (i = 0; i < line->numElements; i++) {
+  for (int i = 0; i < line->numElements; i++) {
     int indentSize = 0;
 
     count = count + strlen(line->elements[i].item);
@@ -572,8 +571,7 @@ static char * sdupprintf(const char *format, ...) {
 
 static struct keywordTypes * getKeywordByType(enum lineType_e type,
 					      struct configFileInfo * cfi) {
-    struct keywordTypes * kw;
-    for (kw = cfi->keywords; kw->key; kw++) {
+    for (struct keywordTypes *kw = cfi->keywords; kw->key; kw++) {
 	if (kw->type == type)
 	    return kw;
     }
@@ -603,8 +601,7 @@ static char * getuuidbydev(char *device) {
 
 static enum lineType_e getTypeByKeyword(char * keyword, 
 					struct configFileInfo * cfi) {
-    struct keywordTypes * kw;
-    for (kw = cfi->keywords; kw->key; kw++) {
+    for (struct keywordTypes *kw = cfi->keywords; kw->key; kw++) {
 	if (!strcmp(keyword, kw->key))
 	    return kw->type;
     }
@@ -691,7 +688,6 @@ static void lineInit(struct singleLine * line) {
 }
 
 struct singleLine * lineDup(struct singleLine * line) {
-    int i;
     struct singleLine * newLine = malloc(sizeof(*newLine));
 
     newLine->indent = strdup(line->indent);
@@ -701,7 +697,7 @@ struct singleLine * lineDup(struct singleLine * line) {
     newLine->elements = malloc(sizeof(*newLine->elements) * 
 			       newLine->numElements);
 
-    for (i = 0; i < newLine->numElements; i++) {
+    for (int i = 0; i < newLine->numElements; i++) {
 	newLine->elements[i].indent = strdup(line->elements[i].indent);
 	newLine->elements[i].item = strdup(line->elements[i].item);
     }
@@ -710,11 +706,9 @@ struct singleLine * lineDup(struct singleLine * line) {
 }
 
 static void lineFree(struct singleLine * line) {
-    int i;
-
     if (line->indent) free(line->indent);
 
-    for (i = 0; i < line->numElements; i++) {
+    for (int i = 0; i < line->numElements; i++) {
 	free(line->elements[i].item); 
 	free(line->elements[i].indent); 
     }
@@ -725,11 +719,9 @@ static void lineFree(struct singleLine * line) {
 
 static int lineWrite(FILE * out, struct singleLine * line,
 		     struct configFileInfo * cfi) {
-    int i;
-
     if (fprintf(out, "%s", line->indent) == -1) return -1;
 
-    for (i = 0; i < line->numElements; i++) {
+    for (int i = 0; i < line->numElements; i++) {
 	/* Need to handle this, because we strip the quotes from
 	 * menuentry when read it. */
 	if (line->type == LT_MENUENTRY && i == 1) {
@@ -835,10 +827,9 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 	    if (*line->elements[0].item == '#') {
 		char * fullLine;
 		int len;
-		int i;
 
 		len = strlen(line->indent);
-		for (i = 0; i < line->numElements; i++)
+		for (int i = 0; i < line->numElements; i++)
 		    len += strlen(line->elements[i].item) + 
 			   strlen(line->elements[i].indent);
 
@@ -847,7 +838,7 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 		free(line->indent);
 		line->indent = fullLine;
 
-		for (i = 0; i < line->numElements; i++) {
+		for (int i = 0; i < line->numElements; i++) {
 		    strcat(fullLine, line->elements[i].item);
 		    strcat(fullLine, line->elements[i].indent);
 		    free(line->elements[i].item);
@@ -866,12 +857,10 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 		 * elements up more
 		 */
 		if (!isspace(kw->separatorChar)) {
-		    int i;
 		    char indent[2] = "";
 		    indent[0] = kw->separatorChar;
-		    for (i = 1; i < line->numElements; i++) {
+		    for (int i = 1; i < line->numElements; i++) {
 			char *p;
-			int j;
 			int numNewElements;
 
 			numNewElements = 0;
@@ -887,7 +876,7 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
 					    sizeof(*line->elements) * elementsAlloced);
 			}
 
-			for (j = line->numElements; j > i; j--) {
+			for (int j = line->numElements; j > i; j--) {
 				line->elements[j + numNewElements] = line->elements[j];
 			}
 			line->numElements += numNewElements;
@@ -925,7 +914,7 @@ static struct grubConfig * readConfig(const char * inName,
     struct singleLine * last = NULL, * line, * defaultLine = NULL;
     char * end;
     struct singleEntry * entry = NULL;
-    int i, len;
+    int len;
     char * buf;
 
     if (!strcmp(inName, "-")) {
@@ -988,10 +977,9 @@ static struct grubConfig * readConfig(const char * inName,
 	}
 
 	if (line->type == LT_SET_VARIABLE) {
-	    int i;
 	    dbgPrintf("found 'set' command (%d elements): ", line->numElements);
 	    dbgPrintf("%s", line->indent);
-	    for (i = 0; i < line->numElements; i++)
+	    for (int i = 0; i < line->numElements; i++)
 		dbgPrintf("\"%s\"%s", line->elements[i].item, line->elements[i].indent);
 	    dbgPrintf("\n");
 	    struct keywordTypes *kwType = getKeywordByType(LT_DEFAULT, cfi);
@@ -1019,8 +1007,7 @@ static struct grubConfig * readConfig(const char * inName,
 	     * This only applies to grub, but that's the only place we
 	     * should find LT_MBMODULE lines anyway.
 	     */
-	    struct singleLine * l;
-	    for (l = entry->lines; l; l = l->next) {
+	    for (struct singleLine *l = entry->lines; l; l = l->next) {
 		if (l->type == LT_HYPER)
 		    break;
 		else if (l->type == LT_KERNEL) {
@@ -1040,14 +1027,14 @@ static struct grubConfig * readConfig(const char * inName,
 	} else if (line->type == LT_TITLE && line->numElements > 1) {
 	    /* make the title a single argument (undoing our parsing) */
 	    len = 0;
-	    for (i = 1; i < line->numElements; i++) {
+	    for (int i = 1; i < line->numElements; i++) {
 		len += strlen(line->elements[i].item);
 		len += strlen(line->elements[i].indent);
 	    }
 	    buf = malloc(len + 1);
 	    *buf = '\0';
 
-	    for (i = 1; i < line->numElements; i++) {
+	    for (int i = 1; i < line->numElements; i++) {
 		strcat(buf, line->elements[i].item);
 		free(line->elements[i].item);
 
@@ -1067,7 +1054,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    char *extras;
 	    char *title;
 
-	    for (i = 1; i < line->numElements; i++) {
+	    for (int i = 1; i < line->numElements; i++) {
 		len += strlen(line->elements[i].item);
 		len += strlen(line->elements[i].indent);
 	    }
@@ -1079,7 +1066,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    *extras = '\0';
 
 	    /* get title. */
-	    for (i = 0; i < line->numElements; i++) {
+	    for (int i = 0; i < line->numElements; i++) {
 		if (!strcmp(line->elements[i].item, "menuentry"))
 		    continue;
 		if (isquote(*line->elements[i].item))
@@ -1099,7 +1086,7 @@ static struct grubConfig * readConfig(const char * inName,
 
 	    /* get extras */
 	    int count = 0;
-	    for (i = 0; i < line->numElements; i++) {
+	    for (int i = 0; i < line->numElements; i++) {
 		if (count >= 2) {
 		    strcat(extras, line->elements[i].item);
 		    strcat(extras, line->elements[i].indent);
@@ -1220,7 +1207,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    cfg->defaultImage = strtol(defaultLine->elements[1].item, &end, 10);
 	    if (*end) cfg->defaultImage = -1;
 	} else if (defaultLine->numElements >= 2) {
-	    i = 0;
+	    int i = 0;
 	    while ((entry = findEntryByIndex(cfg, i))) {
 		for (line = entry->lines; line; line = line->next)
 		    if (line->type == LT_TITLE) break;
