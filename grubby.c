@@ -4068,7 +4068,7 @@ int main(int argc, const char ** argv) {
 	    if (!yconfig)
 		yrc = 1;
 	    else
-		yrc = checkForYaboot(lconfig);
+		yrc = checkForYaboot(yconfig);
 	}
 
 	if (lrc == 1 || grc == 1 || gr2c == 1 || extrc == 1 || yrc == 1 ||
