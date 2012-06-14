@@ -1953,7 +1953,10 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
         return;
     }
 
-    printf("kernel=%s%s\n", prefix, line->elements[1].item);
+    if (!strncmp(prefix, line->elements[1].item, strlen(prefix)))
+	printf("kernel=%s\n", line->elements[1].item);
+    else
+	printf("kernel=%s%s\n", prefix, line->elements[1].item);
 
     if (line->numElements >= 3) {
 	printf("args=\"");
@@ -2012,7 +2015,11 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     line = getLineByType(LT_INITRD, entry->lines);
 
     if (line && line->numElements >= 2) {
-	printf("initrd=%s", prefix);
+	if (!strncmp(prefix, line->elements[1].item, strlen(prefix)))
+	    printf("initrd=");
+	else
+	    printf("initrd=%s", prefix);
+
 	for (i = 1; i < line->numElements; i++)
 	    printf("%s%s", line->elements[i].item, line->elements[i].indent);
 	printf("\n");
