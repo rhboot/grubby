@@ -2037,6 +2037,267 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     }
 }
 
+int isSuseSystem(void) {
+    const char * path;
+    const static char default_path[] = "/etc/SuSE-release";
+
+    if ((path = getenv("GRUBBY_SUSE_RELEASE")) == NULL)
+	path = default_path;
+
+    if (!access(path, R_OK))
+	return 1;
+    return 0;
+}
+
+int isSuseGrubConf(const char * path) {
+    FILE * grubConf;
+    char * line = NULL;
+    size_t len = 0, res = 0;
+
+    grubConf = fopen(path, "r");
+    if (!grubConf) {
+        dbgPrintf("Could not open SuSE configuration file '%s'\n", path);
+	return 0;
+    }
+
+    while ((res = getline(&line, &len, grubConf)) != -1) {
+	if (!strncmp(line, "setup", 5)) {
+	    fclose(grubConf);
+	    free(line);
+	    return 1;
+	}
+    }
+
+    dbgPrintf("SuSE configuration file '%s' does not appear to be valid\n",
+	      path);
+
+    fclose(grubConf);
+    free(line);
+    return 0;
+}
+
+int suseGrubConfGetLba(const char * path, int * lbaPtr) {
+    FILE * grubConf;
+    char * line = NULL;
+    size_t res = 0, len = 0;
+
+    if (!path) return 1;
+    if (!lbaPtr) return 1;
+
+    grubConf = fopen(path, "r");
+    if (!grubConf) return 1;
+
+    while ((res = getline(&line, &len, grubConf)) != -1) {
+	if (line[res - 1] == '\n')
+	    line[res - 1] = '\0';
+	else if (len > res)
+	    line[res] = '\0';
+	else {
+	    line = realloc(line, res + 1);
+	    line[res] = '\0';
+	}
+
+	if (!strncmp(line, "setup", 5)) {
+	    if (strstr(line, "--force-lba")) {
+	        *lbaPtr = 1;
+	    } else {
+	        *lbaPtr = 0;
+	    }
+	    dbgPrintf("lba: %i\n", *lbaPtr);
+	    break;
+	}
+    }
+
+    free(line);
+    fclose(grubConf);
+    return 0;
+}
+
+int suseGrubConfGetInstallDevice(const char * path, char ** devicePtr) {
+    FILE * grubConf;
+    char * line = NULL;
+    size_t res = 0, len = 0;
+    char * lastParamPtr = NULL;
+    char * secLastParamPtr = NULL;
+    char installDeviceNumber = '\0';
+    char * bounds = NULL;
+
+    if (!path) return 1;
+    if (!devicePtr) return 1;
+
+    grubConf = fopen(path, "r");
+    if (!grubConf) return 1;
+
+    while ((res = getline(&line, &len, grubConf)) != -1) {
+	if (strncmp(line, "setup", 5))
+	    continue;
+
+	if (line[res - 1] == '\n')
+	    line[res - 1] = '\0';
+	else if (len > res)
+	    line[res] = '\0';
+	else {
+	    line = realloc(line, res + 1);
+	    line[res] = '\0';
+	}
+
+	lastParamPtr = bounds = line + res;
+
+	/* Last parameter in grub may be an optional IMAGE_DEVICE */
+	while (!isspace(*lastParamPtr))
+	    lastParamPtr--;
+	lastParamPtr++;
+
+	secLastParamPtr = lastParamPtr - 2;
+	dbgPrintf("lastParamPtr: %s\n", lastParamPtr);
+
+	if (lastParamPtr + 3 > bounds) {
+	    dbgPrintf("lastParamPtr going over boundary");
+	    fclose(grubConf);
+	    free(line);
+	    return 1;
+	}
+	if (!strncmp(lastParamPtr, "(hd", 3))
+	    lastParamPtr += 3;
+	dbgPrintf("lastParamPtr: %c\n", *lastParamPtr);
+
+	/*
+	 * Second last parameter will decide wether last parameter is
+	 * an IMAGE_DEVICE or INSTALL_DEVICE
+	 */
+	while (!isspace(*secLastParamPtr))
+	    secLastParamPtr--;
+	secLastParamPtr++;
+
+	if (secLastParamPtr + 3 > bounds) {
+	    dbgPrintf("secLastParamPtr going over boundary");
+	    fclose(grubConf);
+	    free(line);
+	    return 1;
+	}
+	dbgPrintf("secLastParamPtr: %s\n", secLastParamPtr);
+	if (!strncmp(secLastParamPtr, "(hd", 3)) {
+	    secLastParamPtr += 3;
+	    dbgPrintf("secLastParamPtr: %c\n", *secLastParamPtr);
+	    installDeviceNumber = *secLastParamPtr;
+	} else {
+	    installDeviceNumber = *lastParamPtr;
+	}
+
+	*devicePtr = malloc(6);
+	snprintf(*devicePtr, 6, "(hd%c)", installDeviceNumber);
+	dbgPrintf("installDeviceNumber: %c\n", installDeviceNumber);
+	fclose(grubConf);
+	free(line);
+	return 0;
+    }
+
+    free(line);
+    fclose(grubConf);
+    return 1;
+}
+
+int grubGetBootFromDeviceMap(const char * device,
+			     char ** bootPtr) {
+    FILE * deviceMap;
+    char * line = NULL;
+    size_t res = 0, len = 0;
+    char * devicePtr;
+    char * bounds = NULL;
+    const char * path;
+    const static char default_path[] = "/boot/grub/device.map";
+
+    if (!device) return 1;
+    if (!bootPtr) return 1;
+
+    if ((path = getenv("GRUBBY_GRUB_DEVICE_MAP")) == NULL)
+	path = default_path;
+
+    dbgPrintf("opening grub device.map file from: %s\n", path);
+    deviceMap = fopen(path, "r");
+    if (!deviceMap)
+	return 1;
+
+    while ((res = getline(&line, &len, deviceMap)) != -1) {
+        if (!strncmp(line, "#", 1))
+	    continue;
+
+	if (line[res - 1] == '\n')
+	    line[res - 1] = '\0';
+	else if (len > res)
+	    line[res] = '\0';
+	else {
+	    line = realloc(line, res + 1);
+	    line[res] = '\0';
+	}
+
+	devicePtr = line;
+	bounds = line + res;
+
+	while ((isspace(*line) && ((devicePtr + 1) <= bounds)))
+	    devicePtr++;
+	dbgPrintf("device: %s\n", devicePtr);
+
+	if (!strncmp(devicePtr, device, strlen(device))) {
+	    devicePtr += strlen(device);
+	    while (isspace(*devicePtr) && ((devicePtr + 1) <= bounds))
+	        devicePtr++;
+
+	    *bootPtr = strdup(devicePtr);
+	    break;
+	}
+    }
+
+    free(line);
+    fclose(deviceMap);
+    return 0;
+}
+
+int suseGrubConfGetBoot(const char * path, char ** bootPtr) {
+    char * grubDevice;
+
+    if (suseGrubConfGetInstallDevice(path, &grubDevice))
+	dbgPrintf("error looking for grub installation device\n");
+    else
+	dbgPrintf("grubby installation device: %s\n", grubDevice);
+
+    if (grubGetBootFromDeviceMap(grubDevice, bootPtr))
+	dbgPrintf("error looking for grub boot device\n");
+    else
+	dbgPrintf("grubby boot device: %s\n", *bootPtr);
+
+    free(grubDevice);
+    return 0;
+}
+
+int parseSuseGrubConf(int * lbaPtr, char ** bootPtr) {
+    /*
+     * This SuSE grub configuration file at this location is not your average
+     * grub configuration file, but instead the grub commands used to setup
+     * grub on that system.
+     */
+    const char * path;
+    const static char default_path[] = "/etc/grub.conf";
+
+    if ((path = getenv("GRUBBY_SUSE_GRUB_CONF")) == NULL)
+	path = default_path;
+
+    if (!isSuseGrubConf(path)) return 1;
+
+    if (lbaPtr) {
+        *lbaPtr = 0;
+        if (suseGrubConfGetLba(path, lbaPtr))
+            return 1;
+    }
+
+    if (bootPtr) {
+        *bootPtr = NULL;
+        suseGrubConfGetBoot(path, bootPtr);
+    }
+
+    return 0;
+}
+
 int parseSysconfigGrub(int * lbaPtr, char ** bootPtr) {
     FILE * in;
     char buf[1024];
@@ -2085,12 +2346,25 @@ int parseSysconfigGrub(int * lbaPtr, char ** bootPtr) {
 }
 
 void dumpSysconfigGrub(void) {
-    char * boot;
+    char * boot = NULL;
     int lba;
 
-    if (!parseSysconfigGrub(&lba, &boot)) {
-	if (lba) printf("lba\n");
-	if (boot) printf("boot=%s\n", boot);
+    if (!isSuseSystem()) {
+        if (parseSysconfigGrub(&lba, &boot)) {
+	    free(boot);
+	    return;
+	}
+    } else {
+        if (parseSuseGrubConf(&lba, &boot)) {
+	    free(boot);
+	    return;
+	}
+    }
+
+    if (lba) printf("lba\n");
+    if (boot) {
+	printf("boot=%s\n", boot);
+	free(boot);
     }
 }
 
@@ -2904,9 +3178,14 @@ int checkForGrub(struct grubConfig * config) {
     int fd;
     unsigned char bootSect[512];
     char * boot;
+    int onSuse;
 
-    if (parseSysconfigGrub(NULL, &boot))
-	return 0;
+    onSuse = isSuseSystem();
+    if (!onSuse) {
+	if (parseSysconfigGrub(NULL, &boot)) return 0;
+    } else {
+	if (parseSuseGrubConf(NULL, &boot)) return 0;
+    }
 
     /* assume grub is not installed -- not an error condition */
     if (!boot)
@@ -2925,7 +3204,14 @@ int checkForGrub(struct grubConfig * config) {
     }
     close(fd);
 
-    return checkDeviceBootloader(boot, bootSect);
+    if (!onSuse)
+	return checkDeviceBootloader(boot, bootSect);
+    else
+	/*
+	 * The more elaborate checks do not work on SuSE. The checks done
+	 * seem to be reasonble (at least for now), so just return success
+	 */
+	return 2;
 }
 
 int checkForExtLinux(struct grubConfig * config) {
