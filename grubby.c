@@ -1866,12 +1866,18 @@ void markRemovedImage(struct grubConfig * cfg, const char * image,
 
 void setDefaultImage(struct grubConfig * config, int hasNew, 
 		     const char * defaultKernelPath, int newIsDefault,
-		     const char * prefix, int flags) {
+		     const char * prefix, int flags, int index) {
     struct singleEntry * entry, * entry2, * newDefault;
     int i, j;
 
     if (newIsDefault) {
 	config->defaultImage = 0;
+	return;
+    } else if ((index >= 0) && config->cfi->defaultIsIndex) {
+	if (findEntryByIndex(config, index))
+	    config->defaultImage = index;
+	else
+	    config->defaultImage = -1;
 	return;
     } else if (defaultKernelPath) {
 	i = 0;
@@ -3739,6 +3745,7 @@ int main(int argc, const char ** argv) {
     int displayDefault = 0;
     int displayDefaultIndex = 0;
     int displayDefaultTitle = 0;
+    int defaultIndex = -1;
     struct poptOption options[] = {
 	{ "add-kernel", 0, POPT_ARG_STRING, &newKernelPath, 0,
 	    _("add an entry for the specified kernel"), _("kernel-path") },
@@ -3811,6 +3818,9 @@ int main(int argc, const char ** argv) {
 	{ "set-default", 0, POPT_ARG_STRING, &defaultKernel, 0,
 	    _("make the first entry referencing the specified kernel "
 	      "the default"), _("kernel-path") },
+	{ "set-default-index", 0, POPT_ARG_INT, &defaultIndex, 0,
+	    _("make the given entry index the default entry"),
+	    _("entry-index") },
 	{ "silo", 0, POPT_ARG_NONE, &configureSilo, 0,
 	    _("configure silo bootloader") },
 	{ "title", 0, POPT_ARG_STRING, &newKernelTitle, 0,
@@ -3919,8 +3929,9 @@ int main(int argc, const char ** argv) {
     }
 
     if (bootloaderProbe && (displayDefault || kernelInfo || newKernelVersion ||
-			  newKernelPath || removeKernelPath || makeDefault ||
-			  defaultKernel || displayDefaultIndex || displayDefaultTitle)) {
+			    newKernelPath || removeKernelPath || makeDefault ||
+			    defaultKernel || displayDefaultIndex || displayDefaultTitle ||
+			    (defaultIndex >= 0))) {
 	fprintf(stderr, _("grubby: --bootloader-probe may not be used with "
 			  "specified option"));
 	return 1;
@@ -3962,6 +3973,11 @@ int main(int argc, const char ** argv) {
 	makeDefault = 1;
 	defaultKernel = NULL;
     }
+    else if (defaultKernel && (defaultIndex >= 0)) {
+	fprintf(stderr, _("grubby: --set-default and --set-default-index "
+			  "may not be used together\n"));
+	return 1;
+    }
 
     if (grubConfig && !strcmp(grubConfig, "-") && !outputFile) {
 	fprintf(stderr, _("grubby: output file must be specified if stdin "
@@ -3970,8 +3986,9 @@ int main(int argc, const char ** argv) {
     }
 
     if (!removeKernelPath && !newKernelPath && !displayDefault && !defaultKernel
-	&& !kernelInfo && !bootloaderProbe && !updateKernelPath 
-        && !removeMBKernel && !displayDefaultIndex && !displayDefaultTitle) {
+	&& !kernelInfo && !bootloaderProbe && !updateKernelPath
+	&& !removeMBKernel && !displayDefaultIndex && !displayDefaultTitle
+	&& (defaultIndex == -1)) {
 	fprintf(stderr, _("grubby: no action specified\n"));
 	return 1;
     }
@@ -4130,7 +4147,7 @@ int main(int argc, const char ** argv) {
     markRemovedImage(config, removeKernelPath, bootPrefix);
     markRemovedImage(config, removeMBKernel, bootPrefix);
     setDefaultImage(config, newKernelPath != NULL, defaultKernel, makeDefault, 
-		    bootPrefix, flags);
+		    bootPrefix, flags, defaultIndex);
     setFallbackImage(config, newKernelPath != NULL);
     if (updateImage(config, updateKernelPath, bootPrefix, newKernelArgs,
                     removeArgs, newMBKernelArgs, removeMBKernelArgs)) return 1;

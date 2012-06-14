@@ -11,9 +11,10 @@ grubby \- command line tool for configuring grub, lilo, and elilo
        [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
        [--make-default] [-o path] [--version]
        [--remove-kernel=\fIkernel-path\fR] [--remove-args=\fIargs\fR]
-       [--set-default=\fIkernel-path\fR] [--title=entry-title]
-       [--add-multiboot=\fImultiboot-path\fR] [--mbargs=\fIargs\fR]
-       [--remove-multiboot=\fImultiboot-path\fR] [--remove-mbargs=\fIargs\fR]
+       [--set-default=\fIkernel-path\fR] [--set-default-index=\fientry-index\fR]
+       [--title=entry-title] [--add-multiboot=\fImultiboot-path\fR]
+       [--mbargs=\fIargs\fR] [--remove-multiboot=\fImultiboot-path\fR]
+       [--remove-mbargs=\fIargs\fR]
 
 .SH DESCRIPTION
 \fBgrubby\fR is a command line tool for updating and displaying information
@@ -152,6 +153,10 @@ never be removed.
 \fB-\-set-default\fR=\fIkernel-path\fR
 The first entry which boots the specified kernel is made the default
 boot entry.
+
+.TP
+\fB-\-set-default-index\fR=\fIentry-index\fR
+Makes the given entry number the default boot entry.
 
 .TP
 \fB-\-title\fR=\fIentry-title\fR
