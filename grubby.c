@@ -4051,11 +4051,11 @@ int main(int argc, const char ** argv) {
 	    if (!yconfig)
 		yrc = 1;
 	    else
-	      yrc = checkForYaboot(lconfig);
+		yrc = checkForYaboot(lconfig);
 	}
 
 	if (lrc == 1 || grc == 1 || gr2c == 1 || extrc == 1 || yrc == 1 ||
-	    erc == 1)
+		erc == 1)
 	    return 1;
 
 	if (lrc == 2) printf("lilo\n");
