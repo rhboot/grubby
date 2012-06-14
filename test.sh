@@ -126,7 +126,11 @@ while true; do
 done
 
 export MALLOC_CHECK_=2
-export MALLOC_PERTURB_=1
+if [ -n "${RANDOM}" ]; then
+    export MALLOC_PERTURB_=$(($RANDOM % 255 + 1))
+else
+    export MALLOC_PERTURB_=1
+fi
 
 testing="Parse/write comparison"
 for n in test/*.[0-9]*; do
