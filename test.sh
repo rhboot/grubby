@@ -134,6 +134,7 @@ fi
 
 testing="Parse/write comparison"
 for n in test/*.[0-9]*; do
+    [ -d $n ] && continue
     n=${n#*/}	# remove test/
     b=${n%.*}	# remove suffix
     [[ $b == $opt_bootloader ]] || continue
@@ -207,6 +208,11 @@ grubTest grub.3 default/g3.2 --boot-filesystem=/boot --set-default=/boot/vmlinuz
 grubTest grub.4 default/g4.1 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4.7-ac3 --remove-kernel /boot/vmlinuz-2.4.7-2.5
 grubTest grub.4 default/g4.2 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4.7-ac3 --remove-kernel /boot/vmlinuz-2.4.7-2.5 --add-kernel=/boot/new-kernel --copy-default --title New_Title
 grubTest grub.6 default/g6.1 --remove-kernel=/boot/vmlinuz-2.4.7-2.9 --boot-filesystem=/
+
+testing="GRUB default index directive"
+grubTest grub.13 setdefaultindex/g.13.0 --set-default-index=0
+grubTest grub.13 setdefaultindex/g.13.1 --set-default-index=1
+grubTest grub.13 setdefaultindex/g.13.9 --set-default-index=9
 
 testing="GRUB display default index"
 grubDisplayTest grub.1 defaultindex/0 --default-index
@@ -310,6 +316,12 @@ grubTest grub.11 updargs/g11.2 --boot-filesystem=/    \
     --update-kernel=/vmlinuz-2.4.7-2smp \
     --args "ro root=LABEL=/ single"
 
+testing="GRUB lba and root information on SuSE systems"
+GRUBBY_SUSE_RELEASE=test/grub.12-support_files/etc/SuSE-release \
+    GRUBBY_SUSE_GRUB_CONF=test/grub.12-support_files/etc/grub.conf \
+    GRUBBY_GRUB_DEVICE_MAP=test/grub.12-support_files/boot/grub/device.map \
+    grubTest grub.12 info/g12.1 --info=0
+
 testing="LILO update kernel argument handling"
 liloTest lilo.1 updargs/l1.1 --update-kernel=/boot/vmlinuz-2.4.18-4 \
     --args="root=/dev/md1"
@@ -406,6 +418,11 @@ grub2Test grub2.4 remove/g2-1.2 --remove-kernel=2
 
 testing="GRUB2 (submenu) remove kernel via title"
 grub2Test grub2.4 remove/g2-1.2 --remove-kernel="TITLE=title2"
+
+testing="GRUB2 default index directive"
+grub2Test grub2.1 setdefaultindex/g2.1.0 --set-default-index=0
+grub2Test grub2.1 setdefaultindex/g2.1.1 --set-default-index=1
+grub2Test grub2.1 setdefaultindex/g2.1.9 --set-default-index=9
 
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
