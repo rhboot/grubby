@@ -3262,6 +3262,13 @@ int checkForYaboot(struct grubConfig * config) {
     return 1;
 }
 
+int checkForElilo(struct grubConfig * config) {
+    if (!access("/etc/elilo.conf", R_OK))
+	return 2;
+
+    return 1;
+}
+
 static char * getRootSpecifier(char * str) {
     char * idx, * rootspec = NULL;
 
@@ -3749,7 +3756,7 @@ int main(int argc, const char ** argv) {
 	{ "boot-filesystem", 0, POPT_ARG_STRING, &bootPrefix, 0,
 	    _("filestystem which contains /boot directory (for testing only)"),
 	    _("bootfs") },
-#if defined(__i386__) || defined(__x86_64__) || defined (__powerpc64__)
+#if defined(__i386__) || defined(__x86_64__) || defined (__powerpc64__) || defined (__ia64__)
 	{ "bootloader-probe", 0, POPT_ARG_NONE, &bootloaderProbe, 0,
 	    _("check which bootloader is installed on boot sector") },
 #endif
@@ -3991,8 +3998,8 @@ int main(int argc, const char ** argv) {
     }
 
     if (bootloaderProbe) {
-	int lrc = 0, grc = 0, gr2c = 0, erc = 0, yrc = 0;
-	struct grubConfig * lconfig, * gconfig, * yconfig;
+	int lrc = 0, grc = 0, gr2c = 0, extrc = 0, yrc = 0, erc = 0;
+	struct grubConfig * lconfig, * gconfig, * yconfig, * econfig;
 
 	const char *grub2config = grub2FindConfig(&grub2ConfigType);
 	if (grub2config) {
@@ -4020,12 +4027,21 @@ int main(int argc, const char ** argv) {
 		lrc = checkForLilo(lconfig);
 	} 
 
+	if (!access(eliloConfigType.defaultConfig, F_OK)) {
+	    econfig = readConfig(eliloConfigType.defaultConfig,
+				 &eliloConfigType);
+	    if (!econfig)
+		erc = 1;
+	    else
+		erc = checkForElilo(econfig);
+	}
+
 	if (!access(extlinuxConfigType.defaultConfig, F_OK)) {
 	    lconfig = readConfig(extlinuxConfigType.defaultConfig, &extlinuxConfigType);
 	    if (!lconfig)
-		erc = 1;
+		extrc = 1;
 	    else
-		erc = checkForExtLinux(lconfig);
+		extrc = checkForExtLinux(lconfig);
 	} 
 
 
@@ -4038,13 +4054,16 @@ int main(int argc, const char ** argv) {
 	      yrc = checkForYaboot(lconfig);
 	}
 
-	if (lrc == 1 || grc == 1 || gr2c == 1 || yrc == 1) return 1;
+	if (lrc == 1 || grc == 1 || gr2c == 1 || extrc == 1 || yrc == 1 ||
+	    erc == 1)
+	    return 1;
 
 	if (lrc == 2) printf("lilo\n");
 	if (gr2c == 2) printf("grub2\n");
 	if (grc == 2) printf("grub\n");
-	if (erc == 2) printf("extlinux\n");
+	if (extrc == 2) printf("extlinux\n");
 	if (yrc == 2) printf("yaboot\n");
+	if (erc == 2) printf("elilo\n");
 
 	return 0;
     }
