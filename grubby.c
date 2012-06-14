@@ -3245,6 +3245,23 @@ int checkForExtLinux(struct grubConfig * config) {
     return checkDeviceBootloader(boot, bootSect);
 }
 
+int checkForYaboot(struct grubConfig * config) {
+    /*
+     * This is a simplistic check that we consider good enough for own puporses
+     *
+     * If we were to properly check if yaboot is *installed* we'd need to:
+     * 1) get the system boot device (LT_BOOT)
+     * 2) considering it's a raw filesystem, check if the yaboot binary matches
+     *    the content on the boot device
+     * 3) if not, copy the binary to a temporary file and run "addnote" on it
+     * 4) check again if binary and boot device contents match
+     */
+    if (!access("/etc/yaboot.conf", R_OK))
+	return 2;
+
+    return 1;
+}
+
 static char * getRootSpecifier(char * str) {
     char * idx, * rootspec = NULL;
 
@@ -3732,9 +3749,9 @@ int main(int argc, const char ** argv) {
 	{ "boot-filesystem", 0, POPT_ARG_STRING, &bootPrefix, 0,
 	    _("filestystem which contains /boot directory (for testing only)"),
 	    _("bootfs") },
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__) || defined (__powerpc64__)
 	{ "bootloader-probe", 0, POPT_ARG_NONE, &bootloaderProbe, 0,
-	    _("check if lilo is installed on lilo.conf boot sector") },
+	    _("check which bootloader is installed on boot sector") },
 #endif
 	{ "config-file", 'c', POPT_ARG_STRING, &grubConfig, 0,
 	    _("path to grub config file to update (\"-\" for stdin)"), 
@@ -3974,8 +3991,8 @@ int main(int argc, const char ** argv) {
     }
 
     if (bootloaderProbe) {
-	int lrc = 0, grc = 0, gr2c = 0, erc = 0;
-	struct grubConfig * lconfig, * gconfig;
+	int lrc = 0, grc = 0, gr2c = 0, erc = 0, yrc = 0;
+	struct grubConfig * lconfig, * gconfig, * yconfig;
 
 	const char *grub2config = grub2FindConfig(&grub2ConfigType);
 	if (grub2config) {
@@ -4011,12 +4028,23 @@ int main(int argc, const char ** argv) {
 		erc = checkForExtLinux(lconfig);
 	} 
 
-	if (lrc == 1 || grc == 1 || gr2c == 1) return 1;
+
+	if (!access(yabootConfigType.defaultConfig, F_OK)) {
+	    yconfig = readConfig(yabootConfigType.defaultConfig,
+				 &yabootConfigType);
+	    if (!yconfig)
+		yrc = 1;
+	    else
+	      yrc = checkForYaboot(lconfig);
+	}
+
+	if (lrc == 1 || grc == 1 || gr2c == 1 || yrc == 1) return 1;
 
 	if (lrc == 2) printf("lilo\n");
 	if (gr2c == 2) printf("grub2\n");
 	if (grc == 2) printf("grub\n");
 	if (erc == 2) printf("extlinux\n");
+	if (yrc == 2) printf("yaboot\n");
 
 	return 0;
     }
