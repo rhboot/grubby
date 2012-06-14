@@ -164,8 +164,8 @@ struct keywordTypes grubKeywords[] = {
 
 const char *grubFindConfig(struct configFileInfo *cfi) {
     static const char *configFiles[] = {
-	"/etc/grub.conf",
 	"/boot/grub/menu.lst",
+	"/etc/grub.conf",
 	NULL
     };
     static int i = -1;
