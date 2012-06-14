@@ -2349,13 +2349,13 @@ void dumpSysconfigGrub(void) {
     char * boot = NULL;
     int lba;
 
-    if (!isSuseSystem()) {
-        if (parseSysconfigGrub(&lba, &boot)) {
+    if (isSuseSystem()) {
+        if (parseSuseGrubConf(&lba, &boot)) {
 	    free(boot);
 	    return;
 	}
     } else {
-        if (parseSuseGrubConf(&lba, &boot)) {
+        if (parseSysconfigGrub(&lba, &boot)) {
 	    free(boot);
 	    return;
 	}
@@ -3178,13 +3178,15 @@ int checkForGrub(struct grubConfig * config) {
     int fd;
     unsigned char bootSect[512];
     char * boot;
-    int onSuse;
+    int onSuse = isSuseSystem();
 
-    onSuse = isSuseSystem();
-    if (!onSuse) {
-	if (parseSysconfigGrub(NULL, &boot)) return 0;
+
+    if (onSuse) {
+	if (parseSuseGrubConf(NULL, &boot))
+	    return 0;
     } else {
-	if (parseSuseGrubConf(NULL, &boot)) return 0;
+	if (parseSysconfigGrub(NULL, &boot))
+	    return 0;
     }
 
     /* assume grub is not installed -- not an error condition */
@@ -3204,14 +3206,13 @@ int checkForGrub(struct grubConfig * config) {
     }
     close(fd);
 
-    if (!onSuse)
-	return checkDeviceBootloader(boot, bootSect);
-    else
-	/*
-	 * The more elaborate checks do not work on SuSE. The checks done
-	 * seem to be reasonble (at least for now), so just return success
-	 */
+    /* The more elaborate checks do not work on SuSE. The checks done
+     * seem to be reasonble (at least for now), so just return success
+     */
+    if (onSuse)
 	return 2;
+
+    return checkDeviceBootloader(boot, bootSect);
 }
 
 int checkForExtLinux(struct grubConfig * config) {
