@@ -126,6 +126,7 @@ while true; do
 done
 
 export MALLOC_CHECK_=2
+export MALLOC_PERTURB_=1
 
 testing="Parse/write comparison"
 for n in test/*.[0-9]*; do
