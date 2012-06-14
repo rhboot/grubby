@@ -82,13 +82,13 @@ oneDisplayTest() {
 
     echo "$testing ... $mode $cfg $correct"
     runme=( ./grubby "$mode" $BIO -c "$cfg" "$@" )
-    if "${runme[@]}" |& cmp "$correct" > /dev/null; then
+    if "${runme[@]}" 2>&1 | cmp "$correct" > /dev/null; then
 	(( pass++ ))
 	if $opt_verbose; then
 	    echo -------------------------------------------------------------
 	    echo -n "PASS: "
 	    printf "%q " "${runme[@]}"; echo
-	    "${runme[@]}" |& diff -U30 "$cfg" -
+	    "${runme[@]}" 2>&1 | diff -U30 "$cfg" -
 	    echo
 	fi
     else
@@ -96,7 +96,7 @@ oneDisplayTest() {
 	echo -------------------------------------------------------------
 	echo -n "FAIL: "
 	printf "%q " "${runme[@]}"; echo
-	"${runme[@]}" |& diff -U30 "$correct" -
+	"${runme[@]}" 2>&1 | diff -U30 "$correct" -
 	echo
     fi
 }
