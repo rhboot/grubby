@@ -512,7 +512,7 @@ update() {
     fi
 }
 
-mkinitrd() {
+doMkinitrd() {
     if [ -n "$dracut" ]; then
         tool="dracut $dracuthostonly -f $initrdfile $version"
     else
@@ -730,7 +730,7 @@ elif [ "$moddep" == "remove" ]; then
 fi
 
 if [ "$initrd" == "make" ]; then
-    mkinitrd
+    doMkinitrd
 elif [ "$initrd" == "remove" ]; then
     rminitrd
 fi
