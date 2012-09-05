@@ -88,22 +88,10 @@ elif [[ ${ARCH} =~ armv[5|7].*l ]] ; then
     ubootDevice=/dev/${UBOOT_DEVICE:-"mmcblk0p1"}
     ubootDefaultImage=${UBOOT_UIMAGE:-"uImage"}
     ubootDefaultInitrd=${UBOOT_UINITRD:-"uInitrd"}
+    ubootAddress=${UBOOT_IMGADDR:-"0x00008000"}
     mounted=""
     liloFlag=""
     isx86=""
-    if [ -z "$UBOOT_IMGADDR" ]; then
-	machine=${MACHINE:-`grep "^Hardware" /proc/cpuinfo | sed 's/Hardware\s*:\s*//'`}
-	# A few machines use an alternate kernel load address
-	if [[ "$machine" =~ ^OMAP[3|4].* ]]; then
-	    ubootAddress=0x80008000
-	elif [[ "$machine" =~ ^Efika\ MX.* ]]; then
-	    ubootAddress=0x90008000
-	else
-	    ubootAddress=0x00008000
-	fi
-    else
-	ubootAddress="$UBOOT_IMGADDR"
-    fi
 else
     # this leaves i?86 and x86_64
     liloConfig=/etc/lilo.conf
@@ -759,6 +747,18 @@ if [ -n "$ubootDir" ]; then
 	    mounted=1
 	fi
 	[ -f "$ubootScript" ] && cfguBoot=1;
+    fi
+fi
+
+# if we're using U-Boot, check if the default load address should change
+if [ -n "$cfguBoot" -a -z "$UBOOT_IMGADDR" ]; then
+    [[ $version  =~ .([^.]*)$ ]]
+    platform=${BASH_REMATCH[1]}
+    # A few platforms use an alternate kernel load address
+    if [ "$platform" = "omap" ]; then
+        ubootAddress=0x80008000
+    elif [ "$platform" = "imx" ]; then
+        ubootAddress=0x90008000
     fi
 fi
 
