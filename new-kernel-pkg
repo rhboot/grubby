@@ -218,7 +218,7 @@ install() {
 	else
 	    title="Red Hat Linux ($version)"
 	fi
-	$grubby --grub2 -c $grub2EfiConfig \
+	$grubby --grub2 -c $grub2EfiConfig --efi \
 	    --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} \

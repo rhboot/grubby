@@ -56,6 +56,8 @@ int debug = 0;	/* Currently just for template debugging */
 #define NOOP_OPCODE 0x90
 #define JMP_SHORT_OPCODE 0xeb
 
+int isEfi = 0;
+
 /* comments get lumped in with indention */
 struct lineElement {
     char * item;
@@ -82,7 +84,9 @@ enum lineType_e {
     LT_MENUENTRY    = 1 << 17,
     LT_ENTRY_END    = 1 << 18,
     LT_SET_VARIABLE = 1 << 19,
-    LT_UNKNOWN      = 1 << 20,
+    LT_KERNEL_EFI   = 1 << 20,
+    LT_INITRD_EFI   = 1 << 21,
+    LT_UNKNOWN      = 1 << 22,
 };
 
 struct singleLine {
@@ -204,9 +208,9 @@ struct keywordTypes grub2Keywords[] = {
     { "default",    LT_DEFAULT,     ' ' },
     { "fallback",   LT_FALLBACK,    ' ' },
     { "linux",      LT_KERNEL,      ' ' },
-    { "linuxefi",   LT_KERNEL,      ' ' },
+    { "linuxefi",   LT_KERNEL_EFI,  ' ' },
     { "initrd",     LT_INITRD,      ' ', ' ' },
-    { "initrdefi",  LT_INITRD,      ' ', ' ' },
+    { "initrdefi",  LT_INITRD_EFI,  ' ', ' ' },
     { "module",     LT_MBMODULE,    ' ' },
     { "kernel",     LT_HYPER,       ' ' },
     { NULL, 0, 0 },
@@ -270,6 +274,14 @@ static int isquote(char q)
     if (q == '\'' || q == '\"')
 	return 1;
     return 0;
+}
+
+static int iskernel(enum lineType_e type) {
+    return (type == LT_KERNEL || type == LT_KERNEL_EFI);
+}
+
+static int isinitrd(enum lineType_e type) {
+    return (type == LT_INITRD || type == LT_INITRD_EFI);
 }
 
 char *grub2ExtractTitle(struct singleLine * line) {
@@ -569,6 +581,21 @@ static char * sdupprintf(const char *format, ...) {
     va_end (args);
 
     return buf;
+}
+
+static enum lineType_e preferredLineType(enum lineType_e type,
+					 struct configFileInfo *cfi) {
+    if (isEfi && cfi == &grub2ConfigType) {
+	switch (type) {
+	case LT_KERNEL:
+	    return LT_KERNEL_EFI;
+	case LT_INITRD:
+	    return LT_INITRD_EFI;
+	default:
+	    return type;
+	}
+    }
+    return type;
 }
 
 static struct keywordTypes * getKeywordByType(enum lineType_e type,
@@ -995,7 +1022,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 	    defaultLine = line;
 
-        } else if (line->type == LT_KERNEL) {
+        } else if (iskernel(line->type)) {
 	    /* if by some freak chance this is multiboot and the "module"
 	     * lines came earlier in the template, make sure to use LT_HYPER 
 	     * instead of LT_KERNEL now
@@ -1012,7 +1039,7 @@ static struct grubConfig * readConfig(const char * inName,
 	    for (struct singleLine *l = entry->lines; l; l = l->next) {
 		if (l->type == LT_HYPER)
 		    break;
-		else if (l->type == LT_KERNEL) {
+		else if (iskernel(l->type)) {
 		    l->type = LT_HYPER;
 		    break;
 		}
@@ -1566,7 +1593,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	return 0;
     }
 
-    line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
+    line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
     if (!line) {
 	notSuitablePrintf(entry, "no line found\n");
 	return 0;
@@ -1696,7 +1723,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	entry = findEntryByIndex(config, indexVars[i]);
 	if (!entry) return NULL;
 
-	line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
+	line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
 	if (!line) return NULL;
 
 	if (index) *index = indexVars[i];
@@ -1745,9 +1772,9 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 
 	    /* check all the lines matching checkType */
 	    for (line = entry->lines; line; line = line->next) {
-		line = getLineByType(entry->multiboot && checkType == LT_KERNEL ? 
-				     LT_KERNEL|LT_MBMODULE|LT_HYPER : 
-				     checkType, line);
+		line = getLineByType(entry->multiboot && checkType == LT_KERNEL
+				? LT_KERNEL|LT_KERNEL_EFI|LT_MBMODULE|LT_HYPER
+				: checkType, line);
 		if (!line) break;  /* not found in this entry */
 
 		if (line && line->type != LT_MENUENTRY &&
@@ -1767,7 +1794,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	     * non-Linux boot entries (could find netbsd etc, though, which is
 	     * unfortunate)
 	     */
-	    if (line && getLineByType(LT_KERNEL|LT_HYPER, entry->lines))
+	    if (line && getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines))
 		break; /* found 'im! */
 	}
 
@@ -1956,7 +1983,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 
     printf("index=%d\n", index);
 
-    line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
+    line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
     if (!line) {
         printf("non linux entry\n");
         return;
@@ -2021,7 +2048,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 	printf("root=%s\n", s);
     }
 
-    line = getLineByType(LT_INITRD, entry->lines);
+    line = getLineByType(LT_INITRD|LT_INITRD_EFI, entry->lines);
 
     if (line && line->numElements >= 2) {
 	if (!strncmp(prefix, line->elements[1].item, strlen(prefix)))
@@ -2422,6 +2449,13 @@ struct singleLine * addLineTmpl(struct singleEntry * entry,
 {
     struct singleLine * newLine = lineDup(tmplLine);
 
+    if (isEfi && cfi == &grub2ConfigType) {
+	enum lineType_e old = newLine->type;
+	newLine->type = preferredLineType(newLine->type, cfi);
+	if (old != newLine->type)
+	    newLine->elements[0].item = getKeyByType(newLine->type, cfi);
+    }
+
     if (val) {
 	/* override the inherited value with our own.
 	 * This is a little weak because it only applies to elements[1]
@@ -2431,7 +2465,7 @@ struct singleLine * addLineTmpl(struct singleEntry * entry,
 	insertElement(newLine, val, 1, cfi);
 
 	/* but try to keep the rootspec from the template... sigh */
-	if (tmplLine->type & (LT_HYPER|LT_KERNEL|LT_MBMODULE|LT_INITRD)) {
+	if (tmplLine->type & (LT_HYPER|LT_KERNEL|LT_MBMODULE|LT_INITRD|LT_KERNEL_EFI|LT_INITRD_EFI)) {
 	    char * rootspec = getRootSpecifier(tmplLine->elements[1].item);
 	    if (rootspec != NULL) {
 		free(newLine->elements[1].item);
@@ -2468,7 +2502,6 @@ struct singleLine *  addLine(struct singleEntry * entry,
     /* NB: This function shouldn't allocate items on the heap, rather on the
      * stack since it calls addLineTmpl which will make copies.
      */
-
     if (type == LT_TITLE && cfi->titleBracketed) {
 	/* we're doing a bracketed title (zipl) */
 	tmpl.type = type;
@@ -2802,7 +2835,7 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 	    firstElement = 2;
 
 	} else {
-	    line = getLineByType(LT_KERNEL|LT_MBMODULE, entry->lines);
+	    line = getLineByType(LT_KERNEL|LT_MBMODULE|LT_KERNEL_EFI, entry->lines);
 	    if (!line) {
 		/* no LT_KERNEL or LT_MBMODULE in this entry? */
 		continue;
@@ -2967,10 +3000,10 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
     if (!image) return 0;
 
     for (; (entry = findEntryByPath(cfg, image, prefix, &index)); index++) {
-        kernelLine = getLineByType(LT_KERNEL, entry->lines);
+        kernelLine = getLineByType(LT_KERNEL|LT_KERNEL_EFI, entry->lines);
         if (!kernelLine) continue;
 
-        line = getLineByType(LT_INITRD, entry->lines);
+        line = getLineByType(LT_INITRD|LT_INITRD_EFI, entry->lines);
         if (line)
             removeLine(entry, line);
         if (prefix) {
@@ -2981,7 +3014,8 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
 	endLine = getLineByType(LT_ENTRY_END, entry->lines);
 	if (endLine)
 	    removeLine(entry, endLine);
-        line = addLine(entry, cfg->cfi, LT_INITRD, kernelLine->indent, initrd);
+        line = addLine(entry, cfg->cfi, preferredLineType(LT_INITRD, cfg->cfi),
+			kernelLine->indent, initrd);
         if (!line)
 	    return 1;
 	if (endLine) {
@@ -3394,8 +3428,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	    while (*chptr && isspace(*chptr)) chptr++;
 	    if (*chptr == '#') continue;
 
-	    if (tmplLine->type == LT_KERNEL && 
-		    tmplLine->numElements >= 2) {
+	    if (iskernel(tmplLine->type) && tmplLine->numElements >= 2) {
 		if (!template->multiboot && (needs & NEED_MB)) {
 		    /* it's not a multiboot template and this is the kernel
 		     * line.  Try to be intelligent about inserting the
@@ -3472,30 +3505,32 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    /* template is multi but new is not, 
 		     * insert the kernel in the first module slot
 		     */
-		    tmplLine->type = LT_KERNEL;
+		    tmplLine->type = preferredLineType(LT_KERNEL, config->cfi);
 		    free(tmplLine->elements[0].item);
 		    tmplLine->elements[0].item = 
-			strdup(getKeywordByType(LT_KERNEL, config->cfi)->key);
+			strdup(getKeywordByType(tmplLine->type,
+						config->cfi)->key);
 		    newLine = addLineTmpl(new, tmplLine, newLine, 
-					  newKernelPath + strlen(prefix), config->cfi);
+					  newKernelPath + strlen(prefix),
+					  config->cfi);
 		    needs &= ~NEED_KERNEL;
 		} else if (needs & NEED_INITRD) {
 		    char *initrdVal;
 		    /* template is multi but new is not,
 		     * insert the initrd in the second module slot
 		     */
-		    tmplLine->type = LT_INITRD;
+		    tmplLine->type = preferredLineType(LT_INITRD, config->cfi);
 		    free(tmplLine->elements[0].item);
 		    tmplLine->elements[0].item = 
-			strdup(getKeywordByType(LT_INITRD, config->cfi)->key);
+			strdup(getKeywordByType(tmplLine->type,
+						config->cfi)->key);
 		    initrdVal = getInitrdVal(config, prefix, tmplLine, newKernelInitrd, extraInitrds, extraInitrdCount);
 		    newLine = addLineTmpl(new, tmplLine, newLine, initrdVal, config->cfi);
 		    free(initrdVal);
 		    needs &= ~NEED_INITRD;
 		}
 
-	    } else if (tmplLine->type == LT_INITRD && 
-		       tmplLine->numElements >= 2) {
+	    } else if (isinitrd(tmplLine->type) && tmplLine->numElements >= 2) {
 		if (needs & NEED_INITRD &&
 		    new->multiboot && !template->multiboot &&
 		    config->cfi->mbInitRdIsModule) {
@@ -3549,7 +3584,8 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		    static const char *prefix = "'Loading ";
 		    if (tmplLine->numElements > 1 &&
 			    strstr(tmplLine->elements[1].item, prefix) &&
-			    masterLine->next && masterLine->next->type == LT_KERNEL) {
+			    masterLine->next &&
+			    iskernel(masterLine->next->type)) {
 			char *newTitle = malloc(strlen(prefix) +
 						strlen(newKernelTitle) + 2);
 
@@ -3576,10 +3612,12 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	 */
 	switch (config->cfi->entryStart) {
 	    case LT_KERNEL:
+	    case LT_KERNEL_EFI:
 		if (new->multiboot && config->cfi->mbHyperFirst) {
 		    /* fall through to LT_HYPER */
 		} else {
-		    newLine = addLine(new, config->cfi, LT_KERNEL,
+		    newLine = addLine(new, config->cfi,
+		    		      preferredLineType(LT_KERNEL, config->cfi),
 				      config->primaryIndent,
 				      newKernelPath + strlen(prefix));
 		    needs &= ~NEED_KERNEL;
@@ -3655,8 +3693,9 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
     if (needs & NEED_KERNEL) {
 	newLine = addLine(new, config->cfi, 
 			  (new->multiboot && getKeywordByType(LT_MBMODULE, 
-							      config->cfi)) ?
-			  LT_MBMODULE : LT_KERNEL, 
+							      config->cfi))
+			  	? LT_MBMODULE
+				: preferredLineType(LT_KERNEL, config->cfi),
 			  config->secondaryIndent, 
 			  newKernelPath + strlen(prefix));
 	needs &= ~NEED_KERNEL;
@@ -3672,8 +3711,9 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	initrdVal = getInitrdVal(config, prefix, NULL, newKernelInitrd, extraInitrds, extraInitrdCount);
 	newLine = addLine(new, config->cfi,
 			  (new->multiboot && getKeywordByType(LT_MBMODULE,
-							      config->cfi)) ?
-			  LT_MBMODULE : LT_INITRD, 
+							      config->cfi))
+			   ? LT_MBMODULE
+			   : preferredLineType(LT_INITRD, config->cfi), 
 			  config->secondaryIndent, 
 			  initrdVal);
 	free(initrdVal);
@@ -3789,6 +3829,8 @@ int main(int argc, const char ** argv) {
 	    _("display the title of the default kernel") },
 	{ "elilo", 0, POPT_ARG_NONE, &configureELilo, 0,
 	    _("configure elilo bootloader") },
+	{ "efi", 0, POPT_ARG_NONE, &isEfi, 0,
+	    _("force grub2 stanzas to use efi") },
 	{ "extlinux", 0, POPT_ARG_NONE, &configureExtLinux, 0,
 	    _("configure extlinux bootloader (from syslinux)") },
 	{ "grub", 0, POPT_ARG_NONE, &configureGrub, 0,
@@ -4101,7 +4143,7 @@ int main(int argc, const char ** argv) {
 	if (!entry) return 0;
 	if (!suitableImage(entry, bootPrefix, 0, flags)) return 0;
 
-	line = getLineByType(LT_KERNEL|LT_HYPER, entry->lines);
+	line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
 	if (!line) return 0;
 
         rootspec = getRootSpecifier(line->elements[1].item);
