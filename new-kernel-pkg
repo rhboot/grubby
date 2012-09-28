@@ -312,7 +312,7 @@ remove() {
     fi
     if [ -n "$cfgGrub2Efi" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grub2EfiConfig"
-	$grubby --grub2 -c $grub2EfiConfig \
+	$grubby --grub2 -c $grub2EfiConfig --efi \
 		--remove-kernel=$bootPrefix/$kernelName-$version
     else
 	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby grub 2 with UEFI"
@@ -430,7 +430,7 @@ update() {
 
     if [ -n "$cfgGrub2Efi" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grub2EfiConfig"
-	$grubby --grub2 -c $grub2EfiConfig \
+	$grubby --grub2 -c $grub2EfiConfig --efi \
 	    --update-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
