@@ -1772,10 +1772,14 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 
 	    /* check all the lines matching checkType */
 	    for (line = entry->lines; line; line = line->next) {
-		line = getLineByType(entry->multiboot && checkType == LT_KERNEL
-				? LT_KERNEL|LT_KERNEL_EFI|LT_MBMODULE|LT_HYPER
-				: checkType, line);
-		if (!line) break;  /* not found in this entry */
+		enum lineType_e ct = checkType;
+		if (entry->multiboot && checkType == LT_KERNEL)
+		    ct = LT_KERNEL|LT_KERNEL_EFI|LT_MBMODULE|LT_HYPER;
+		else if (checkType & LT_KERNEL)
+		    ct = checkType | LT_KERNEL_EFI;
+		line = getLineByType(ct, line);
+		if (!line)
+		    break;  /* not found in this entry */
 
 		if (line && line->type != LT_MENUENTRY &&
 			line->numElements >= 2) {
