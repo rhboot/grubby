@@ -138,6 +138,7 @@ struct configFileInfo {
     findConfigFunc findConfig;
     writeLineFunc writeLine;
     struct keywordTypes * keywords;
+    int caseInsensitive;
     int defaultIsIndex;
     int defaultIsVariable;
     int defaultSupportSaved;
@@ -495,6 +496,7 @@ struct configFileInfo ziplConfigType = {
 struct configFileInfo extlinuxConfigType = {
     .defaultConfig = "/boot/extlinux/extlinux.conf",
     .keywords = extlinuxKeywords,
+    .caseInsensitive = 1,
     .entryStart = LT_TITLE,
     .needsBootPrefix = 1,
     .maxTitleLength = 255,
@@ -631,8 +633,13 @@ static char * getuuidbydev(char *device) {
 static enum lineType_e getTypeByKeyword(char * keyword, 
 					struct configFileInfo * cfi) {
     for (struct keywordTypes *kw = cfi->keywords; kw->key; kw++) {
-	if (!strcmp(keyword, kw->key))
-	    return kw->type;
+	if (cfi->caseInsensitive) {
+	    if (!strcasecmp(keyword, kw->key))
+                return kw->type;
+	} else {
+	    if (!strcmp(keyword, kw->key))
+	        return kw->type;
+	}
     }
     return LT_UNKNOWN;
 }
