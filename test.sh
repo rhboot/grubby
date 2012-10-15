@@ -208,6 +208,7 @@ grubTest grub.3 default/g3.2 --boot-filesystem=/boot --set-default=/boot/vmlinuz
 grubTest grub.4 default/g4.1 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4.7-ac3 --remove-kernel /boot/vmlinuz-2.4.7-2.5
 grubTest grub.4 default/g4.2 --boot-filesystem=/ --set-default=/boot/vmlinuz-2.4.7-ac3 --remove-kernel /boot/vmlinuz-2.4.7-2.5 --add-kernel=/boot/new-kernel --copy-default --title New_Title
 grubTest grub.6 default/g6.1 --remove-kernel=/boot/vmlinuz-2.4.7-2.9 --boot-filesystem=/
+grubTest grub.14 add/g1.7 --boot-filesystem=/boot --add-kernel /boot/new-kernel --title Some_Title
 
 testing="GRUB default index directive"
 grubTest grub.13 setdefaultindex/g.13.0 --set-default-index=0

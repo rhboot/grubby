@@ -1,0 +1,9 @@
+default=0
+timeout=5
+splashimage=(hd0,0)/grub/splash.xpm.gz
+hiddenmenu
+title Red Hat Enterprise Linux (2.6.32-202.el6.x86_64)
+	root (hd0,0)
+	kernel /tboot.gz logging=vga,serial,memory
+	module /vmlinuz-2.6.32-202.el6.x86_64 ro root=/dev/mapper/vg_test1056-lv_root intel_iommu=on rd_LVM_LV=vg_test1056/lv_swap rd_NO_LUKS LANG=en_US.UTF-8 rd_LVM_LV=vg_test1056/lv_root rd_NO_MD quiet SYSFONT=latarcyrheb-sun16 rhgb crashkernel=auto  KEYBOARDTYPE=pc KEYTABLE=us rd_NO_DM
+	module /initramfs-2.6.32-202.el6.x86_64.img
