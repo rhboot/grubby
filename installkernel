@@ -77,7 +77,7 @@ cp $MAPFILE $INSTALL_PATH/System.map-$KERNEL_VERSION
 ln -fs ${RELATIVE_PATH}$INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION $LINK_PATH/$KERNEL_NAME
 ln -fs ${RELATIVE_PATH}$INSTALL_PATH/System.map-$KERNEL_VERSION $LINK_PATH/System.map
 
-if [ -n "$cfgLoader" -a -x /sbin/new-kernel-pkg ]; then
+if [ -n "$cfgLoader" ] && [ -x /sbin/new-kernel-pkg ]; then
 	if [ -n "$(which dracut 2>/dev/null)" ]; then
 		new-kernel-pkg --mkinitrd --dracut --host-only --depmod --install $KERNEL_VERSION
 	else

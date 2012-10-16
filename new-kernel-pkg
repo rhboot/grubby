@@ -275,7 +275,7 @@ rpmposttrans()
     local f
     files="/etc/kernel/postinst.d/*[^~] /etc/kernel/postinst.d/$version/*[^~]"
     for f in $files ; do
-	[ -f $f -a -x $f ] || continue
+	[ -f $f ] && [ -x $f ] || continue
 	$f $version $bootPrefix/$kernelName-$version
     done
 }
@@ -292,7 +292,7 @@ remove() {
     local f
     files="/etc/kernel/prerm.d/*[^~] /etc/kernel/prerm.d/$version/*[^~]"
     for f in $files ; do
-	[ -f $f -a -x $f ] || continue
+	[ -f $f ] && [ -x $f ] || continue
 	$f $version $bootPrefix/$kernelName-$version
     done
 
@@ -343,7 +343,7 @@ remove() {
 	    curversion=`tail -n1 $ubootDir/$ubootKList`
 	    sed "/$version$/d" $ubootDir/$ubootKList > $tmpKList
 	    newversion=`tail -n1 $tmpKList`
-	    if [ -f $ubootDir/uImage-$newversion -a -f $ubootDir/uInitrd-$newversion ]; then
+	    if [ -f $ubootDir/uImage-$newversion ] && [ -f $ubootDir/uInitrd-$newversion ]; then
 		if [ "$curversion" != "$newversion" ]; then
 		    cp -fp $ubootDir/uImage-$newversion $ubootDir/${ubootDefaultImage}
 		    if [ $? -ne 0 ]; then
@@ -471,7 +471,7 @@ update() {
 	mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 \
 		-n initramfs -d $initrdfile $ubootDir/uInitrd-$version
 
-	if [ -f $ubootDir/uImage-$version -a -f $ubootDir/uInitrd-$version ]; then
+	if [ -f $ubootDir/uImage-$version ] && [ -f $ubootDir/uInitrd-$version ]; then
 	    cp -fp $ubootDir/uImage-$version $ubootDir/${ubootDefaultImage}
 	    if [ $? -ne 0 ]; then
 		[ -n "$verbose" ] && echo "copy uImage-$version error, kernel not installed!" && exit
