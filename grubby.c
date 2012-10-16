@@ -3756,7 +3756,7 @@ static void traceback(int signum)
     memset(array, '\0', sizeof (array));
     size = backtrace(array, 40);
 
-    fprintf(stderr, "grubby recieved SIGSEGV!  Backtrace (%ld):\n",
+    fprintf(stderr, "grubby received SIGSEGV!  Backtrace (%ld):\n",
             (unsigned long)size);
     backtrace_symbols_fd(array, size, STDERR_FILENO);
     exit(1);
@@ -3854,7 +3854,7 @@ int main(int argc, const char ** argv) {
 	{ "initrd", 0, POPT_ARG_STRING, &newKernelInitrd, 0,
 	    _("initrd image for the new kernel"), _("initrd-path") },
 	{ "extra-initrd", 'i', POPT_ARG_STRING, NULL, 'i',
-	    _("auxilliary initrd image for things other than the new kernel"), _("initrd-path") },
+	    _("auxiliary initrd image for things other than the new kernel"), _("initrd-path") },
 	{ "lilo", 0, POPT_ARG_NONE, &configureLilo, 0,
 	    _("configure lilo bootloader") },
 	{ "make-default", 0, 0, &makeDefault, 0,
