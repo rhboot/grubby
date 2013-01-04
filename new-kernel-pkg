@@ -692,8 +692,17 @@ fi
 
 # add dracut i18n, keyboard and plymouth kernel args if requested
 if [ -n "$dracut" -o -n "$adddracutargs" ]; then
-    [ -r /etc/sysconfig/keyboard ] && . /etc/sysconfig/keyboard 
-    [ -r /etc/sysconfig/i18n ] && . /etc/sysconfig/i18n
+    if [ -r /etc/vconsole.conf ]; then
+	. /etc/vconsole.conf
+    elif  [ -r /etc/sysconfig/keyboard ]; then
+	. /etc/sysconfig/keyboard 
+    fi
+
+    if [ -r /etc/locale.conf ]; then
+	. /etc/locale.conf
+    elif [ -r /etc/sysconfig/i18n ]; then
+	. /etc/sysconfig/i18n
+    fi
 
     for i in SYSFONT SYSFONTACM UNIMAP LANG KEYTABLE; do
         val=$(eval echo \$$i)
