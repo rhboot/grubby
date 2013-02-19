@@ -20,7 +20,7 @@
 VERSION=8.22
 
 TARGETS = grubby
-OBJECTS = grubby.o
+OBJECTS = grubby.o log.o
 
 CC = gcc
 RPM_OPT_FLAGS := -O2 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fstack-protector

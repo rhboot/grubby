@@ -36,6 +36,8 @@
 #include <signal.h>
 #include <blkid/blkid.h>
 
+#include "log.h"
+
 #ifndef DEBUG
 #define DEBUG 0
 #endif
@@ -57,6 +59,8 @@ int debug = 0;	/* Currently just for template debugging */
 #define JMP_SHORT_OPCODE 0xeb
 
 int isEfi = 0;
+
+char *saved_command_line = NULL;
 
 /* comments get lumped in with indention */
 struct lineElement {
@@ -1533,43 +1537,67 @@ static char *findDiskForRoot()
     return NULL;
 }
 
-void printEntry(struct singleEntry * entry) {
+void printEntry(struct singleEntry * entry, FILE *f) {
     int i;
     struct singleLine * line;
 
     for (line = entry->lines; line; line = line->next) {
-	fprintf(stderr, "DBG: %s", line->indent);
+	log_message(f, "DBG: %s", line->indent);
 	for (i = 0; i < line->numElements; i++) {
 	    /* Need to handle this, because we strip the quotes from
 	     * menuentry when read it. */
 	    if (line->type == LT_MENUENTRY && i == 1) {
 		if(!isquote(*line->elements[i].item))
-		    fprintf(stderr, "\'%s\'", line->elements[i].item);
+		    log_message(f, "\'%s\'", line->elements[i].item);
 		else
-		    fprintf(stderr, "%s", line->elements[i].item);
-		fprintf(stderr, "%s", line->elements[i].indent);
+		    log_message(f, "%s", line->elements[i].item);
+		log_message(f, "%s", line->elements[i].indent);
 		
 		continue;
 	    }
 	    
-	    fprintf(stderr, "%s%s",
+	    log_message(f, "%s%s",
 		    line->elements[i].item, line->elements[i].indent);
 	}
-	fprintf(stderr, "\n");
+	log_message(f, "\n");
     }
 }
 
-void notSuitablePrintf(struct singleEntry * entry, const char *fmt, ...)
+void notSuitablePrintf(struct singleEntry * entry, int okay, const char *fmt, ...)
 {
-    va_list argp;
-
-    if (!debug)
-	return;
+    static int once;
+    va_list argp, argq;
 
     va_start(argp, fmt);
+
+    va_copy(argq, argp);
+    if (!once) {
+	log_time(NULL);
+	log_message(NULL, "command line: %s\n", saved_command_line);
+    }
+    log_message(NULL, "DBG: Image entry %s: ", okay ? "succeeded" : "failed");
+    log_vmessage(NULL, fmt, argq);
+	
+    printEntry(entry, NULL);
+    va_end(argq);
+
+    if (!debug) {
+	once = 1;
+    	va_end(argp);
+	return;
+    }
+
+    if (okay) {
+	va_end(argp);
+	return;
+    }
+
+    if (!once)
+	log_message(stderr, "DBG: command line: %s\n", saved_command_line);
+    once = 1;
     fprintf(stderr, "DBG: Image entry failed: ");
     vfprintf(stderr, fmt, argp);
-    printEntry(entry);
+    printEntry(entry, stderr);
     va_end(argp);
 }
 
@@ -1596,22 +1624,25 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     char * rootdev;
 
     if (skipRemoved && entry->skip) {
-	notSuitablePrintf(entry, "marked to skip\n");
+	notSuitablePrintf(entry, 0, "marked to skip\n");
 	return 0;
     }
 
     line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
     if (!line) {
-	notSuitablePrintf(entry, "no line found\n");
+	notSuitablePrintf(entry, 0, "no line found\n");
 	return 0;
     }
     if (line->numElements < 2) {
-	notSuitablePrintf(entry, "line has only %d elements\n",
+	notSuitablePrintf(entry, 0, "line has only %d elements\n",
 	    line->numElements);
 	return 0;
     }
 
-    if (flags & GRUBBY_BADIMAGE_OKAY) return 1;
+    if (flags & GRUBBY_BADIMAGE_OKAY) {
+	    notSuitablePrintf(entry, 1, "\n");
+	    return 1;
+    }
 
     fullName = alloca(strlen(bootPrefix) + 
 		      strlen(line->elements[1].item) + 1);
@@ -1622,7 +1653,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
     sprintf(fullName, "%s%s%s", bootPrefix, hasslash ? "" : "/",
             line->elements[1].item + rootspec_offset);
     if (access(fullName, R_OK)) {
-	notSuitablePrintf(entry, "access to %s failed\n", fullName);
+	notSuitablePrintf(entry, 0, "access to %s failed\n", fullName);
 	return 0;
     }
     for (i = 2; i < line->numElements; i++) 
@@ -1643,7 +1674,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
             /* failed to find one */
             if (!line) {
-		notSuitablePrintf(entry, "no line found\n");
+		notSuitablePrintf(entry, 0, "no line found\n");
 		return 0;
             }
 
@@ -1652,7 +1683,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	    if (i < line->numElements)
 	        dev = line->elements[i].item + 5;
 	    else {
-		notSuitablePrintf(entry, "no root= entry found\n");
+		notSuitablePrintf(entry, 0, "no root= entry found\n");
 		/* it failed too...  can't find root= */
 	        return 0;
             }
@@ -1661,32 +1692,33 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 
     dev = getpathbyspec(dev);
     if (!getpathbyspec(dev)) {
-        notSuitablePrintf(entry, "can't find blkid entry for %s\n", dev);
+        notSuitablePrintf(entry, 0, "can't find blkid entry for %s\n", dev);
         return 0;
     } else
 	dev = getpathbyspec(dev);
 
     rootdev = findDiskForRoot();
     if (!rootdev) {
-        notSuitablePrintf(entry, "can't find root device\n");
+        notSuitablePrintf(entry, 0, "can't find root device\n");
 	return 0;
     }
 
     if (!getuuidbydev(rootdev) || !getuuidbydev(dev)) {
-        notSuitablePrintf(entry, "uuid missing: rootdev %s, dev %s\n",
+        notSuitablePrintf(entry, 0, "uuid missing: rootdev %s, dev %s\n",
 		getuuidbydev(rootdev), getuuidbydev(dev));
         free(rootdev);
         return 0;
     }
 
     if (strcmp(getuuidbydev(rootdev), getuuidbydev(dev))) {
-        notSuitablePrintf(entry, "uuid mismatch: rootdev %s, dev %s\n",
+        notSuitablePrintf(entry, 0, "uuid mismatch: rootdev %s, dev %s\n",
 		getuuidbydev(rootdev), getuuidbydev(dev));
 	free(rootdev);
         return 0;
     }
 
     free(rootdev);
+    notSuitablePrintf(entry, 1, "\n");
 
     return 1;
 }
@@ -3897,6 +3929,20 @@ int main(int argc, const char ** argv) {
     useextlinuxmenu=0;
 
     signal(SIGSEGV, traceback);
+
+    int i = 0;
+    for (int j = 1; j < argc; j++)
+	i += strlen(argv[j]) + 1;
+    saved_command_line = malloc(i);
+    if (!saved_command_line) {
+	fprintf(stderr, "grubby: %m\n");
+	exit(1);
+    }
+    saved_command_line[0] = '\0';
+    for (int j = 1; j < argc; j++) {
+	strcat(saved_command_line, argv[j]);
+	strncat(saved_command_line, j == argc -1 ? "" : " ", 1);
+    }
 
     optCon = poptGetContext("grubby", argc, argv, options, 0);
     poptReadDefaultConfig(optCon, 1);
