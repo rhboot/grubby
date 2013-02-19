@@ -164,7 +164,7 @@ install() {
     fi
 
     # get the root filesystem to use
-    rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
+    rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab 2>/dev/null)
     if [ "$rootdevice" = "" ];
     then
 	    rootdevice=`grep -o -P "(?<=root=)\S+" /proc/cmdline`
