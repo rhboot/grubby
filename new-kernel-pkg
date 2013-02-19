@@ -165,6 +165,10 @@ install() {
 
     # get the root filesystem to use
     rootdevice=$(awk '{ if ($1 !~ /^[ \t]*#/ && $2 == "/") { print $1; }}' /etc/fstab)
+    if [ "$rootdevice" = "" ];
+    then
+	    rootdevice=`grep -o -P "(?<=root=)\S+" /proc/cmdline`
+    fi
 
     if [ -n "$mbkernel" -a -n "$cfgLilo" -a "$liloFlag" != "elilo" ]; then
 	[ -n "$verbose" ] && echo "multiboot specified, not updating lilo.conf"
