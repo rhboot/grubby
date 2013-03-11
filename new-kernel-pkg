@@ -175,16 +175,22 @@ install() {
 	cfgLilo=""
     fi
 
+
+    if [ -n "$banner" ]; then
+        title="$banner ($version)"
+    elif [ -f /etc/os-release ]; then
+        . /etc/os-release
+        title="$NAME ($version) $VERSION"
+    elif [ -f /etc/redhat-release ]; then
+	title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
+    else
+	title="Red Hat Linux ($version)"
+    fi
+
+
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
 
-	if [ -n "$banner" ]; then
-            title="$banner ($version)"
-	elif [ -f /etc/redhat-release ]; then
-	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
-	else
-	    title="Red Hat Linux ($version)"
-	fi
 	$grubby --grub -c $grubConfig \
 	    --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
@@ -196,13 +202,6 @@ install() {
     if [ -n "$cfgGrub2" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grub2Config"
 
-	if [ -n "$banner" ]; then
-            title="$banner ($version)"
-	elif [ -f /etc/redhat-release ]; then
-	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
-	else
-	    title="Red Hat Linux ($version)"
-	fi
 	$grubby --grub2 -c $grub2Config \
 	    --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
@@ -215,13 +214,6 @@ install() {
     if [ -n "$cfgGrub2Efi" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grub2EfiConfig"
 
-	if [ -n "$banner" ]; then
-            title="$banner ($version)"
-	elif [ -f /etc/redhat-release ]; then
-	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
-	else
-	    title="Red Hat Linux ($version)"
-	fi
 	$grubby --grub2 -c $grub2EfiConfig --efi \
 	    --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
@@ -256,13 +248,6 @@ install() {
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $extlinuxConfig"
 
-	if [ -n "$banner" ]; then
-            title="$banner ($version)"
-	elif [ -f /etc/redhat-release ]; then
-	    title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
-	else
-	    title="Red Hat Linux ($version)"
-	fi
 	$grubby --extlinux -c $extlinuxConfig \
 	    --add-kernel=$bootPrefix/$kernelName-$version \
 	    $INITRD --copy-default $makedefault --title "$title" \
