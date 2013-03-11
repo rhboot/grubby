@@ -314,7 +314,10 @@ doDepmod() {
 
 doRmmoddep() {
     [ -n "$verbose" ] && echo "removing modules.dep info for $version"
-    [ -d /lib/modules/$version ] && rm -f /lib/modules/$version/modules.*    
+    if [ -d /lib/modules/$version ]; then
+        rm -f /lib/modules/$version/modules.*.bin \
+            /lib/modules/$version/modules.{alias|dep|devname|symbols|softdep}
+    fi
 }
 
 
