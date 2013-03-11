@@ -120,9 +120,9 @@ adddracutargs=""
 addplymouthinitrd=""
 
 usage() {
-    echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd] [--dracut]" >&2 
+    echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd] [--dracut]" >&2
     echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
-    echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2 
+    echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
     echo "       [--mbargs=mbargs] [--make-default] [--add-dracut-args]" >&2
     echo "       [--add-plymouth-initrd]" >&2
@@ -138,7 +138,7 @@ install() {
 	[ -n "$verbose" ] && echo "kernel for $version does not exist, not running grubby"
 	return
     fi
-    
+
     INITRD=""
     if [ -f $initrdfile ]; then
 	[ -n "$verbose" ] && echo "found $initrdfile and using it with grubby"
@@ -233,7 +233,7 @@ install() {
 		--args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$version" \
 		--$liloFlag
 
-	if [ -n "$runLilo" ]; then 
+	if [ -n "$runLilo" ]; then
 	    [ -n "$verbose" ] && echo "running $lilo"
 	    if [ ! -x $lilo ] ; then
 		[ -n "$verbose" ] && echo "$lilo does not exist"
@@ -312,7 +312,7 @@ remove() {
 	$grubby --remove-kernel=$bootPrefix/$kernelName-$version	    \
 		     --$liloFlag
 
-	if [ -n "$runLilo" ]; then 
+	if [ -n "$runLilo" ]; then
 	    [ -n "$verbose" ] && echo "running $lilo"
 	    if [ ! -x $lilo ] ; then
 		[ -n "$verbose" ] && echo "$lilo does not exist"
@@ -436,7 +436,7 @@ update() {
 	    ${removeargs:+--remove-args="$removeargs"}	\
 		     --$liloFlag
 
-	if [ -n "$runLilo" ]; then 
+	if [ -n "$runLilo" ]; then
 	    [ -n "$verbose" ] && echo "running $lilo"
 	    if [ ! -x $lilo ] ; then
 		[ -n "$verbose" ] && echo "$lilo does not exist"
@@ -544,7 +544,7 @@ while [ $# -gt 0 ]; do
 	    else
 		initrdfile=$2
 		shift
-	    fi		    
+	    fi
 	    ;;
 
 	--kernel-args*)
@@ -553,7 +553,7 @@ while [ $# -gt 0 ]; do
 	    else
 		kernargs=$2
 		shift
-	    fi		    
+	    fi
 	    ;;
 
 	--remove-args*)
@@ -562,7 +562,7 @@ while [ $# -gt 0 ]; do
 	    else
 		removeargs=$2
 		shift
-	    fi		    
+	    fi
 	    ;;
 
 	--banner*)
@@ -571,7 +571,7 @@ while [ $# -gt 0 ]; do
 	    else
 		banner=$2
 		shift
-	    fi		    
+	    fi
 	    ;;
 
 	--multiboot*)
@@ -611,7 +611,7 @@ while [ $# -gt 0 ]; do
 	    else
 		package=$2
 		shift
-	    fi		    
+	    fi
 	    ;;
 
 	--add-dracut-args)
@@ -684,7 +684,7 @@ if [ -n "$dracut" -o -n "$adddracutargs" ]; then
     if [ -r /etc/vconsole.conf ]; then
 	. /etc/vconsole.conf
     elif  [ -r /etc/sysconfig/keyboard ]; then
-	. /etc/sysconfig/keyboard 
+	. /etc/sysconfig/keyboard
     fi
 
     if [ -r /etc/locale.conf ]; then
