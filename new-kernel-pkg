@@ -132,9 +132,10 @@ usage() {
     exit 1
 }
 
+
 install() {
     # XXX kernel should be able to be specified also (or work right on ia64)
-    if [ ! -f $bootPrefix/$kernelName-$version ] ; then
+    if [ ! -f $kernelImage ] ; then
 	[ -n "$verbose" ] && echo "kernel for $version does not exist, not running grubby"
 	return
     fi
@@ -154,9 +155,9 @@ install() {
 	[ -n "$verbose" ] && echo "On an iSeries, just making img file"
 	if [ -z $initrdfile  ]; then
 	    [ -n "$verbose" ] && echo "No initrd, just adding system map"
-	    /sbin/addSystemMap $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/vmlinitrd-$version
+	    /sbin/addSystemMap $bootPrefix/System.map-$version $kernelImage $bootPrefix/vmlinitrd-$version
 	else
-	    /sbin/addSystemMap $bootPrefix/System.map-$version $bootPrefix/$kernelName-$version $bootPrefix/vmlinux.sm-$version
+	    /sbin/addSystemMap $bootPrefix/System.map-$version $kernelImage $bootPrefix/vmlinux.sm-$version
 	    /sbin/addRamDisk $initrdfile $bootPrefix/System.map-$version $bootPrefix/vmlinux.sm-$version $bootPrefix/vmlinitrd-$version 2>/dev/null
 	    rm $bootPrefix/vmlinux.sm-$version
 	fi
@@ -192,7 +193,7 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
 
 	$grubby --grub -c $grubConfig \
-	    --add-kernel=$bootPrefix/$kernelName-$version \
+	    --add-kernel=$kernelImage \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
 	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
@@ -203,7 +204,7 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $grub2Config"
 
 	$grubby --grub2 -c $grub2Config \
-	    --add-kernel=$bootPrefix/$kernelName-$version \
+	    --add-kernel=$kernelImage \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} \
 	    ${mbargs:+--mbargs="$mbargs"} \
@@ -215,7 +216,7 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $grub2EfiConfig"
 
 	$grubby --grub2 -c $grub2EfiConfig --efi \
-	    --add-kernel=$bootPrefix/$kernelName-$version \
+	    --add-kernel=$kernelImage \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} \
 	    ${mbargs:+--mbargs="$mbargs"} \
@@ -227,7 +228,7 @@ install() {
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $liloConfig"
 
-	$grubby --add-kernel=$bootPrefix/$kernelName-$version $INITRD \
+	$grubby --add-kernel=$kernelImage $INITRD \
 		--copy-default $makedefault --title $version \
 		${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
 		--args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$version" \
@@ -249,7 +250,7 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $extlinuxConfig"
 
 	$grubby --extlinux -c $extlinuxConfig \
-	    --add-kernel=$bootPrefix/$kernelName-$version \
+	    --add-kernel=$kernelImage \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
 	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
@@ -265,7 +266,7 @@ rpmposttrans()
     files="/etc/kernel/postinst.d/*[^~] /etc/kernel/postinst.d/$version/*[^~]"
     for f in $files ; do
 	[ -f $f ] && [ -x $f ] || continue
-	$f $version $bootPrefix/$kernelName-$version
+	$f $version $kernelImage
     done
 }
 
@@ -273,7 +274,7 @@ remove() {
     # FIXME: is this a good heuristic to find out if we're on iSeries?
     if [ -d /proc/iSeries ]; then
 	[ -n "$verbose" ] && echo "On an iSeries, remove img file"
-	rm -f $bootPrefix/$kernelName-$version.img 2>/dev/null
+	rm -f $kernelImage.img 2>/dev/null
 	return
     fi
 
@@ -282,34 +283,34 @@ remove() {
     files="/etc/kernel/prerm.d/*[^~] /etc/kernel/prerm.d/$version/*[^~]"
     for f in $files ; do
 	[ -f $f ] && [ -x $f ] || continue
-	$f $version $bootPrefix/$kernelName-$version
+	$f $version $kernelImage
     done
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grubConfig"
 	$grubby --grub -c $grubConfig \
-	    --remove-kernel=$bootPrefix/$kernelName-$version
+	    --remove-kernel=$kernelImage
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby for grub 0.97"
     fi
     if [ -n "$cfgGrub2" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grub2Config"
 	$grubby --grub2 -c $grub2Config \
-		--remove-kernel=$bootPrefix/$kernelName-$version
+		--remove-kernel=$kernelImage
     else
 	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby for grub 2"
     fi
     if [ -n "$cfgGrub2Efi" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $grub2EfiConfig"
 	$grubby --grub2 -c $grub2EfiConfig --efi \
-		--remove-kernel=$bootPrefix/$kernelName-$version
+		--remove-kernel=$kernelImage
     else
 	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby grub 2 with UEFI"
     fi
 
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $liloConfig"
-	$grubby --remove-kernel=$bootPrefix/$kernelName-$version	    \
+	$grubby --remove-kernel=$kernelImage	    \
 		     --$liloFlag
 
 	if [ -n "$runLilo" ]; then
@@ -373,14 +374,14 @@ remove() {
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $extlinuxConfig"
 	$grubby --extlinux -c $extlinuxConfig \
-	    --remove-kernel=$bootPrefix/$kernelName-$version
+	    --remove-kernel=$kernelImage
     else
 	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby for extlinux"
     fi
 }
 
 update() {
-    if [ ! -f $bootPrefix/$kernelName-$version ] ; then
+    if [ ! -f $kernelImage ] ; then
 	[ -n "$verbose" ] && echo "kernel for $version does not exist, not running grubby"
 	return
     fi
@@ -398,7 +399,7 @@ update() {
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
 	$grubby --grub -c $grubConfig \
-	    --update-kernel=$bootPrefix/$kernelName-$version \
+	    --update-kernel=$kernelImage \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}
@@ -409,7 +410,7 @@ update() {
     if [ -n "$cfgGrub2" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grub2Config"
 	$grubby --grub2 -c $grub2Config \
-	    --update-kernel=$bootPrefix/$kernelName-$version \
+	    --update-kernel=$kernelImage \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}
@@ -420,7 +421,7 @@ update() {
     if [ -n "$cfgGrub2Efi" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grub2EfiConfig"
 	$grubby --grub2 -c $grub2EfiConfig --efi \
-	    --update-kernel=$bootPrefix/$kernelName-$version \
+	    --update-kernel=$kernelImage \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}
@@ -430,7 +431,7 @@ update() {
 
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $liloConfig"
-	$grubby --update-kernel=$bootPrefix/$kernelName-$version \
+	$grubby --update-kernel=$kernelImage \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}	\
@@ -454,7 +455,7 @@ update() {
 	[ -n "$verbose" ] && echo "creating uImage-$version"
 	mkimage -A arm -O linux -T kernel -C none -a $ubootAddress \
 		-e $ubootAddress -n $version \
-		-d $bootPrefix/$kernelName-$version $ubootDir/uImage-$version
+		-d $kernelImage $ubootDir/uImage-$version
 
 	[ -n "$verbose" ] && echo "creating uInitrd-$version"
 	mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 \
@@ -480,7 +481,7 @@ update() {
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $extlinuxConfig"
 	$grubby --extlinux -c $extlinuxConfig \
-	    --update-kernel=$bootPrefix/$kernelName-$version \
+	    --update-kernel=$kernelImage \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
 	    ${removeargs:+--remove-args="$removeargs"}
@@ -622,6 +623,20 @@ while [ $# -gt 0 ]; do
 	    addplymouthinitrd=--add-plymouth-initrd
 	    ;;
 
+        --kernel-image*)
+            if [[ $1 == --kernel-image\=* ]]; then
+                kernelImage=${1#--kernel-image=}
+            else
+                kernelImage="$2"
+                shift
+            fi
+            if ! [[ -f $kernelImage ]]; then
+                echo "Can't find kernel image '$kernelImage'" >&2
+                usage
+                exit 1
+            fi
+            ;;
+
 	-v)
 	    verbose=-v
 	    ;;
@@ -662,6 +677,7 @@ if [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
   fi
 fi
 
+[[ $kernelImage ]] || kernelImage="$bootPrefix/$kernelName-$version"
 
 # set the initrd file based on arch; ia64 is the only currently known oddball
 if [ -z "$initrdfile" ]; then
