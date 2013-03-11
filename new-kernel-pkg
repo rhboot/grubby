@@ -539,8 +539,8 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--initrdfile*)
-	    if echo $1 | grep '=' >/dev/null ; then
-	    	initrdfile=`echo $1 | sed 's/^--initrdfile=//'`
+	    if [[ $1 == --initrdfile\=* ]]; then
+		initrdfile=${1#--initrdfile=}
 	    else
 		initrdfile=$2
 		shift
@@ -548,8 +548,8 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--kernel-args*)
-	    if echo $1 | grep '=' >/dev/null ; then
-	    	kernargs=`echo $1 | sed 's/^--kernel-args=//'`
+	    if [[ $1 == --kernel-args\=* ]]; then
+		kernargs=${1#--kernel-args=}
 	    else
 		kernargs=$2
 		shift
@@ -557,8 +557,8 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--remove-args*)
-	    if echo $1 | grep '=' >/dev/null ; then
-	    	removeargs=`echo $1 | sed 's/^--remove-args=//'`
+	    if [[ $1 == --remove-args\=* ]]; then
+		removeargs=${1#--remove-args=}
 	    else
 		removeargs=$2
 		shift
@@ -566,8 +566,8 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--banner*)
-	    if echo $1 | grep '=' >/dev/null ; then
-	    	banner=`echo $1 | sed 's/^--banner=//'`
+	    if [[ $1 == --banner\=* ]]; then
+		banner=${1#--banner=}
 	    else
 		banner=$2
 		shift
@@ -575,8 +575,8 @@ while [ $# -gt 0 ]; do
 	    ;;
 
 	--multiboot*)
-	    if echo $1 |grep '=' >/dev/null; then
-		mbkernel=`echo $1 | sed 's/^--multiboot=//'`
+	    if [[ $1 == --multiboot\=* ]]; then
+		mbkernel=${1#--multiboot=}
 	    else
 		# can't really support having an optional second arg here
 		# sorry!
@@ -584,14 +584,14 @@ while [ $# -gt 0 ]; do
 	    fi
 	    ;;
 
-	--mbargs*)
-	    if echo $1 |grep '=' >/dev/null; then
-		mbargs=`echo $1 | sed 's/^--mbargs=//'`
-	    else
-		mbargs="$2"
-		shift
-	    fi
-	    ;;
+        --mbargs*)
+            if [[ $1 == --mbargs\=* ]]; then
+                mbargs=${1#--mbargs=}
+            else
+                mbargs="$2"
+                shift
+            fi
+            ;;
 
 	--depmod)
 	    moddep="make"
@@ -605,14 +605,14 @@ while [ $# -gt 0 ]; do
 	    makedefault="--make-default"
 	    ;;
 
-	--package)
-	    if echo $1 | grep '=' >/dev/null ; then
-	    	package=`echo $1 | sed 's/^--package=//'`
-	    else
-		package=$2
-		shift
-	    fi
-	    ;;
+        --package*)
+            if [[ $1 == --package\=* ]]; then
+                package=${1#--package=}
+            else
+                package=$2
+                shift
+            fi
+            ;;
 
 	--add-dracut-args)
 	    adddracutargs=--add-dracut-args
