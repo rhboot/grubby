@@ -229,11 +229,19 @@ const char *grub2FindConfig(struct configFileInfo *cfi) {
     };
     static int i = -1;
     static const char *grub_cfg = "/boot/grub/grub.cfg";
+    int rc = -1;
 
     if (i == -1) {
 	for (i = 0; configFiles[i] != NULL; i++) {
 	    dbgPrintf("Checking \"%s\": ", configFiles[i]);
-	    if (!access(configFiles[i], R_OK)) {
+	    if ((rc = access(configFiles[i], R_OK))) {
+		if (errno == EACCES) {
+		    printf("Unable to access bootloader configuration file "
+		    	   "\"%s\": %m\n", configFiles[i]);
+		    exit(1);
+		}
+		continue;
+	    } else {
 		dbgPrintf("found\n");
 		return configFiles[i];
 	    }
@@ -957,7 +965,10 @@ static struct grubConfig * readConfig(const char * inName,
     int len;
     char * buf;
 
-    if (!strcmp(inName, "-")) {
+    if (inName == NULL) {
+        printf("Could not find bootloader configuration\n");
+        exit(1);
+    } else if (!strcmp(inName, "-")) {
 	in = 0;
     } else {
 	if ((in = open(inName, O_RDONLY)) < 0) {
@@ -4185,6 +4196,11 @@ int main(int argc, const char ** argv) {
 	if (erc == 2) printf("elilo\n");
 
 	return 0;
+    }
+
+    if (grubConfig == NULL) {
+	printf("Could not find bootloader configuration file.\n");
+	exit(1);
     }
 
     config = readConfig(grubConfig, cfi);
