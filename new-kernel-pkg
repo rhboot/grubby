@@ -360,6 +360,7 @@ remove() {
 		fi
 
 		mv $tmpKList $ubootDir/$ubootKList
+		[ -x /sbin/a-b-c ] && /sbin/a-b-c
 	    else
 		[ -n "$verbose" ] && echo "uImage $newversion does not exist!"
 		[ -f $tmpKList ] && rm -f $tmpKList
@@ -471,6 +472,7 @@ update() {
 		[ -n "$verbose" ] && echo "copy uInitrd-$version error, kernel not installed!" && exit
 	    fi
 	    echo $version >> $ubootDir/$ubootKList
+	    [ -x /sbin/a-b-c ] && /sbin/a-b-c
 	else
 	    [ -n "$verbose" ] && echo "cannot make $version the default"
 	fi
