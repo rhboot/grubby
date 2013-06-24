@@ -23,7 +23,7 @@ TARGETS = grubby
 OBJECTS = grubby.o log.o
 
 CC = gcc
-RPM_OPT_FLAGS := -O2 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fstack-protector
+RPM_OPT_FLAGS ?= -O2 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fstack-protector
 CFLAGS += $(RPM_OPT_FLAGS) -std=gnu99 -Wall -Werror -Wno-error=unused-function -Wno-unused-function -ggdb
 LDFLAGS := 
 
