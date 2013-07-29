@@ -136,16 +136,21 @@ struct configFileInfo;
 typedef const char *(*findConfigFunc)(struct configFileInfo *);
 typedef const int (*writeLineFunc)(struct configFileInfo *,
 				struct singleLine *line);
+typedef char *(*getEnvFunc)(struct configFileInfo *, char *name);
+typedef int (*setEnvFunc)(struct configFileInfo *, char *name, char *value);
 
 struct configFileInfo {
     char * defaultConfig;
     findConfigFunc findConfig;
     writeLineFunc writeLine;
+    getEnvFunc getEnv;
+    setEnvFunc setEnv;
     struct keywordTypes * keywords;
     int caseInsensitive;
     int defaultIsIndex;
     int defaultIsVariable;
     int defaultSupportSaved;
+    int defaultIsSaved;
     enum lineType_e entryStart;
     enum lineType_e entryEnd;
     int needsBootPrefix;
@@ -157,6 +162,7 @@ struct configFileInfo {
     int mbInitRdIsModule;
     int mbConcatArgs;
     int mbAllowExtraInitRds;
+    char *envFile;
 };
 
 struct keywordTypes grubKeywords[] = {
@@ -260,6 +266,62 @@ const char *grub2FindConfig(struct configFileInfo *cfi) {
     return configFiles[i];
 }
 
+/* kind of hacky.  It'll give the first 1024 bytes, ish. */
+static char *grub2GetEnv(struct configFileInfo *info, char *name)
+{
+    static char buf[1025];
+    char *s = NULL;
+    char *ret = NULL;
+    char *envFile = info->envFile ? info->envFile : "/boot/grub2/grubenv";
+    int rc = asprintf(&s, "grub2-editenv %s list | grep '^%s='", envFile, name);
+
+    if (rc < 0)
+	return NULL;
+
+    FILE *f = popen(s, "r");
+    if (!f)
+	goto out;
+
+    memset(buf, '\0', sizeof (buf));
+    ret = fgets(buf, 1024, f);
+    pclose(f);
+
+    if (ret) {
+	ret += strlen(name) + 1;
+	ret[strlen(ret) - 1] = '\0';
+    }
+    dbgPrintf("grub2GetEnv(%s): %s\n", name, ret);
+out:
+    free(s);
+    return ret;
+}
+
+static int grub2SetEnv(struct configFileInfo *info, char *name, char *value)
+{
+    char *s = NULL;
+    int rc = 0;
+    char *envFile = info->envFile ? info->envFile : "/boot/grub2/grubenv";
+
+    rc = asprintf(&s, "grub2-editenv %s set '%s=%s'", envFile, name, value);
+    if (rc <0)
+	return -1;
+
+    dbgPrintf("grub2SetEnv(%s): %s\n", name, s);
+    rc = system(s);
+    free(s);
+    return rc;
+}
+
+/* this is a gigantic hack to avoid clobbering grub2 variables... */
+static int is_special_grub2_variable(const char *name)
+{
+    if (!strcmp(name,"\"${next_entry}\""))
+	return 1;
+    if (!strcmp(name,"\"${prev_saved_entry}\""))
+	return 1;
+    return 0;
+}
+
 int sizeOfSingleLine(struct singleLine * line) {
   int count = 0;
 
@@ -354,6 +416,8 @@ char *grub2ExtractTitle(struct singleLine * line) {
 
 struct configFileInfo grub2ConfigType = {
     .findConfig = grub2FindConfig,
+    .getEnv = grub2GetEnv,
+    .setEnv = grub2SetEnv,
     .keywords = grub2Keywords,
     .defaultIsIndex = 1,
     .defaultSupportSaved = 1,
@@ -533,6 +597,8 @@ struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index);
 struct singleEntry * findEntryByPath(struct grubConfig * cfg, 
 				     const char * path, const char * prefix,
 				     int * index);
+struct singleEntry * findEntryByTitle(struct grubConfig * cfg, char *title,
+				      int * index);
 static int readFile(int fd, char ** bufPtr);
 static void lineInit(struct singleLine * line);
 struct singleLine * lineDup(struct singleLine * line);
@@ -690,10 +756,15 @@ static int isEntryStart(struct singleLine * line,
 /* extract the title from within brackets (for zipl) */
 static char * extractTitle(struct singleLine * line) {
     /* bracketed title... let's extract it (leaks a byte) */
-    char * title;
-    title = strdup(line->elements[0].item);
-    title++;
-    *(title + strlen(title) - 1) = '\0';
+    char * title = NULL;
+    if (line->type == LT_TITLE) {
+	title = strdup(line->elements[0].item);
+	title++;
+	*(title + strlen(title) - 1) = '\0';
+    } else if (line->type == LT_MENUENTRY)
+	title = strdup(line->elements[1].item);
+    else
+	return NULL;
     return title;
 }
 
@@ -1035,7 +1106,8 @@ static struct grubConfig * readConfig(const char * inName,
 	    dbgPrintf("\n");
 	    struct keywordTypes *kwType = getKeywordByType(LT_DEFAULT, cfi);
 	    if (kwType && line->numElements == 3 &&
-		    !strcmp(line->elements[1].item, kwType->key)) {
+		    !strcmp(line->elements[1].item, kwType->key) &&
+		    !is_special_grub2_variable(line->elements[2].item)) {
 		dbgPrintf("Line sets default config\n");
 		cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 		defaultLine = line;
@@ -1240,7 +1312,17 @@ static struct grubConfig * readConfig(const char * inName,
         if (defaultLine->numElements > 2 &&
 	    cfi->defaultSupportSaved &&
 	    !strncmp(defaultLine->elements[2].item,"\"${saved_entry}\"", 16)) {
-	    cfg->defaultImage = DEFAULT_SAVED_GRUB2;
+		cfg->cfi->defaultIsSaved = 1;
+		cfg->defaultImage = DEFAULT_SAVED_GRUB2;
+		if (cfg->cfi->getEnv) {
+		    char *defTitle = cfi->getEnv(cfg->cfi, "saved_entry");
+		    if (defTitle) {
+			int index = 0;
+			entry = findEntryByTitle(cfg, defTitle, &index);
+			if (entry)
+			    cfg->defaultImage = index;
+		    }
+		}
 	} else if (cfi->defaultIsVariable) {
 	    char *value = defaultLine->elements[2].item;
 	    while (*value && (*value == '"' || *value == '\'' ||
@@ -1281,6 +1363,14 @@ static struct grubConfig * readConfig(const char * inName,
 	        cfg->defaultImage = -1;
 	    }
 	}
+    } else if (cfg->cfi->defaultIsSaved && cfg->cfi->getEnv) {
+	char *defTitle = cfi->getEnv(cfg->cfi, "saved_entry");
+	if (defTitle) {
+	    int index = 0;
+	    entry = findEntryByTitle(cfg, defTitle, &index);
+	    if (entry)
+		cfg->defaultImage = index;
+	}
     } else {
         cfg->defaultImage = 0;
     }
@@ -1298,9 +1388,21 @@ static void writeDefault(FILE * out, char * indent,
 
     if (cfg->defaultImage == DEFAULT_SAVED)
 	fprintf(out, "%sdefault%ssaved\n", indent, separator);
-    else if (cfg->defaultImage == DEFAULT_SAVED_GRUB2)
+    else if (cfg->cfi->defaultIsSaved) {
 	fprintf(out, "%sset default=\"${saved_entry}\"\n", indent);
-    else if (cfg->defaultImage > -1) {
+	if (cfg->defaultImage >= 0 && cfg->cfi->setEnv) {
+	    char *title;
+	    entry = findEntryByIndex(cfg, cfg->defaultImage);
+	    line = getLineByType(LT_MENUENTRY, entry->lines);
+	    if (!line)
+		line = getLineByType(LT_TITLE, entry->lines);
+	    if (line) {
+		title = extractTitle(line);
+		if (title)
+		    cfg->cfi->setEnv(cfg->cfi, "saved_entry", title);
+	    }
+	}
+    } else if (cfg->defaultImage > -1) {
 	if (cfg->cfi->defaultIsIndex) {
 	    if (cfg->cfi->defaultIsVariable) {
 	        fprintf(out, "%sset default=\"%d\"\n", indent,
@@ -1403,7 +1505,8 @@ static int writeConfig(struct grubConfig * cfg, char * outName,
     while (line) {
         if (line->type == LT_SET_VARIABLE && defaultKw &&
 		line->numElements == 3 &&
-		!strcmp(line->elements[1].item, defaultKw->key)) {
+		!strcmp(line->elements[1].item, defaultKw->key) &&
+		!is_special_grub2_variable(line->elements[2].item)) {
 	    writeDefault(out, line->indent, line->elements[0].indent, cfg);
 	    needs &= ~MAIN_DEFAULT;
 	} else if (line->type == LT_DEFAULT) {
@@ -1858,6 +1961,36 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
     return entry;
 }
 
+struct singleEntry * findEntryByTitle(struct grubConfig * cfg, char *title,
+				      int * index) {
+    struct singleEntry * entry;
+    struct singleLine * line;
+    int i;
+    char * newtitle;
+
+    for (i = 0, entry = cfg->entries; entry; entry = entry->next, i++) {
+	if (index && i < *index)
+	    continue;
+	line = getLineByType(LT_TITLE, entry->lines);
+	if (!line)
+	    line = getLineByType(LT_MENUENTRY, entry->lines);
+	if (!line)
+	    continue;
+	newtitle = grub2ExtractTitle(line);
+	if (!newtitle)
+	    continue;
+	if (!strcmp(title, newtitle))
+	    break;
+    }
+
+    if (!entry)
+	return NULL;
+
+    if (index)
+	*index = i;
+    return entry;
+}
+
 struct singleEntry * findEntryByIndex(struct grubConfig * cfg, int index) {
     struct singleEntry * entry;
 
@@ -1880,7 +2013,15 @@ struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
     struct singleEntry * entry, * entry2;
     int index;
 
-    if (cfg->defaultImage > -1) {
+    if (cfg->cfi->defaultIsSaved) {
+	if (cfg->cfi->getEnv) {
+	    char *defTitle = cfg->cfi->getEnv(cfg->cfi, "saved_entry");
+	    if (defTitle) {
+		int index = 0;
+		entry = findEntryByTitle(cfg, defTitle, &index);
+	    }
+	}
+    } else if (cfg->defaultImage > -1) {
 	entry = findEntryByIndex(cfg, cfg->defaultImage);
 	if (entry && suitableImage(entry, prefix, skipRemoved, flags)) {
 	    if (indexPtr) *indexPtr = cfg->defaultImage;
@@ -3834,6 +3975,7 @@ int main(int argc, const char ** argv) {
     char * removeArgs = NULL;
     char * kernelInfo = NULL;
     char * extraInitrds[MAX_EXTRA_INITRDS] = { NULL };
+    char * envPath = NULL;
     const char * chptr = NULL;
     struct configFileInfo * cfi = NULL;
     struct grubConfig * config;
@@ -3885,6 +4027,9 @@ int main(int argc, const char ** argv) {
 	    _("configure elilo bootloader") },
 	{ "efi", 0, POPT_ARG_NONE, &isEfi, 0,
 	    _("force grub2 stanzas to use efi") },
+	{ "env", 0, POPT_ARG_STRING, &envPath, 0,
+	    _("path for environment data"),
+	    _("path") },
 	{ "extlinux", 0, POPT_ARG_NONE, &configureExtLinux, 0,
 	    _("configure extlinux bootloader (from syslinux)") },
 	{ "grub", 0, POPT_ARG_NONE, &configureGrub, 0,
@@ -3998,6 +4143,8 @@ int main(int argc, const char ** argv) {
 	return 1;
     } else if (configureGrub2) {
 	cfi = &grub2ConfigType;
+	if (envPath)
+	    cfi->envFile = envPath;
     } else if (configureLilo) {
 	cfi = &liloConfigType;
     } else if (configureGrub) {

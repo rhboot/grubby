@@ -48,8 +48,21 @@ oneTest() {
     typeset mode=$1 cfg=test/$2 correct=test/results/$3
     shift 3
 
+    local ENV_FILE=""
+    if [ "$mode" == "--grub2" ]; then
+        ENV_FILE="test/grub2-support_files/env_temp"
+        if [ "$1" == "--env" ]; then
+            cp "test/grub2-support_files/$2" "$ENV_FILE"
+            shift 2
+        else
+            cp "test/grub2-support_files/grubenv.0" "$ENV_FILE"
+        fi
+        ENV_FILE="--env=$ENV_FILE"
+    fi
+
+
     echo "$testing ... $mode $cfg $correct"
-    runme=( ./grubby "$mode" --bad-image-okay -c "$cfg" -o - "$@" )
+    runme=( ./grubby "$mode" --bad-image-okay $ENV_FILE -c "$cfg" -o - "$@" )
     if "${runme[@]}" | cmp "$correct" > /dev/null; then
 	(( pass++ ))
 	if $opt_verbose; then
@@ -74,6 +87,19 @@ oneTest() {
 oneDisplayTest() {
     typeset mode=$1 cfg=test/$2 correct=test/results/$3
     shift 3
+
+    local ENV_FILE=""
+    if [ "$mode" == "--grub2" ]; then
+        ENV_FILE="test/grub2-support_files/env_temp"
+        if [ "$1" == "--env" ]; then
+            cp "test/grub2-support_files/$2" "$ENV_FILE"
+            shift 2
+        else
+            cp "test/grub2-support_files/grubenv.0" "$ENV_FILE"
+        fi
+        ENV_FILE="--env=$ENV_FILE"
+    fi
+
     local BIO="--bad-image-okay"
     if [ "$1" == "--bad-image-bad" ]; then
         BIO=""
@@ -81,7 +107,7 @@ oneDisplayTest() {
     fi
 
     echo "$testing ... $mode $cfg $correct"
-    runme=( ./grubby "$mode" $BIO -c "$cfg" "$@" )
+    runme=( ./grubby "$mode" $BIO $ENV_FILE -c "$cfg" "$@" )
     if "${runme[@]}" 2>&1 | cmp "$correct" > /dev/null; then
 	(( pass++ ))
 	if $opt_verbose; then
@@ -97,6 +123,35 @@ oneDisplayTest() {
 	echo -n "FAIL: "
 	printf "%q " "${runme[@]}"; echo
 	"${runme[@]}" 2>&1 | diff -U30 "$correct" -
+	echo
+    fi
+}
+
+commandTest() {
+    description=$1
+    cmd0=$2
+    text1=$3
+    shift 3
+    echo "$description"
+    output0=$(mktemp)
+
+    $cmd0 > $output0
+
+    if echo $text1 | cmp $output0 - >/dev/null; then
+	(( pass++))
+	if $opt_verbose; then
+	    echo -------------------------------------------------------------
+	    echo -n "PASS: "
+	    printf "%q " "\"$cmd0\""; echo
+	    echo $text1 | diff -U30 $output0 -
+	    echo
+	fi
+    else
+	(( fail++ ))
+	echo -------------------------------------------------------------
+	echo -n "FAIL: "
+	printf "%q " "\"$cmd0\""; echo
+	echo $text1 | diff -U30 $output0 -
 	echo
     fi
 }
@@ -427,6 +482,25 @@ testing="GRUB2 default index directive"
 grub2Test grub2.1 setdefaultindex/g2.1.0 --set-default-index=0
 grub2Test grub2.1 setdefaultindex/g2.1.1 --set-default-index=1
 grub2Test grub2.1 setdefaultindex/g2.1.9 --set-default-index=9
+
+testing="GRUB2 add kernel with default=saved_entry"
+grub2Test grub2.7 add/g2-1.8 --env grubenv.1 --add-kernel=/boot/new-kernel.img \
+    --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+    --copy-default
+commandTest "saved_default output" "grub2-editenv test/grub2-support_files/env_temp list" "saved_entry=Linux, with Fedora 2.6.38.8-32.fc15.x86_64"
+
+testing="GRUB2 set default with default=saved_entry"
+grub2Test grub2.8 add/g2-1.8 --env grubenv.1 --set-default-index=0
+commandTest "saved_default output" "grub2-editenv test/grub2-support_files/env_temp list" "saved_entry=title"
+
+testing="GRUB2 --default-index with default=saved_entry"
+grub2DisplayTest grub2.8 defaultindex/1 --env grubenv.1 --default-index
+
+testing="GRUB2 --default-index with default=saved_entry"
+grub2DisplayTest grub2.8 defaultindex/0 --env grubenv.2 --default-index
+
+testing="GRUB2 --default-title with default=saved_entry"
+grub2DisplayTest grub2.8 defaulttitle/g2.1 --env grubenv.1 --default-title
 
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
