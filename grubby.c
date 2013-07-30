@@ -4253,6 +4253,7 @@ int main(int argc, const char ** argv) {
     } else if (displayDefaultIndex) {
         if (config->defaultImage == -1) return 0;
         printf("%i\n", config->defaultImage);
+        return 0;
 
     } else if (kernelInfo)
 	return displayInfo(config, kernelInfo, bootPrefix);
