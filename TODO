@@ -1,0 +1,15 @@
+What should grubby look like:
+1) grubby the binary
+  1) split each bootloader handler into a separate file
+  2) split utility functions for bootloader handles into utils.c or somesuch
+  3) no variables in configFileInfo, only getters/setters/RMW state changing
+     callbacks
+  4) readConfig() doesn't manipulate configFile except to add Entry/Line state
+     to it
+  5) meta-level parsing happens after readConfig, using configFileInfo
+     callbacks
+  6) top level functionality to be exposed with library API
+  7) maintain 100% test suite compatibility
+2) new-kernel-pkg
+  1) goes away mostly
+  2) per-arch single scripts in /usr/lib/kernel/install.d
