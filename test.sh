@@ -432,75 +432,95 @@ grubTest grub.11 add/g11.1 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default \
     --args='console=tty0 console=ttyS1,9600n81 single'
 
-testing="GRUB2 add kernel"
-grub2Test grub2.1 add/g2-1.1 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/boot/ --copy-default
-grub2Test grub2.1 add/g2-1.6 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/boot/ --copy-default --efi
-grub2Test grub2.6 add/g2-1.7 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/boot/ --copy-default --efi
-grub2Test grub2.1 add/g2-1.2 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
-    --copy-default --make-default
-grub2Test grub2.1 add/g2-1.3 --add-kernel=/boot/new-kernel.img --title='title' \
-    --boot-filesystem=/boot/ --copy-default --make-default
-grub2Test grub2.1 remove/g2-1.4 --remove-kernel=/boot/vmlinuz-2.6.38.2-9.fc15.x86_64 \
-    --boot-filesystem=/boot/
-grub2Test grub2.5 add/g2-1.5 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/boot/ --copy-default
+testgrub2=n
+ARCH=$(uname -m | sed s,i[3456789]86,ia32,)
+case $ARCH in
+    aarch64|ppc|ppc64|ia32|x86_64) testgrub2=y ;;
+esac
 
-testing="GRUB2 add initrd"
-grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
-    --initrd=/boot/new-initrd --boot-filesystem=/boot/
+if [ "$testgrub2" == "y" ]; then
+    testing="GRUB2 add kernel"
+    grub2Test grub2.1 add/g2-1.1 --add-kernel=/boot/new-kernel.img \
+        --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+        --copy-default
+    grub2Test grub2.1 add/g2-1.6 --add-kernel=/boot/new-kernel.img \
+        --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+        --copy-default --efi
+    grub2Test grub2.6 add/g2-1.7 --add-kernel=/boot/new-kernel.img \
+        --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+        --copy-default --efi
+    grub2Test grub2.1 add/g2-1.2 --add-kernel=/boot/new-kernel.img \
+        --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+        --copy-default --make-default
+    grub2Test grub2.1 add/g2-1.3 --add-kernel=/boot/new-kernel.img \
+        --title='title' --boot-filesystem=/boot/ --copy-default --make-default
+    grub2Test grub2.1 remove/g2-1.4 \
+        --remove-kernel=/boot/vmlinuz-2.6.38.2-9.fc15.x86_64 \
+        --boot-filesystem=/boot/
+    grub2Test grub2.5 add/g2-1.5 --add-kernel=/boot/new-kernel.img \
+        --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+        --copy-default
 
-testing="GRUB2 display default index"
-grub2DisplayTest grub2.1 defaultindex/0 --default-index
-grub2DisplayTest grub2.2 defaultindex/0 --default-index
+    testing="GRUB2 add initrd"
+    grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
+        --initrd=/boot/new-initrd --boot-filesystem=/boot/
 
-testing="GRUB2 display default title"
-grub2DisplayTest grub2.1 defaulttitle/g2.1 --default-title
-grub2DisplayTest grub2.2 defaulttitle/g2.2 --default-title
+    testing="GRUB2 display default index"
+    grub2DisplayTest grub2.1 defaultindex/0 --default-index
+    grub2DisplayTest grub2.2 defaultindex/0 --default-index
 
-testing="GRUB2 display debug failure"
-grub2DisplayTest grub2.1 debug/g2.1 --bad-image-bad --boot-filesystem=/boot --default-kernel --debug
-testing="GRUB2 display debug success"
-grub2DisplayTest grub2.1 debug/g2.1.2 --boot-filesystem=/boot --default-kernel --debug
+    testing="GRUB2 display default title"
+    grub2DisplayTest grub2.1 defaulttitle/g2.1 --default-title
+    grub2DisplayTest grub2.2 defaulttitle/g2.2 --default-title
 
-testing="GRUB2 remove kernel via index"
-grub2Test grub2.3 remove/g2-1.1 --remove-kernel=1
+    testing="GRUB2 display debug failure"
+    grub2DisplayTest grub2.1 debug/g2.1 --bad-image-bad \
+        --boot-filesystem=/boot --default-kernel --debug
+    testing="GRUB2 display debug success"
+    grub2DisplayTest grub2.1 debug/g2.1.2 --boot-filesystem=/boot \
+        --default-kernel --debug
 
-testing="GRUB2 remove kernel via title"
-grub2Test grub2.3 remove/g2-1.1 --remove-kernel="TITLE=title2"
+    testing="GRUB2 remove kernel via index"
+    grub2Test grub2.3 remove/g2-1.1 --remove-kernel=1
 
-testing="GRUB2 (submenu) remove kernel via index"
-grub2Test grub2.4 remove/g2-1.2 --remove-kernel=2
+    testing="GRUB2 remove kernel via title"
+    grub2Test grub2.3 remove/g2-1.1 --remove-kernel="TITLE=title2"
 
-testing="GRUB2 (submenu) remove kernel via title"
-grub2Test grub2.4 remove/g2-1.2 --remove-kernel="TITLE=title2"
+    testing="GRUB2 (submenu) remove kernel via index"
+    grub2Test grub2.4 remove/g2-1.2 --remove-kernel=2
 
-testing="GRUB2 default index directive"
-grub2Test grub2.1 setdefaultindex/g2.1.0 --set-default-index=0
-grub2Test grub2.1 setdefaultindex/g2.1.1 --set-default-index=1
-grub2Test grub2.1 setdefaultindex/g2.1.9 --set-default-index=9
+    testing="GRUB2 (submenu) remove kernel via title"
+    grub2Test grub2.4 remove/g2-1.2 --remove-kernel="TITLE=title2"
 
-testing="GRUB2 add kernel with default=saved_entry"
-grub2Test grub2.7 add/g2-1.8 --env grubenv.1 --add-kernel=/boot/new-kernel.img \
-    --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
-    --copy-default
-commandTest "saved_default output" "grub2-editenv test/grub2-support_files/env_temp list" "saved_entry=Linux, with Fedora 2.6.38.8-32.fc15.x86_64"
+    testing="GRUB2 default index directive"
+    grub2Test grub2.1 setdefaultindex/g2.1.0 --set-default-index=0
+    grub2Test grub2.1 setdefaultindex/g2.1.1 --set-default-index=1
+    grub2Test grub2.1 setdefaultindex/g2.1.9 --set-default-index=9
 
-testing="GRUB2 set default with default=saved_entry"
-grub2Test grub2.8 add/g2-1.8 --env grubenv.1 --set-default-index=0
-commandTest "saved_default output" "grub2-editenv test/grub2-support_files/env_temp list" "saved_entry=title"
+    testing="GRUB2 add kernel with default=saved_entry"
+    grub2Test grub2.7 add/g2-1.8 --env grubenv.1 \
+        --add-kernel=/boot/new-kernel.img \
+        --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+        --copy-default
+    commandTest "saved_default output" \
+        "grub2-editenv test/grub2-support_files/env_temp list" \
+        "saved_entry=Linux, with Fedora 2.6.38.8-32.fc15.x86_64"
 
-testing="GRUB2 --default-index with default=saved_entry"
-grub2DisplayTest grub2.8 defaultindex/1 --env grubenv.1 --default-index
+    testing="GRUB2 set default with default=saved_entry"
+    grub2Test grub2.8 add/g2-1.8 --env grubenv.1 --set-default-index=0
+    commandTest "saved_default output" \
+        "grub2-editenv test/grub2-support_files/env_temp list" \
+        "saved_entry=title"
 
-testing="GRUB2 --default-index with default=saved_entry"
-grub2DisplayTest grub2.8 defaultindex/0 --env grubenv.2 --default-index
+    testing="GRUB2 --default-index with default=saved_entry"
+    grub2DisplayTest grub2.8 defaultindex/1 --env grubenv.1 --default-index
 
-testing="GRUB2 --default-title with default=saved_entry"
-grub2DisplayTest grub2.8 defaulttitle/g2.1 --env grubenv.1 --default-title
+    testing="GRUB2 --default-index with default=saved_entry"
+    grub2DisplayTest grub2.8 defaultindex/0 --env grubenv.2 --default-index
+
+    testing="GRUB2 --default-title with default=saved_entry"
+    grub2DisplayTest grub2.8 defaulttitle/g2.1 --env grubenv.1 --default-title
+fi
 
 testing="YABOOT add kernel"
 yabootTest yaboot.1 add/y1.1 --copy-default --boot-filesystem=/ --add-kernel=/boot/new-kernel  \
