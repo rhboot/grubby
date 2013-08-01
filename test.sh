@@ -520,6 +520,9 @@ if [ "$testgrub2" == "y" ]; then
 
     testing="GRUB2 --default-title with default=saved_entry"
     grub2DisplayTest grub2.8 defaulttitle/g2.1 --env grubenv.1 --default-title
+
+    testing="GRUB2 --default-index with default=saved_entry and empty grubenv"
+    grub2DisplayTest grub2.8 defaultindex/0 --env grubenv.0 --default-index
 fi
 
 testing="YABOOT add kernel"

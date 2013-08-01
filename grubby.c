@@ -4359,6 +4359,9 @@ int main(int argc, const char ** argv) {
         char * rootspec;
 
 	if (config->defaultImage == -1) return 0;
+	if (config->defaultImage == DEFAULT_SAVED_GRUB2 &&
+		cfi->defaultIsSaved)
+	    config->defaultImage = 0;
 	entry = findEntryByIndex(config, config->defaultImage);
 	if (!entry) return 0;
 	if (!suitableImage(entry, bootPrefix, 0, flags)) return 0;
@@ -4377,6 +4380,9 @@ int main(int argc, const char ** argv) {
 	struct singleEntry * entry;
 
 	if (config->defaultImage == -1) return 0;
+	if (config->defaultImage == DEFAULT_SAVED_GRUB2 &&
+		cfi->defaultIsSaved)
+	    config->defaultImage = 0;
 	entry = findEntryByIndex(config, config->defaultImage);
 	if (!entry) return 0;
 
@@ -4399,6 +4405,9 @@ int main(int argc, const char ** argv) {
 
     } else if (displayDefaultIndex) {
         if (config->defaultImage == -1) return 0;
+	if (config->defaultImage == DEFAULT_SAVED_GRUB2 &&
+		cfi->defaultIsSaved)
+	    config->defaultImage = 0;
         printf("%i\n", config->defaultImage);
         return 0;
 
