@@ -1065,6 +1065,15 @@ static int getNextLine(char ** bufPtr, struct singleLine * line,
     return 0;
 }
 
+static int isnumber(const char *s)
+{
+    int i;
+    for (i = 0; s[i] != '\0'; i++)
+	if (s[i] < '0' || s[i] > '9')
+	    return 0;
+    return i;
+}
+
 static struct grubConfig * readConfig(const char * inName,
 				      struct configFileInfo * cfi) {
     int in;
@@ -1361,7 +1370,12 @@ static struct grubConfig * readConfig(const char * inName,
 		    char *defTitle = cfi->getEnv(cfg->cfi, "saved_entry");
 		    if (defTitle) {
 			int index = 0;
-			entry = findEntryByTitle(cfg, defTitle, &index);
+			if (isnumber(defTitle)) {
+			    index = atoi(defTitle);
+			    entry = findEntryByIndex(cfg, index);
+			} else {
+			    entry = findEntryByTitle(cfg, defTitle, &index);
+			}
 			if (entry)
 			    cfg->defaultImage = index;
 		    }
@@ -1410,7 +1424,12 @@ static struct grubConfig * readConfig(const char * inName,
 	char *defTitle = cfi->getEnv(cfg->cfi, "saved_entry");
 	if (defTitle) {
 	    int index = 0;
-	    entry = findEntryByTitle(cfg, defTitle, &index);
+	    if (isnumber(defTitle)) {
+		index = atoi(defTitle);
+		entry = findEntryByIndex(cfg, index);
+	    } else {
+		entry = findEntryByTitle(cfg, defTitle, &index);
+	    }
 	    if (entry)
 		cfg->defaultImage = index;
 	}
@@ -2061,7 +2080,14 @@ struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
 	    char *defTitle = cfg->cfi->getEnv(cfg->cfi, "saved_entry");
 	    if (defTitle) {
 		int index = 0;
-		entry = findEntryByTitle(cfg, defTitle, &index);
+		if (isnumber(defTitle)) {
+		    index = atoi(defTitle);
+		    entry = findEntryByIndex(cfg, index);
+		} else {
+		    entry = findEntryByTitle(cfg, defTitle, &index);
+		}
+		if (entry)
+		    cfg->defaultImage = index;
 	    }
 	}
     } else if (cfg->defaultImage > -1) {
