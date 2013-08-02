@@ -296,13 +296,56 @@ out:
     return ret;
 }
 
+static int sPopCount(const char *s, const char *c)
+{
+    int ret = 0;
+    if (!s)
+	return -1;
+    for (int i = 0; s[i] != '\0'; i++)
+	for (int j = 0; c[j] != '\0'; j++)
+	    if (s[i] == c[j])
+		ret++;
+    return ret;
+}
+
+static char *shellEscape(const char *s)
+{
+    int l = strlen(s) + sPopCount(s, "'") * 2;
+
+    char *ret = calloc(l+1, sizeof (*ret));
+    if (!ret)
+	return NULL;
+    for (int i = 0, j = 0; s[i] != '\0'; i++, j++) {
+	if (s[i] == '\'')
+	    ret[j++] = '\\';
+	ret[j] = s[i];
+    }
+    return ret;
+}
+
+static void unquote(char *s)
+{
+    int l = strlen(s);
+
+    if ((s[l-1] == '\'' && s[0] == '\'') || (s[l-1] == '"' && s[0] == '"')) {
+	memmove(s, s+1, l-2);
+	s[l-2] = '\0';
+    }
+}
+
 static int grub2SetEnv(struct configFileInfo *info, char *name, char *value)
 {
     char *s = NULL;
     int rc = 0;
     char *envFile = info->envFile ? info->envFile : "/boot/grub2/grubenv";
 
+    unquote(value);
+    value = shellEscape(value);
+    if (!value)
+	    return -1;
+
     rc = asprintf(&s, "grub2-editenv %s set '%s=%s'", envFile, name, value);
+    free(value);
     if (rc <0)
 	return -1;
 

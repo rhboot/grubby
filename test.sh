@@ -506,6 +506,19 @@ if [ "$testgrub2" == "y" ]; then
         "grub2-editenv test/grub2-support_files/env_temp list" \
         "saved_entry=Linux, with Fedora 2.6.38.8-32.fc15.x86_64"
 
+    testing="GRUB2 add kernel with default=saved_entry and a terrible title"
+    grub2Test grub2.7 add/g2-1.9 --env grubenv.1 \
+        --add-kernel=/boot/new-kernel.img \
+        --title='Fedora (3.10.3-300.fc19.x86_64) 19 (Schrödinger’s Cat)' \
+        --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+        --copy-default
+
+    testing="GRUB2 set default with default=saved_entry and a terrible name"
+    grub2Test grub2.9 add/g2-1.9 --env grubenv.1 --set-default-index=0
+    commandTest "saved_default output" \
+        "grub2-editenv test/grub2-support_files/env_temp list" \
+        'saved_entry=Fedora (3.10.3-300.fc19.x86_64) 19 (Schrödinger’s Cat)'
+
     testing="GRUB2 set default with default=saved_entry"
     grub2Test grub2.8 add/g2-1.8 --env grubenv.1 --set-default-index=0
     commandTest "saved_default output" \
