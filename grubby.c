@@ -231,6 +231,8 @@ const char *grub2FindConfig(struct configFileInfo *cfi) {
     static const char *configFiles[] = {
 	"/etc/grub2-efi.cfg",
 	"/etc/grub2.cfg",
+	"/boot/grub2/grub.cfg",
+	"/boot/grub2-efi/grub.cfg",
 	NULL
     };
     static int i = -1;
