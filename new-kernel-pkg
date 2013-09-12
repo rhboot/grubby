@@ -411,7 +411,8 @@ update() {
 	    --update-kernel=$kernelImage \
 	    $INITRD \
 	    ${kernargs:+--args="$kernargs"} \
-	    ${removeargs:+--remove-args="$removeargs"}
+	    ${removeargs:+--remove-args="$removeargs"} \
+	    ${mbkernel:+--add-multiboot="$mbkernel"}
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
