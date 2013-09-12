@@ -3257,6 +3257,42 @@ int updateImage(struct grubConfig * cfg, const char * image,
     return rc;
 }
 
+int addMBInitrd(struct grubConfig * cfg, const char *newMBKernel,
+		 const char * image, const char * prefix, const char * initrd) {
+    struct singleEntry * entry;
+    struct singleLine * line, * kernelLine, *endLine = NULL;
+    int index = 0;
+
+    if (!image) return 0;
+
+    for (; (entry = findEntryByPath(cfg, newMBKernel, prefix, &index)); index++) {
+        kernelLine = getLineByType(LT_MBMODULE, entry->lines);
+        if (!kernelLine) continue;
+
+        if (prefix) {
+            int prefixLen = strlen(prefix);
+            if (!strncmp(initrd, prefix, prefixLen))
+                initrd += prefixLen;
+        }
+	endLine = getLineByType(LT_ENTRY_END, entry->lines);
+	if (endLine)
+	    removeLine(entry, endLine);
+        line = addLine(entry, cfg->cfi, preferredLineType(LT_MBMODULE,cfg->cfi),
+			kernelLine->indent, initrd);
+        if (!line)
+	    return 1;
+	if (endLine) {
+	    line = addLine(entry, cfg->cfi, LT_ENTRY_END, "", NULL);
+            if (!line)
+		return 1;
+	}
+
+        break;
+    }
+
+    return 0;
+}
+
 int updateInitrd(struct grubConfig * cfg, const char * image,
                  const char * prefix, const char * initrd) {
     struct singleEntry * entry;
@@ -4498,8 +4534,15 @@ int main(int argc, const char ** argv) {
     if (updateImage(config, updateKernelPath, bootPrefix, newKernelArgs,
                     removeArgs, newMBKernelArgs, removeMBKernelArgs)) return 1;
     if (updateKernelPath && newKernelInitrd) {
-            if (updateInitrd(config, updateKernelPath, bootPrefix,
-                             newKernelInitrd)) return 1;
+	    if (newMBKernel) {
+		    if (addMBInitrd(config, newMBKernel, updateKernelPath,
+					bootPrefix, newKernelInitrd))
+			    return 1;
+	    } else {
+		    if (updateInitrd(config, updateKernelPath, bootPrefix,
+					newKernelInitrd))
+			return 1;
+	    }
     }
     if (addNewKernel(config, template, bootPrefix, newKernelPath, 
                      newKernelTitle, newKernelArgs, newKernelInitrd, 
