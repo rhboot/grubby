@@ -42,7 +42,7 @@ test: all
 	@./test.sh
 
 install: all
-	mkdir -p $(DESTDIR)/sbin
+	mkdir -p $(DESTDIR)$(PREFIX)/sbin
 	mkdir -p $(DESTDIR)/$(mandir)/man8
 	install -m 755 new-kernel-pkg $(DESTDIR)$(PREFIX)/sbin
 	install -m 644 new-kernel-pkg.8 $(DESTDIR)/$(mandir)/man8
