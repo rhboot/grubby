@@ -90,7 +90,9 @@ enum lineType_e {
     LT_SET_VARIABLE = 1 << 19,
     LT_KERNEL_EFI   = 1 << 20,
     LT_INITRD_EFI   = 1 << 21,
-    LT_UNKNOWN      = 1 << 22,
+    LT_KERNEL_16    = 1 << 22,
+    LT_INITRD_16    = 1 << 23,
+    LT_UNKNOWN      = 1 << 24,
 };
 
 struct singleLine {
@@ -220,8 +222,10 @@ struct keywordTypes grub2Keywords[] = {
     { "fallback",   LT_FALLBACK,    ' ' },
     { "linux",      LT_KERNEL,      ' ' },
     { "linuxefi",   LT_KERNEL_EFI,  ' ' },
+    { "linux16",    LT_KERNEL_16,   ' ' },
     { "initrd",     LT_INITRD,      ' ', ' ' },
     { "initrdefi",  LT_INITRD_EFI,  ' ', ' ' },
+    { "initrd16",   LT_INITRD_16,   ' ', ' ' },
     { "module",     LT_MBMODULE,    ' ' },
     { "kernel",     LT_HYPER,       ' ' },
     { NULL, 0, 0 },
@@ -397,11 +401,11 @@ static int isquote(char q)
 }
 
 static int iskernel(enum lineType_e type) {
-    return (type == LT_KERNEL || type == LT_KERNEL_EFI);
+    return (type == LT_KERNEL || type == LT_KERNEL_EFI || type == LT_KERNEL_16);
 }
 
 static int isinitrd(enum lineType_e type) {
-    return (type == LT_INITRD || type == LT_INITRD_EFI);
+    return (type == LT_INITRD || type == LT_INITRD_EFI || type == LT_INITRD_16);
 }
 
 char *grub2ExtractTitle(struct singleLine * line) {
@@ -719,6 +723,17 @@ static enum lineType_e preferredLineType(enum lineType_e type,
 	default:
 	    return type;
 	}
+#if defined(__i386__) || defined(__x86_64__)
+    } else if (cfi == &grub2ConfigType) {
+	switch (type) {
+	case LT_KERNEL:
+	    return LT_KERNEL_16;
+	case LT_INITRD:
+	    return LT_INITRD_16;
+	default:
+	    return type;
+	}
+#endif
     }
     return type;
 }
@@ -1806,7 +1821,7 @@ int suitableImage(struct singleEntry * entry, const char * bootPrefix,
 	return 0;
     }
 
-    line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
+    line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI|LT_KERNEL_16, entry->lines);
     if (!line) {
 	notSuitablePrintf(entry, 0, "no line found\n");
 	return 0;
@@ -1940,7 +1955,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	entry = findEntryByIndex(config, indexVars[i]);
 	if (!entry) return NULL;
 
-	line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
+	line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI|LT_KERNEL_16, entry->lines);
 	if (!line) return NULL;
 
 	if (index) *index = indexVars[i];
@@ -1991,9 +2006,9 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	    for (line = entry->lines; line; line = line->next) {
 		enum lineType_e ct = checkType;
 		if (entry->multiboot && checkType == LT_KERNEL)
-		    ct = LT_KERNEL|LT_KERNEL_EFI|LT_MBMODULE|LT_HYPER;
+		    ct = LT_KERNEL|LT_KERNEL_EFI|LT_MBMODULE|LT_HYPER|LT_KERNEL_16;
 		else if (checkType & LT_KERNEL)
-		    ct = checkType | LT_KERNEL_EFI;
+		    ct = checkType | LT_KERNEL_EFI | LT_KERNEL_16;
 		line = getLineByType(ct, line);
 		if (!line)
 		    break;  /* not found in this entry */
@@ -2015,7 +2030,7 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	     * non-Linux boot entries (could find netbsd etc, though, which is
 	     * unfortunate)
 	     */
-	    if (line && getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines))
+	    if (line && getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI|LT_KERNEL_16, entry->lines))
 		break; /* found 'im! */
 	}
 
@@ -2249,7 +2264,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 
     printf("index=%d\n", index);
 
-    line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
+    line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI|LT_KERNEL_16, entry->lines);
     if (!line) {
         printf("non linux entry\n");
         return;
@@ -2314,7 +2329,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 	printf("root=%s\n", s);
     }
 
-    line = getLineByType(LT_INITRD|LT_INITRD_EFI, entry->lines);
+    line = getLineByType(LT_INITRD|LT_INITRD_EFI|LT_INITRD_16, entry->lines);
 
     if (line && line->numElements >= 2) {
 	if (!strncmp(prefix, line->elements[1].item, strlen(prefix)))
@@ -2731,7 +2746,7 @@ struct singleLine * addLineTmpl(struct singleEntry * entry,
 	insertElement(newLine, val, 1, cfi);
 
 	/* but try to keep the rootspec from the template... sigh */
-	if (tmplLine->type & (LT_HYPER|LT_KERNEL|LT_MBMODULE|LT_INITRD|LT_KERNEL_EFI|LT_INITRD_EFI)) {
+	if (tmplLine->type & (LT_HYPER|LT_KERNEL|LT_MBMODULE|LT_INITRD|LT_KERNEL_EFI|LT_INITRD_EFI|LT_KERNEL_16|LT_INITRD_16)) {
 	    char * rootspec = getRootSpecifier(tmplLine->elements[1].item);
 	    if (rootspec != NULL) {
 		free(newLine->elements[1].item);
@@ -3101,7 +3116,7 @@ int updateActualImage(struct grubConfig * cfg, const char * image,
 	    firstElement = 2;
 
 	} else {
-	    line = getLineByType(LT_KERNEL|LT_MBMODULE|LT_KERNEL_EFI, entry->lines);
+	    line = getLineByType(LT_KERNEL|LT_MBMODULE|LT_KERNEL_EFI|LT_KERNEL_16, entry->lines);
 	    if (!line) {
 		/* no LT_KERNEL or LT_MBMODULE in this entry? */
 		continue;
@@ -3302,10 +3317,10 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
     if (!image) return 0;
 
     for (; (entry = findEntryByPath(cfg, image, prefix, &index)); index++) {
-        kernelLine = getLineByType(LT_KERNEL|LT_KERNEL_EFI, entry->lines);
+        kernelLine = getLineByType(LT_KERNEL|LT_KERNEL_EFI|LT_KERNEL_16, entry->lines);
         if (!kernelLine) continue;
 
-        line = getLineByType(LT_INITRD|LT_INITRD_EFI, entry->lines);
+        line = getLineByType(LT_INITRD|LT_INITRD_EFI|LT_INITRD_16, entry->lines);
         if (line)
             removeLine(entry, line);
         if (prefix) {
@@ -3316,8 +3331,21 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
 	endLine = getLineByType(LT_ENTRY_END, entry->lines);
 	if (endLine)
 	    removeLine(entry, endLine);
-        line = addLine(entry, cfg->cfi, preferredLineType(LT_INITRD, cfg->cfi),
-			kernelLine->indent, initrd);
+	enum lineType_e lt;
+	switch(kernelLine->type) {
+	    case LT_KERNEL:
+	        lt = LT_INITRD;
+		break;
+	    case LT_KERNEL_EFI:
+	        lt = LT_INITRD_EFI;
+		break;
+	    case LT_KERNEL_16:
+	        lt = LT_INITRD_16;
+		break;
+	    default:
+	        lt = preferredLineType(LT_INITRD, cfg->cfi);
+	}
+        line = addLine(entry, cfg->cfi, lt, kernelLine->indent, initrd);
         if (!line)
 	    return 1;
 	if (endLine) {
@@ -3915,6 +3943,7 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	switch (config->cfi->entryStart) {
 	    case LT_KERNEL:
 	    case LT_KERNEL_EFI:
+	    case LT_KERNEL_16:
 		if (new->multiboot && config->cfi->mbHyperFirst) {
 		    /* fall through to LT_HYPER */
 		} else {
@@ -4473,7 +4502,7 @@ int main(int argc, const char ** argv) {
 	if (!entry) return 0;
 	if (!suitableImage(entry, bootPrefix, 0, flags)) return 0;
 
-	line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI, entry->lines);
+	line = getLineByType(LT_KERNEL|LT_HYPER|LT_KERNEL_EFI|LT_KERNEL_16, entry->lines);
 	if (!line) return 0;
 
         rootspec = getRootSpecifier(line->elements[1].item);

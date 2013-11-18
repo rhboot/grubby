@@ -536,6 +536,22 @@ if [ "$testgrub2" == "y" ]; then
 
     testing="GRUB2 --default-index with default=saved_entry and empty grubenv"
     grub2DisplayTest grub2.8 defaultindex/0 --env grubenv.0 --default-index
+
+    testlinux16=n
+    case $ARCH in
+        ia32|x86_64) testlinux16=y ;;
+    esac
+
+    if [ "$testlinux16" == "y" ]; then
+        testing="GRUB2 add kernel with linux16"
+        grub2Test grub2.10 add/g2-1.10 --add-kernel=/boot/new-kernel.img \
+            --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+            --copy-default
+
+        testing="GRUB2 add initrd with linux16"
+        grub2Test grub2.11 add/g2-1.11 --update-kernel=/boot/new-kernel.img \
+            --initrd=/boot/new-initrd --boot-filesystem=/boot/
+    fi
 fi
 
 testing="YABOOT add kernel"
