@@ -1,0 +1,15 @@
+prompt 0
+
+label Fedora (3.12.0-2.fc21.i686+PAE) 20 (Heisenbug)
+kernel /vmlinuz-3.12.0-2.fc21.i686+PAE
+append ro root=/dev/hdd1 hdd=notide-scsi
+initrd /initrd-3.12.0-2.fc21.i686+PAE.img
+
+label Fedora (3.12.0-2.fc21.i686) 20 (Heisenbug)
+kernel /vmlinuz-3.12.0-2.fc21.i686
+append ro root=/dev/sda1
+initrd /initrd-3.12.0-2.fc21.i686.img
+
+label DOS
+com32 chain.c32
+append hd0 1
