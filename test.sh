@@ -373,8 +373,6 @@ grubTest grub.3 updargs/g3.7 --update-kernel=ALL \
     --remove-args="hdd root ro"
 grubTest grub.7 updargs/g7.2 --boot-filesystem=/    \
     --update-kernel=ALL --args "hde=ide-scsi"
-grubTest grub.7 updargs/g7.2 --boot-filesystem=/    \
-    --update-kernel=ALL --args "hde=ide-scsi"
 grubTest grub.7 updargs/g7.3 --boot-filesystem=/    \
     --update-kernel=DEFAULT --args "hde=ide-scsi"
 grubTest grub.7 updargs/g7.4 --boot-filesystem=/    \
