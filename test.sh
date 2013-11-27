@@ -158,7 +158,7 @@ commandTest() {
 
 # generate convenience functions
 for b in $(./grubby --help | \
-	sed -n 's/^.*--\([^ ]*\) *configure \1 bootloader$/\1/p'); do
+	sed -n 's/^.*--\([^ ]*\) *configure \1 bootloader.*/\1/p'); do
     eval "${b}Test() { [[ \"$b\" == \$opt_bootloader ]] && oneTest --$b \"\$@\"; }"
     eval "${b}DisplayTest() { [[ \"$b\" == \$opt_bootloader ]] && oneDisplayTest --$b \"\$@\"; }"
 done
@@ -316,11 +316,23 @@ grubTest grub.5 fallback/g5.3 --remove-kernel=/boot/vmlinuz-2.4.7-2.5 \
     --boot-filesystem=/ --copy-default --add-kernel=/boot/new-kernel \
     --title="Some_Title"
 
+testing="Extlinux default directive"
+extlinuxTest extlinux.1 default/extlinux1.1 --boot-filesystem=/boot --add-kernel /boot/new-kernel --title Some_Title
+extlinuxTest extlinux.1 default/extlinux1.2 --boot-filesystem=/boot --add-kernel /boot/new-kernel --title Some_Title --make-default
+extlinuxTest extlinux.3 default/extlinux3.1 --boot-filesystem=/boot --set-default=/boot/vmlinuz-3.12.0-2.fc21.i686
+extlinuxTest extlinux.3 default/extlinux3.2 --boot-filesystem=/boot --set-default=/boot/vmlinuz-3.12.0-2.fc21.i686+PAE
+
 testing="GRUB new kernel argument handling"
 grubTest grub.1 args/g1.1 --boot-filesystem=/boot \
     --add-kernel=/boot/foo --title=some_title --args="1234" --copy-default
 grubTest grub.1 args/g1.2 --boot-filesystem=/boot \
     --add-kernel=/boot/foo --title=some_title --args="1234" 
+
+testing="Extlinux new kernel argument handling"
+extlinuxTest extlinux.1 args/extlinux1.1 --boot-filesystem=/boot \
+    --add-kernel=/boot/foo --title=some_title --args="1234" --copy-default
+extlinuxTest extlinux.1 args/extlinux1.2 --boot-filesystem=/boot \
+    --add-kernel=/boot/foo --title=some_title --args="1234"
 
 testing="GRUB remove kernel"
 grubTest grub.7 remove/g7.1 --boot-filesystem=/ \
@@ -338,6 +350,12 @@ yabootTest yaboot.2 remove/y2.1 --boot-filesystem=/ --remove-kernel=/boot/vmlinu
 testing="Z/IPL remove kernel"
 ziplTest zipl.1 remove/z1.1 --remove-kernel=/boot/vmlinuz-2.4.9-38
 ziplTest zipl.1 remove/z1.2 --remove-kernel=DEFAULT
+
+testing="Extlinux remove kernel"
+extlinuxTest extlinux.4 remove/extlinux4.1 --boot-filesystem=/ \
+    --remove-kernel=/boot/vmlinuz-3.11.7-301.fc20.i686
+extlinuxTest extlinux.3 remove/extlinux3.1 --boot-filesystem=/ \
+    --remove-kernel=DEFAULT
 
 testing="GRUB update kernel argument handling"
 grubTest grub.1 updargs/g1.1 --update-kernel=DEFAULT --args="root=/dev/hda1"
@@ -390,6 +408,30 @@ liloTest lilo.3 updargs/l3.1 --update-kernel=/boot/vmlinuz-2.4.18-4 \
     --remove-args="hda"
 liloTest lilo.3 updargs/l3.2 --update-kernel=ALL \
     --remove-args="single" --args "root=/dev/hda2"
+
+testing="Extlinux update kernel argument handling"
+extlinuxTest extlinux.1 updargs/extlinux1.1 --update-kernel=DEFAULT --args="root=/dev/hda1"
+extlinuxTest extlinux.1 updargs/extlinux1.2 --update-kernel=DEFAULT \
+    --args="root=/dev/hda1 hda=ide-scsi root=/dev/hda2"
+extlinuxTest extlinux.3 updargs/extlinux3.1 --update-kernel=DEFAULT --args "hdd=notide-scsi"
+extlinuxTest extlinux.3 updargs/extlinux3.2 --update-kernel=DEFAULT \
+    --args "hdd=notide-scsi root=/dev/hdd1"
+extlinuxTest extlinux.3 updargs/extlinux3.2 --update-kernel=DEFAULT \
+    --args "root=/dev/hdd1 hdd=notide-scsi"
+extlinuxTest extlinux.3 updargs/extlinux3.4 --update-kernel=ALL --remove-args="hdd"
+extlinuxTest extlinux.3 updargs/extlinux3.4 --update-kernel=ALL --remove-args="hdd=ide-scsi"
+extlinuxTest extlinux.3 updargs/extlinux3.4 --update-kernel=ALL --remove-args="hdd=foobar"
+extlinuxTest extlinux.3 updargs/extlinux3.7 --update-kernel=ALL \
+    --remove-args="hdd root ro"
+extlinuxTest extlinux.4 updargs/extlinux4.2 --boot-filesystem=/    \
+    --update-kernel=ALL --args "hde=ide-scsi"
+extlinuxTest extlinux.4 updargs/extlinux4.3 --boot-filesystem=/    \
+    --update-kernel=DEFAULT --args "hde=ide-scsi"
+extlinuxTest extlinux.4 updargs/extlinux4.4 --boot-filesystem=/    \
+    --update-kernel=/vmlinuz-3.12.0-2.fc21.i686 \
+    --args "ro root=LABEL=/ console=tty0 console=ttyS1,9600n81 single"
+extlinuxTest extlinux.4 updargs/extlinux4.5 --boot-filesystem=/    \
+    --update-kernel=ALL --args "root=/dev/hda2"
 
 testing="LILO add kernel"
 liloTest lilo.4 add/l4.1 --add-kernel=/boot/new-kernel.img --title="title" \
@@ -576,6 +618,20 @@ yabootTest yaboot.3 add/y3.1 --add-kernel=/boot/new-kernel --boot-filesystem=/ -
 testing="Z/IPL add kernel"
 ziplTest zipl.1 add/z1.1 --add-kernel=/boot/new-kernel.img --title test
 ziplTest zipl.1 add/z1.2 --add-kernel=/boot/new-kernel.img --title test --copy-default
+
+testing="Extlinux add kernel"
+extlinuxTest extlinux.1 add/extlinux1.1 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/
+extlinuxTest extlinux.1 add/extlinux1.2 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot
+extlinuxTest extlinux.1 add/extlinux1.3 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --copy-default
+extlinuxTest extlinux.1 add/extlinux1.4 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default
+extlinuxTest extlinux.2 add/extlinux2.1 --add-kernel=/boot/vmlinuz-3.12.0-2.fc21.i686	    \
+    --initrd=/boot/initrd-3.12.0-2.fc21.i686-new.img --boot-filesystem=/boot --copy-default \
+    --title="Fedora (3.12.0-2.fc21.i686) 20 (Heisenbug)"					    \
+    --remove-kernel="TITLE=Fedora (3.12.0-2.fc21.i686) 20 (Heisenbug)"
 
 testing="LILO long titles"
 liloTest lilo.1 longtitle/l1.1 --add-kernel=/boot/new-kernel.img \
