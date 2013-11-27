@@ -1198,7 +1198,7 @@ static struct grubConfig * readConfig(const char * inName,
 	     * lines came earlier in the template, make sure to use LT_HYPER 
 	     * instead of LT_KERNEL now
 	     */
-	    if (entry->multiboot)
+	    if (entry && entry->multiboot)
 		line->type = LT_HYPER;
 
         } else if (line->type == LT_MBMODULE) {
