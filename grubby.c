@@ -161,6 +161,7 @@ struct configFileInfo {
     int defaultIsVariable;
     int defaultSupportSaved;
     int defaultIsSaved;
+    int defaultIsUnquoted;
     enum lineType_e entryStart;
     enum lineType_e entryEnd;
     int needsBootPrefix;
@@ -635,6 +636,7 @@ struct configFileInfo extlinuxConfigType = {
     .needsBootPrefix = 1,
     .maxTitleLength = 255,
     .mbAllowExtraInitRds = 1,
+    .defaultIsUnquoted = 1,
 };
 
 struct grubConfig {
@@ -1190,9 +1192,6 @@ static struct grubConfig * readConfig(const char * inName,
 		cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 		defaultLine = line;
 	    }
-	} else if (line->type == LT_DEFAULT && line->numElements == 2) {
-	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
-	    defaultLine = line;
 
         } else if (iskernel(line->type)) {
 	    /* if by some freak chance this is multiboot and the "module"
@@ -1225,8 +1224,9 @@ static struct grubConfig * readConfig(const char * inName,
 	    cfg->fallbackImage = strtol(line->elements[1].item, &end, 10);
 	    if (*end) cfg->fallbackImage = -1;
 
-	} else if (line->type == LT_TITLE && line->numElements > 1) {
-	    /* make the title a single argument (undoing our parsing) */
+	} else if ((line->type == LT_DEFAULT && cfi->defaultIsUnquoted) ||
+                (line->type == LT_TITLE && line->numElements > 1)) {
+	    /* make the title/default a single argument (undoing our parsing) */
 	    len = 0;
 	    for (int i = 1; i < line->numElements; i++) {
 		len += strlen(line->elements[i].item);
@@ -1331,6 +1331,11 @@ static struct grubConfig * readConfig(const char * inName,
 		if (isquote(line->elements[last].item[len]))
 		    line->elements[last].item[len] = '\0';
 	    }
+	}
+
+	if (line->type == LT_DEFAULT && line->numElements == 2) {
+	    cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
+	    defaultLine = line;
 	}
 
 	/* If we find a generic config option which should live at the
