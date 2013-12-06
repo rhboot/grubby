@@ -1,0 +1,26 @@
+
+# TARGETS and OBJECTS and grubby_LIBS should all eventually wind up in
+# src/ which will go in SUBDIRS
+TARGETS = grubby
+OBJECTS = grubby.o log.o
+
+grubby_LIBS = -lblkid -lpopt
+
+all :: $(TARGETS)
+
+grubby :: $(OBJECTS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(grubby_LIBS)
+
+
+install ::
+	mkdir -p $(DESTDIR)$(PREFIX)/sbin
+	mkdir -p $(DESTDIR)/$(mandir)/man8
+	install -m 755 installkernel $(DESTDIR)$(PREFIX)/sbin
+	install -m 644 installkernel.8 $(DESTDIR)/$(mandir)/man8
+	if [ -f grubby ]; then \
+		install -m 755 grubby $(DESTDIR)$(PREFIX)/sbin ; \
+		install -m 644 grubby.8 $(DESTDIR)/$(mandir)/man8 ; \
+	fi
+
+clean ::
+	@rm -vf *.o grubby *~

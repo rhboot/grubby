@@ -17,49 +17,40 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-VERSION=8.40
+VERSION=8.99
 
-TARGETS = grubby
-OBJECTS = grubby.o log.o
+TOPDIR = $(shell echo $$PWD)
 
-CC = gcc
-RPM_OPT_FLAGS ?= -O2 -g -pipe -Wp,-D_FORTIFY_SOURCE=2 -fstack-protector
-CFLAGS += $(RPM_OPT_FLAGS) -std=gnu99 -Wall -Werror -Wno-error=unused-function -Wno-unused-function -ggdb
-LDFLAGS := 
-VERBOSE_TEST :=
-ifneq ($(VERBOSE_TEST),)
-	VERBOSE_TEST="--verbose"
-endif
+include $(TOPDIR)/Make.defaults
 
-grubby_LIBS = -lblkid -lpopt
+SUBDIRS = util
 
-all: grubby
+include $(TOPDIR)/Make.legacy
+
+all clean install :: |
+	@set -e ; for x in $(SUBDIRS) ; do \
+		$(MAKE) -C $${x} TOPDIR=$(TOPDIR) SRCDIR=$(TOPDIR)/$@/ ARCH=$(ARCH) $@ ; \
+	done
+
+$(SUBDIRS) ::
+	$(MAKE) -C $@ TOPDIR=$(TOPDIR) SRCDIR=$(TOPDIR)/$@/ ARCH=$(ARCH)
 
 debug : clean
 	$(MAKE) CFLAGS="${CFLAGS} -DDEBUG=1" all
-
-%.o : %.c
-	$(CC) $(CFLAGS) -DVERSION='"$(VERSION)"' -c -o $@ $<
 
 test: all
 	@export TOPDIR=$(TOPDIR)
 	@./test.sh $(VERBOSE_TEST)
 
-install: all
-	mkdir -p $(DESTDIR)$(PREFIX)/sbin
-	mkdir -p $(DESTDIR)/$(mandir)/man8
-	install -m 755 installkernel $(DESTDIR)$(PREFIX)/sbin
-	install -m 644 installkernel.8 $(DESTDIR)/$(mandir)/man8
-	if [ -f grubby ]; then \
-		install -m 755 grubby $(DESTDIR)$(PREFIX)/sbin ; \
-		install -m 644 grubby.8 $(DESTDIR)/$(mandir)/man8 ; \
-	fi
+install :: all
+	for x in $(SUBDIRS) ; do $(MAKE) -C $${x} TOPDIR=$(TOPDIR) SRCDIR=$(TOPDIR)/$@/ ARCH=$(ARCH) $@ ; done
 
-grubby:: $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(grubby_LIBS)
+clean ::
+	@for x in $(SUBDIRS) ; do $(MAKE) -C $${x} TOPDIR=$(TOPDIR) SRCDIR=$(TOPDIR)/$@/ ARCH=$(ARCH) $@ ; done
 
-clean:
-	rm -f *.o grubby *~
+.PHONY: $(SUBDIRS) clean install
+
+include $(TOPDIR)/Make.rules
 
 GITTAG = $(VERSION)-1
 
@@ -73,8 +64,10 @@ test-archive:
 	@rm -rf /tmp/grubby-$(VERSION)
 	@echo "The archive is in grubby-$(VERSION).tar.bz2"
 
-archive:
+tag:
 	git tag $(GITTAG) refs/heads/master
+
+archive: tag
 	@rm -rf /tmp/grubby-$(VERSION) /tmp/grubby-$(VERSION)-tmp
 	@mkdir -p /tmp/grubby-$(VERSION)-tmp
 	@git archive --format=tar $(GITTAG) | ( cd /tmp/grubby-$(VERSION)-tmp/ ; tar x )
