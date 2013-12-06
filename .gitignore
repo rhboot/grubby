@@ -3,3 +3,4 @@ version.h
 *.o
 core.*
 vgcore.*
+*.tar.*

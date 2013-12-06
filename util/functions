@@ -1,0 +1,539 @@
+#!/bin/bash
+# -*- mode: shell-script; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+# ex: ts=8 sw=4 sts=4 et filetype=sh
+#
+# Copyright 2002-2013 Red Hat, Inc.  All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+set -E
+set -e
+
+usage() {
+    echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd] [--dracut]" >&2
+    echo "       [--initrdfile=<initrd-image>] [--depmod] [--rmmoddep]" >&2
+    echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2
+    echo "       [--make-default] [--add-dracut-args]" >&2
+    echo "       [--add-plymouth-initrd]" >&2
+    echo "       [--host-only]" >&2
+    echo "       <--install | --remove | --update | --rpmposttrans> <kernel-version>" >&2
+    echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
+    exit 1
+}
+
+checkarch()
+{
+    ARCH="$(uname -m | sed s,i[3456789]86,ia32,)"
+    case $1 in
+    $ARCH)
+        return 0
+        ;;
+    *)
+        exit 0
+        ;;
+    esac
+}
+
+checkcfg()
+{
+    [ -e $1 ] && return 0
+    exit 0
+}
+
+checkefi()
+{
+    [ -e /sys/firmware/efi/systab ] && return 0
+    exit 0
+}
+
+checknotefi()
+{
+    [ -e /sys/firmware/efi/systab ] || exit 0
+    return 0
+}
+
+is_defined_function()
+{
+    declare -F $1 >/dev/null 2>&1
+}
+
+option_is_true()
+{
+    case " ${1} " in
+    " y "|" yes "|" Y "|" YES "|" t "|" true "|" T "|" TRUE "|" 1 ")
+        return 0
+        ;;
+    esac
+    return 1
+}
+
+call()
+{
+    command=$1
+    shift
+
+    if is_defined_function ${command} ; then
+        ${command} "$@"
+    elif is_defined_function default_${command} ; then
+        default_${command} "$@"
+    fi
+}
+
+should_use_multiboot()
+{
+    if is_defined_function use_multiboot ; then
+        use_multiboot
+        return $?
+    fi
+    return 0
+}
+
+depmod()
+{
+    local version="$1"
+
+    [ -n "$verbose" ] && echo "running depmod for $version"
+    /usr/sbin/depmod -ae -F /boot/System.map-$version $version
+}
+
+rmdepmod()
+{
+    local version="$1"
+
+    [ -n "$verbose" ] && echo "removing modules.dep info for $version"
+    if [ -d /lib/modules/$version ]; then
+        rm -f /lib/modules/$version/modules.*.bin \
+            /lib/modules/$version/modules.{alias,dep,devname,symbols,softdep}
+    fi
+}
+
+mkramfs()
+{
+    local version="$1"
+    local bootprefix=/boot
+    if is_defined_function get_boot_prefix ; then
+        bootprefix="$(get_boot_prefix)"
+    fi
+    initrdfile="$bootprefix/$initramfs-${version}.img"
+
+    tool="dracut $dracuthostonly -f $initrdfile $version"
+    [ -n "$verbose" ] && echo "creating initramfs: $tool"
+    $tool
+}
+
+rmramfs()
+{
+    local version="$1"
+    local bootprefix=/boot
+    if is_defined_function get_boot_prefix ; then
+        bootprefix="$(get_boot_prefix)"
+    fi
+    initrdfile="$bootprefix/initramfs-${version}.img"
+
+    [ -n "$verbose" ] && echo "removing initrd $initrdfile"
+    if [ -f $initrdfile ]; then
+        rm -f $initrdfile
+    fi
+}
+
+default_get_title()
+{
+    local version="$1"
+
+    local title=""
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        title="$NAME ($version) $VERSION"
+    elif [ -f /etc/redhat-release ]; then
+        title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
+    else
+        title="Red Hat Linux ($version)"
+    fi
+    echo $title
+}
+
+default_get_kernel_args()
+{
+    local kernargs=""
+    # add dracut i18n, keyboard and plymouth kernel args if requested
+    if [ -r /etc/vconsole.conf ]; then
+        . /etc/vconsole.conf
+    elif  [ -r /etc/sysconfig/keyboard ]; then
+        . /etc/sysconfig/keyboard
+    fi
+
+    if [ -r /etc/locale.conf ]; then
+        . /etc/locale.conf
+    elif [ -r /etc/sysconfig/i18n ]; then
+        . /etc/sysconfig/i18n
+    fi
+
+    while read opt rd_opt; do
+        [ -n "${!opt}" ] && kernargs="$kernargs $rd_opt=\"${!opt}\""
+    done <<< 'KEYMAP        rd.vconsole.keymap
+              FONT          rd.vconsole.font
+              FONT_MAP      rd.vconsole.font.map
+              FONT_UNIMAP   rd.vconsole.font.unimap
+              UNICODE       rd.vconsole.font.unicode
+              EXT_KEYMAP    rd.vconsole.keymap.ext
+              LANG          rd.locale.LANG
+              LC_ALL        rd.locale.LC_ALL'
+
+    echo $kernargs
+}
+
+default_get_root_device()
+{
+    local rootdevice=""
+    rootdevice=$(cat /etc/fstab | while read a b c ; do
+            if [[ $a =~ '^[ \t]*#' ]]; then
+                continue
+            fi
+            if [ "$b" = "/" ]; then
+                echo $a
+                break
+            fi
+        done)
+    if [ "$rootdevice" = "" ]; then
+        rootdevice=`grep -o -P "(?<=root=)\S+" /proc/cmdline`
+    fi
+    if [ "$rootdevice" = "" ]; then
+        echo "Could not determine root device" >&2
+        exit 1
+    fi
+    echo $rootdevice
+}
+
+copy_kernel()
+{
+    local version="$1"
+    local kernelimage="$2"
+
+    local package="kernel"
+    [[ "$2" == *\+* ]] && package="kernel-${2##*+}"
+
+    local kerneldir="${kernelimage%/*}"
+    if [[ "${kerneldir}" != "/boot" ]]; then
+        for i in "$kernelimage" \
+                 "$kerneldir/.${kernelimage##*/}.hmac" \
+                 "$kerneldir/System.map" \
+                 "$kerneldir/config" \
+                 "$kerneldir/zImage.stub" \
+                 "$kerneldir/dtb" ; do
+            [[ -e "$i" ]] || continue
+            cp -a "$i" "/boot/${i##*/}-${version}"
+        done
+    fi
+}
+
+default_add()
+{
+    local version="$1"
+    local kernelimage="$2"
+    local debug="$3"
+
+    local package="kernel"
+    [[ "$2" == *\+* ]] && package="kernel-${2##*+}"
+
+    local kerneldir="${kernelimage%/*}"
+    if [[ "${kerneldir}" != "/boot" ]]; then
+        kernelimage="/boot/${kernelimage##*/}-${version}"
+    fi
+
+    if [ -z "$kernelimage" ]; then
+        local kernelname=vmlinuz
+        if is_defined_function get_kernel_name ; then
+            kernelname="$(get_kernel_name)"
+        fi
+
+        local bootprefix=/boot
+        if is_defined_function get_boot_prefix ; then
+            bootprefix="$(get_boot_prefix)"
+        fi
+        kernelimage="$bootprefix/$kernelname-$version"
+    fi
+
+    local MBK=""
+    local MBA=""
+    if should_use_multiboot ; then
+        MBK=${mbkernel:+--add-multiboot="$mbkernel"}
+        MBA=${mbargs:+--mbargs="$mbargs"}
+    fi
+
+    local config=${configfile:+-c "$configfile"}
+
+    local title=""
+    title="$(call get_title $version)"
+
+    local kernelargs=""
+    kernelargs="$(call get_kernel_args)"
+
+    local rootdevice=""
+    rootdevice="$(call get_root_device)"
+
+    local extraargs=""
+    if is_defined_function get_loader_specific_args ; then
+        extraargs="$(get_loader_specific_args)"
+    fi
+
+    local makedefault=""
+    if [ "$UPDATEDEFAULT" == "yes" -a -n "$package" -a -n "$DEFAULTKERNEL" -a \
+            "$package" == "$DEFAULTKERNEL" ]; then
+        makedefault="--make-default"
+    fi
+
+    grubby $loader $config $extraargs --add-kernel="$kernelimage" \
+        --title "$title" --copy-default $makedefault \
+        $MBK $MBA --args="root=$rootdevice $kernelargs" \
+        --remove-kernel="TITLE=$title"
+}
+
+remove_kernel_copy()
+{
+    local version="$1"
+    local kernelimage="$2"
+    local debug="$3"
+
+    local kerneldir="${kernelimage%/*}"
+    if [[ "${kerneldir}" != "/boot" ]]; then
+        for i in "$kernelimage" \
+                 "$kerneldir/.${kernelimage##*/}.hmac" \
+                 "$kerneldir/System.map" \
+                 "$kerneldir/config" \
+                 "$kerneldir/zImage.stub" \
+                 "$kerneldir/dtb" ; do
+            local f="/boot/${i##*/}-${version}"
+            [[ -e "$f" ]] || continue
+            rm -f "$f"
+        done
+    fi
+}
+
+default_remove()
+{
+    local version="$1"
+    local kernelimage="$2"
+
+    local files
+    local f
+    files="/etc/kernel/prerm.d/*[^~] /etc/kernel/prerm.d/$version/*[^~]"
+    for f in $files ; do
+        [ -f $f ] && [ -x $f ] || continue
+        $f $version $kernelimage
+    done
+
+    local kerneldir="${kernelimage%/*}"
+    if [[ "${kerneldir}" != "/boot" ]]; then
+        kernelimage="/boot/${kernelimage##*/}-${version}"
+    fi
+
+    local bootprefix=/boot
+    if is_defined_function get_boot_prefix ; then
+        bootprefix="$(get_boot_prefix)"
+    fi
+    initrdfile="$bootprefix/initramfs-${version}.img"
+
+    INITRD="--initrd $initrdfile"
+    if [ -n "$extraramfs" ]; then
+        INITRD="$INITRD --extra-initrd $bootprefix/$extraramfs"
+    fi
+
+    local config=${configfile:+-c "$configfile"}
+
+    local MBK=""
+    local MBA=""
+    if should_use_multiboot ; then
+        MBK=${mbkernel:+--add-multiboot="$mbkernel"}
+        MBA=${mbargs:+--mbargs="$mbargs"}
+    fi
+
+    local extraargs=""
+    if is_defined_function get_loader_specific_args ; then
+        extraargs="$(get_loader_specific_args)"
+    fi
+
+    local title=""
+    title="$(call get_title $version)"
+
+    local kernelargs=""
+    kernelargs="$(call get_kernel_args)"
+
+    local rootdevice=""
+    rootdevice="$(call get_root_device)"
+
+    grubby $loader $config $extraargs --remove-kernel="$kernelimage" \
+        --title "$title" $MBK $MBA --args="root=$rootdevice $kernelargs"
+}
+
+default_addramfs()
+{
+    local version="$1"
+    local kernelimage="$2"
+
+    local kerneldir="${kernelimage%/*}"
+    if [[ "${kerneldir}" != "/boot" ]]; then
+        kernelimage="/boot/${kernelimage##*/}-${version}"
+    fi
+
+    local bootprefix=/boot
+    if is_defined_function get_boot_prefix ; then
+        bootprefix="$(get_boot_prefix)"
+    fi
+    initrdfile="$bootprefix/initramfs-${version}.img"
+
+    INITRD="--initrd $initrdfile"
+    if [ -n "$extraramfs" ]; then
+        INITRD="$INITRD --extra-initrd $bootprefix/$extraramfs"
+    fi
+
+    local config=${configfile:+-c "$configfile"}
+
+    local MBK=""
+    local MBA=""
+    if should_use_multiboot ; then
+        MBK=${mbkernel:+--add-multiboot="$mbkernel"}
+        MBA=${mbargs:+--mbargs="$mbargs"}
+    fi
+
+    local extraargs=""
+    if is_defined_function get_loader_specific_args ; then
+        extraargs="$(get_loader_specific_args)"
+    fi
+
+    local title=""
+    title="$(call get_title $version)"
+
+    if option_is_true "$debug" ; then
+        title=$(call append_title "$title" "with debugging")
+    fi
+
+    grubby $loader $config $extraargs --update-kernel="TITLE=$title" \
+        $INITRD
+}
+
+default_finalize()
+{
+    local version="$1"
+    local kernelimage="$2"
+
+    local files
+    local f
+    files="/etc/kernel/postinst.d/*[^~] /etc/kernel/postinst.d/$version/*[^~]"
+    for f in $files ; do
+        [ -f $f ] && [ -x $f ] || continue
+        $f $version $kernelimage
+    done
+}
+
+[ -f /etc/sysconfig/kernel ] && . /etc/sysconfig/kernel
+
+mbkernel="$HYPERVISOR"
+mbargs="$HYPERVISOR_ARGS"
+extraramfs="$EXTRA_RAMFS"
+dracuthostonly=""
+loader=""
+configfile=""
+verbose=""
+initramfs=initramfs
+
+if [ "$HOSTONLY_INITRAMFS" == "true" ]; then
+    dracuthostonly="-H"
+fi
+
+main()
+{
+    mode=""
+    version=""
+    somedir=""
+    kernelimage=""
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+        --configfile*)
+            if [[ $1 == --configfile\=* ]]; then
+                configfile=${1#--configfile=}
+            else
+                configfile=$2
+                shift
+            fi
+            ;;
+        --loader*)
+            if [[ $1 == --loader\=* ]]; then
+                loader=${1#--loader=}
+            else
+                loader=$2
+                shift
+            fi
+            ;;
+        -v|--verbose)
+            verbose=-v
+            ;;
+        *)
+            if [ -z "$mode" ]; then
+                mode="$1"
+            elif [ -z "$version" ]; then
+                version="$1"
+            elif [ -z "$somedir" ]; then
+                somedir="$1"
+            elif [ -z "$kernelimage" ]; then
+                kernelimage="$1"
+            else
+                echo "cmdline: $0" "$@" >&2
+                usage >&2
+                exit 1
+            fi
+            ;;
+        esac
+        shift
+    done
+
+    export configfile dracuthostonly extraramfs loader mbargs mbkernel verbose
+
+    case "$mode" in
+    --install|--add|add)
+        copy_kernel "$version" "$kernelimage" false
+        if should_clobber ; then
+            :;
+        else
+            call add "$version" "$kernelimage"
+        fi
+
+        depmod "$version" "$kernelimage"
+        mkramfs "$version" "$kernelimage"
+        if should_clobber ; then
+            clobber
+        else
+            call addramfs "$version" "$kernelimage"
+        fi
+
+        ;;
+    --remove|remove)
+        rmdepmod "$version" "$kernelimage"
+        rmramfs "$version" "$kernelimage"
+        call remove "$version" "$kernelimage"
+        if should_clobber ; then
+            remove_kernel_copy "$version" "$kernelimage" false
+            clobber
+        else
+            call remove_debug "$version" "$kernelimage"
+            call remove "$version" "$kernelimage" false
+            remove_kernel_copy "$version" "$kernelimage" false
+        fi
+        ;;
+    --rpmposttrans|--finalize|finalize)
+        call finalize "$version" "$kernelimage"
+        ;;
+    esac
+}

@@ -20,3 +20,8 @@
 	$(CC) $(INCDIR) $(CFLAGS) $(CPPFLAGS) -E $< -o $@
 
 %.c : %.h
+
+% : %.in
+	sed							\
+		-e 's/@@VERSION@@/$(VERSION)/g'			\
+		< $^ > $@

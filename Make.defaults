@@ -4,6 +4,10 @@ CFLAGS		+= $(RPM_OPT_FLAGS) -std=gnu99 -Wall -Werror -Wno-error=unused-function 
 CCLDFLAGS	= -shared
 LDFLAGS		:=
 INSTALL		= install
+DESTDIR		:=
+LIBDIR		:= /usr/lib
+ARCH		:= $(shell uname -m | sed s,i[3456789]86,ia32,)
+
 VERBOSE_TEST	:=
 ifneq ($(VERBOSE_TEST),)
 	VERBOSE_TEST="--verbose"

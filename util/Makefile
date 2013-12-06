@@ -3,9 +3,12 @@ TOPDIR = $(SRCDIR)/..
 
 include $(TOPDIR)/Make.defaults
 
-all :
+all : $(patsubst %.in, %, $(wildcard *.in))
+
+$(patsubst %.in,%,$(wildcard *.in)) :: % : %.in
 
 clean :
+	@rm -vf $(patsubst %.in, %, $(wildcard *.in))
 
 install :
 	$(INSTALL) -m 755 -d $(DESTDIR)$(LIBDIR)/kernel/install.d/
