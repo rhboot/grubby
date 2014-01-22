@@ -186,10 +186,16 @@ install() {
 
 
     if [ -n "$banner" ]; then
-        title="$banner ($version)"
+	if [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
+	    title=$(echo $banner | sed 's/ /_/g')
+	else
+	    title="$banner ($version)"
+	fi
+    elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
+	title=$(echo $version | sed 's/ /_/g')
     elif [ -f /etc/os-release ]; then
-        . /etc/os-release
-        title="$NAME ($version) $VERSION"
+	. /etc/os-release
+	title="$NAME ($version) $VERSION"
     elif [ -f /etc/redhat-release ]; then
 	title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
     else
@@ -237,7 +243,7 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $liloConfig"
 
 	$grubby --add-kernel=$kernelImage $INITRD \
-		--copy-default $makedefault --title $version \
+		--copy-default $makedefault --title "$title" \
 		${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
 		--args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$version" \
 		--$liloFlag
