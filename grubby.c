@@ -92,7 +92,8 @@ enum lineType_e {
     LT_INITRD_EFI   = 1 << 21,
     LT_KERNEL_16    = 1 << 22,
     LT_INITRD_16    = 1 << 23,
-    LT_UNKNOWN      = 1 << 24,
+    LT_DEVTREE      = 1 << 24,
+    LT_UNKNOWN      = 1 << 25,
 };
 
 struct singleLine {
@@ -121,6 +122,7 @@ struct singleEntry {
 #define NEED_ARGS    (1 << 3)
 #define NEED_MB      (1 << 4)
 #define NEED_END     (1 << 5)
+#define NEED_DEVTREE (1 << 6)
 
 #define MAIN_DEFAULT	    (1 << 0)
 #define DEFAULT_SAVED       -2
@@ -228,6 +230,7 @@ struct keywordTypes grub2Keywords[] = {
     { "initrd16",   LT_INITRD_16,   ' ', ' ' },
     { "module",     LT_MBMODULE,    ' ' },
     { "kernel",     LT_HYPER,       ' ' },
+    { "devicetree", LT_DEVTREE,  ' ' },
     { NULL, 0, 0 },
 };
 
@@ -3704,7 +3707,8 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 		 const char * newKernelPath, const char * newKernelTitle,
 		 const char * newKernelArgs, const char * newKernelInitrd,
 		 const char ** extraInitrds, int extraInitrdCount,
-                 const char * newMBKernel, const char * newMBKernelArgs) {
+                 const char * newMBKernel, const char * newMBKernelArgs,
+		 const char * newDevTreePath) {
     struct singleEntry * new;
     struct singleLine * newLine = NULL, * tmplLine = NULL, * masterLine = NULL;
     int needs;
@@ -3745,6 +3749,8 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
         needs |= NEED_MB;
         new->multiboot = 1;
     }
+    if (newDevTreePath && getKeywordByType(LT_DEVTREE, config->cfi))
+	needs |= NEED_DEVTREE;
 
     if (template) {
 	for (masterLine = template->lines; 
@@ -3930,6 +3936,21 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 			newLine = addLineTmpl(new, tmplLine, newLine, NULL,
 						config->cfi);
 		    }
+	    } else if (tmplLine->type == LT_DEVTREE &&
+		       tmplLine->numElements == 2 && newDevTreePath) {
+	        newLine = addLineTmpl(new, tmplLine, newLine,
+				      newDevTreePath + strlen(prefix),
+				      config->cfi);
+		needs &= ~NEED_DEVTREE;
+	    } else if (tmplLine->type == LT_ENTRY_END && needs & NEED_DEVTREE) {
+		const char *ndtp = newDevTreePath;
+		if (!strncmp(newDevTreePath, prefix, strlen(prefix)))
+		    ndtp += strlen(prefix);
+		newLine = addLine(new, config->cfi, LT_DEVTREE,
+				  config->secondaryIndent,
+				  ndtp);
+		needs &= ~NEED_DEVTREE;
+		newLine = addLineTmpl(new, tmplLine, newLine, NULL, config->cfi);
 	    } else {
 		/* pass through other lines from the template */
 		newLine = addLineTmpl(new, tmplLine, newLine, NULL, config->cfi);
@@ -4050,12 +4071,19 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	free(initrdVal);
 	needs &= ~NEED_INITRD;
     }
+    if (needs & NEED_DEVTREE) {
+	newLine = addLine(new, config->cfi, LT_DEVTREE,
+			  config->secondaryIndent,
+			  newDevTreePath);
+	needs &= ~NEED_DEVTREE;
+    }
+
+    /* NEEDS_END must be last on bootloaders that need it... */
     if (needs & NEED_END) {
 	newLine = addLine(new, config->cfi, LT_ENTRY_END,
 			config->secondaryIndent, NULL);
 	needs &= ~NEED_END;
     }
-
     if (needs) {
 	printf(_("grubby: needs=%d, aborting\n"), needs);
 	abort();
@@ -4101,7 +4129,7 @@ int main(int argc, const char ** argv) {
     char * newKernelArgs = NULL;
     char * newKernelInitrd = NULL;
     char * newKernelTitle = NULL;
-    char * newKernelVersion = NULL;
+    char * newDevTreePath = NULL;
     char * newMBKernel = NULL;
     char * newMBKernelArgs = NULL;
     char * removeMBKernelArgs = NULL;
@@ -4159,6 +4187,8 @@ int main(int argc, const char ** argv) {
 	    _("display the index of the default kernel") },
 	{ "default-title", 0, 0, &displayDefaultTitle, 0,
 	    _("display the title of the default kernel") },
+	{ "devtree", 0, POPT_ARG_STRING, &newDevTreePath, 0,
+	    _("device tree file for new stanza"), _("dtb-path") },
 	{ "elilo", 0, POPT_ARG_NONE, &configureELilo, 0,
 	    _("configure elilo bootloader") },
 	{ "efi", 0, POPT_ARG_NONE, &isEfi, 0,
@@ -4324,7 +4354,7 @@ int main(int argc, const char ** argv) {
 	    grubConfig = cfi->defaultConfig;
     }
 
-    if (bootloaderProbe && (displayDefault || kernelInfo || newKernelVersion ||
+    if (bootloaderProbe && (displayDefault || kernelInfo ||
 			    newKernelPath || removeKernelPath || makeDefault ||
 			    defaultKernel || displayDefaultIndex || displayDefaultTitle ||
 			    (defaultIndex >= 0))) {
@@ -4333,7 +4363,7 @@ int main(int argc, const char ** argv) {
 	return 1;
     }
 
-    if ((displayDefault || kernelInfo) && (newKernelVersion || newKernelPath ||
+    if ((displayDefault || kernelInfo) && (newKernelPath ||
 			   removeKernelPath)) {
 	fprintf(stderr, _("grubby: --default-kernel and --info may not "
 			  "be used when adding or removing kernels\n"));
@@ -4576,7 +4606,7 @@ int main(int argc, const char ** argv) {
     if (addNewKernel(config, template, bootPrefix, newKernelPath, 
                      newKernelTitle, newKernelArgs, newKernelInitrd, 
                      (const char **)extraInitrds, extraInitrdCount,
-                     newMBKernel, newMBKernelArgs)) return 1;
+                     newMBKernel, newMBKernelArgs, newDevTreePath)) return 1;
     
 
     if (numEntries(config) == 0) {

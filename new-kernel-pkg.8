@@ -4,11 +4,11 @@ new-kernel-pkg \- tool to script kernel installation
 
 .SH SYNOPSIS
 \fBnew-kernel-pkg\fR [-v] [--mkinitrd] [--rminitrd] [--dracut]
-       [--initrdfile=\fIinitrd-image\fR [--depmod] [--rmmoddep]
+       [--initrdfile=\fIinitrd-image\fR] [--depmod] [--rmmoddep]
        [--kernel-args=\fIargs\fR] [--remove-args=\fIargs\fR]
        [--banner=\fIbanner\fR] [--multiboot=\fImultiboot\fR]
        [--mbargs=\fImbargs\fR] [--make-default] [--add-dracut-args]
-       [--add-plymouth-initrd] [--host-only]
+       [--add-plymouth-initrd] [--host-only] [--devtree=\fIdevicetree.dtb\fR]
        <--install | --remove | --update | --rpmposttrans> <kernel-version>
 
 .SH DESCRIPTION
@@ -28,6 +28,11 @@ Create a new initial ram filesystem image.
 .TP
 \fB-\-rminitrd\fR
 Remove an initial ram filesystem image.
+
+.TP
+\fB-\-devtree\fR=\fIdevicetree.dtb\fR
+Use \fIdevicetree.dtb\fR as the device tree file in place of any devicetree
+directive from the template stanza.
 
 .TP
 \fB-\-dracut\fR

@@ -7,6 +7,7 @@ grubby \- command line tool for configuring grub, lilo, elilo, yaboot and zipl
        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
        [--bootloader-probe] [--config-file \fIpath\fR] [--copy-default]
        [--debug] [--default-kernel] [--default-index] [--default-title]
+       [--devtree=\fIdevicetree.dtb\fR]
        [--grub] [--lilo] [--yaboot] [--silo] [--zipl]
        [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
        [--make-default] [-o path] [--version]
@@ -109,6 +110,11 @@ Display the numeric index of the current default boot entry and exit.
 .TP
 \fB-\-default-title\fR
 Display the title of the current default boot entry and exit.
+
+.TP
+\fB-\-devtree\fR=\fIpath\fR
+Use \fIpath\fR for device tree path in place of the path of any devicetree
+directive found in the template stanza.
 
 .TP
 \fB-\-elilo\fR

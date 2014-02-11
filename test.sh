@@ -460,6 +460,18 @@ if [ "$testgrub2" == "y" ]; then
     grub2Test grub2.5 add/g2-1.5 --add-kernel=/boot/new-kernel.img \
         --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
         --copy-default
+    grub2Test grub2.12 add/g2-1.12 \
+        --add-kernel=/boot/vmlinuz-2.6.38.8-32.fc15.x86_64 \
+        --title='Linux, with Fedora 2.6.38.8-32.fc15.x86_64' \
+        --devtree='/boot/dtb-2.6.38.8-32.fc15.x86_64/foobarbaz.dtb' \
+        --initrd=/boot/initramfs-2.6.38.8-32.fc15.x86_64.img \
+        --boot-filesystem=/boot/ --copy-default --efi
+    grub2Test grub2.13 add/g2-1.13 \
+        --add-kernel=/boot/vmlinuz-2.6.38.8-32.fc15.x86_64 \
+        --title='Linux, with Fedora 2.6.38.8-32.fc15.x86_64' \
+        --devtree='/boot/dtb-2.6.38.8-32.fc15.x86_64/foobarbaz.dtb' \
+        --initrd=/boot/initramfs-2.6.38.8-32.fc15.x86_64.img \
+        --boot-filesystem=/boot/ --copy-default --efi
 
     testing="GRUB2 add initrd"
     grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
