@@ -111,6 +111,7 @@ initrd=""
 dracut=""
 dracuthostonly=""
 initrdfile=""
+devtreefile=""
 moddep=""
 verbose=""
 makedefault=""
@@ -127,7 +128,7 @@ usage() {
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
     echo "       [--mbargs=mbargs] [--make-default] [--add-dracut-args]" >&2
     echo "       [--add-plymouth-initrd]" >&2
-    echo "       [--host-only]" >&2
+    echo "       [--host-only] [--devtree=<devicetree.dtb>]" >&2
     echo "       <--install | --remove | --update | --rpmposttrans> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -149,6 +150,12 @@ install() {
 	if [ -n "$addplymouthinitrd" ]; then
 	    INITRD="$INITRD --extra-initrd $bootPrefix/initrd-plymouth.img"
 	fi
+    fi
+
+    DEVTREE=""
+    if [ -f $devtreefile ]; then
+	[ -n "$verbose" ] && echo "found $devtreefile and using it with grubby"
+	DEVTREE="--devtree $devtreefile"
     fi
 
     # FIXME: is this a good heuristic to find out if we're on iSeries?
@@ -535,6 +542,15 @@ while [ $# -gt 0 ]; do
 
 	--rminitrd)
 	    initrd="remove"
+	    ;;
+
+	--devtree*)
+	    if [[ $1 == --devtree\=* ]]; then
+		devtreefile=${1#--devtreefile=}
+	    else
+		devtreefile=$2
+		shift
+	    fi
 	    ;;
 
 	--dracut)
