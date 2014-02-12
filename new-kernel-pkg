@@ -224,7 +224,7 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $grub2EfiConfig"
 
 	$grubby --grub2 -c $grub2EfiConfig --efi \
-	    --add-kernel=$kernelImage \
+	    --add-kernel=$kernelImage $DEVTREE \
 	    $INITRD --copy-default $makedefault --title "$title" \
 	    ${mbkernel:+--add-multiboot="$mbkernel"} \
 	    ${mbargs:+--mbargs="$mbargs"} \
