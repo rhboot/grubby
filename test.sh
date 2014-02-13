@@ -443,9 +443,20 @@ if [ "$testgrub2" == "y" ]; then
     grub2Test grub2.1 add/g2-1.1 --add-kernel=/boot/new-kernel.img \
         --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
         --copy-default
-    grub2Test grub2.1 add/g2-1.6 --add-kernel=/boot/new-kernel.img \
-        --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
-        --copy-default --efi
+    case $ARCH in
+        aarch64)
+            grub2Test grub2.1 add/g2-1.1 --add-kernel=/boot/new-kernel.img \
+                --title='title' \
+                --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+                --copy-default --efi
+            ;;
+        *)
+            grub2Test grub2.1 add/g2-1.6 --add-kernel=/boot/new-kernel.img \
+                --title='title' \
+                --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+                --copy-default --efi
+            ;;
+    esac
     grub2Test grub2.6 add/g2-1.7 --add-kernel=/boot/new-kernel.img \
         --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
         --copy-default --efi
