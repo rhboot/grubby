@@ -719,10 +719,17 @@ static enum lineType_e preferredLineType(enum lineType_e type,
 					 struct configFileInfo *cfi) {
     if (isEfi && cfi == &grub2ConfigType) {
 	switch (type) {
+#if defined(__aarch64__)
+	case LT_KERNEL:
+	    return LT_KERNEL;
+	case LT_INITRD:
+	    return LT_INITRD;
+#else
 	case LT_KERNEL:
 	    return LT_KERNEL_EFI;
 	case LT_INITRD:
 	    return LT_INITRD_EFI;
+#endif
 	default:
 	    return type;
 	}
