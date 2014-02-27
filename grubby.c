@@ -4163,21 +4163,6 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
     return 0;
 }
 
-static void traceback(int signum)
-{
-    void *array[40];
-    size_t size;
-
-    signal(SIGSEGV, SIG_DFL);
-    memset(array, '\0', sizeof (array));
-    size = backtrace(array, 40);
-
-    fprintf(stderr, "grubby received SIGSEGV!  Backtrace (%ld):\n",
-            (unsigned long)size);
-    backtrace_symbols_fd(array, size, STDERR_FILENO);
-    exit(1);
-}
-
 int main(int argc, const char ** argv) {
     poptContext optCon;
     const char * grubConfig = NULL;
@@ -4315,8 +4300,6 @@ int main(int argc, const char ** argv) {
     };
 
     useextlinuxmenu=0;
-
-    signal(SIGSEGV, traceback);
 
     int i = 0;
     for (int j = 1; j < argc; j++)
