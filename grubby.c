@@ -60,6 +60,12 @@ int debug = 0;	/* Currently just for template debugging */
 
 int isEfi = 0;
 
+#if defined(__arch64__)
+#define isEfiOnly	1
+#else
+#define isEfiOnly	0
+#endif
+
 char *saved_command_line = NULL;
 
 /* comments get lumped in with indention */
@@ -719,17 +725,10 @@ static enum lineType_e preferredLineType(enum lineType_e type,
 					 struct configFileInfo *cfi) {
     if (isEfi && cfi == &grub2ConfigType) {
 	switch (type) {
-#if defined(__aarch64__)
 	case LT_KERNEL:
-	    return LT_KERNEL;
+	    return isEfiOnly ? LT_KERNEL : LT_KERNEL_EFI;
 	case LT_INITRD:
-	    return LT_INITRD;
-#else
-	case LT_KERNEL:
-	    return LT_KERNEL_EFI;
-	case LT_INITRD:
-	    return LT_INITRD_EFI;
-#endif
+	    return isEfiOnly ? LT_INITRD : LT_INITRD_EFI;
 	default:
 	    return type;
 	}
