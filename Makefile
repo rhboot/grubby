@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-VERSION=8.31
+VERSION=8.32
 
 TARGETS = grubby
 OBJECTS = grubby.o log.o
