@@ -60,7 +60,7 @@ int debug = 0;	/* Currently just for template debugging */
 
 int isEfi = 0;
 
-#if defined(__arch64__)
+#if defined(__aarch64__)
 #define isEfiOnly	1
 #else
 #define isEfiOnly	0
