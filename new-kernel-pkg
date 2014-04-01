@@ -153,7 +153,7 @@ install() {
     fi
 
     DEVTREE=""
-    if [ "x$devtreefile" != "x" -a -f $devtreefile ]; then
+    if [ "x$devtreefile" != "x" -a -f "$devtreefile" ]; then
 	[ -n "$verbose" ] && echo "found $devtreefile and using it with grubby"
 	DEVTREE="--devtree $devtreefile"
     fi
