@@ -2275,6 +2275,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     struct singleLine * line;
     char * root = NULL;
     int i;
+    int j;
 
     printf("index=%d\n", index);
 
@@ -2365,6 +2366,20 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
 	title = grub2ExtractTitle(line);
 	if (title)
 	    printf("title=%s\n", title);
+    }
+
+    for (j = 0, line = entry->lines; line; line = line->next) {
+	if ((line->type & LT_MBMODULE) && line->numElements >= 2) {
+	    if (!strncmp(prefix, line->elements[1].item, strlen(prefix)))
+		printf("mbmodule%d=", j);
+	    else
+		printf("mbmodule%d=%s", j, prefix);
+
+	    for (i = 1; i < line->numElements; i++)
+		printf("%s%s", line->elements[i].item, line->elements[i].indent);
+	    printf("\n");
+	    j++;
+	}
     }
 }
 
