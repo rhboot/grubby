@@ -2220,7 +2220,7 @@ int addMBInitrd(struct grubConfig * cfg, const char *newMBKernel,
 
     if (!image) return 0;
 
-    for (; (entry = findEntryByPath(cfg, newMBKernel, prefix, &index)); index++) {
+    for (; (entry = findEntryByPath(cfg, image, prefix, &index)); index++) {
         kernelLine = getLineByType(LT_MBMODULE, entry->lines);
         if (!kernelLine) continue;
 
