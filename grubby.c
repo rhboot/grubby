@@ -4046,6 +4046,13 @@ int addNewKernel(struct grubConfig * config, struct singleEntry * template,
 	}
     } 
 
+    struct singleLine *endLine = NULL;
+    endLine = getLineByType(LT_ENTRY_END, new->lines);
+    if (endLine) {
+	    removeLine(new, endLine);
+	    needs |= NEED_END;
+    }
+
     /* add the remainder of the lines, i.e. those that either
      * weren't present in the template, or in the case of no template,
      * all the lines following the entryStart.
