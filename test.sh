@@ -682,6 +682,46 @@ if [ "$testgrub2" == "y" ]; then
             --initrd /boot/initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img \
             --copy-default --title "Fedora 21 Rescue" --args=root=/fooooo \
             --remove-kernel=wtf --boot-filesystem=/boot/
+
+        testing="GRUB2 add kernel with boot on btrfs subvol"
+        grub2Test grub2.20 add/g2-1.20 --add-kernel=/boot/new-kernel.img \
+            --title='title' \
+            --boot-filesystem=/boot/ \
+            --copy-default \
+            --mounts='test/grub2-support_files/g2.20-mounts'
+
+        testing="GRUB2 add initrd with boot on btrfs subvol"
+        grub2Test grub2.21 add/g2-1.21 --update-kernel=/boot/new-kernel.img \
+            --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
+            --mounts='test/grub2-support_files/g2.21-mounts'
+
+        testing="GRUB2 add kernel with rootfs on btrfs subvol and boot directory"
+        grub2Test grub2.22 add/g2-1.22 --add-kernel=/boot/new-kernel.img \
+            --title='title' \
+            --boot-filesystem= \
+            --copy-default \
+            --mounts='test/grub2-support_files/g2.22-mounts'
+
+        testing="GRUB2 add initrd with rootfs on btrfs subvol and boot directory"
+        grub2Test grub2.23 add/g2-1.23 --update-kernel=/boot/new-kernel.img \
+            --initrd=/boot/new-initrd --boot-filesystem= \
+            --mounts='test/grub2-support_files/g2.23-mounts'
+
+        testing="GRUB2 add kernel and initrd with boot on btrfs subvol"
+        grub2Test grub2.24 add/g2-1.24 --add-kernel=/boot/new-kernel.img \
+            --title='title' \
+            --initrd=/boot/new-initrd \
+            --boot-filesystem=/boot/ \
+            --copy-default \
+            --mounts='test/grub2-support_files/g2.24-mounts'
+
+        testing="GRUB2 add kernel and initrd with rootfs on btrfs subvol and boot directory"
+        grub2Test grub2.25 add/g2-1.25 --add-kernel=/boot/new-kernel.img \
+            --title='title' \
+            --initrd=/boot/new-initrd \
+            --boot-filesystem= \
+            --copy-default \
+            --mounts='test/grub2-support_files/g2.25-mounts'
     fi
 fi
 
