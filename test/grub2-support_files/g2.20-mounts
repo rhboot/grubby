@@ -1,0 +1,2 @@
+/dev/sda	/	btrfs	subvol=/root6,defaults	0 0
+/dev/sda	/boot	btrfs	subvol=/boot6,defaults	0 0
