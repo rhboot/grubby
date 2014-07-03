@@ -1959,11 +1959,13 @@ struct singleEntry * findEntryByPath(struct grubConfig * config,
 	}
 
 	indexVars[i + 1] = -1;
-	
+
 	i = 0;
 	if (index) {
-	    while (i < *index) i++;
-	    if (indexVars[i] == -1) return NULL;
+	    while (i < *index) {
+		i++;
+		if (indexVars[i] == -1) return NULL;
+	    }
 	}
 
 	entry = findEntryByIndex(config, indexVars[i]);
