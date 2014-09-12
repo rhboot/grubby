@@ -19,16 +19,18 @@ grubby \- command line tool for configuring grub, lilo, elilo, yaboot and zipl
 
 .SH DESCRIPTION
 \fBgrubby\fR is a command line tool for updating and displaying information
-about the configuration files for the \fBgrub\fR, \fBlilo\fR, \fBelilo\fR 
+about the configuration files for the \fBgrub\fR, \fBlilo\fR, \fBelilo\fR
 (ia64), \fByaboot\fR (powerpc) and \fBzipl\fR (s390) boot loaders. It
 is primarily designed to be used from scripts which install new
 kernels and need to find information about the current boot environment.
 
-On Intel x86 platforms, \fBgrub\fR is the default bootloader and the
-configuration file is in \fB/boot/grub/grub.conf\fR. On Intel ia64 platforms, 
-\fBelilo\fR mode is used and the default location for the configuration file 
-is \fB/boot/grub/grub.conf\fR. On PowerPC platforms, \fByaboot\fR parsing
-is used and the configuration file should be in \fB/etc/yaboot.conf\fR.
+On BIOS-based Intel x86 platforms, \fBgrub2\fR is the default bootloader and
+the configuration file is in \fB/boot/grub2/grub.cfg\fR.  On UEFI-based Intel
+x86 platforms, \fBgrub2\fR is the default bootloader, and the configuration
+file is in \fB/boot/efi/EFI/redhat/grub.cfg\fR.  On Intel ia64 platforms,
+\fBelilo\fR mode is used and the default location for the configuration file
+is \fB/boot/efi/EFI/redhat/elilo.conf\fR. On PowerPC platforms, \fByaboot\fR
+parsing is used and the configuration file should be in \fB/etc/yaboot.conf\fR.
 
 There are a number of ways to specify the kernel used for \fB-\-info\fR,
 \fB-\-remove-kernel\fR, and \fB-\-update-kernel\fR. Specificying \fBDEFAULT\fR
