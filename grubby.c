@@ -2119,8 +2119,12 @@ struct singleEntry * findTemplate(struct grubConfig * cfg, const char * prefix,
 		} else {
 		    entry = findEntryByTitle(cfg, defTitle, &index);
 		}
-		if (entry)
+		if (entry && suitableImage(entry, prefix, skipRemoved, flags)) {
 		    cfg->defaultImage = index;
+		    if (indexPtr)
+			*indexPtr = index;
+		    return entry;
+		}
 	    }
 	}
     } else if (cfg->defaultImage > -1) {
