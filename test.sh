@@ -163,102 +163,6 @@ for b in $(./grubby --help | \
     eval "${b}DisplayTest() { [[ \"$b\" == \$opt_bootloader ]] && oneDisplayTest --$b \"\$@\"; }"
 done
 
-grub2BlsTest() {
-    declare blsdir=$(mktemp -d) cmpdir=$(mktemp -d)
-
-    declare blspairs=""
-    while [ -n "$1" ]; do
-        if [ "$1" == "--blspair" ]; then
-            blsin=$(echo $2 | sed 's/\(.*\),.*/\1/')
-            blsout=$(echo $2 | sed 's/[^,]*,\(.*\)/\1/')
-            [ -n "$blsin" ] && cp "test/grub2-support_files/$blsin" ${blsdir}/
-            [ -n "$blsout" ] && cp "test/grub2-support_files/$blsout" ${cmpdir}/
-            blspairs="${blspairs} $2"
-            shift 2
-        else
-            break
-        fi
-    done
-
-    typeset mode=$1 cfg=test/$2 correct=test/results/$3
-    shift 3
-
-    local ENV_FILE=""
-    if [ "$mode" == "--grub2" ]; then
-        ENV_FILE="test/grub2-support_files/env_temp"
-        if [ "$1" == "--env" ]; then
-            cp "test/grub2-support_files/$2" "$ENV_FILE"
-            shift 2
-        else
-            cp "test/grub2-support_files/grubenv.0" "$ENV_FILE"
-        fi
-        ENV_FILE="--env=$ENV_FILE"
-    fi
-
-    declare outfile=$(mktemp)
-    echo "$testing ... $mode bls $cfg $correct"
-    runme=( ./grubby "$mode" --bad-image-okay $ENV_FILE -c "$cfg" -o - --blsdir="${blsdir}" "$@" )
-    declare -i old_fail=$fail
-    if "${runme[@]}" 2>&1 | cmp "$correct" > /dev/null; then
-	(( pass++ ))
-	if $opt_verbose; then
-	    echo -------------------------------------------------------------
-	    echo -n "PASS: "
-	    printf "%q " "${runme[@]}"; echo
-	    "${runme[@]}" 2>&1 | diff -U30 "$cfg" -
-	    echo
-	fi
-    else
-	(( fail++ ))
-	echo -------------------------------------------------------------
-	echo -n "FAIL: "
-	printf "%q " "${runme[@]}"; echo
-	"${runme[@]}" 2>&1 | diff -U30 "$correct" -
-	echo
-    fi
-
-    for pair in ${blspairs} ; do
-        blsin=$(echo $pair | sed 's/\(.*\),.*/\1/')
-        blsout=$(echo $pair | sed 's/[^,]*,\(.*\)/\1/')
-
-        if [ -z "${blsout}" -a -f ${blsdir}/${blsin} ]; then
-            (( fail++ ))
-            echo -------------------------------------------------------------
-            echo -n "FAIL: "
-            printf "%q " "${runme[@]}"; echo
-            diff -U30 /dev/null ${blsdir}/${blsin}
-        elif [ -n "${blsout}" ] && ! cmp ${blsdir}/${blsout} ${cmpdir}/${blsout} >/dev/null ; then
-            (( fail++ ))
-            echo -------------------------------------------------------------
-            echo -n "FAIL: "
-            printf "%q " "${runme[@]}"; echo
-            diff -U30 "${cmpdir}/${blsout}" "${blsdir}/${blsout}"
-        else
-            (( pass++ ))
-            if $opt_verbose; then
-                echo -------------------------------------------------------------
-                echo -n "PASS: "
-                printf "%q " "${runme[@]}"; echo
-                diff -U30 "${cmpdir}/${blsout}" "${blsdir}/${blsout}"
-            fi
-        fi
-    done
-
-    if [ $old_fail -eq $fail ]; then
-	(( pass++ ))
-	if $opt_verbose; then
-	    echo -------------------------------------------------------------
-	    echo -n "PASS: "
-	    printf "%q " "${runme[@]}"; echo
-	    "${runme[@]}" 2>&1 | diff -U30 "$cfg" -
-	    echo
-	fi
-    fi
-
-    rm -rvf ${blsdir}/ ${cmpdir}/
-}
-
-
 #----------------------------------------------------------------------
 # Main
 #----------------------------------------------------------------------
@@ -628,15 +532,6 @@ if [ "$testgrub2" == "y" ]; then
     testing="GRUB2 add initrd"
     grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
         --initrd=/boot/new-initrd --boot-filesystem=/boot/
-
-    testing="GRUB2 add bls kernel+initrd"
-    grub2BlsTest \
-        --blspair 6a9857a393724b7a981ebb5b8495b9ea-3.8.0-2.fc19.x86_64.conf,6a9857a393724b7a981ebb5b8495b9ea-3.8.0-2.fc19.x86_64.conf \
-        --blspair ,6a9857a393724b7a981ebb5b8495b9ea-3.8.1-2.fc19.x86_64.conf \
-        --grub2 grub2.15 grub2.15 \
-        --add-kernel=/boot/new-kernel.img \
-        --title=title --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
-        --copy-default
 
     testing="GRUB2 display default index"
     grub2DisplayTest grub2.1 defaultindex/0 --default-index
