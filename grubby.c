@@ -3282,7 +3282,8 @@ int updateImage(struct grubConfig * cfg, const char * image,
 }
 
 int addMBInitrd(struct grubConfig * cfg, const char *newMBKernel,
-		 const char * image, const char * prefix, const char * initrd) {
+		 const char * image, const char * prefix, const char * initrd,
+		 const char * title) {
     struct singleEntry * entry;
     struct singleLine * line, * kernelLine, *endLine = NULL;
     int index = 0;
@@ -3292,6 +3293,20 @@ int addMBInitrd(struct grubConfig * cfg, const char *newMBKernel,
     for (; (entry = findEntryByPath(cfg, newMBKernel, prefix, &index)); index++) {
         kernelLine = getLineByType(LT_MBMODULE, entry->lines);
         if (!kernelLine) continue;
+
+	/* if title is supplied, the entry's title must match it. */
+	if (title) {
+	    line = getLineByType(LT_TITLE|LT_MENUENTRY, entry->lines);
+	    char *linetitle = extractTitle(line);
+
+	    if (!linetitle)
+		continue;
+	    if (strcmp(title, linetitle)) {
+		free(linetitle);
+		continue;
+	    }
+	    free(linetitle);
+	}
 
         if (prefix) {
             int prefixLen = strlen(prefix);
@@ -3318,7 +3333,7 @@ int addMBInitrd(struct grubConfig * cfg, const char *newMBKernel,
 }
 
 int updateInitrd(struct grubConfig * cfg, const char * image,
-                 const char * prefix, const char * initrd) {
+                 const char * prefix, const char * initrd, const char * title) {
     struct singleEntry * entry;
     struct singleLine * line, * kernelLine, *endLine = NULL;
     int index = 0;
@@ -3328,6 +3343,20 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
     for (; (entry = findEntryByPath(cfg, image, prefix, &index)); index++) {
         kernelLine = getLineByType(LT_KERNEL|LT_KERNEL_EFI|LT_KERNEL_16, entry->lines);
         if (!kernelLine) continue;
+
+	/* if title is supplied, the entry's title must match it. */
+	if (title) {
+	    line = getLineByType(LT_TITLE|LT_MENUENTRY, entry->lines);
+	    char *linetitle = extractTitle(line);
+
+	    if (!linetitle)
+		continue;
+	    if (strcmp(title, linetitle)) {
+		free(linetitle);
+		continue;
+	    }
+	    free(linetitle);
+	}
 
         line = getLineByType(LT_INITRD|LT_INITRD_EFI|LT_INITRD_16, entry->lines);
         if (line)
@@ -4335,7 +4364,7 @@ int main(int argc, const char ** argv) {
     if (newKernelPath && !newKernelTitle) {
 	fprintf(stderr, _("grubby: kernel title must be specified\n"));
 	return 1;
-    } else if (!newKernelPath && (newKernelTitle  || copyDefault ||
+    } else if (!newKernelPath && (copyDefault ||
 				  (newKernelInitrd && !updateKernelPath)||
 				  makeDefault || extraInitrdCount > 0)) {
 	fprintf(stderr, _("grubby: kernel path expected\n"));
@@ -4557,11 +4586,12 @@ int main(int argc, const char ** argv) {
     if (updateKernelPath && newKernelInitrd) {
 	    if (newMBKernel) {
 		    if (addMBInitrd(config, newMBKernel, updateKernelPath,
-					bootPrefix, newKernelInitrd))
+					bootPrefix, newKernelInitrd,
+					newKernelTitle))
 			    return 1;
 	    } else {
 		    if (updateInitrd(config, updateKernelPath, bootPrefix,
-					newKernelInitrd))
+					newKernelInitrd, newKernelTitle))
 			return 1;
 	    }
     }
