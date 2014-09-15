@@ -50,6 +50,7 @@ grubConfig=""
 grub2Config=""
 grub2EfiConfig=""
 extlinuxConfig=""
+ubootScript="/boot/boot.scr"
 
 ARCH=$(uname -m)
 
@@ -120,6 +121,7 @@ mbkernel="$HYPERVISOR"
 mbargs="$HYPERVISOR_ARGS"
 adddracutargs=""
 addplymouthinitrd=""
+DEBUGARG="systemd.debug"
 
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd] [--dracut]" >&2
@@ -134,6 +136,41 @@ usage() {
     exit 1
 }
 
+rungrubby() {
+	if [ "$1" == "--debug" ]; then
+		[ "$MAKEDEBUG" != "yes" ] && return 0
+		[ -n "$verbose" ] && echo "- First, making a debug entry."
+		declare -x debugtitle=" with debugging"
+		declare -x debugargs="$DEBUGARG"
+		shift
+	else
+		[ -n "$verbose" ] && echo "- Making a normal entry."
+	fi
+	$(eval $grubby $@)
+	export -n debugargs
+	export -n debugtitle
+	unset debugargs
+	unset debugtitle
+}
+
+set_title() {
+    if [ -n "$banner" ]; then
+	if [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
+	    title=$(echo $banner | sed 's/ /_/g')
+	else
+	    title="$banner ($version)"
+	fi
+    elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
+	title=$(echo $version | sed 's/ /_/g')
+    elif [ -f /etc/os-release ]; then
+	. /etc/os-release
+	title="$NAME ($version) $VERSION"
+    elif [ -f /etc/redhat-release ]; then
+	title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
+    else
+	title="Red Hat Linux ($version)"
+    fi
+}
 
 install() {
     # XXX kernel should be able to be specified also (or work right on ia64)
@@ -184,57 +221,49 @@ install() {
 	cfgLilo=""
     fi
 
-
-    if [ -n "$banner" ]; then
-	if [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
-	    title=$(echo $banner | sed 's/ /_/g')
-	else
-	    title="$banner ($version)"
-	fi
-    elif [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
-	title=$(echo $version | sed 's/ /_/g')
-    elif [ -f /etc/os-release ]; then
-	. /etc/os-release
-	title="$NAME ($version) $VERSION"
-    elif [ -f /etc/redhat-release ]; then
-	title="$(sed 's/ release.*$//' < /etc/redhat-release) ($version)"
-    else
-	title="Red Hat Linux ($version)"
-    fi
-
+    set_title
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grubConfig"
 
-	$grubby --grub -c $grubConfig \
-	    --add-kernel=$kernelImage \
-	    $INITRD --copy-default $makedefault --title "$title" \
-	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
-	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
+	ARGS="--grub -c $grubConfig --add-kernel=$kernelImage $INITRD \
+		${mbkernel:+--add-multiboot=\"$mbkernel\"} \
+		${mbargs:+--mbargs=\"$mbargs\"} \
+		--title=\"$title\$debugtitle\" --copy-default \
+		--args=\"root=$rootdevice $kernargs \$debugargs\" \
+		--remove-kernel=\"TITLE=$title\$debugtitle\""
+
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS} $makedefault
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby for grub 0.97"
     fi
     if [ -n "$cfgGrub2" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grub2Config"
 
-	$grubby --grub2 -c $grub2Config \
-	    --add-kernel=$kernelImage \
-	    $INITRD --copy-default $makedefault --title "$title" \
-	    ${mbkernel:+--add-multiboot="$mbkernel"} \
-	    ${mbargs:+--mbargs="$mbargs"} \
-	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
+	ARGS="--grub2 -c $grub2Config --add-kernel=$kernelImage $INITRD \
+		--copy-default --title \"$title\$debugtitle\" \
+		${mbkernel:+--add-multiboot=\"$mbkernel\"} \
+		${mbargs:+--mbargs=\"$mbargs\"} \
+		--args=\"root=$rootdevice $kernargs \$debugargs\" \
+		--remove-kernel=\"TITLE=$title\$debugtitle\""
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS} $makedefault
     else
 	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby for grub 2"
     fi
     if [ -n "$cfgGrub2Efi" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $grub2EfiConfig"
 
-	$grubby --grub2 -c $grub2EfiConfig --efi \
-	    --add-kernel=$kernelImage $DEVTREE \
-	    $INITRD --copy-default $makedefault --title "$title" \
-	    ${mbkernel:+--add-multiboot="$mbkernel"} \
-	    ${mbargs:+--mbargs="$mbargs"} \
-	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
+	ARGS="--grub2 -c $grub2EfiConfig --efi \
+		--add-kernel=$kernelImage $DEVTREE $INITRD \
+		--copy-default --title \"$title\$debugtitle\" \
+		${mbkernel:+--add-multiboot=\"$mbkernel\"} \
+		${mbargs:+--mbargs=\"$mbargs\"} \
+		--args=\"root=$rootdevice $kernargs \$debugargs\" \
+		--remove-kernel=\"TITLE=$title\$debugtitle\""
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS} $makedefault
     else
 	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby for grub 2 with UEFI"
     fi
@@ -242,12 +271,15 @@ install() {
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $liloConfig"
 
-	$grubby --add-kernel=$kernelImage $INITRD \
-		--copy-default $makedefault --title "$title" \
-		${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
-		--args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$version" \
-		--$liloFlag
+	ARGS="--$liloFlag --add-kernel=$kernelImage $INITRD \
+		--copy-default --title \"$title\$debugtitle\" \
+		${mbkernel:+--add-multiboot=\"$mbkernel\"} \
+		${mbargs:+--mbargs=\"$mbargs\"} \
+		--args=\"root=$rootdevice $kernargs \$debugargs\" \
+		--remove-kernel=\"TITLE=$version\""
 
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS} $makedefault
 	if [ -n "$runLilo" ]; then
 	    [ -n "$verbose" ] && echo "running $lilo"
 	    if [ ! -x $lilo ] ; then
@@ -263,11 +295,15 @@ install() {
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $extlinuxConfig"
 
-	$grubby --extlinux -c $extlinuxConfig \
-	    --add-kernel=$kernelImage \
-	    $INITRD --copy-default $makedefault --title "$title" \
-	    ${mbkernel:+--add-multiboot="$mbkernel"} ${mbargs:+--mbargs="$mbargs"} \
-	    --args="root=$rootdevice $kernargs" --remove-kernel="TITLE=$title"
+	ARGS="--extlinux -c $extlinuxConfig --add-kernel=$kernelImage \
+	    $INITRD --copy-default --title \"$title\$debugtitle\" \
+	    ${mbkernel:+--add-multiboot=\"$mbkernel\"} \
+	    ${mbargs:+--mbargs=\"$mbargs\"} \
+	    --args=\"root=$rootdevice $kernargs \$debugargs\" \
+	    --remove-kernel=\"TITLE=$title\$debugtitle\""
+
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS} $makedefault
     else
 	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby for extlinux"
     fi
@@ -401,6 +437,8 @@ update() {
 	return
     fi
 
+    set_title
+
     INITRD=""
     if [ -f $initrdfile ]; then
 	[ -n "$verbose" ] && echo "found $initrdfile and using it with grubby"
@@ -413,45 +451,53 @@ update() {
 
     if [ -n "$cfgGrub" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grubConfig"
-	$grubby --grub -c $grubConfig \
-	    --update-kernel=$kernelImage \
-	    $INITRD \
-	    ${kernargs:+--args="$kernargs"} \
-	    ${removeargs:+--remove-args="$removeargs"} \
-	    ${mbkernel:+--add-multiboot="$mbkernel"}
+	ARGS="--grub -c $grubConfig --update-kernel=$kernelImage $INITRD \
+		${kernargs:+--args=\"$kernargs\"} \
+		${removeargs:+--remove-args=\"$removeargs\"} \
+		${mbkernel:+--add-multiboot=\"$mbkernel\"} \
+		--title=\"$title\$debugtitle\""
+
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
 
     if [ -n "$cfgGrub2" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grub2Config"
-	$grubby --grub2 -c $grub2Config \
-	    --update-kernel=$kernelImage \
-	    $INITRD \
-	    ${kernargs:+--args="$kernargs"} \
-	    ${removeargs:+--remove-args="$removeargs"}
+	ARGS="--grub2 -c $grub2Config --update-kernel=$kernelImage $INITRD \
+		${kernargs:+--args=\"$kernargs\"} \
+		${removeargs:+--remove-args=\"$removeargs\"} \
+		--title=\"$title\$debugtitle\""
+
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby"
     fi
 
     if [ -n "$cfgGrub2Efi" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $grub2EfiConfig"
-	$grubby --grub2 -c $grub2EfiConfig --efi \
-	    --update-kernel=$kernelImage \
-	    $INITRD \
-	    ${kernargs:+--args="$kernargs"} \
-	    ${removeargs:+--remove-args="$removeargs"}
+	ARGS="--grub2 -c $grub2EfiConfig --efi --update-kernel=$kernelImage \
+		$INITRD ${kernargs:+--args=\"$kernargs\"} \
+		${removeargs:+--remove-args=\"$removeargs\"} \
+		--title=\"$title\$debugtitle\""
+
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby"
     fi
 
     if [ -n "$cfgLilo" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $liloConfig"
-	$grubby --update-kernel=$kernelImage \
-	    $INITRD \
-	    ${kernargs:+--args="$kernargs"} \
-	    ${removeargs:+--remove-args="$removeargs"}	\
-		     --$liloFlag
+	ARGS="--$liloFlag --update-kernel=$kernelImage $INITRD \
+		${kernargs:+--args=\"$kernargs\"} \
+		${removeargs:+--remove-args=\"$removeargs\"} \
+		--title=\"$title\$debugtitle\""
+
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS}
 
 	if [ -n "$runLilo" ]; then
 	    [ -n "$verbose" ] && echo "running $lilo"
@@ -497,11 +543,13 @@ update() {
 
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $extlinuxConfig"
-	$grubby --extlinux -c $extlinuxConfig \
-	    --update-kernel=$kernelImage \
-	    $INITRD \
-	    ${kernargs:+--args="$kernargs"} \
-	    ${removeargs:+--remove-args="$removeargs"}
+	ARGS="--extlinux -c $extlinuxConfig --update-kernel=$kernelImage \
+		$INITRD ${kernargs:+--args=\"$kernargs\"} \
+		${removeargs:+--remove-args=\"$removeargs\"} \
+		--title=\"$title\$debugtitle\""
+
+	rungrubby --debug ${ARGS}
+	rungrubby ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby"
     fi
