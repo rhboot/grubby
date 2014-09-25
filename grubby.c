@@ -2369,9 +2369,11 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     } else {
 	char * title;
 	line = getLineByType(LT_MENUENTRY, entry->lines);
-	title = grub2ExtractTitle(line);
-	if (title)
-	    printf("title=%s\n", title);
+	if (!line) {
+	    title = grub2ExtractTitle(line);
+	    if (title)
+		printf("title=%s\n", title);
+	}
     }
 
     for (j = 0, line = entry->lines; line; line = line->next) {
@@ -3322,9 +3324,13 @@ int addMBInitrd(struct grubConfig * cfg, const char *newMBKernel,
 
 	/* if title is supplied, the entry's title must match it. */
 	if (title) {
-	    line = getLineByType(LT_TITLE|LT_MENUENTRY, entry->lines);
-	    char *linetitle = extractTitle(line);
+	    char *linetitle;
 
+	    line = getLineByType(LT_TITLE|LT_MENUENTRY, entry->lines);
+	    if (!line)
+		continue;
+
+	    linetitle = extractTitle(line);
 	    if (!linetitle)
 		continue;
 	    if (strcmp(title, linetitle)) {
@@ -3372,9 +3378,13 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
 
 	/* if title is supplied, the entry's title must match it. */
 	if (title) {
-	    line = getLineByType(LT_TITLE|LT_MENUENTRY, entry->lines);
-	    char *linetitle = extractTitle(line);
+	    char *linetitle;
 
+	    line = getLineByType(LT_TITLE|LT_MENUENTRY, entry->lines);
+	    if (!line)
+		continue;
+
+	    linetitle = extractTitle(line);
 	    if (!linetitle)
 		continue;
 	    if (strcmp(title, linetitle)) {
