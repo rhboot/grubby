@@ -36,3 +36,8 @@
 # default initrd uInitrd file name
 #UBOOT_UINITRD=uInitrd
 
+# defualt for platform shipping an onboard dtb.
+#SHIPSDTB=no
+
+# option to tell new-kernel-pkg a specific dtb file to load in extlinux.conf
+#dtbfile=foo.dtb

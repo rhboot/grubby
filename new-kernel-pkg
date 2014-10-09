@@ -809,10 +809,13 @@ fi
 [ -n "$verbose" ] && echo "initrdfile is $initrdfile"
 
 if [[ ${ARCH} =~ armv[5|7].*l ]]; then
-    if [ -d "$bootPrefix/dtb-$version/" ]; then
-	devtreedir="$bootPrefix/dtb-$version/"
-	if [ -n "$dtbfile" -a -f "$devtreedir/$dtbfile" ]; then
-	    devtreefile="$devtreedir/$dtbfile"
+    if [ -z "$SHIPSDTB" -o "$SHIPSDTB" != "yes" ]; then
+	if [ -n "$dtbfile" -a -f "$bootPrefix/dtb-$version/$dtbfile" ]; then
+	    devtreefile="$bootPrefix/dtb-$version/$dtbfile"
+	    [ -n "$verbose" ] && echo "devtreefile is $devtreefile"
+	elif [ -d "$bootPrefix/dtb-$version/" ]; then
+	    devtreedir="$bootPrefix/dtb-$version/"
+	    [ -n "$verbose" ] && echo "devtreedir is $devtreedir"
 	fi
     fi
 fi
