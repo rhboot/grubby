@@ -581,6 +581,7 @@ struct keywordTypes extlinuxKeywords[] = {
     { "initrd",	    LT_INITRD,      ' ',	',' },
     { "append",	    LT_KERNELARGS,  ' ' },
     { "prompt",     LT_UNKNOWN,     ' ' },
+    { "fdt",        LT_DEVTREE,     ' ' },
     { NULL,	    0, 0 },
 };
 int useextlinuxmenu;

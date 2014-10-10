@@ -642,18 +642,29 @@ ziplTest zipl.1 add/z1.1 --add-kernel=/boot/new-kernel.img --title test
 ziplTest zipl.1 add/z1.2 --add-kernel=/boot/new-kernel.img --title test --copy-default
 
 testing="Extlinux add kernel"
-extlinuxTest extlinux.1 add/extlinux1.1 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/
-extlinuxTest extlinux.1 add/extlinux1.2 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/boot
-extlinuxTest extlinux.1 add/extlinux1.3 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/ --copy-default
-extlinuxTest extlinux.1 add/extlinux1.4 --add-kernel=/boot/new-kernel.img --title='title' \
-    --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default
-extlinuxTest extlinux.2 add/extlinux2.1 --add-kernel=/boot/vmlinuz-3.12.0-2.fc21.i686	    \
-    --initrd=/boot/initrd-3.12.0-2.fc21.i686-new.img --boot-filesystem=/boot --copy-default \
-    --title="Fedora (3.12.0-2.fc21.i686) 20 (Heisenbug)"					    \
+extlinuxTest extlinux.1 add/extlinux1.1 --add-kernel=/boot/new-kernel.img \
+    --title='title' --initrd=/boot/new-initrd --boot-filesystem=/
+extlinuxTest extlinux.1 add/extlinux1.2 --add-kernel=/boot/new-kernel.img \
+    --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot
+extlinuxTest extlinux.1 add/extlinux1.3 --add-kernel=/boot/new-kernel.img \
+    --title='title' --initrd=/boot/new-initrd --boot-filesystem=/ \
+    --copy-default
+extlinuxTest extlinux.1 add/extlinux1.4 --add-kernel=/boot/new-kernel.img \
+    --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot \
+    --copy-default
+extlinuxTest extlinux.2 add/extlinux2.1 \
+    --add-kernel=/boot/vmlinuz-3.12.0-2.fc21.i686 \
+    --initrd=/boot/initrd-3.12.0-2.fc21.i686-new.img \
+    --boot-filesystem=/boot --copy-default \
+    --title="Fedora (3.12.0-2.fc21.i686) 20 (Heisenbug)" \
     --remove-kernel="TITLE=Fedora (3.12.0-2.fc21.i686) 20 (Heisenbug)"
+extlinuxTest extlinux.5 add/extlinux5.1 \
+    --add-kernel=/boot/vmlinuz-3.15.0-0.rc1.git4.1.fc21.armv7hl \
+    --devtree='/boot/dtb-3.15.0-0.rc1.git4.1.fc21.armv7hl/imx6q-cubox-i.dtb' \
+    --initrd=/boot/initramfs-3.15.0-0.rc1.git4.1.fc21.armv7hl.img \
+    --boot-filesystem=/boot --copy-default \
+    --title="Fedora (3.15.0-0.rc1.git4.1.fc21.armv7hl) 21 (Rawhide)" \
+    --remove-kernel="TITLE=Fedora (3.12.0-0.fc21.armv7hl) 21 (Rawhide)"
 
 testing="LILO long titles"
 liloTest lilo.1 longtitle/l1.1 --add-kernel=/boot/new-kernel.img \

@@ -1,0 +1,21 @@
+ui menu.c32
+
+menu hidden
+timeout 50
+totaltimeout 9000
+
+prompt 10
+default Fedora (3.15.0-0.rc1.git4.1.fc21.armv7hl) 21 (Rawhide)
+
+label Fedora (3.15.0-0.rc1.git4.1.fc21.armv7hl) 21 (Rawhide)
+kernel /vmlinuz-3.15.0-0.rc1.git4.1.fc21.armv7hl
+fdt    /dtb-3.15.0-0.rc1.git4.1.fc21.armv7hl/imx6q-cubox-i.dtb
+append console=ttymxc0,115200 root=UUID=7ee85ed8-de4a-4779-8658-2daed0d35e97 ro rhgb quiet LANG=en_US.UTF-8
+initrd /initramfs-3.15.0-0.rc1.git4.1.fc21.armv7hl.img
+
+label Fedora (3.15.0-0.rc1.git0.1.fc21.armv7hl) 21 (Rawhide)
+kernel /vmlinuz-3.15.0-0.rc1.git0.1.fc21.armv7hl
+fdt    /dtb-3.15.0-0.rc1.git0.1.fc21.armv7hl/imx6q-cubox-i.dtb
+append console=ttymxc0,115200 root=UUID=7ee85ed8-de4a-4779-8658-2daed0d35e97 ro rhgb quiet LANG=en_US.UTF-8
+initrd /initramfs-3.15.0-0.rc1.git0.1.fc21.armv7hl.img
+
