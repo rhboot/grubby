@@ -665,6 +665,13 @@ extlinuxTest extlinux.5 add/extlinux5.1 \
     --boot-filesystem=/boot --copy-default \
     --title="Fedora (3.15.0-0.rc1.git4.1.fc21.armv7hl) 21 (Rawhide)" \
     --remove-kernel="TITLE=Fedora (3.12.0-0.fc21.armv7hl) 21 (Rawhide)"
+extlinuxTest extlinux.6 add/extlinux6.1 \
+    --add-kernel=/boot/vmlinuz-3.15.0-0.rc1.git4.1.fc21.armv7hl \
+    --devtreedir='/boot/dtb-3.15.0-0.rc1.git4.1.fc21.armv7hl/' \
+    --initrd=/boot/initramfs-3.15.0-0.rc1.git4.1.fc21.armv7hl.img \
+    --boot-filesystem=/boot --copy-default \
+    --title="Fedora (3.15.0-0.rc1.git4.1.fc21.armv7hl) 21 (Rawhide)" \
+    --remove-kernel="TITLE=Fedora (3.12.0-0.fc21.armv7hl) 21 (Rawhide)"
 
 testing="LILO long titles"
 liloTest lilo.1 longtitle/l1.1 --add-kernel=/boot/new-kernel.img \

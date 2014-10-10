@@ -582,6 +582,7 @@ struct keywordTypes extlinuxKeywords[] = {
     { "append",	    LT_KERNELARGS,  ' ' },
     { "prompt",     LT_UNKNOWN,     ' ' },
     { "fdt",        LT_DEVTREE,     ' ' },
+    { "fdtdir",     LT_DEVTREE,     ' ' },
     { NULL,	    0, 0 },
 };
 int useextlinuxmenu;
@@ -4269,6 +4270,8 @@ int main(int argc, const char ** argv) {
 	    _("display the title of the default kernel") },
 	{ "devtree", 0, POPT_ARG_STRING, &newDevTreePath, 0,
 	    _("device tree file for new stanza"), _("dtb-path") },
+	{ "devtreedir", 0, POPT_ARG_STRING, &newDevTreePath, 0,
+	    _("device tree directory for new stanza"), _("dtb-path") },
 	{ "elilo", 0, POPT_ARG_NONE, &configureELilo, 0,
 	    _("configure elilo bootloader") },
 	{ "efi", 0, POPT_ARG_NONE, &isEfi, 0,

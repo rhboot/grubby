@@ -130,7 +130,7 @@ usage() {
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
     echo "       [--mbargs=mbargs] [--make-default] [--add-dracut-args]" >&2
     echo "       [--add-plymouth-initrd]" >&2
-    echo "       [--host-only] [--devtree=<devicetree.dtb>]" >&2
+    echo "       [--host-only] [--devtree=<devicetree.dtb>] [--devtreedir=</devicetree/path/>]" >&2
     echo "       <--install | --remove | --update | --rpmposttrans> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -190,9 +190,15 @@ install() {
     fi
 
     DEVTREE=""
-    if [ "x$devtreefile" != "x" -a -f "$devtreefile" ]; then
+    if [ -n "$devtreefile" -a -f "$devtreefile" ]; then
 	[ -n "$verbose" ] && echo "found $devtreefile and using it with grubby"
 	DEVTREE="--devtree $devtreefile"
+    fi
+
+    DEVTREEDIR=""
+    if [ -n "$devtreedir" -a -d "$devtreedir" ]; then
+	[ -n "$verbose" ] && echo "found $devtreedir and using it with grubby"
+	DEVTREEDIR="--devtreedir $devtreedir"
     fi
 
     # FIXME: is this a good heuristic to find out if we're on iSeries?
@@ -296,7 +302,8 @@ install() {
 	[ -n "$verbose" ] && echo "adding $version to $extlinuxConfig"
 
 	ARGS="--extlinux -c $extlinuxConfig --add-kernel=$kernelImage \
-	    $DEVTREE $INITRD --copy-default --title \"$title\$debugtitle\" \
+	    $DEVTREEDIR $DEVTREE \
+	    $INITRD --copy-default --title \"$title\$debugtitle\" \
 	    ${mbkernel:+--add-multiboot=\"$mbkernel\"} \
 	    ${mbargs:+--mbargs=\"$mbargs\"} \
 	    --args=\"root=$rootdevice $kernargs \$debugargs\" \
@@ -450,9 +457,15 @@ update() {
     fi
 
     DEVTREE=""
-    if [ "x$devtreefile" != "x" -a -f "$devtreefile" ]; then
+    if [ -n "$devtreefile" -a -f "$devtreefile" ]; then
         [ -n "$verbose" ] && echo "found $devtreefile and using it with grubby"
         DEVTREE="--devtree $devtreefile"
+    fi
+
+    DEVTREEDIR=""
+    if [ -n "$devtreedir" -a -d "$devtreedir" ]; then
+	[ -n "$verbose" ] && echo "found $devtreedir and using it with grubby"
+	DEVTREEDIR="--devtreedir $devtreedir"
     fi
 
     if [ -n "$cfgGrub" ]; then
@@ -550,7 +563,7 @@ update() {
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $extlinuxConfig"
 	ARGS="--extlinux -c $extlinuxConfig --update-kernel=$kernelImage \
-		$DEVTREE $INITRD ${kernargs:+--args=\"$kernargs\"} \
+		$DEVTREE $DEVTREEDIR $INITRD ${kernargs:+--args=\"$kernargs\"} \
 		${removeargs:+--remove-args=\"$removeargs\"} \
 		--title=\"$title\$debugtitle\""
 
@@ -616,6 +629,15 @@ while [ $# -gt 0 ]; do
 		devtreefile=${1#--devtreefile=}
 	    else
 		devtreefile=$2
+		shift
+	    fi
+	    ;;
+
+	--devtreedir*)
+	    if [[ $1 == --devtreedir\=* ]]; then
+		devtreedir=${1#--devtreedir=}
+	    else
+		devtreedir=$2
 		shift
 	    fi
 	    ;;
