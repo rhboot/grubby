@@ -2369,7 +2369,7 @@ void displayEntry(struct singleEntry * entry, const char * prefix, int index) {
     } else {
 	char * title;
 	line = getLineByType(LT_MENUENTRY, entry->lines);
-	if (!line) {
+	if (line) {
 	    title = grub2ExtractTitle(line);
 	    if (title)
 		printf("title=%s\n", title);
