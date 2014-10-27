@@ -797,9 +797,11 @@ if [ -n "$dracut" -o -n "$adddracutargs" ]; then
 fi
 
 # set this as the default if we have the package and it matches
-if [ "$mode" == "--install" -a "$UPDATEDEFAULT" == "yes" -a -n "$package" -a -n "$DEFAULTKERNEL" -a "$package" == "$DEFAULTKERNEL" ]; then
-    makedefault="--make-default"
-    [ -n "$verbose" ] && echo "making it the default based on config"
+if [ "$mode" == "--install" -a "$UPDATEDEFAULT" == "yes" -a -n "$package" -a -n "$DEFAULTKERNEL" ]; then
+    if [ "$package" == "$DEFAULTKERNEL" -o "${package}-core" == "$DEFAULTKERNEL" ]; then
+        makedefault="--make-default"
+        [ -n "$verbose" ] && echo "making it the default based on config"
+    fi
 fi
 
 if [ "$moddep" == "make" ]; then
