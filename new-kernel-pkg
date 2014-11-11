@@ -140,7 +140,11 @@ rungrubby() {
 	if [ "$1" == "--debug" ]; then
 		[ "$MAKEDEBUG" != "yes" ] && return 0
 		[ -n "$verbose" ] && echo "- First, making a debug entry."
-		declare -x debugtitle=" with debugging"
+		if [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
+			declare -x debugtitle="_with_debugging"
+		else
+			declare -x debugtitle=" with debugging"
+		fi
 		declare -x debugargs="$DEBUGARG"
 		shift
 	else
