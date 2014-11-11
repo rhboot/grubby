@@ -828,11 +828,10 @@ static int isEntryStart(struct singleLine * line,
 
 /* extract the title from within brackets (for zipl) */
 static char * extractTitle(struct singleLine * line) {
-    /* bracketed title... let's extract it (leaks a byte) */
+    /* bracketed title... let's extract it */
     char * title = NULL;
     if (line->type == LT_TITLE) {
-	title = strdup(line->elements[0].item);
-	title++;
+	title = strdup(line->elements[0].item + 1);
 	*(title + strlen(title) - 1) = '\0';
     } else if (line->type == LT_MENUENTRY)
 	title = strdup(line->elements[1].item);
