@@ -588,6 +588,12 @@ doRmmoddep() {
     fi
 }
 
+# kernel image for 2.4 is vmlinux
+if [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
+  if [ "$kernelmajor" == "2.4" ]; then
+      kernelName=vmlinux
+  fi
+fi
 
 while [ $# -gt 0 ]; do
     case $1 in
@@ -714,6 +720,15 @@ while [ $# -gt 0 ]; do
             fi
             ;;
 
+        --kernel-name*)
+            if [[ $1 == --kernel-name\=* ]]; then
+                kernelName=${1#--kernel-name=}
+            else
+                kernelName="$2"
+                shift
+            fi
+            ;;
+
 	-v)
 	    verbose=-v
 	    ;;
@@ -746,13 +761,6 @@ if [ "$mode" != "--install" -a "$makedefault" ]; then
 fi
 
 kernelmajor=`echo $kernel | cut -d . -f 1,2`
-
-# kernel image for 2.4 is vmlinux
-if [ $ARCH = 'ppc64' -o $ARCH = 'ppc' ]; then
-  if [ "$kernelmajor" == "2.4" ]; then
-      kernelName=vmlinux
-  fi
-fi
 
 [[ $kernelImage ]] || kernelImage="$bootPrefix/$kernelName-$version"
 
