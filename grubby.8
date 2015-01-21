@@ -29,8 +29,10 @@ the configuration file is in \fB/boot/grub2/grub.cfg\fR.  On UEFI-based Intel
 x86 platforms, \fBgrub2\fR is the default bootloader, and the configuration
 file is in \fB/boot/efi/EFI/redhat/grub.cfg\fR.  On Intel ia64 platforms,
 \fBelilo\fR mode is used and the default location for the configuration file
-is \fB/boot/efi/EFI/redhat/elilo.conf\fR. On PowerPC platforms, \fByaboot\fR
-parsing is used and the configuration file should be in \fB/etc/yaboot.conf\fR.
+is \fB/boot/efi/EFI/redhat/elilo.conf\fR. On PowerPC platforms, systems based
+on Power8 now support \fBgrub2\fR as a bootloader and store using a default
+config stored in \fB/boot/grub2/grub.cfg\fR. The earlier Power7 systems use \fByaboot\fR
+parsing and the configuration file should be in \fB/etc/yaboot.conf\fR.
 
 There are a number of ways to specify the kernel used for \fB-\-info\fR,
 \fB-\-remove-kernel\fR, and \fB-\-update-kernel\fR. Specificying \fBDEFAULT\fR
