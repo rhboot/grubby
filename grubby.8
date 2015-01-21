@@ -32,7 +32,8 @@ file is in \fB/boot/efi/EFI/redhat/grub.cfg\fR.  On Intel ia64 platforms,
 is \fB/boot/efi/EFI/redhat/elilo.conf\fR. On PowerPC platforms, systems based
 on Power8 now support \fBgrub2\fR as a bootloader and store using a default
 config stored in \fB/boot/grub2/grub.cfg\fR. The earlier Power7 systems use \fByaboot\fR
-parsing and the configuration file should be in \fB/etc/yaboot.conf\fR.
+parsing and the configuration file should be in \fB/etc/yaboot.conf\fR.  On
+s390 platforms the \fBzipl bootloader\fR will read from \fB/etc/zipl.conf\fR.
 
 There are a number of ways to specify the kernel used for \fB-\-info\fR,
 \fB-\-remove-kernel\fR, and \fB-\-update-kernel\fR. Specificying \fBDEFAULT\fR
