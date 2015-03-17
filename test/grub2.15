@@ -81,7 +81,7 @@ menuentry 'Fedora, with Linux 3.15.0-0.rc5.git2.10.fc21.x86_64' --class fedora -
 	else
 	  search --no-floppy --fs-uuid --set=root 6169b46f-0257-4319-b2e4-caaed2a8e06b
 	fi
-	linux /vmlinuz-3.15.0-0.rc5.git2.10.fc21.x86_64 root=/dev/mapper/fedora_uefi-root ro  rd.lvm.lv=fedora_uefi/root rd.lvm.lv=fedora_uefi/swap rhgb quiet
+	linuxefi /vmlinuz-3.15.0-0.rc5.git2.10.fc21.x86_64 root=/dev/mapper/fedora_uefi-root ro  rd.lvm.lv=fedora_uefi/root rd.lvm.lv=fedora_uefi/swap rhgb quiet
 }
 
 ### END /etc/grub.d/10_linux ###
