@@ -69,21 +69,6 @@ fi
 ### END /etc/grub.d/00_header ###
 
 ### BEGIN /etc/grub.d/10_linux ###
-menuentry 'Fedora 21 Rescue' --class fedora --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-3.15.0-0.rc5.git2.10.fc21.x86_64-advanced-a14e3dcb-ade3-42f7-832f-d9f66b5ae6a3' {
-	load_video
-	set gfxpayload=keep
-	insmod gzio
-	insmod part_msdos
-	insmod ext2
-	set root='hd0,msdos1'
-	if [ x$feature_platform_search_hint = xy ]; then
-	  search --no-floppy --fs-uuid --set=root --hint-bios=hd0,msdos1 --hint-efi=hd0,msdos1 --hint-baremetal=ahci0,msdos1 --hint='hd0,msdos1'  6169b46f-0257-4319-b2e4-caaed2a8e06b
-	else
-	  search --no-floppy --fs-uuid --set=root 6169b46f-0257-4319-b2e4-caaed2a8e06b
-	fi
-	linux /vmlinuz-0-rescue-5a94251776a14678911d4ae0949500f5 root=/fooooo ro  rd.lvm.lv=fedora_uefi/root rd.lvm.lv=fedora_uefi/swap rhgb quiet
-	initrd /initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img
-}
 menuentry 'Fedora, with Linux 3.15.0-0.rc5.git2.10.fc21.x86_64' --class fedora --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-3.15.0-0.rc5.git2.10.fc21.x86_64-advanced-a14e3dcb-ade3-42f7-832f-d9f66b5ae6a3' {
 	load_video
 	set gfxpayload=keep

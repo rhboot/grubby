@@ -511,7 +511,7 @@ if [ "$testgrub2" == "y" ]; then
     grub2Test grub2.5 add/g2-1.5 --add-kernel=/boot/new-kernel.img \
         --title='title' --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
         --copy-default
-    grub2Test grub2.14 add/g2-1.14 \
+    grub2Test grub2.15 add/g2-1.15 \
         --add-kernel=/boot/vmlinuz-0-rescue-5a94251776a14678911d4ae0949500f5 \
         --initrd /boot/initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img \
         --copy-default --title "Fedora 21 Rescue" --args=root=/fooooo \
@@ -607,6 +607,13 @@ if [ "$testgrub2" == "y" ]; then
         testing="GRUB2 add initrd with linux16"
         grub2Test grub2.11 add/g2-1.11 --update-kernel=/boot/new-kernel.img \
             --initrd=/boot/new-initrd --boot-filesystem=/boot/
+
+        testing="GRUB2 add rescue with linux16"
+        grub2Test grub2.14 add/g2-1.14 \
+            --add-kernel=/boot/vmlinuz-0-rescue-5a94251776a14678911d4ae0949500f5 \
+            --initrd /boot/initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img \
+            --copy-default --title "Fedora 21 Rescue" --args=root=/fooooo \
+            --remove-kernel=wtf --boot-filesystem=/boot/
     fi
 fi
 
