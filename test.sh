@@ -527,7 +527,7 @@ if [ "$testgrub2" == "y" ]; then
         --add-kernel=/boot/vmlinuz-0-rescue-5a94251776a14678911d4ae0949500f5 \
         --initrd /boot/initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img \
         --copy-default --title "Fedora 21 Rescue" --args=root=/fooooo \
-        --remove-kernel=wtf --boot-filesystem=/boot/
+        --remove-kernel=wtf --boot-filesystem=/boot/ --efi
 
     testing="GRUB2 add initrd"
     grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
