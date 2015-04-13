@@ -4423,9 +4423,11 @@ int main(int argc, const char ** argv) {
     }
 
     if (!cfi) {
-        if (grub2FindConfig(&grub2ConfigType))
+        if (grub2FindConfig(&grub2ConfigType)) {
 	    cfi = &grub2ConfigType;
-	else
+	    if (envPath)
+		cfi->envFile = envPath;
+        } else
       #ifdef __ia64__
 	    cfi = &eliloConfigType;
       #elif __powerpc__
