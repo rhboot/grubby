@@ -269,6 +269,9 @@ grubTest grub.13 setdefaultindex/g.13.0 --set-default-index=0
 grubTest grub.13 setdefaultindex/g.13.1 --set-default-index=1
 grubTest grub.13 setdefaultindex/g.13.9 --set-default-index=9
 
+testing="GRUB add initrd"
+grubTest grub.14 add/g1.7 --boot-filesystem=/ --update-kernel=/vmlinuz-4.0.0-0.rc4.git1.4.fc23.x86_64 --initrd /initramfs-4.0.0-0.rc4.git1.4.fc23.x86_64.img '--args= LANG=en_US.UTF-8' '--title=Fedora (4.0.0-0.rc4.git1.4.fc23.x86_64) 23 (Rawhide)'
+
 testing="GRUB display default index"
 grubDisplayTest grub.1 defaultindex/0 --default-index
 grubDisplayTest grub.2 defaultindex/0 --default-index
