@@ -219,6 +219,7 @@ struct configFileInfo grubConfigType = {
     .mbHyperFirst = 1,
     .mbInitRdIsModule = 1,
     .mbAllowExtraInitRds = 1,
+    .titlePosition = 1,
 };
 
 struct keywordTypes grub2Keywords[] = {
@@ -593,6 +594,7 @@ struct configFileInfo eliloConfigType = {
     .needsBootPrefix = 1,
     .argsInQuotes = 1,
     .mbConcatArgs = 1,
+    .titlePosition = 1,
 };
 
 struct configFileInfo liloConfigType = {
@@ -601,6 +603,7 @@ struct configFileInfo liloConfigType = {
     .entryStart = LT_KERNEL,
     .argsInQuotes = 1,
     .maxTitleLength = 15,
+    .titlePosition = 1,
 };
 
 struct configFileInfo yabootConfigType = {
@@ -611,6 +614,7 @@ struct configFileInfo yabootConfigType = {
     .argsInQuotes = 1,
     .maxTitleLength = 15,
     .mbAllowExtraInitRds = 1,
+    .titlePosition = 1,
 };
 
 struct configFileInfo siloConfigType = {
@@ -620,6 +624,7 @@ struct configFileInfo siloConfigType = {
     .needsBootPrefix = 1,
     .argsInQuotes = 1,
     .maxTitleLength = 15,
+    .titlePosition = 1,
 };
 
 struct configFileInfo ziplConfigType = {
@@ -639,6 +644,7 @@ struct configFileInfo extlinuxConfigType = {
     .maxTitleLength = 255,
     .mbAllowExtraInitRds = 1,
     .defaultIsUnquoted = 1,
+    .titlePosition = 1,
 };
 
 struct grubConfig {
@@ -827,12 +833,20 @@ static int isEntryStart(struct singleLine * line,
 }
 
 /* extract the title from within brackets (for zipl) */
-static char * extractTitle(struct singleLine * line) {
+static char * extractTitle(struct grubConfig *cfg, struct singleLine * line) {
     /* bracketed title... let's extract it */
     char * title = NULL;
+    if (cfg->cfi == &grub2ConfigType)
+	return grub2ExtractTitle(line);
     if (line->type == LT_TITLE) {
-	title = strdup(line->elements[0].item + 1);
-	*(title + strlen(title) - 1) = '\0';
+	char *tmp = line->elements[cfg->cfi->titlePosition].item;
+	if (cfg->cfi->titleBracketed) {
+	    tmp++;
+	    title = strdup(tmp);
+	    *(title + strlen(title) - 1) = '\0';
+	} else {
+	    title = strdup(tmp);
+	}
     } else if (line->type == LT_MENUENTRY)
 	title = strdup(line->elements[1].item);
     else
@@ -1440,7 +1454,7 @@ static struct grubConfig * readConfig(const char * inName,
                                 line->elements[1].item)) break;
                 } else if (line) {
                     if (!strcmp(defaultLine->elements[1].item, 
-                                extractTitle(line))) break;
+                                extractTitle(cfg, line))) break;
                 }
 		i++;
 		entry = NULL;
@@ -1491,7 +1505,7 @@ static void writeDefault(FILE * out, char * indent,
 	    if (!line)
 		line = getLineByType(LT_TITLE, entry->lines);
 	    if (line) {
-		title = extractTitle(line);
+		title = extractTitle(cfg, line);
 		if (title)
 		    cfg->cfi->setEnv(cfg->cfi, "saved_entry", title);
 	    }
@@ -1529,7 +1543,7 @@ static void writeDefault(FILE * out, char * indent,
             else if (line && (line->numElements == 1) && 
                      cfg->cfi->titleBracketed) {
 		fprintf(out, "%sdefault%s%s\n", indent, separator, 
-                        extractTitle(line));
+                        extractTitle(cfg, line));
             }
 	}
     }
@@ -3331,7 +3345,7 @@ int addMBInitrd(struct grubConfig * cfg, const char *newMBKernel,
 	    if (!line)
 		continue;
 
-	    linetitle = extractTitle(line);
+	    linetitle = extractTitle(cfg, line);
 	    if (!linetitle)
 		continue;
 	    if (strcmp(title, linetitle)) {
@@ -3385,7 +3399,7 @@ int updateInitrd(struct grubConfig * cfg, const char * image,
 	    if (!line)
 		continue;
 
-	    linetitle = extractTitle(line);
+	    linetitle = extractTitle(cfg, line);
 	    if (!linetitle)
 		continue;
 	    if (strcmp(title, linetitle)) {
