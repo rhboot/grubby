@@ -836,8 +836,6 @@ static int isEntryStart(struct singleLine * line,
 static char * extractTitle(struct grubConfig *cfg, struct singleLine * line) {
     /* bracketed title... let's extract it */
     char * title = NULL;
-    if (cfg->cfi == &grub2ConfigType)
-	return grub2ExtractTitle(line);
     if (line->type == LT_TITLE) {
 	char *tmp = line->elements[cfg->cfi->titlePosition].item;
 	if (cfg->cfi->titleBracketed) {
