@@ -446,6 +446,8 @@ char *grub2ExtractTitle(struct singleLine * line) {
      * whose last character is also quote (assuming it's the closing one) */
     int resultMaxSize;
     char * result;
+    /* need to ensure that ' does not match " as we search */
+    char quote_char = *current;
     
     resultMaxSize = sizeOfSingleLine(line);
     result = malloc(resultMaxSize);
@@ -459,7 +461,7 @@ char *grub2ExtractTitle(struct singleLine * line) {
 	current_indent_len = strlen(current_indent);
 
 	strncat(result, current_indent, current_indent_len);
-	if (!isquote(current[current_len-1])) {
+	if (current[current_len-1] != quote_char) {
 	    strncat(result, current, current_len);
 	} else {
 	    strncat(result, current, current_len - 1);
@@ -921,10 +923,23 @@ static int lineWrite(FILE * out, struct singleLine * line,
 	/* Need to handle this, because we strip the quotes from
 	 * menuentry when read it. */
 	if (line->type == LT_MENUENTRY && i == 1) {
-	    if(!isquote(*line->elements[i].item))
-		fprintf(out, "\'%s\'", line->elements[i].item);
-	    else
+	    if(!isquote(*line->elements[i].item)) {
+		int substring = 0;
+		/* If the line contains nested quotes, we did not strip
+		 * the "interna" quotes and we must use the right quotes
+		 * again when writing the updated file. */
+		for (int j = i; j < line->numElements; j++) {
+		    if (strchr(line->elements[i].item, '\'') != NULL) {
+		       substring = 1;
+		       fprintf(out, "\"%s\"", line->elements[i].item);
+		       break;
+		    }
+		}
+		if (!substring)
+		    fprintf(out, "\'%s\'", line->elements[i].item);
+	    } else {
 		fprintf(out, "%s", line->elements[i].item);
+	    }
 	    fprintf(out, "%s", line->elements[i].indent);
 
 	    continue;
@@ -1260,6 +1275,8 @@ static struct grubConfig * readConfig(const char * inName,
 	    len = 0;
 	    char *extras;
 	    char *title;
+	    /* initially unseen value */
+	    char quote_char = '\0';
 
 	    for (int i = 1; i < line->numElements; i++) {
 		len += strlen(line->elements[i].item);
@@ -1276,13 +1293,16 @@ static struct grubConfig * readConfig(const char * inName,
 	    for (int i = 0; i < line->numElements; i++) {
 		if (!strcmp(line->elements[i].item, "menuentry"))
 		    continue;
-		if (isquote(*line->elements[i].item))
+		if (isquote(*line->elements[i].item) && quote_char == '\0') {
+		    /* ensure we properly pair off quotes */
+		    quote_char = *line->elements[i].item;
 		    title = line->elements[i].item + 1;
-		else
+		} else {
 		    title = line->elements[i].item;
+		}
 
 		len = strlen(title);
-	        if (isquote(title[len-1])) {
+	        if (title[len-1] == quote_char) {
 		    strncat(buf, title,len-1);
 		    break;
 		} else {
@@ -1293,6 +1313,7 @@ static struct grubConfig * readConfig(const char * inName,
 
 	    /* get extras */
 	    int count = 0;
+	    quote_char = '\0';
 	    for (int i = 0; i < line->numElements; i++) {
 		if (count >= 2) {
 		    strcat(extras, line->elements[i].item);
@@ -1303,12 +1324,15 @@ static struct grubConfig * readConfig(const char * inName,
 		    continue;
 
 		/* count ' or ", there should be two in menuentry line. */
-		if (isquote(*line->elements[i].item))
+		if (isquote(*line->elements[i].item) && quote_char == '\0') {
+		    /* ensure we properly pair off quotes */
+	            quote_char = *line->elements[i].item;
 		    count++;
+		}
 
 		len = strlen(line->elements[i].item);
 
-		if (isquote(line->elements[i].item[len -1]))
+		if (line->elements[i].item[len -1] == quote_char)
 		    count++;
 
 		/* ok, we get the final ' or ", others are extras. */
