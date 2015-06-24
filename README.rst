@@ -42,7 +42,7 @@ The invocation syntax is::
 For example the line::
 
     grubTest grub.1 updargs/g1.1 --update-kernel=DEFAULT --args="root=/dev/hda1"
-    
+
 means execute the command::
 
     ./grubby --grub --config-file tests/grub.1 --update-kernel=DEFAULT \
@@ -66,7 +66,7 @@ Writing New Test Cases
 ----------------------
 
 To write a new test case for grubby you need a config file which matches the
-initial test conditions (either existing one or a new one), provide a 
+initial test conditions (either existing one or a new one), provide a
 results file (likely a new one) which contains the expected configuration or
 output and finally add a call to the test function(s) using the desired grubby
 parameters in an appropriate section of `test.sh`.
