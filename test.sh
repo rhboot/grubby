@@ -299,7 +299,8 @@ grubDisplayTest grub.10 defaulttitle/g.10 --default-title
 grubDisplayTest grub.11 defaulttitle/g.11 --default-title
 
 testing="GRUB display default kernel"
-grubDisplayTest grub.1 defaultkernel/g.1 --default-kernel
+grubDisplayTest grub.1 defaultkernel/g.1 --boot-filesystem=/boot --default-kernel
+grubDisplayTest grub.1 defaultkernel/g.2 --boot-filesystem=/ --default-kernel
 
 testing="LILO default directive"
 liloTest lilo.1 default/l1.1 --set-default=/boot/vmlinuz-2.4.18-4
