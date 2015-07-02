@@ -121,7 +121,7 @@ mbkernel="$HYPERVISOR"
 mbargs="$HYPERVISOR_ARGS"
 adddracutargs=""
 addplymouthinitrd=""
-DEBUGARG="systemd.debug"
+DEBUGARG="systemd.log_level=debug systemd.log_target=kmsg"
 
 usage() {
     echo "Usage: `basename $0` [-v] [--mkinitrd] [--rminitrd] [--dracut]" >&2
