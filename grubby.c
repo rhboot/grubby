@@ -423,7 +423,7 @@ char *grub2ExtractTitle(struct singleLine * line) {
 
     /* bail out if line does not start with menuentry */
     if (strcmp(line->elements[0].item, "menuentry"))
-      return NULL;
+	return NULL;
 
     i = 1;
     current = line->elements[i].item;
@@ -432,10 +432,12 @@ char *grub2ExtractTitle(struct singleLine * line) {
     /* if second word is quoted, strip the quotes and return single word */
     if (isquote(*current) && isquote(current[current_len - 1])) {
 	char *tmp;
-	
-	tmp = strdup(current);
-	*(tmp + current_len - 1) = '\0';
-	return ++tmp;
+
+	tmp = strdup(current+1);
+	if (!tmp)
+	    return NULL;
+	tmp[strlen(tmp)-1] = '\0';
+	return tmp;
     }
 
     /* if no quotes, return second word verbatim */
@@ -448,11 +450,11 @@ char *grub2ExtractTitle(struct singleLine * line) {
     char * result;
     /* need to ensure that ' does not match " as we search */
     char quote_char = *current;
-    
+
     resultMaxSize = sizeOfSingleLine(line);
     result = malloc(resultMaxSize);
     snprintf(result, resultMaxSize, "%s", ++current);
-    
+
     i++;
     for (; i < line->numElements; ++i) {
 	current = line->elements[i].item;
@@ -4596,27 +4598,35 @@ int main(int argc, const char ** argv) {
 	struct singleLine * line;
 	struct singleEntry * entry;
 
-	if (config->defaultImage == -1) return 0;
+	if (config->defaultImage == -1)
+	    return 0;
 	if (config->defaultImage == DEFAULT_SAVED_GRUB2 &&
 		cfi->defaultIsSaved)
 	    config->defaultImage = 0;
 	entry = findEntryByIndex(config, config->defaultImage);
-	if (!entry) return 0;
+	if (!entry)
+		return 0;
 
 	if (!configureGrub2) {
-	  line = getLineByType(LT_TITLE, entry->lines);
-	  if (!line) return 0;
-	  printf("%s\n", line->elements[1].item);
-
-	} else {
-	  char * title;
-
-	  dbgPrintf("This is GRUB2, default title is embeded in menuentry\n");
-	  line = getLineByType(LT_MENUENTRY, entry->lines);
-	  if (!line) return 0;
-	  title = grub2ExtractTitle(line);
-	  if (title)
+	    char *title;
+	    line = getLineByType(LT_TITLE, entry->lines);
+	    if (!line)
+		return 0;
+	    title = extractTitle(config, line);
+	    if (!title)
+		return 0;
 	    printf("%s\n", title);
+	    free(title);
+	} else {
+	    char * title;
+
+	    dbgPrintf("This is GRUB2, default title is embeded in menuentry\n");
+	    line = getLineByType(LT_MENUENTRY, entry->lines);
+	    if (!line)
+		return 0;
+	    title = grub2ExtractTitle(line);
+	    if (title)
+		printf("%s\n", title);
 	}
 	return 0;
 
