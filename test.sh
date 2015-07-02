@@ -298,6 +298,9 @@ grubDisplayTest grub.9 defaulttitle/g.9 --default-title
 grubDisplayTest grub.10 defaulttitle/g.10 --default-title
 grubDisplayTest grub.11 defaulttitle/g.11 --default-title
 
+testing="GRUB display default kernel"
+grubDisplayTest grub.1 defaultkernel/g.1 --default-kernel
+
 testing="LILO default directive"
 liloTest lilo.1 default/l1.1 --set-default=/boot/vmlinuz-2.4.18-4
 liloTest lilo.1 default/l1.2 --remove-kernel=/boot/vmlinuz-2.4.18-4smp
@@ -305,10 +308,17 @@ liloTest lilo.1 default/l1.3 --add-kernel /boot/kernel --title label \
     --copy-default
 liloTest lilo.1 default/l1.4 --add-kernel /boot/kernel --title label \
     --copy-default --make-default
+liloDisplayTest lilo.1 defaultkernel/l1.1 --default-kernel
 
 testing="Z/IPL default directive"
 ziplTest zipl.1 default/z1.1 --add-kernel /boot/new-kernel --title test
 ziplTest zipl.1 default/z1.2 --add-kernel /boot/new-kernel --title test --make-default
+testing="Z/IPL display default index"
+ziplDisplayTest zipl.1 defaultindex/0 --default-index
+testing="Z/IPL display default title"
+ziplDisplayTest zipl.1 defaulttitle/z.1 --default-title
+testing="Z/IPL display default kernel"
+ziplDisplayTest zipl.1 defaultkernel/z.1 --default-kernel
 
 testing="GRUB fallback directive"
 grubTest grub.5 fallback/g5.1 --remove-kernel=/boot/vmlinuz-2.4.7-ac3 \
