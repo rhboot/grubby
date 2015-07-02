@@ -1510,13 +1510,14 @@ static struct grubConfig * readConfig(const char * inName,
     return cfg;
 }
 
-static void writeDefault(FILE * out, char * indent, 
+static void writeDefault(FILE * out, char * indent,
 			 char * separator, struct grubConfig * cfg) {
     struct singleEntry * entry;
     struct singleLine * line;
     int i;
 
-    if (!cfg->defaultImage && cfg->flags == GRUB_CONFIG_NO_DEFAULT) return;
+    if (!cfg->defaultImage && cfg->flags == GRUB_CONFIG_NO_DEFAULT)
+	return;
 
     if (cfg->defaultImage == DEFAULT_SAVED)
 	fprintf(out, "%sdefault%ssaved\n", indent, separator);
@@ -1540,34 +1541,40 @@ static void writeDefault(FILE * out, char * indent,
 	        fprintf(out, "%sset default=\"%d\"\n", indent,
 			cfg->defaultImage);
 	    } else {
-		fprintf(out, "%sdefault%s%d\n", indent, separator, 
+		fprintf(out, "%sdefault%s%d\n", indent, separator,
 			cfg->defaultImage);
 	    }
 	} else {
 	    int image = cfg->defaultImage;
 
 	    entry = cfg->entries;
-	    while (entry && entry->skip) entry = entry->next;
+	    while (entry && entry->skip)
+		entry = entry->next;
 
 	    i = 0;
 	    while (entry && i < image) {
 		entry = entry->next;
 
-		while (entry && entry->skip) entry = entry->next;
+		while (entry && entry->skip)
+		    entry = entry->next;
 		i++;
 	    }
 
-	    if (!entry) return;
+	    if (!entry)
+		return;
 
 	    line = getLineByType(LT_TITLE, entry->lines);
 
 	    if (line && line->numElements >= 2)
-		fprintf(out, "%sdefault%s%s\n", indent, separator, 
+		fprintf(out, "%sdefault%s%s\n", indent, separator,
 			line->elements[1].item);
-            else if (line && (line->numElements == 1) && 
+            else if (line && (line->numElements == 1) &&
                      cfg->cfi->titleBracketed) {
-		fprintf(out, "%sdefault%s%s\n", indent, separator, 
-                        extractTitle(cfg, line));
+		char *title = extractTitle(cfg, line);
+		if (title) {
+		    fprintf(out, "%sdefault%s%s\n", indent, separator, title);
+		    free(title);
+		}
             }
 	}
     }
