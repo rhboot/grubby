@@ -84,3 +84,4 @@ archive:
 upload: archive
 	@scp grubby-$(VERSION).tar.bz2 fedorahosted.org:grubby
 
+ci: test
