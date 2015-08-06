@@ -531,6 +531,14 @@ if [ "$testgrub2" == "y" ]; then
         --copy-default --title "Fedora 21 Rescue" --args=root=/fooooo \
         --remove-kernel=wtf --boot-filesystem=/boot/ --efi
 
+    # a grub2 add with a "set" of the form: set foo="bar=1,2".  bz#1152550
+    # has this being emitted as: set foo="bar=1,2"=1,2"
+    # which is wrong.
+    grub2Test grub2.16 add/g2-1.16 \
+        --add-kernel=/boot/vmlinuz-foo \
+        --copy-default --title 'Red Hat Enterprise Linux Server' \
+        --args=root=/dev/mapper/foo--
+
     testing="GRUB2 add initrd"
     grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
         --initrd=/boot/new-initrd --boot-filesystem=/boot/

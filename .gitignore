@@ -1,3 +1,5 @@
 grubby
 version.h
 *.o
+core.*
+vgcore.*
