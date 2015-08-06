@@ -75,6 +75,7 @@ struct lineElement {
 };
 
 enum lineType_e {
+	LT_UNIDENTIFIED = 0,
 	LT_WHITESPACE = 1 << 0,
 	LT_TITLE = 1 << 1,
 	LT_KERNEL = 1 << 2,
@@ -747,6 +748,33 @@ static char *sdupprintf(const char *format, ...)
 	return buf;
 }
 
+static inline int
+kwcmp(struct keywordTypes *kw, const char * label, int case_insensitive)
+{
+    int kwl = strlen(kw->key);
+    int ll = strlen(label);
+    int rc;
+    int (*snc)(const char *s1, const char *s2, size_t n) =
+           case_insensitive ? strncasecmp : strncmp;
+    int (*sc)(const char *s1, const char *s2) =
+           case_insensitive ? strcasecmp : strcmp;
+
+    rc = snc(kw->key, label, kwl);
+    if (rc)
+       return rc;
+
+    for (int i = kwl; i < ll; i++) {
+       if (isspace(label[i]))
+           return 0;
+       if (kw->separatorChar && label[i] == kw->separatorChar)
+           return 0;
+       else if (kw->nextChar && label[i] == kw->nextChar)
+           return 0;
+       return sc(kw->key+kwl, label+kwl);
+    }
+    return 0;
+}
+
 static enum lineType_e preferredLineType(enum lineType_e type,
 					 struct configFileInfo *cfi)
 {
@@ -812,13 +840,8 @@ static enum lineType_e getTypeByKeyword(char *keyword,
 					struct configFileInfo *cfi)
 {
 	for (struct keywordTypes * kw = cfi->keywords; kw->key; kw++) {
-		if (cfi->caseInsensitive) {
-			if (!strcasecmp(keyword, kw->key))
-				return kw->type;
-		} else {
-			if (!strcmp(keyword, kw->key))
-				return kw->type;
-		}
+		if (!kwcmp(kw, keyword, cfi->caseInsensitive))
+			return kw->type;
 	}
 	return LT_UNKNOWN;
 }
@@ -913,6 +936,7 @@ static int readFile(int fd, char **bufPtr)
 
 static void lineInit(struct singleLine *line)
 {
+	line->type = LT_UNIDENTIFIED;
 	line->indent = NULL;
 	line->elements = NULL;
 	line->numElements = 0;
@@ -995,7 +1019,7 @@ static int lineWrite(FILE * out, struct singleLine *line,
 
 		if (fprintf(out, "%s", line->elements[i].item) == -1)
 			return -1;
-		if (i < line->numElements - 1)
+		if (i < line->numElements - 1 || line->type == LT_SET_VARIABLE)
 			if (fprintf(out, "%s", line->elements[i].indent) == -1)
 				return -1;
 	}
@@ -1050,6 +1074,8 @@ static int getNextLine(char **bufPtr, struct singleLine *line,
 				break;
 			chptr++;
 		}
+		if (line->type == LT_UNIDENTIFIED)
+			line->type = getTypeByKeyword(start, cfi);
 		element->item = strndup(start, chptr - start);
 		start = chptr;
 
@@ -1115,7 +1141,7 @@ static int getNextLine(char **bufPtr, struct singleLine *line,
 				line->type = LT_WHITESPACE;
 				line->numElements = 0;
 			}
-		} else {
+		} else if (line->type == LT_INITRD) {
 			struct keywordTypes *kw;
 
 			kw = getKeywordByType(line->type, cfi);
@@ -1177,6 +1203,39 @@ static int getNextLine(char **bufPtr, struct singleLine *line,
 					}
 				}
 			}
+		} else if (line->type == LT_SET_VARIABLE) {
+			/* and if it's a "set blah=" we need to split it
+			 * yet a third way to avoid rhbz# XXX FIXME :/
+			 */
+			char *eq;
+			int l;
+			int numElements = line->numElements;
+			struct lineElement *newElements;
+			eq = strchr(line->elements[1].item, '=');
+			if (!eq)
+				return 0;
+			l = eq - line->elements[1].item;
+			if (eq[1] != 0)
+				numElements++;
+			newElements = calloc(numElements,sizeof (*newElements));
+			memcpy(&newElements[0], &line->elements[0],
+			       sizeof (newElements[0]));
+			newElements[1].item =
+				strndup(line->elements[1].item, l);
+			newElements[1].indent = "=";
+			*(eq++) = '\0';
+			newElements[2].item = strdup(eq);
+			free(line->elements[1].item);
+			if (line->elements[1].indent)
+				newElements[2].indent = line->elements[1].indent;
+			for (int i = 2; i < line->numElements; i++) {
+				newElements[i+1].item = line->elements[i].item;
+				newElements[i+1].indent =
+					line->elements[i].indent;
+			}
+			free(line->elements);
+			line->elements = newElements;
+			line->numElements = numElements;
 		}
 	}
 
@@ -1282,13 +1341,12 @@ static struct grubConfig *readConfig(const char *inName,
 			    getKeywordByType(LT_DEFAULT, cfi);
 			if (kwType && line->numElements == 3
 			    && !strcmp(line->elements[1].item, kwType->key)
-			    && !is_special_grub2_variable(line->elements[2].
-							  item)) {
+			    && !is_special_grub2_variable(
+						line->elements[2].item)) {
 				dbgPrintf("Line sets default config\n");
 				cfg->flags &= ~GRUB_CONFIG_NO_DEFAULT;
 				defaultLine = line;
 			}
-
 		} else if (iskernel(line->type)) {
 			/* if by some freak chance this is multiboot and the
 			 * "module" lines came earlier in the template, make
@@ -1542,16 +1600,33 @@ static struct grubConfig *readConfig(const char *inName,
 				}
 			}
 		} else if (cfi->defaultIsVariable) {
-			char *value = defaultLine->elements[2].item;
-			while (*value && (*value == '"' || *value == '\'' ||
-					  *value == ' ' || *value == '\t'))
-				value++;
-			cfg->defaultImage = strtol(value, &end, 10);
-			while (*end && (*end == '"' || *end == '\'' ||
-					*end == ' ' || *end == '\t'))
-				end++;
-			if (*end)
-				cfg->defaultImage = -1;
+			if (defaultLine->numElements == 2) {
+				char *value = defaultLine->elements[1].item + 8;
+				while (*value && (*value == '"' ||
+						  *value == '\'' ||
+						  *value == ' ' ||
+						  *value == '\t'))
+					value++;
+				cfg->defaultImage = strtol(value, &end, 10);
+				while (*end && (*end == '"' || *end == '\'' ||
+						*end == ' ' || *end == '\t'))
+					end++;
+				if (*end)
+					cfg->defaultImage = -1;
+			} else if (defaultLine->numElements == 3) {
+				char *value = defaultLine->elements[2].item;
+				while (*value && (*value == '"' ||
+						  *value == '\'' ||
+						  *value == ' ' ||
+						  *value == '\t'))
+					value++;
+				cfg->defaultImage = strtol(value, &end, 10);
+				while (*end && (*end == '"' || *end == '\'' ||
+						*end == ' ' || *end == '\t'))
+					end++;
+				if (*end)
+					cfg->defaultImage = -1;
+			}
 		} else if (cfi->defaultSupportSaved &&
 			   !strncmp(defaultLine->elements[1].item, "saved",
 				    5)) {
