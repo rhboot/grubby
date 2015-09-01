@@ -546,7 +546,7 @@ if [ "$testgrub2" == "y" ]; then
     # has this being emitted as: set foo="bar=1,2"=1,2"
     # which is wrong.
     grub2Test grub2.16 add/g2-1.16 \
-        --add-kernel=/boot/vmlinuz-foo \
+        --boot-filesystem=/boot --add-kernel=/boot/vmlinuz-foo \
         --copy-default --title 'Red Hat Enterprise Linux Server' \
         --args=root=/dev/mapper/foo--
 
