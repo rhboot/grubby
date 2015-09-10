@@ -550,6 +550,12 @@ if [ "$testgrub2" == "y" ]; then
         --copy-default --title 'Red Hat Enterprise Linux Server' \
         --args=root=/dev/mapper/foo--
 
+    # the same, but for: set foo = " bar=1,2 "
+    grub2Test grub2.17 add/g2-1.17 \
+        --boot-filesystem=/boot --add-kernel=/boot/vmlinuz-foo \
+        --copy-default --title 'Red Hat Enterprise Linux Server' \
+        --args=root=/dev/mapper/foo--
+
     testing="GRUB2 add initrd"
     grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
         --initrd=/boot/new-initrd --boot-filesystem=/boot/

@@ -744,28 +744,30 @@ static char *sdupprintf(const char *format, ...)
 static inline int
 kwcmp(struct keywordTypes *kw, const char * label, int case_insensitive)
 {
-    int kwl = strlen(kw->key);
-    int ll = strlen(label);
-    int rc;
-    int (*snc)(const char *s1, const char *s2, size_t n) =
-           case_insensitive ? strncasecmp : strncmp;
-    int (*sc)(const char *s1, const char *s2) =
-           case_insensitive ? strcasecmp : strcmp;
+	int kwl = strlen(kw->key);
+	int ll = strlen(label);
+	int rc;
+	int (*snc)(const char *s1, const char *s2, size_t n) =
+		case_insensitive ? strncasecmp : strncmp;
+	int (*sc)(const char *s1, const char *s2) =
+		case_insensitive ? strcasecmp : strcmp;
 
-    rc = snc(kw->key, label, kwl);
-    if (rc)
-       return rc;
+	if (kwl > ll)
+		return ll - kwl;
 
-    for (int i = kwl; i < ll; i++) {
-       if (isspace(label[i]))
-           return 0;
-       if (kw->separatorChar && label[i] == kw->separatorChar)
-           return 0;
-       else if (kw->nextChar && label[i] == kw->nextChar)
-           return 0;
-       return sc(kw->key+kwl, label+kwl);
-    }
-    return 0;
+	rc = snc(kw->key, label, kwl);
+	if (rc)
+		return rc;
+
+	if (!label[kwl])
+		return 0;
+	if (isspace(label[kwl]))
+		return 0;
+	if (kw->separatorChar && label[kwl] == kw->separatorChar)
+		return 0;
+	if (kw->nextChar && label[kwl] == kw->nextChar)
+		return 0;
+	return sc(kw->key+kwl, label+kwl);
 }
 
 static enum lineType_e preferredLineType(enum lineType_e type,
@@ -1026,6 +1028,123 @@ static int lineWrite(FILE * out, struct singleLine *line,
 	return 0;
 }
 
+static int mergeElements(struct singleLine *line, int left, int right)
+{
+	struct lineElement *elements = alloca(sizeof (line->elements[0]) *
+					      line->numElements);
+	int i, j;
+	size_t itemsize = 0;
+	size_t newNumElements = 0;
+	char *newitem;
+	char *newindent = NULL;
+
+	if (right >= line->numElements)
+		right = line->numElements - 1;
+
+	if (!elements)
+		return -1;
+	for (i = 0; i < left; i++) {
+		elements[i] = line->elements[i];
+		newNumElements++;
+	}
+	for (; i <= right; i++) {
+		itemsize += strlen(line->elements[i].item);
+		if (line->elements[i].indent && line->elements[i].indent[0]) {
+			if (i != right)
+				itemsize += strlen(line->elements[i].indent);
+		}
+	}
+	newitem = calloc (itemsize+1, 1);
+	if (!newitem)
+		return -1;
+	for (i = left; i <= right; i++) {
+		strcat(newitem, line->elements[i].item);
+		if (line->elements[i].indent) {
+			if (i != right) {
+				strcat(newitem, line->elements[i].indent);
+				free(line->elements[i].indent);
+			} else {
+				newindent = line->elements[i].indent;
+			}
+		} else {
+			newindent = strdup("");
+		}
+	}
+	newNumElements++;
+	elements[left].item = newitem;
+	elements[left].indent = newindent;
+	if (left+1 < line->numElements && right+1 < line->numElements) {
+		for (j = left+1, i = right+1; i < line->numElements; i++) {
+			elements[j++] = line->elements[i];
+			newNumElements++;
+		}
+	}
+	memcpy(line->elements, elements,
+	       sizeof (line->elements[i]) * newNumElements);
+	line->numElements = newNumElements;
+	return 0;
+}
+
+static int emptyElement(struct lineElement *element)
+{
+	if (element->item && strlen(element->item) > 0)
+		return 0;
+	if (element->indent && strlen(element->indent) > 0)
+		return 0;
+	return 1;
+}
+
+static int splitElement(struct singleLine *line, int element, int splitchar)
+{
+	struct lineElement split[2] = {{0,0},{0,0}};
+	struct lineElement *elements = NULL;
+	int saved_errno;
+	int i, j;
+
+	elements = calloc(line->numElements + 1, sizeof (line->elements[0]));
+	if (!elements)
+		return -1;
+
+	split[0].item = strndup(line->elements[element].item, splitchar);
+	if (!split[0].item)
+		goto err;
+	split[0].indent = strndup(&line->elements[element].item[splitchar], 1);
+	if (!split[0].indent)
+		goto err;
+	split[1].item = strdup(&line->elements[element].item[splitchar+1]);
+	if (!split[1].item)
+		goto err;
+	split[1].indent = line->elements[element].indent;
+
+	for (i = j = 0; i < line->numElements; i++) {
+		if (i != element) {
+			memcpy(&elements[j++], &line->elements[i],
+			       sizeof(line->elements[i]));
+		} else {
+			memcpy(&elements[j++], &split[0], sizeof(split[0]));
+			memcpy(&elements[j++], &split[1], sizeof(split[1]));
+			free(line->elements[i].item);
+		}
+	}
+	free(line->elements);
+	line->elements = elements;
+	line->numElements++;
+
+	return 0;
+err:
+	saved_errno = errno;
+	if (split[0].item)
+		free(split[0].item);
+	if (split[0].indent)
+		free(split[0].indent);
+	if (split[1].item)
+		free(split[1].item);
+	if (elements)
+		free(elements);
+	errno = saved_errno;
+	return -1;
+}
+
 /* we've guaranteed that the buffer ends w/ \n\0 */
 static int getNextLine(char **bufPtr, struct singleLine *line,
 		       struct configFileInfo *cfi)
@@ -1198,34 +1317,27 @@ static int getNextLine(char **bufPtr, struct singleLine *line,
 			 * yet a third way to avoid rhbz# XXX FIXME :/
 			 */
 			char *eq;
-			int l;
-			int numElements = line->numElements;
-			struct lineElement *newElements;
+			int rc;
+			rc = mergeElements(line, 2, line->numElements);
+			if (rc < 0)
+				return rc;
 			eq = strchr(line->elements[1].item, '=');
 			if (!eq)
 				return 0;
-			l = eq - line->elements[1].item;
-			if (eq[1] != 0)
-				numElements++;
-			newElements = calloc(numElements,sizeof (*newElements));
-			memcpy(&newElements[0], &line->elements[0],
-			       sizeof (newElements[0]));
-			newElements[1].item =
-				strndup(line->elements[1].item, l);
-			newElements[1].indent = "=";
-			*(eq++) = '\0';
-			newElements[2].item = strdup(eq);
-			free(line->elements[1].item);
-			if (line->elements[1].indent)
-				newElements[2].indent = line->elements[1].indent;
-			for (int i = 2; i < line->numElements; i++) {
-				newElements[i+1].item = line->elements[i].item;
-				newElements[i+1].indent =
-					line->elements[i].indent;
+			rc = splitElement(line, 1, eq-line->elements[1].item);
+			if (rc < 0)
+				return rc;
+			/* now make sure we haven't got any bogus elements at
+			 * the end that don't mean anything.
+			 */
+			while (line->numElements > 1 &&
+			       emptyElement(
+					&line->elements[line->numElements-1])) {
+				rc = mergeElements(line, line->numElements-2,
+						   line->numElements-1);
+				if (rc < 0)
+					return rc;
 			}
-			free(line->elements);
-			line->elements = newElements;
-			line->numElements = numElements;
 		}
 	}
 
