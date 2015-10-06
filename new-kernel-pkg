@@ -825,28 +825,21 @@ if [[ ${ARCH} =~ armv[5|7].*l ]]; then
 fi
 [ -n "$verbose" ] && echo "devtreedir is $devtreedir"
 
-# add dracut i18n, keyboard and plymouth kernel args if requested
-if [ -n "$dracut" -o -n "$adddracutargs" ]; then
-    if [ -r /etc/vconsole.conf ]; then
-	. /etc/vconsole.conf
-    elif  [ -r /etc/sysconfig/keyboard ]; then
-	. /etc/sysconfig/keyboard
-    fi
+# add dracut kernel args if requested
+if [ -n "$dracut" -a -n "$adddracutargs" ]; then
+    [ -r /etc/vconsole.conf ] && . /etc/vconsole.conf
+    [ -r /etc/locale.conf ] && . /etc/locale.conf
 
-    if [ -r /etc/locale.conf ]; then
-	. /etc/locale.conf
-    elif [ -r /etc/sysconfig/i18n ]; then
-	. /etc/sysconfig/i18n
-    fi
-
-    for i in SYSFONT SYSFONTACM UNIMAP LANG KEYTABLE; do
-        val=$(eval echo \$$i)
-        [ -n "$val" ] && kernargs="$kernargs $i=$val"
-    done
-
-    if [ -n "$KEYBOARDTYPE" -a "$KEYBOARDTYPE" != "pc" ]; then
-         kernargs="$kernargs KEYBOARDTYPE=$KEYBOARDTYPE"
-    fi
+    while read opt rd_opt; do
+        [ -n "${!opt}" ] && kernargs="$kernargs $rd_opt=\"${!opt}\""
+    done <<< 'KEYMAP      rd.vconsole.keymap
+              FONT        rd.vconsole.font
+              FONT_MAP    rd.vconsole.font.map
+              FONT_UNIMAP rd.vconsole.font.unimap
+              UNICODE     rd.vconsole.font.unicode
+              EXT_KEYMAP  rd.vconsole.keymap.ext
+              LANG        rd.locale.LANG
+              LC_ALL      rd.locale.LC_ALL'
 fi
 
 # set this as the default if we have the package and it matches
