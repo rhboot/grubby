@@ -595,6 +595,7 @@ struct keywordTypes extlinuxKeywords[] = {
 	{"root", LT_ROOT, ' '},
 	{"default", LT_DEFAULT, ' '},
 	{"kernel", LT_KERNEL, ' '},
+	{"linux", LT_KERNEL, ' '},
 	{"initrd", LT_INITRD, ' ', ','},
 	{"append", LT_KERNELARGS, ' '},
 	{"prompt", LT_UNKNOWN, ' '},
