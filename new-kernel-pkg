@@ -243,8 +243,8 @@ install() {
 		--args=\"root=$rootdevice $kernargs \$debugargs\" \
 		--remove-kernel=\"TITLE=$title\$debugtitle\""
 
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS} $makedefault
+	rungrubby --debug ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby for grub 0.97"
     fi
@@ -257,8 +257,8 @@ install() {
 		${mbargs:+--mbargs=\"$mbargs\"} \
 		--args=\"root=$rootdevice $kernargs \$debugargs\" \
 		--remove-kernel=\"TITLE=$title\$debugtitle\""
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS} $makedefault
+	rungrubby --debug ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby for grub 2"
     fi
@@ -272,8 +272,8 @@ install() {
 		${mbargs:+--mbargs=\"$mbargs\"} \
 		--args=\"root=$rootdevice $kernargs \$debugargs\" \
 		--remove-kernel=\"TITLE=$title\$debugtitle\""
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS} $makedefault
+	rungrubby --debug ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby for grub 2 with UEFI"
     fi
@@ -288,8 +288,8 @@ install() {
 		--args=\"root=$rootdevice $kernargs \$debugargs\" \
 		--remove-kernel=\"TITLE=$version\""
 
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS} $makedefault
+	rungrubby --debug ${ARGS}
 	if [ -n "$runLilo" ]; then
 	    [ -n "$verbose" ] && echo "running $lilo"
 	    if [ ! -x $lilo ] ; then
@@ -313,8 +313,8 @@ install() {
 	    --args=\"root=$rootdevice $kernargs \$debugargs\" \
 	    --remove-kernel=\"TITLE=$title\$debugtitle\""
 
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS} $makedefault
+	rungrubby --debug ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby for extlinux"
     fi
@@ -480,8 +480,8 @@ update() {
 		${mbkernel:+--add-multiboot=\"$mbkernel\"} \
 		--title=\"$title\$debugtitle\""
 
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS}
+	rungrubby --debug ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby"
     fi
@@ -493,8 +493,8 @@ update() {
 		${removeargs:+--remove-args=\"$removeargs\"} \
 		--title=\"$title\$debugtitle\""
 
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS}
+	rungrubby --debug ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby"
     fi
@@ -506,8 +506,8 @@ update() {
 		${removeargs:+--remove-args=\"$removeargs\"} \
 		--title=\"$title\$debugtitle\""
 
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS}
+	rungrubby --debug ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby"
     fi
@@ -519,8 +519,8 @@ update() {
 		${removeargs:+--remove-args=\"$removeargs\"} \
 		--title=\"$title\$debugtitle\""
 
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS}
+	rungrubby --debug ${ARGS}
 
 	if [ -n "$runLilo" ]; then
 	    [ -n "$verbose" ] && echo "running $lilo"
@@ -571,8 +571,8 @@ update() {
 		${removeargs:+--remove-args=\"$removeargs\"} \
 		--title=\"$title\$debugtitle\""
 
-	rungrubby --debug ${ARGS}
 	rungrubby ${ARGS}
+	rungrubby --debug ${ARGS}
     else
 	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby"
     fi
