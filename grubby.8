@@ -1,4 +1,4 @@
-.TH GRUBBY 8 "Tue Jan 18 2005"
+.TH GRUBBY 8 "Fri Oct 30 2015"
 .SH NAME
 grubby \- command line tool for configuring grub, lilo, elilo, yaboot and zipl
 
@@ -7,12 +7,14 @@ grubby \- command line tool for configuring grub, lilo, elilo, yaboot and zipl
        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
        [--bootloader-probe] [--config-file \fIpath\fR] [--copy-default]
        [--debug] [--default-kernel] [--default-index] [--default-title]
-       [--devtree=\fIdevicetree.dtb\fR]
-       [--grub] [--lilo] [--yaboot] [--silo] [--zipl]
-       [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
+       [--devtree=\fIdevicetree.dtb\fR] [--devtreedir=\fIpath\fR]
+       [--grub] [--grub2] [--lilo] [--elilo] [--yaboot] [--silo] [--zipl]
+       [--extlinux] [--efi] [--env=\fIpath\fR]
+       [--info=\fIkernel-path\fR] [--initrd=\fiinitrd-path\fR]
+       [--extra-initrd=\fIinitrd-path\fR] [--output-file=\fIpath\fR]
        [--make-default] [-o path] [--version]
        [--remove-kernel=\fIkernel-path\fR] [--remove-args=\fIargs\fR]
-       [--set-default=\fIkernel-path\fR] [--set-default-index=\fientry-index\fR]
+       [--set-default=\fIkernel-path\fR] [--set-default-index=\fIentry-index\fR]
        [--title=entry-title] [--add-multiboot=\fImultiboot-path\fR]
        [--mbargs=\fIargs\fR] [--remove-multiboot=\fImultiboot-path\fR]
        [--remove-mbargs=\fIargs\fR]
@@ -122,13 +124,36 @@ Use \fIpath\fR for device tree path in place of the path of any devicetree
 directive found in the template stanza.
 
 .TP
+\fB-\-devtreedir\fR=\fIpath\fR
+Use \fIpath\fR for device tree directory in place of the path of any devicetree
+directive found in the template stanza.
+
+.TP
 \fB-\-elilo\fR
-Use an \fBelilo\fR style configuration file.
+Use an \fBelilo\fR style configuration file. This is the default for ia64.
+
+.TP
+\fB-\-env\fR=\fIpath\fR
+Use \fIpath\fR for environment data.
+
+.TP
+\fB-\-extlinux\fR
+Use an \fBextlinux\fR style configuration file.
+
+.TP
+\fB-\-extra-initrd\fR=\fIinitrd-path\fR
+Use \fIinitrd-path\fR as the path as an auxiliary initrd image for things
+other than the new kernel.
 
 .TP
 \fB-\-grub\fR
-Use a \fBgrub\fR style configuration file instead of \fBlilo\fR style. This
-is the default on ia32 platforms.
+Use a \fBgrub\fR style configuration file instead of \fBlilo\fR style.
+
+.TP
+\fB-\-grub2\fR
+Use a \fBgrub2\fR style configuration file instead of \fBgrub\fR style. This
+is the default on all architectures. If a \fBgrub2\fR configuration file isn't found
+it will fall back to an appropriate bootloader for the architecture.
 
 .TP
 \fB-\-info\fR=\fIkernel-path\fR
@@ -146,6 +171,10 @@ Use a \fBlilo\fR style configuration file.
 .TP
 \fB-\-make-default\fR
 Make the new kernel entry being added the default entry.
+
+.TP
+\fB-\-output-file\fR=\fIpath\fR
+path to output updated config file. Use - for stdout
 
 .TP
 \fB-\-remove-args\fR=\fIkernel-args\fR
@@ -188,14 +217,16 @@ Display the version of \fBgrubby\fR being run and then exit immediately.
 
 .TP
 \fB-\-yaboot\fR
-Use an \fByaboot\fR style configuration file.
+Use an \fByaboot\fR style configuration file. This is the default for PPC
+architecture.
 
 .TP
 \fB-\-zipl\fR
-Use an \fBzipl\fR style configuration file.
+Use an \fBzipl\fR style configuration file. This is the default on s390
+architecture.
 
 .SH MULTIBOOT OPTIONS
-The Multiboot Specification provides a genreic interface for boot
+The Multiboot Specification provides a generic interface for boot
 loaders and operating systems.  It is supported by the GRUB bootloader.
 
 .TP
