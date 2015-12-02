@@ -33,6 +33,11 @@ checkcfg $CONFIG
 checkefi
 CONFIG=$(realpath $CONFIG)
 
+clobber()
+{
+    grub2_mkconfig $CONFIG
+}
+
 get_loader_specific_args()
 {
     echo --efi

@@ -100,6 +100,13 @@ should_use_multiboot()
     return 0
 }
 
+grub2_mkconfig()
+{
+    tmp=$(mktemp)
+    grub2-mkconfig -o $tmp
+    mv $tmp $1
+}
+
 depmod()
 {
     local version="$1"
@@ -435,6 +442,18 @@ default_finalize()
         [ -f $f ] && [ -x $f ] || continue
         $f $version $kernelimage
     done
+}
+
+should_clobber()
+{
+    if ! is_defined_function clobber ; then
+        return $?
+    fi
+
+    if option_is_true "$CLOBBER_GRUB2_CONFIG" ; then
+        return $?
+    fi
+    return 1
 }
 
 [ -f /etc/sysconfig/kernel ] && . /etc/sysconfig/kernel
