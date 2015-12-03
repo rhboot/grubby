@@ -223,10 +223,16 @@ default_get_root_device()
     echo $rootdevice
 }
 
+default_append_title()
+{
+    echo "$@"
+}
+
 copy_kernel()
 {
     local version="$1"
     local kernelimage="$2"
+    local debug="$3"
 
     local package="kernel"
     [[ "$2" == *\+* ]] && package="kernel-${2##*+}"
@@ -242,6 +248,15 @@ copy_kernel()
             [[ -e "$i" ]] || continue
             cp -a "$i" "/boot/${i##*/}-${version}"
         done
+    fi
+}
+
+default_add_debug()
+{
+    if option_is_true "$MAKEDEBUG" ; then
+        call add "$@" true
+    else
+        return 0
     fi
 }
 
@@ -301,6 +316,11 @@ default_add()
         makedefault="--make-default"
     fi
 
+    if option_is_true "$debug" ; then
+        kernelargs="$kernelargs systemd.debug"
+        title=$(call append_title "$title" "with debugging")
+    fi
+
     grubby $loader $config $extraargs --add-kernel="$kernelimage" \
         --title "$title" --copy-default $makedefault \
         $MBK $MBA --args="root=$rootdevice $kernelargs" \
@@ -328,10 +348,20 @@ remove_kernel_copy()
     fi
 }
 
+default_remove_debug()
+{
+    if option_is_true "$MAKEDEBUG" ; then
+        call remove "$@" "true"
+    else
+        return 0
+    fi
+}
+
 default_remove()
 {
     local version="$1"
     local kernelimage="$2"
+    local debug="$3"
 
     local files
     local f
@@ -380,14 +410,29 @@ default_remove()
     local rootdevice=""
     rootdevice="$(call get_root_device)"
 
+    if option_is_true "$debug" ; then
+        kernelargs="$kernelargs systemd.debug"
+        title=$(call append_title "$title" "with debugging")
+    fi
+
     grubby $loader $config $extraargs --remove-kernel="$kernelimage" \
         --title "$title" $MBK $MBA --args="root=$rootdevice $kernelargs"
+}
+
+default_add_debug_ramfs()
+{
+    if option_is_true "$MAKEDEBUG" ; then
+        call addramfs "$@" true
+    else
+        return 0
+    fi
 }
 
 default_addramfs()
 {
     local version="$1"
     local kernelimage="$2"
+    local debug="$3"
 
     local kerneldir="${kernelimage%/*}"
     if [[ "${kerneldir}" != "/boot" ]]; then
@@ -526,7 +571,8 @@ main()
         if should_clobber ; then
             :;
         else
-            call add "$version" "$kernelimage"
+            call add "$version" "$kernelimage" false
+            call add_debug "$version" "$kernelimage"
         fi
 
         depmod "$version" "$kernelimage"
@@ -534,7 +580,8 @@ main()
         if should_clobber ; then
             clobber
         else
-            call addramfs "$version" "$kernelimage"
+            call addramfs "$version" "$kernelimage" false
+            call add_debug_ramfs "$version" "$kernelimage"
         fi
 
         ;;
