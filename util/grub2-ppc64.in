@@ -36,3 +36,5 @@ clobber()
 }
 
 main --configfile=$CONFIG --loader=--grub2 "$@"
+
+sync && mountpoint -q /boot && fsfreeze -f /boot && fsfreeze -u /boot
