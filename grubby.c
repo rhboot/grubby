@@ -1883,6 +1883,7 @@ static int writeConfig(struct grubConfig *cfg, char *outName,
 	}
 
 	if (tmpOutName) {
+		fclose(out);
 		if (rename(tmpOutName, outName)) {
 			fprintf(stderr,
 				_("grubby: error moving %s to %s: %s\n"),
