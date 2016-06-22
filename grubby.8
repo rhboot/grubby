@@ -8,10 +8,10 @@ grubby \- command line tool for configuring grub, lilo, elilo, yaboot and zipl
        [--bootloader-probe] [--config-file \fIpath\fR] [--copy-default]
        [--debug] [--default-kernel] [--default-index] [--default-title]
        [--grub] [--lilo] [--yaboot] [--silo] [--zipl]
-       [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
-       [--make-default] [-o path] [--version]
+       [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR]
+       [--make-default] [-o path] [--version] [--set-entry=\fIentry-index\fR]
        [--remove-kernel=\fIkernel-path\fR] [--remove-args=\fIargs\fR]
-       [--set-default=\fIkernel-path\fR] [--set-default-index=\fientry-index\fR]
+       [--set-default=\fIkernel-path\fR] [--set-default-index=\fIentry-index\fR]
        [--title=entry-title] [--add-multiboot=\fImultiboot-path\fR]
        [--mbargs=\fIargs\fR] [--remove-multiboot=\fImultiboot-path\fR]
        [--remove-mbargs=\fIargs\fR]
@@ -46,6 +46,10 @@ with that title are used.
 .TP
 \fB-\-add-kernel\fR=\fIkernel-path\fR
 Add a new boot entry for the kernel located at \fIkernel-path\fR.
+
+.TP
+\fB-\-set-entry\fR=\fIentry-index\fR
+Set the position at which to add a new entry created with \fB-\-add-kernel\fR.
 
 .TP
 \fB-\-args\fR=\fIkernel-args\fR

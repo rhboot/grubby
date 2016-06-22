@@ -4286,9 +4286,10 @@ int addNewKernel(struct grubConfig *config, struct singleEntry *template,
 		 const char *newKernelPath, const char *newKernelTitle,
 		 const char *newKernelArgs, const char *newKernelInitrd,
 		 const char **extraInitrds, int extraInitrdCount,
-		 const char *newMBKernel, const char *newMBKernelArgs)
+		 const char *newMBKernel, const char *newMBKernelArgs
+		 int newIndex)
 {
-	struct singleEntry *new;
+	struct singleEntry *new, *entry, *prev = NULL;
 	struct singleLine *newLine = NULL, *tmplLine = NULL, *masterLine = NULL;
 	int needs;
 	char *chptr;
@@ -4318,9 +4319,20 @@ int addNewKernel(struct grubConfig *config, struct singleEntry *template,
 	new = malloc(sizeof(*new));
 	new->skip = 0;
 	new->multiboot = 0;
-	new->next = config->entries;
 	new->lines = NULL;
-	config->entries = new;
+	entry = config->entries;
+	for (unsigned int i = 0; i < newIndex; i++) {
+		if (!entry)
+			break;
+		prev = entry;
+		entry = entry->next;
+	}
+	new->next = entry;
+
+	if (prev)
+		prev->next = new;
+	else
+		config->entries = new;
 
 	/* copy/update from the template */
 	needs = NEED_KERNEL | NEED_TITLE;
@@ -4771,6 +4783,7 @@ int main(int argc, const char **argv)
 	char *newKernelVersion = NULL;
 	char *newMBKernel = NULL;
 	char *newMBKernelArgs = NULL;
+	int newIndex = 0;
 	char *removeMBKernelArgs = NULL;
 	char *removeMBKernel = NULL;
 	char *bootPrefix = NULL;
@@ -4872,6 +4885,9 @@ int main(int argc, const char **argv)
 		   "the default"), _("kernel-path")},
 		{"set-default-index", 0, POPT_ARG_INT, &defaultIndex, 0,
 		 _("make the given entry index the default entry"),
+		 _("entry-index")},
+		{"set-index", 0, POPT_ARG_INT, &newIndex, 0,
+		 _("use the given index when creating a new entry"),
 		 _("entry-index")},
 		{"silo", 0, POPT_ARG_NONE, &configureSilo, 0,
 		 _("configure silo bootloader")},
@@ -5289,7 +5305,7 @@ int main(int argc, const char **argv)
 	if (addNewKernel(config, template, bootPrefix, newKernelPath,
 			 newKernelTitle, newKernelArgs, newKernelInitrd,
 			 (const char **)extraInitrds, extraInitrdCount,
-			 newMBKernel, newMBKernelArgs))
+			 newMBKernel, newMBKernelArgs, newIndex))
 		return 1;
 
 	if (numEntries(config) == 0) {
