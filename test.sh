@@ -485,6 +485,20 @@ grubTest grub.8 add/g8.2 --add-kernel=/boot/new-kernel.img --title='title' \
 grubTest grub.11 add/g11.1 --add-kernel=/boot/new-kernel.img --title='title' \
     --initrd=/boot/new-initrd --boot-filesystem=/boot --copy-default \
     --args='console=tty0 console=ttyS1,9600n81 single'
+grubTest grub.1 add/g1.1 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --set-index 0
+grubTest grub.1 add/g1.17 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --set-index 1
+grubTest grub.1 add/g1.17 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --set-index 2
+grubTest grub.15 add/g1.10 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --set-index 0
+grubTest grub.15 add/g1.8 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --set-index 1
+grubTest grub.15 add/g1.9 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --set-index 2
+grubTest grub.15 add/g1.9 --add-kernel=/boot/new-kernel.img --title='title' \
+    --initrd=/boot/new-initrd --boot-filesystem=/ --set-index 5
 
 testgrub2=n
 ARCH=$(uname -m | sed s,i[3456789]86,ia32,)
