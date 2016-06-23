@@ -4286,7 +4286,7 @@ int addNewKernel(struct grubConfig *config, struct singleEntry *template,
 		 const char *newKernelPath, const char *newKernelTitle,
 		 const char *newKernelArgs, const char *newKernelInitrd,
 		 const char **extraInitrds, int extraInitrdCount,
-		 const char *newMBKernel, const char *newMBKernelArgs
+		 const char *newMBKernel, const char *newMBKernelArgs,
 		 int newIndex)
 {
 	struct singleEntry *new, *entry, *prev = NULL;
