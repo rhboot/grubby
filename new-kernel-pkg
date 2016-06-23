@@ -238,7 +238,7 @@ install() {
 		--remove-kernel=\"TITLE=$title\$debugtitle\""
 
 	rungrubby ${ARGS} $makedefault
-	rungrubby --debug ${ARGS}
+	rungrubby --debug ${ARGS} --set-index=1
     else
 	[ -n "$verbose" ] && echo "$grubConfig does not exist, not running grubby for grub 0.97"
     fi
@@ -252,7 +252,7 @@ install() {
 		--args=\"root=$rootdevice $kernargs \$debugargs\" \
 		--remove-kernel=\"TITLE=$title\$debugtitle\""
 	rungrubby ${ARGS} $makedefault
-	rungrubby --debug ${ARGS}
+	rungrubby --debug ${ARGS} --set-index=1
     else
 	[ -n "$verbose" ] && echo "$grub2Config does not exist, not running grubby for grub 2"
     fi
@@ -267,7 +267,7 @@ install() {
 		--args=\"root=$rootdevice $kernargs \$debugargs\" \
 		--remove-kernel=\"TITLE=$title\$debugtitle\""
 	rungrubby ${ARGS} $makedefault
-	rungrubby --debug ${ARGS}
+	rungrubby --debug ${ARGS} --set-index=1
     else
 	[ -n "$verbose" ] && echo "$grub2EfiConfig does not exist, not running grubby for grub 2 with UEFI"
     fi
@@ -283,7 +283,7 @@ install() {
 		--remove-kernel=\"TITLE=$version\""
 
 	rungrubby ${ARGS} $makedefault
-	rungrubby --debug ${ARGS}
+	rungrubby --debug ${ARGS} --set-index=1
 	if [ -n "$runLilo" ]; then
 	    [ -n "$verbose" ] && echo "running $lilo"
 	    if [ ! -x $lilo ] ; then
@@ -307,7 +307,7 @@ install() {
 	    --remove-kernel=\"TITLE=$title\$debugtitle\""
 
 	rungrubby ${ARGS} $makedefault
-	rungrubby --debug ${ARGS}
+	rungrubby --debug ${ARGS} --set-index=1
     else
 	[ -n "$verbose" ] && echo "$extlinuxConfig does not exist, not running grubby for extlinux"
     fi
