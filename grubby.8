@@ -7,7 +7,7 @@ grubby \- command line tool for configuring grub, lilo, elilo, yaboot and zipl
        [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
        [--bootloader-probe] [--config-file \fIpath\fR] [--copy-default]
        [--debug] [--default-kernel] [--default-index] [--default-title]
-       [--devtree=\fIdevicetree.dtb\fR] [--set-entry=\fIentry-index\fR]
+       [--devtree=\fIdevicetree.dtb\fR] [--set-index=\fIentry-index\fR]
        [--grub] [--lilo] [--yaboot] [--silo] [--zipl]
        [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
        [--make-default] [-o path] [--version]
@@ -49,7 +49,7 @@ with that title are used.
 Add a new boot entry for the kernel located at \fIkernel-path\fR.
 
 .TP
-\fB-\-set-entry\fR=\fIentry-index\fR
+\fB-\-set-index\fR=\fIentry-index\fR
 Set the position at which to add a new entry created with \fB-\-add-kernel\fR.
 
 .TP
