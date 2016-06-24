@@ -4292,10 +4292,16 @@ int addNewKernel(struct grubConfig *config, struct singleEntry *template,
 	struct singleEntry *new, *entry, *prev = NULL;
 	struct singleLine *newLine = NULL, *tmplLine = NULL, *masterLine = NULL;
 	int needs;
+	char *indexs;
 	char *chptr;
+	int rc;
 
 	if (!newKernelPath)
 		return 0;
+
+	rc = asprintf(&indexs, "%d", newIndex);
+	if (rc < 0)
+		return 1;
 
 	/* if the newKernelTitle is too long silently munge it into something
 	 * we can live with. truncating is first check, then we'll just mess with
@@ -4753,7 +4759,7 @@ int addNewKernel(struct grubConfig *config, struct singleEntry *template,
 		abort();
 	}
 
-	if (updateImage(config, "0", prefix, newKernelArgs, NULL,
+	if (updateImage(config, indexs, prefix, newKernelArgs, NULL,
 			newMBKernelArgs, NULL))
 		return 1;
 
