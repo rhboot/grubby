@@ -565,6 +565,15 @@ if [ "$testgrub2" == "y" ]; then
         --copy-default --title 'Red Hat Enterprise Linux Server' \
         --args=root=/dev/mapper/foo--
 
+    # copy a stanza and add arguments as well, while using --set-index=
+    testing="GRUB2 add stanza and new args with --set-index="
+    grub2Test grub2.18 add/g2-1.18  --env grubenv.3 \
+        --add-kernel=/boot/vmlinuz-3.10.0-327.22.2.el7.x86_64.debug \
+        --boot-filesystem=/boot --copy-default \
+        --title "Red Hat Enterprise Linux Server (3.10.0-327.22.2.el7.x86_64.debug) 7.2 (Maipo) with debugging" \
+        --args="root=/dev/mapper/rhel_team--area--222-root systemd.log_level=debug systemd.log_target=kmsg" \
+        --set-index=1
+
     testing="GRUB2 add initrd"
     grub2Test grub2.2 add/g2-1.4 --update-kernel=/boot/new-kernel.img \
         --initrd=/boot/new-initrd --boot-filesystem=/boot/
