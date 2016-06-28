@@ -4786,7 +4786,7 @@ int main(int argc, const char **argv)
 		 NULL},
 		{"boot-filesystem", 0, POPT_ARG_STRING, &bootPrefix, 0,
 		 _
-		 ("filestystem which contains /boot directory (for testing only)"),
+		 ("filesystem which contains /boot directory (for testing only)"),
 		 _("bootfs")},
 #if defined(__i386__) || defined(__x86_64__) || defined (__powerpc64__) || defined (__ia64__)
 		{"bootloader-probe", 0, POPT_ARG_NONE, &bootloaderProbe, 0,
