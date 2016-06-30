@@ -3,13 +3,13 @@
 grubby \- command line tool for configuring grub, lilo, elilo, yaboot and zipl
 
 .SH SYNOPSIS
-\fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR] 
-       [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR] 
+\fBgrubby\fR [--add-kernel=\fIkernel-path\fR] [--args=\fIargs\fR]
+       [--bad-image-okay] [--boot-filesystem=\fIbootfs\fR]
        [--bootloader-probe] [--config-file \fIpath\fR] [--copy-default]
        [--debug] [--default-kernel] [--default-index] [--default-title]
        [--devtree=\fIdevicetree.dtb\fR] [--set-index=\fIentry-index\fR]
        [--grub] [--lilo] [--yaboot] [--silo] [--zipl]
-       [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR] 
+       [--info=\fIkernel-path\fR] [--initrd=\fIinitrd-path\fR]
        [--make-default] [-o path] [--version]
        [--remove-kernel=\fIkernel-path\fR] [--remove-args=\fIargs\fR]
        [--set-default=\fIkernel-path\fR] [--set-default-index=\fIentry-index\fR]
@@ -18,12 +18,14 @@ grubby \- command line tool for configuring grub, lilo, elilo, yaboot and zipl
        [--remove-mbargs=\fIargs\fR]
 
 .SH DESCRIPTION
+.SS General Information
 \fBgrubby\fR is a command line tool for updating and displaying information
 about the configuration files for the \fBgrub\fR, \fBlilo\fR, \fBelilo\fR
 (ia64), \fByaboot\fR (powerpc) and \fBzipl\fR (s390) boot loaders. It
 is primarily designed to be used from scripts which install new
 kernels and need to find information about the current boot environment.
 
+.SS Architecture Support
 On BIOS-based Intel x86 platforms, \fBgrub2\fR is the default bootloader and
 the configuration file is in \fB/boot/grub2/grub.cfg\fR.  On UEFI-based Intel
 x86 platforms, \fBgrub2\fR is the default bootloader, and the configuration
@@ -35,6 +37,7 @@ config stored in \fB/boot/grub2/grub.cfg\fR. The earlier Power7 systems use \fBy
 parsing and the configuration file should be in \fB/etc/yaboot.conf\fR.  On
 s390 platforms the \fBzipl bootloader\fR will read from \fB/etc/zipl.conf\fR.
 
+.SS Special Arguments
 There are a number of ways to specify the kernel used for \fB-\-info\fR,
 \fB-\-remove-kernel\fR, and \fB-\-update-kernel\fR. Specificying \fBDEFAULT\fR
 or \fBALL\fR selects the default entry and all of the entries, respectively.
@@ -44,13 +47,24 @@ be specified by using \fBTITLE=\fItitle\fR as the argument; all entries
 with that title are used.
 
 .SH OPTIONS
+
+.SS Basic Options
+
 .TP
 \fB-\-add-kernel\fR=\fIkernel-path\fR
 Add a new boot entry for the kernel located at \fIkernel-path\fR.
 
 .TP
-\fB-\-set-index\fR=\fIentry-index\fR
-Set the position at which to add a new entry created with \fB-\-add-kernel\fR.
+\fB-\-remove-kernel\fR=\fIkernel-path\fR
+Removes all boot entries which match \fIkernel-path\fR. This may be used
+along with -\-add-kernel, in which case the new kernel being added will
+never be removed.
+
+.TP
+\fB-\-update-kernel\fR=\fIkernel-path\fR
+The entries for kernels matching \fRkernel-path\fR are updated. Currently
+the only items that can be updated is the kernel argument list, which is
+modified via the \fB-\-args\fR and \fB-\-remove-args\fR options.
 
 .TP
 \fB-\-args\fR=\fIkernel-args\fR
@@ -63,6 +77,111 @@ an argument already exists the new value replaces the old values. The
 \fBroot=\fR kernel argument gets special handling if the configuration
 file has special handling for specifying the root filesystem (like
 lilo.conf does).
+
+.TP
+\fB-\-remove-args\fR=\fIkernel-args\fR
+The arguments specified by \fIkernel-args\fR are removed from the
+kernels specified by \fB-\-update-kernel\fR. The \fBroot\fR argument
+gets special handling for configuration files that support separate root
+filesystem configuration.
+
+.TP
+\fB-\-copy-default\fR
+\fBgrubby\fR will copy as much information (such as kernel arguments and
+root device) as possible from the current default kernel. The kernel path
+and initrd path will never be copied.
+
+.TP
+\fB-\-title\fR=\fIentry-title\fR
+When a new kernel entry is added \fIentry-title\fR is used as the title
+(\fBlilo\fR label) for the entry. If \fIentry-title\fR is longer then maximum
+length allowed by the bootloader (15 for lilo, unlimited for grub and elilo)
+the title is shortened to a (unique) entry.
+
+.TP
+\fB-\-initrd\fR=\fIinitrd-path\fR
+Use \fIinitrd-path\fR as the path to an initial ram disk for a new kernel
+being added.
+
+.TP
+\fB-\-set-default\fR=\fIkernel-path\fR
+The first entry which boots the specified kernel is made the default
+boot entry.
+
+.TP
+\fB-\-set-default-index\fR=\fIentry-index\fR
+Makes the given entry number the default boot entry.
+
+.TP
+\fB-\-make-default\fR
+Make the new kernel entry being added the default entry.
+
+.TP
+\fB-\-set-index\fR=\fIentry-index\fR
+Set the position at which to add a new entry created with \fB-\-add-kernel\fR.
+
+.TP
+\fB-\-debug\fR
+Display extra debugging information for failures.
+
+.SS Display Options
+
+.TP
+\fB-\-default-kernel\fR
+Display the full path to the current default kernel and exit.
+
+.TP
+\fB-\-default-index\fR
+Display the numeric index of the current default boot entry and exit.
+
+.TP
+\fB-\-default-title\fR
+Display the title of the current default boot entry and exit.
+
+.TP
+\fB-\-info\fR=\fIkernel-path\fR
+Display information on all boot entries which match \fIkernel-path\fR. I
+
+.TP
+\fB-\-bootloader-probe\fR
+\fBgrubby\fR tries to determine if \fBgrub\fR or \fBlilo\fR is currently
+installed. When one of those bootloaders is found the name of that bootloader
+is displayed on stdout.  Both could be installed (on different devices), and
+grubby will print out the names of both bootloaders, one per line. The probe
+for \fBgrub\fR requires a commented out boot directive \fBgrub.conf\fR
+identical to the standard directive in the lilo configuration file. If this
+is not present \fBgrubby\fR will assume grub is not installed (note
+that \fBanaconda\fR places this directive in \fBgrub.conf\fR files it creates).
+This option is only available on ia32 platforms.
+
+.TP
+\fB-\-version\fR
+Display the version of \fBgrubby\fR being run and then exit immediately.
+
+.SS Output Format Options
+
+.TP
+\fB-\-elilo\fR
+Use an \fBelilo\fR style configuration file.
+
+.TP
+\fB-\-grub\fR
+Use a \fBgrub\fR style configuration file instead of \fBlilo\fR style. This
+is the default on ia32 platforms.
+
+.TP
+\fB-\-lilo\fR
+Use a \fBlilo\fR style configuration file.
+
+.TP
+\fB-\-yaboot\fR
+Use an \fByaboot\fR style configuration file.
+
+.TP
+\fB-\-zipl\fR
+Use an \fBzipl\fR style configuration file.
+
+.SS Override Options
 
 .TP
 \fB-\-bad-image-okay\fR
@@ -82,123 +201,15 @@ is given \fBgrubby\fR acts as if the specified filesystem was the filesystem
 containing the kernel (this option is designed primarily for testing).
 
 .TP
-\fB-\-bootloader-probe\fR
-\fBgrubby\fR tries to determine if \fBgrub\fR or \fBlilo\fR is currently 
-installed. When one of those bootloaders is found the name of that bootloader
-is displayed on stdout.  Both could be installed (on different devices), and
-grubby will print out the names of both bootloaders, one per line. The probe
-for \fBgrub\fR requires a commented out boot directive \fBgrub.conf\fR
-identical to the standard directive in the lilo configuration file. If this
-is not present \fBgrubby\fR will assume grub is not installed (note 
-that \fBanaconda\fR places this directive in \fBgrub.conf\fR files it creates).
-This option is only available on ia32 platforms. 
-
-
-.TP
 \fB-\-config-file\fR=\fIpath\fR
 Use \fIpath\fR as the configuration file rather then the default.
 
-.TP
-\fB-\-copy-default\fR
-\fBgrubby\fR will copy as much information (such as kernel arguments and
-root device) as possible from the current default kernel. The kernel path
-and initrd path will never be copied.
-
-.TP
-\fB-\-debug\fR
-Display extra debugging information for failures.
-
-.TP
-\fB-\-default-kernel\fR
-Display the full path to the current default kernel and exit.
-
-.TP
-\fB-\-default-index\fR
-Display the numeric index of the current default boot entry and exit.
-
-.TP
-\fB-\-default-title\fR
-Display the title of the current default boot entry and exit.
-
-.TP
 \fB-\-devtree\fR=\fIpath\fR
 Use \fIpath\fR for device tree path in place of the path of any devicetree
 directive found in the template stanza.
 
 .TP
-\fB-\-elilo\fR
-Use an \fBelilo\fR style configuration file.
-
-.TP
-\fB-\-grub\fR
-Use a \fBgrub\fR style configuration file instead of \fBlilo\fR style. This
-is the default on ia32 platforms.
-
-.TP
-\fB-\-info\fR=\fIkernel-path\fR
-Display information on all boot entries which match \fIkernel-path\fR. I
-
-.TP
-\fB-\-initrd\fR=\fIinitrd-path\fR
-Use \fIinitrd-path\fR as the path to an initial ram disk for a new kernel
-being added.
-
-.TP
-\fB-\-lilo\fR
-Use a \fBlilo\fR style configuration file.
-
-.TP
-\fB-\-make-default\fR
-Make the new kernel entry being added the default entry.
-
-.TP
-\fB-\-remove-args\fR=\fIkernel-args\fR
-The arguments specified by \fIkernel-args\fR are removed from the 
-kernels specified by \fB-\-update-kernel\fR. The \fBroot\fR argument
-gets special handling for configuration files that support separate root
-filesystem configuration.
-
-.TP
-\fB-\-remove-kernel\fR=\fIkernel-path\fR
-Removes all boot entries which match \fIkernel-path\fR. This may be used
-along with -\-add-kernel, in which case the new kernel being added will
-never be removed.
-
-.TP
-\fB-\-set-default\fR=\fIkernel-path\fR
-The first entry which boots the specified kernel is made the default
-boot entry.
-
-.TP
-\fB-\-set-default-index\fR=\fIentry-index\fR
-Makes the given entry number the default boot entry.
-
-.TP
-\fB-\-title\fR=\fIentry-title\fR
-When a new kernel entry is added \fIentry-title\fR is used as the title
-(\fBlilo\fR label) for the entry. If \fIentry-title\fR is longer then maximum
-length allowed by the bootloader (15 for lilo, unlimited for grub and elilo)
-the title is shortened to a (unique) entry.
-
-.TP
-\fB-\-update-kernel\fR=\fIkernel-path\fR
-The entries for kernels matching \fRkernel-path\fR are updated. Currently
-the only items that can be updated is the kernel argument list, which is
-modified via the \fB-\-args\fR and \fB-\-remove-args\fR options.
-
-.TP
-\fB-\-version\fR
-Display the version of \fBgrubby\fR being run and then exit immediately.
-
-.TP
-\fB-\-yaboot\fR
-Use an \fByaboot\fR style configuration file.
-
-.TP
-\fB-\-zipl\fR
-Use an \fBzipl\fR style configuration file.
-
-.SH MULTIBOOT OPTIONS
+.SS MULTIBOOT OPTIONS
 The Multiboot Specification provides a genreic interface for boot
 loaders and operating systems.  It is supported by the GRUB bootloader.
 
@@ -210,20 +221,20 @@ Add a new boot entry for the multiboot kernel located at
 
 .TP
 \fB-\-remove-multiboot\fR=\fImultiboot-path\fR
-Removes all boot entries which match \fImultiboot-path\fR. 
+Removes all boot entries which match \fImultiboot-path\fR.
 
 .TP
 \fB-\-mbargs\fR=\fImultiboot-args\fR
-When a new multiboot kernel is added, this specifies the command line 
-arguments which should be passed to that kernel by default 
+When a new multiboot kernel is added, this specifies the command line
+arguments which should be passed to that kernel by default
 When \fB-\-update-kernel\fR is used, this specifies new arguments to add
 to the argument list. Multiple, space separated arguments may be used. If
-an argument already exists the new value replaces the old values. 
+an argument already exists the new value replaces the old values.
 
 .TP
 \fB-\-remove-mbargs\fR=\fImultiboot-args\fR
-The arguments specified by \fImultiboot-args\fR are removed from the 
-kernels specified by \fB-\-update-kernel\fR. 
+The arguments specified by \fImultiboot-args\fR are removed from the
+kernels specified by \fB-\-update-kernel\fR.
 
 
 .SH "BUGS"
