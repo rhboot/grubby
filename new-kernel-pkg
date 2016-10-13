@@ -316,7 +316,9 @@ doRmmoddep() {
     [ -n "$verbose" ] && echo "removing modules.dep info for $version"
     if [ -d /lib/modules/$version ]; then
         rm -f /lib/modules/$version/modules.*.bin \
-            /lib/modules/$version/modules.{alias,dep,devname,symbols,softdep}
+            /lib/modules/$version/modules.{alias,ccwmap,dep,ieee1394map} \
+            /lib/modules/$version/modules.{inputmap,isapnpmap,ofmap,pcimap} \
+            /lib/modules/$version/modules.{seriomap,softdep,symbols,usbmap}
     fi
 }
 
