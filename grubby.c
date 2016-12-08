@@ -2589,19 +2589,19 @@ void markRemovedImage(struct grubConfig *cfg, const char *image,
 		entry->skip = 1;
 }
 
-void setDefaultImage(struct grubConfig *config, int hasNew,
-		     const char *defaultKernelPath, int newIsDefault,
-		     const char *prefix, int flags, int index)
+void setDefaultImage(struct grubConfig *config, int isUserSpecifiedKernelPath,
+		     const char *defaultKernelPath, int newBootEntryIsDefault,
+		     const char *prefix, int flags, int newDefaultBootEntryIndex)
 {
 	struct singleEntry *entry, *entry2, *newDefault;
 	int i, j;
 
-	if (newIsDefault) {
+	if (newBootEntryIsDefault) {
 		config->defaultImage = 0;
 		return;
-	} else if ((index >= 0) && config->cfi->defaultIsIndex) {
-		if (findEntryByIndex(config, index))
-			config->defaultImage = index;
+	} else if ((newDefaultBootEntryIndex >= 0) && config->cfi->defaultIsIndex) {
+		if (findEntryByIndex(config, newDefaultBootEntryIndex))
+			config->defaultImage = newDefaultBootEntryIndex;
 		else
 			config->defaultImage = -1;
 		return;
@@ -2629,7 +2629,7 @@ void setDefaultImage(struct grubConfig *config, int hasNew,
 
 	if (entry && !entry->skip) {
 		/* we can preserve the default */
-		if (hasNew)
+		if (isUserSpecifiedKernelPath)
 			config->defaultImage++;
 
 		/* count the number of entries erased before this one */
@@ -2638,7 +2638,7 @@ void setDefaultImage(struct grubConfig *config, int hasNew,
 			if (entry2->skip)
 				config->defaultImage--;
 		}
-	} else if (hasNew) {
+	} else if (isUserSpecifiedKernelPath) {
 		config->defaultImage = 0;
 	} else {
 		/* Either we just erased the default (or the default line was bad
