@@ -671,6 +671,8 @@ struct grubConfig {
 	int fallbackImage;	/* just like defaultImage */
 	int flags;
 	struct configFileInfo *cfi;
+	int isModified;		/* assumes only one entry added
+				   per invocation of grubby */
 };
 
 blkid_cache blkid;
@@ -1399,6 +1401,7 @@ static struct grubConfig *readConfig(const char *inName,
 	cfg->theLines = NULL;
 	cfg->entries = NULL;
 	cfg->fallbackImage = 0;
+	cfg->isModified = 0;
 
 	/* copy everything we have */
 	while (*head) {
@@ -4764,8 +4767,10 @@ int addNewKernel(struct grubConfig *config, struct singleEntry *template,
 	}
 
 	if (updateImage(config, indexs, prefix, newKernelArgs, NULL,
-			newMBKernelArgs, NULL))
+			newMBKernelArgs, NULL)) {
+		config->isModified = 1;
 		return 1;
+	}
 
 	return 0;
 }
