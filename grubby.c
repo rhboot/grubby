@@ -132,6 +132,10 @@ struct singleEntry {
 #define NEED_DEVTREE (1 << 6)
 
 #define MAIN_DEFAULT	    (1 << 0)
+#define FIRST_ENTRY_INDEX    0	/* boot entry index value begin and increment
+				   from this initial value */
+#define NO_DEFAULT_ENTRY    -1	/* indicates that no specific default boot
+				   entry was set or currently exists */
 #define DEFAULT_SAVED       -2
 #define DEFAULT_SAVED_GRUB2 -3
 
@@ -1612,7 +1616,7 @@ static struct grubConfig *readConfig(const char *inName,
 						*end == ' ' || *end == '\t'))
 					end++;
 				if (*end)
-					cfg->defaultImage = -1;
+					cfg->defaultImage = NO_DEFAULT_ENTRY;
 			} else if (defaultLine->numElements == 3) {
 				char *value = defaultLine->elements[2].item;
 				while (*value && (*value == '"' ||
@@ -1625,7 +1629,7 @@ static struct grubConfig *readConfig(const char *inName,
 						*end == ' ' || *end == '\t'))
 					end++;
 				if (*end)
-					cfg->defaultImage = -1;
+					cfg->defaultImage = NO_DEFAULT_ENTRY;
 			}
 		} else if (cfi->defaultSupportSaved &&
 			   !strncmp(defaultLine->elements[1].item, "saved",
@@ -1635,7 +1639,7 @@ static struct grubConfig *readConfig(const char *inName,
 			cfg->defaultImage =
 			    strtol(defaultLine->elements[1].item, &end, 10);
 			if (*end)
-				cfg->defaultImage = -1;
+				cfg->defaultImage = NO_DEFAULT_ENTRY;
 		} else if (defaultLine->numElements >= 2) {
 			int i = 0;
 			while ((entry = findEntryByIndex(cfg, i))) {
@@ -1663,7 +1667,7 @@ static struct grubConfig *readConfig(const char *inName,
 			if (entry) {
 				cfg->defaultImage = i;
 			} else {
-				cfg->defaultImage = -1;
+				cfg->defaultImage = NO_DEFAULT_ENTRY;
 			}
 		}
 	} else if (cfg->cfi->defaultIsSaved && cfg->cfi->getEnv) {
@@ -1680,7 +1684,7 @@ static struct grubConfig *readConfig(const char *inName,
 				cfg->defaultImage = index;
 		}
 	} else {
-		cfg->defaultImage = 0;
+		cfg->defaultImage = FIRST_ENTRY_INDEX;
 	}
 
 	return cfg;
@@ -1700,7 +1704,7 @@ static void writeDefault(FILE * out, char *indent,
 		fprintf(out, "%sdefault%ssaved\n", indent, separator);
 	else if (cfg->cfi->defaultIsSaved) {
 		fprintf(out, "%sset default=\"${saved_entry}\"\n", indent);
-		if (cfg->defaultImage >= 0 && cfg->cfi->setEnv) {
+		if (cfg->defaultImage >= FIRST_ENTRY_INDEX && cfg->cfi->setEnv) {
 			char *title;
 			entry = findEntryByIndex(cfg, cfg->defaultImage);
 			line = getLineByType(LT_MENUENTRY, entry->lines);
@@ -1713,7 +1717,7 @@ static void writeDefault(FILE * out, char *indent,
 							 "saved_entry", title);
 			}
 		}
-	} else if (cfg->defaultImage > -1) {
+	} else if (cfg->defaultImage >= FIRST_ENTRY_INDEX) {
 		if (cfg->cfi->defaultIsIndex) {
 			if (cfg->cfi->defaultIsVariable) {
 				fprintf(out, "%sset default=\"%d\"\n", indent,
@@ -2417,7 +2421,7 @@ struct singleEntry *findTemplate(struct grubConfig *cfg, const char *prefix,
 				}
 			}
 		}
-	} else if (cfg->defaultImage > -1) {
+	} else if (cfg->defaultImage >= FIRST_ENTRY_INDEX) {
 		entry = findEntryByIndex(cfg, cfg->defaultImage);
 		if (entry && suitableImage(entry, prefix, skipRemoved, flags)) {
 			if (indexPtr)
@@ -2499,20 +2503,20 @@ void setDefaultImage(struct grubConfig *config, int isUserSpecifiedKernelPath,
 	int i, j;
 
 	if (newBootEntryIsDefault) {
-		config->defaultImage = 0;
+		config->defaultImage = FIRST_ENTRY_INDEX;
 		return;
 	} else if ((newDefaultBootEntryIndex >= 0) && config->cfi->defaultIsIndex) {
 		if (findEntryByIndex(config, newDefaultBootEntryIndex))
 			config->defaultImage = newDefaultBootEntryIndex;
 		else
-			config->defaultImage = -1;
+			config->defaultImage = NO_DEFAULT_ENTRY;
 		return;
 	} else if (defaultKernelPath) {
 		i = 0;
 		if (findEntryByPath(config, defaultKernelPath, prefix, &i)) {
 			config->defaultImage = i;
 		} else {
-			config->defaultImage = -1;
+			config->defaultImage = NO_DEFAULT_ENTRY;
 			return;
 		}
 	}
@@ -2524,7 +2528,7 @@ void setDefaultImage(struct grubConfig *config, int isUserSpecifiedKernelPath,
 		/* default is set to saved, we don't want to change it */
 		return;
 
-	if (config->defaultImage > -1)
+	if (config->defaultImage >= FIRST_ENTRY_INDEX)
 		entry = findEntryByIndex(config, config->defaultImage);
 	else
 		entry = NULL;
@@ -2541,7 +2545,7 @@ void setDefaultImage(struct grubConfig *config, int isUserSpecifiedKernelPath,
 				config->defaultImage--;
 		}
 	} else if (isUserSpecifiedKernelPath) {
-		config->defaultImage = 0;
+		config->defaultImage = FIRST_ENTRY_INDEX;
 	} else {
 		/* Either we just erased the default (or the default line was
 		 * bad to begin with) and didn't put a new one in. We'll use
@@ -2550,7 +2554,7 @@ void setDefaultImage(struct grubConfig *config, int isUserSpecifiedKernelPath,
 		    findTemplate(config, prefix, &config->defaultImage, 1,
 				 flags);
 		if (!newDefault)
-			config->defaultImage = -1;
+			config->defaultImage = NO_DEFAULT_ENTRY;
 	}
 }
 
@@ -5175,11 +5179,11 @@ int main(int argc, const char **argv)
 		struct singleEntry *entry;
 		char *rootspec;
 
-		if (config->defaultImage == -1)
+		if (config->defaultImage == NO_DEFAULT_ENTRY)
 			return 0;
 		if (config->defaultImage == DEFAULT_SAVED_GRUB2 &&
 		    cfi->defaultIsSaved)
-			config->defaultImage = 0;
+			config->defaultImage = FIRST_ENTRY_INDEX;
 		entry = findEntryByIndex(config, config->defaultImage);
 		if (!entry)
 			return 0;
@@ -5202,11 +5206,11 @@ int main(int argc, const char **argv)
 		struct singleLine *line;
 		struct singleEntry *entry;
 
-		if (config->defaultImage == -1)
+		if (config->defaultImage == NO_DEFAULT_ENTRY)
 			return 0;
 		if (config->defaultImage == DEFAULT_SAVED_GRUB2 &&
 		    cfi->defaultIsSaved)
-			config->defaultImage = 0;
+			config->defaultImage = FIRST_ENTRY_INDEX;
 		entry = findEntryByIndex(config, config->defaultImage);
 		if (!entry)
 			return 0;
@@ -5236,11 +5240,11 @@ int main(int argc, const char **argv)
 		return 0;
 
 	} else if (displayDefaultIndex) {
-		if (config->defaultImage == -1)
+		if (config->defaultImage == NO_DEFAULT_ENTRY)
 			return 0;
 		if (config->defaultImage == DEFAULT_SAVED_GRUB2 &&
 		    cfi->defaultIsSaved)
-			config->defaultImage = 0;
+			config->defaultImage = FIRST_ENTRY_INDEX;
 		printf("%i\n", config->defaultImage);
 		return 0;
 
