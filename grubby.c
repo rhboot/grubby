@@ -1709,7 +1709,20 @@ static void writeDefault(FILE * out, char *indent,
 		fprintf(out, "%sset default=\"${saved_entry}\"\n", indent);
 		if (cfg->defaultImage >= FIRST_ENTRY_INDEX && cfg->cfi->setEnv) {
 			char *title;
-			entry = findEntryByIndex(cfg, cfg->defaultImage);
+			int trueIndex, currentIndex;
+
+			trueIndex = 0;
+			currentIndex = 0;
+
+			while ((entry = findEntryByIndex(cfg, currentIndex))) {
+				if (!entry->skip) {
+					if (trueIndex == cfg->defaultImage) {
+						break;
+					}
+					trueIndex++;
+				}
+				currentIndex++;
+			}
 			line = getLineByType(LT_MENUENTRY, entry->lines);
 			if (!line)
 				line = getLineByType(LT_TITLE, entry->lines);
