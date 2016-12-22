@@ -565,6 +565,13 @@ if [ "$testgrub2" == "y" ]; then
         --copy-default --title 'Red Hat Enterprise Linux Server' \
         --args=root=/dev/mapper/foo--
 
+    grub2Test grub2.19 remove/g2.19 --env grubenv.4 \
+        --remove-kernel=/boot/vmlinuz-2.6.38.2-9.fc15.x86_64 \
+        --boot-filesystem=/boot/
+    commandTest "saved_default output" \
+        "grub2-editenv test/grub2-support_files/env_temp list" \
+        "saved_entry=Linux, with Fedora 2.6.38.8-32.fc15.x86_64"
+
     # copy a stanza and add arguments as well, while using --set-index=
     testing="GRUB2 add stanza and new args with --set-index="
     grub2Test grub2.18 add/g2-1.18  --env grubenv.3 \
