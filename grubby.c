@@ -2436,8 +2436,11 @@ struct singleEntry *findTemplate(struct grubConfig *cfg, const char *prefix,
 	index = 0;
 	while ((entry = findEntryByIndex(cfg, index))) {
 		if (suitableImage(entry, prefix, skipRemoved, flags)) {
-			int j;
-			for (j = 0; j < index; j++) {
+			int j, unmodifiedIndex;
+
+			unmodifiedIndex = index;
+
+			for (j = 0; j < unmodifiedIndex; j++) {
 				entry2 = findEntryByIndex(cfg, j);
 				if (entry2->skip)
 					index--;
