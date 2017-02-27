@@ -2566,6 +2566,8 @@ void setDefaultImage(struct grubConfig *config, int isAddingBootEntry,
 	/* check validity of existing default or first-entry-found
 	   selection */
 	if (defaultKernelPath) {
+                /* we must initialize this */
+                firstKernelEntryIndex = 0;
 		/* user requested first-entry-found */
 		if (!findEntryByPath(config, defaultKernelPath,
 				     prefix, &firstKernelEntryIndex)) {
