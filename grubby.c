@@ -2522,6 +2522,9 @@ void setDefaultImage(struct grubConfig *config, int isAddingBootEntry,
 	struct singleEntry *bootEntry, *newDefault;
 	int indexToVerify, firstKernelEntryIndex, currentLookupIndex;
 
+        /* initialize */
+        currentLookupIndex = FIRST_ENTRY_INDEX;
+
 	/* handle the two cases where the user explictly picks the default
 	 * boot entry index as it would exist post-modification */
 
@@ -2587,8 +2590,30 @@ void setDefaultImage(struct grubConfig *config, int isAddingBootEntry,
 			config->defaultImage++;
 		}
 	} else {
-		/* use pre-existing default entry */
-		currentLookupIndex = config->defaultImage;
+                /* check to see if the default is stored in the environment */
+                if (config->defaultImage < FIRST_ENTRY_INDEX) {
+                    if (config->defaultImage == DEFAULT_SAVED || config->defaultImage == DEFAULT_SAVED_GRUB2)
+                    {
+                        if (config->cfi->defaultIsSaved) {
+                            if (config->cfi->getEnv) {
+                                char *defaultTitle = config->cfi->getEnv(config->cfi, "saved_entry");
+
+                                if (defaultTitle) {
+                                    if (isnumber(defaultTitle)) {
+                                        currentLookupIndex = atoi(defaultTitle);
+                                    } else {
+                                        findEntryByTitle(config, defaultTitle, &currentLookupIndex);
+                                    }
+                                    /* set the default Image to an actual index */
+                                    config->defaultImage = currentLookupIndex;
+                                }
+                            }
+                         }
+                    }
+                } else {
+                        /* use pre-existing default entry from the file*/
+                        currentLookupIndex = config->defaultImage;
+                }
 
 		if (isAddingBootEntry
 		    && (newBootEntryIndex <= config->defaultImage)) {
