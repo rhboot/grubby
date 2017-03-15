@@ -314,6 +314,8 @@ liloDisplayTest lilo.1 defaultkernel/l1.1 --default-kernel
 testing="Z/IPL default directive"
 ziplTest zipl.1 default/z1.1 --add-kernel /boot/new-kernel --title test
 ziplTest zipl.1 default/z1.2 --add-kernel /boot/new-kernel --title test --make-default
+testing="Z/IPL default index directive"
+ziplTest zipl.2 default/z2.1 --set-default-index=0
 testing="Z/IPL display default index"
 ziplDisplayTest zipl.1 defaultindex/0 --default-index
 testing="Z/IPL display default title"
