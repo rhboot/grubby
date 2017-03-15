@@ -2535,8 +2535,7 @@ void setDefaultImage(struct grubConfig *config, int isAddingBootEntry,
 	}
 
 	/* Case 2: user picked an arbitrary index as the default boot entry */
-	if (newDefaultBootEntryIndex >= FIRST_ENTRY_INDEX
-	    && config->cfi->defaultIsIndex) {
+	if (newDefaultBootEntryIndex >= FIRST_ENTRY_INDEX) {
 		indexToVerify = newDefaultBootEntryIndex;
 
 		/* user chose to make latest boot entry the default */
