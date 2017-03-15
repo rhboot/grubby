@@ -1,0 +1,6 @@
+index=1
+kernel=/boot/vmlinuz-3.10.0-514.6.2.el7.s390x
+args="crashkernel=auto rd.dasd=0.0.0120 rd.dasd=0.0.0121 rd.dasd=0.0.0122 rd.dasd=0.0.0123 rd.lvm.lv=rhel_ibm-z-68/root rd.lvm.lv=rhel_ibm-z-68/swap rd.znet=qeth,0.0.8000,0.0.8001,0.0.8002,layer2=1,portname=z-68,portno=0 LANG=en_US.UTF-8 systemd.log_level=debug systemd.log_target=kmsg"
+root=/dev/mapper/rhel_ibm--z--68-root
+initrd=/boot/initramfs-3.10.0-514.6.2.el7.s390x.img
+title=3.10.0-514.6.2.el7.s390x_with_debugging

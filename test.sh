@@ -320,6 +320,8 @@ testing="Z/IPL display default title"
 ziplDisplayTest zipl.1 defaulttitle/z.1 --default-title
 testing="Z/IPL display default kernel"
 ziplDisplayTest zipl.1 defaultkernel/z.1 --default-kernel
+testing="Z/IPL display entry information"
+ziplDisplayTest zipl.2 info/z2.1 --info=1
 
 testing="GRUB fallback directive"
 grubTest grub.5 fallback/g5.1 --remove-kernel=/boot/vmlinuz-2.4.7-ac3 \
