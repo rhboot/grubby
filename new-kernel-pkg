@@ -305,6 +305,8 @@ install() {
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "adding $version to $extlinuxConfig"
 
+	# extlinux title doesn't allow spaces
+	[ -n "$title" ] && title=$(echo $title | sed 's/ //g')
 	ARGS="--extlinux -c $extlinuxConfig --add-kernel=$kernelImage \
 	    $DEVTREEDIR $DEVTREE \
 	    $INITRD --copy-default --title \"$title\$debugtitle\" \
@@ -566,6 +568,9 @@ update() {
 
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "updating $version from $extlinuxConfig"
+
+	# extlinux title doesn't allow spaces
+	[ -n "$title" ] && title=$(echo $title | sed 's/ //g')
 	ARGS="--extlinux -c $extlinuxConfig --update-kernel=$kernelImage \
 		$DEVTREE $DEVTREEDIR $INITRD ${kernargs:+--args=\"$kernargs\"} \
 		${removeargs:+--remove-args=\"$removeargs\"} \
