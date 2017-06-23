@@ -1789,6 +1789,7 @@ static int writeConfig(struct grubConfig *cfg, char *outName,
 	int needs = MAIN_DEFAULT;
 	struct stat sb;
 	int i;
+	int rc = 0;
 
 	if (!strcmp(outName, "-")) {
 		out = stdout;
@@ -1903,16 +1904,42 @@ static int writeConfig(struct grubConfig *cfg, char *outName,
 	}
 
 	if (tmpOutName) {
-		if (rename(tmpOutName, outName)) {
-			fprintf(stderr,
-				_("grubby: error moving %s to %s: %s\n"),
-				tmpOutName, outName, strerror(errno));
-			unlink(outName);
-			return 1;
+		/* write userspace buffers */
+		if (fflush(out))
+			rc = 1;
+
+		/* purge the write-back cache with fsync() */
+		if (fsync(fileno(out)))
+			rc = 1;
+
+		if (fclose(out))
+			rc = 1;
+
+		if (rc == 0 && rename(tmpOutName, outName)) {
+			unlink(tmpOutName);
+			rc = 1;
 		}
+
+		/* fsync() the destination directory after rename */
+		if (rc == 0) {
+			int dirfd;
+
+			dirfd = open(dirname(strdupa(outName)), O_RDONLY);
+			if (dirfd < 0)
+				rc = 1;
+			else if (fsync(dirfd))
+				rc = 1;
+
+			if (dirfd >= 0)
+				close(dirfd);
+		}
+
+		if (rc == 1)
+			fprintf(stderr,
+				_("grubby: error flushing data: %m\n"));
 	}
 
-	return 0;
+	return rc;
 }
 
 static int numEntries(struct grubConfig *cfg)
