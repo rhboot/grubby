@@ -1903,6 +1903,35 @@ static int writeConfig(struct grubConfig *cfg, char *outName,
 	}
 
 	if (tmpOutName) {
+
+		/* write userspace buffers */
+		if (fflush(out)) {
+			fprintf(stderr,
+					_("grubby: error writing buffers for %s: %s\n"),
+					tmpOutName, strerror(errno));
+			fclose(out);
+			unlink(tmpOutName);
+			return 1;
+		}
+
+		/* purge the write-back cache with fsync() */
+		if (fsync(fileno(out))) {
+			fprintf(stderr,
+					_("grubby: error writing buffers for %s: %s\n"),
+					tmpOutName, strerror(errno));
+			fclose(out);
+			unlink(tmpOutName);
+			return 1;
+		}
+
+		if (fclose(out)) {
+			fprintf(stderr,
+					_("grubby: error closing %s: %s\n"),
+					tmpOutName, strerror(errno));
+			unlink(tmpOutName);
+			return 1;
+		}
+
 		if (rename(tmpOutName, outName)) {
 			fprintf(stderr,
 				_("grubby: error moving %s to %s: %s\n"),
@@ -1910,6 +1939,18 @@ static int writeConfig(struct grubConfig *cfg, char *outName,
 			unlink(outName);
 			return 1;
 		}
+
+		/* fsync() the destination directory after rename */
+		int dirfd = open(dirname(strdupa(outName)), O_RDONLY);
+
+		if (fsync(dirfd)) {
+			fprintf(stderr,
+				_("grubby: error flushing data!\n"));
+			return 1;
+		}
+
+		close(dirfd);
+
 	}
 
 	return 0;
