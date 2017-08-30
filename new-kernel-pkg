@@ -37,7 +37,6 @@ else
 fi
 
 [ -f /etc/sysconfig/kernel ] && . /etc/sysconfig/kernel
-[ -f /etc/sysconfig/uboot ] && . /etc/sysconfig/uboot
 
 cfgGrub2=""
 cfgGrub2Efi=""
@@ -50,7 +49,6 @@ grubConfig=""
 grub2Config=""
 grub2EfiConfig=""
 extlinuxConfig=""
-ubootScript="/boot/boot.scr"
 
 ARCH=$(uname -m)
 
@@ -84,13 +82,6 @@ elif [[ ${ARCH} =~ armv[5|7].*l ]] ; then
     liloConfig=""
     bootPrefix=/boot
     extlinuxConfig=$(readlink -f /etc/extlinux.conf 2>/dev/null)
-    ubootDir=${UBOOT_DIR:-"/boot"}
-    ubootScript=$ubootDir/${UBOOT_SCR:-"boot.scr"}
-    ubootKList=${UBOOT_KLIST:-"klist.txt"}
-    ubootDevice=/dev/${UBOOT_DEVICE:-"mmcblk0p1"}
-    ubootDefaultImage=${UBOOT_UIMAGE:-"uImage"}
-    ubootDefaultInitrd=${UBOOT_UINITRD:-"uInitrd"}
-    ubootAddress=${UBOOT_IMGADDR:-"0x00008000"}
     mounted=""
     liloFlag=""
     isx86=""
@@ -386,53 +377,6 @@ remove() {
 	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
     fi
 
-    if [ -n "$cfguBoot" ]; then
-	[ -n "$verbose" ] && echo "removing $version from $ubootDir..."
-
-	if [ -f $ubootDir/$ubootKList ]; then
-	    tmpKList=`mktemp $ubootDir/$ubootKList.XXXX`
-	    curversion=`tail -n1 $ubootDir/$ubootKList`
-	    sed "/$version$/d" $ubootDir/$ubootKList > $tmpKList
-	    newversion=`tail -n1 $tmpKList`
-	    if [ -f $ubootDir/uImage-$newversion ] && [ -f $ubootDir/uInitrd-$newversion ]; then
-		if [ "$curversion" != "$newversion" ]; then
-		    cp -fp $ubootDir/uImage-$newversion $ubootDir/${ubootDefaultImage}
-		    if [ $? -ne 0 ]; then
-			[ -n "$verbose" ] && echo "copy uImage-$newversion error, default kernel not replaced!" && exit
-		    fi
-		    cp -fp $ubootDir/uInitrd-$newversion $ubootDir/${ubootDefaultInitrd}
-		    if [ $? -ne 0 ]; then
-			[ -n "$verbose" ] && echo "copy uInitrd-$newversion error, default Initrd not replaced!" && exit
-		    fi
-		fi
-
-		[ -n "$verbose" ] && echo "removing uImage-$version"
-		if [ -f $ubootDir/uImage-$version ]; then
-		    rm -f $ubootDir/uImage-$version
-		else
-		    [ -n "$verbose" ] && echo "uImage-$version did not exist!"
-		fi
-
-		[ -n "$verbose" ] && echo "removing uInitrd-$version"
-		if [ -f $ubootDir/uInitrd-$version ]; then
-		    rm -f $ubootDir/uInitrd-$version
-		else
-		    [ -n "$verbose" ] && echo "uInitrd-$version did not exist!"
-		fi
-
-		mv $tmpKList $ubootDir/$ubootKList
-		[ -x /sbin/a-b-c ] && /sbin/a-b-c
-	    else
-		[ -n "$verbose" ] && echo "uImage $newversion does not exist!"
-		[ -f $tmpKList ] && rm -f $tmpKList
-	    fi
-        else
-            [ -n "$verbose" ] && echo "No previous kernel version.  U-Boot images not removed!"
-        fi
-    else
-	[ -n "$verbose" ] && echo "$ubootScript does not exist, not modifying $ubootDir"
-    fi
-
     if [ -n "$cfgExtlinux" ]; then
 	[ -n "$verbose" ] && echo "removing $version from $extlinuxConfig"
 	$grubby --extlinux -c $extlinuxConfig \
@@ -532,36 +476,6 @@ update() {
 	fi
     else
 	[ -n "$verbose" ] && echo "$liloConfig does not exist, not running grubby"
-    fi
-
-    if [ -n "$cfguBoot" ]; then
-	[ -n "$verbose" ] && echo "adding $version to $ubootDir..."
-
-	[ -n "$verbose" ] && echo "creating uImage-$version"
-	mkimage -A arm -O linux -T kernel -C none -a $ubootAddress \
-		-e $ubootAddress -n $version \
-		-d $kernelImage $ubootDir/uImage-$version
-
-	[ -n "$verbose" ] && echo "creating uInitrd-$version"
-	mkimage -A arm -O linux -T ramdisk -C none -a 0 -e 0 \
-		-n initramfs -d $initrdfile $ubootDir/uInitrd-$version
-
-	if [ -f $ubootDir/uImage-$version ] && [ -f $ubootDir/uInitrd-$version ]; then
-	    cp -fp $ubootDir/uImage-$version $ubootDir/${ubootDefaultImage}
-	    if [ $? -ne 0 ]; then
-		[ -n "$verbose" ] && echo "copy uImage-$version error, kernel not installed!" && exit
-	    fi
-	    cp -fp $ubootDir/uInitrd-$version $ubootDir/${ubootDefaultInitrd}
-	    if [ $? -ne 0 ]; then
-		[ -n "$verbose" ] && echo "copy uInitrd-$version error, kernel not installed!" && exit
-	    fi
-	    echo $version >> $ubootDir/$ubootKList
-	    [ -x /sbin/a-b-c ] && /sbin/a-b-c
-	else
-	    [ -n "$verbose" ] && echo "cannot make $version the default"
-	fi
-    else
-	[ -n "$verbose" ] && echo "$ubootScript does not exist, not setting up $ubootDir"
     fi
 
     if [ -n "$cfgExtlinux" ]; then
@@ -874,33 +788,6 @@ fi
 [ -n "$liloConfig" ] && [ -f "$liloConfig" ] && cfgLilo=1;
 [ -n "$extlinuxConfig" ] && [ -f "$extlinuxConfig" ] && cfgExtlinux=1;
 
-# if we have a U-Boot directory, but no boot script, check if the directory
-# is mounted.  If not, mount it, and then check if a boot script exists.
-if [ -n "$ubootDir" ]; then
-    if [ -f "$ubootScript" ]; then
-        cfguBoot=1
-    else
-	mountEntry=`mount | grep $ubootDir`
-	if [ -z "$mountEntry" ]; then
-	    mount $ubootDevice $ubootDir
-	    mounted=1
-	fi
-	[ -f "$ubootScript" ] && cfguBoot=1;
-    fi
-fi
-
-# if we're using U-Boot, check if the default load address should change
-if [ -n "$cfguBoot" -a -z "$UBOOT_IMGADDR" ]; then
-    [[ $version  =~ .([^.]*)$ ]]
-    platform=${BASH_REMATCH[1]}
-    # A few platforms use an alternate kernel load address
-    if [ "$platform" = "omap" ]; then
-        ubootAddress=0x80008000
-    elif [ "$platform" = "imx" ]; then
-        ubootAddress=0x90008000
-    fi
-fi
-
 # if we have a lilo config on an x86 box, see if the default boot loader
 # is lilo to determine if it should be run
 if [ -n "$cfgLilo" -a -n "$isx86" ]; then
@@ -916,9 +803,6 @@ elif [ "$mode" == "--update" ]; then
 elif [ "$mode" == "--rpmposttrans" ]; then
     rpmposttrans
 fi
-
-# if we mounted the U-Boot directory, unmount it.
-[ -n "$mounted" ] && umount $ubootDir
 
 # make sure changes make it to the disk.
 # if /boot is a mountpoint, force the meta data on disk
