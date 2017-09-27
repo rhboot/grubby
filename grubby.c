@@ -3563,23 +3563,67 @@ static void removeElement(struct singleLine *line, int removeHere)
 	line->numElements--;
 }
 
-int argMatch(const char *one, const char *two)
+static int argNameMatch(const char *one, const char *two)
 {
 	char *first, *second;
-	char *chptr;
+	char *chptra, *chptrb;
+	int rc;
 
 	first = strcpy(alloca(strlen(one) + 1), one);
 	second = strcpy(alloca(strlen(two) + 1), two);
 
-	chptr = strchr(first, '=');
-	if (chptr)
-		*chptr = '\0';
+	chptra = strchr(first, '=');
+	if (chptra)
+		*chptra = '\0';
 
-	chptr = strchr(second, '=');
-	if (chptr)
-		*chptr = '\0';
+	chptrb = strchr(second, '=');
+	if (chptrb)
+		*chptrb = '\0';
 
-	return strcmp(first, second);
+	rc = strcmp(first, second);
+
+	if (chptra)
+		*chptra = '=';
+	if (chptrb)
+		*chptrb = '=';
+
+	return rc;
+}
+
+static int argHasValue(const char *arg)
+{
+	char *chptr;
+
+	chptr = strchr(arg, '=');
+	if (chptr)
+		return 1;
+	return 0;
+}
+
+static int argValueMatch(const char *one, const char *two)
+{
+	char *first, *second;
+	char *chptra, *chptrb;
+
+	first = strcpy(alloca(strlen(one) + 1), one);
+	second = strcpy(alloca(strlen(two) + 1), two);
+
+	chptra = strchr(first, '=');
+	if (chptra)
+		chptra += 1;
+
+	chptrb = strchr(second, '=');
+	if (chptrb)
+		chptrb += 1;
+
+	if (!chptra && !chptrb)
+		return 0;
+	else if (!chptra)
+		return *chptrb - 0;
+	else if (!chptrb)
+		return 0 - *chptra;
+	else
+		return strcmp(chptra, chptrb);
 }
 
 int updateActualImage(struct grubConfig *cfg, const char *image,
@@ -3723,7 +3767,7 @@ int updateActualImage(struct grubConfig *cfg, const char *image,
 				}
 				if (usedElements[i])
 					continue;
-				if (!argMatch(line->elements[i].item, *arg)) {
+				if (!argNameMatch(line->elements[i].item, *arg)) {
 					usedElements[i] = 1;
 					break;
 				}
@@ -3782,9 +3826,12 @@ int updateActualImage(struct grubConfig *cfg, const char *image,
 				    !strcmp(line->elements[i].item, "--"))
 					/* reached the end of hyper args, stop here */
 					break;
-				if (!argMatch(line->elements[i].item, *arg)) {
-					removeElement(line, i);
-					break;
+				if (!argNameMatch(line->elements[i].item, *arg)) {
+					if (!argHasValue(*arg) ||
+					    !argValueMatch(line->elements[i].item, *arg)) {
+						removeElement(line, i);
+						break;
+					}
 				}
 			}
 			/* handle removing LT_ROOT line too */

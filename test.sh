@@ -386,7 +386,7 @@ grubTest grub.3 updargs/g3.2 --update-kernel=DEFAULT \
     --args "root=/dev/hdd1 hdd=notide-scsi"
 grubTest grub.3 updargs/g3.4 --update-kernel=ALL --remove-args="hdd"
 grubTest grub.3 updargs/g3.4 --update-kernel=ALL --remove-args="hdd=ide-scsi"
-grubTest grub.3 updargs/g3.4 --update-kernel=ALL --remove-args="hdd=foobar"
+grubTest grub.3 updargs/g3.5 --update-kernel=ALL --remove-args="hdd=foobar"
 grubTest grub.3 updargs/g3.7 --update-kernel=ALL \
     --remove-args="hdd root ro"
 grubTest grub.7 updargs/g7.2 --boot-filesystem=/    \
