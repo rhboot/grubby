@@ -926,6 +926,9 @@ fi
 # PPC64LE-only to deal with Petitboot issues
 if [ "$ARCH" = "ppc64le" ]; then
     sync && mountpoint -q /boot && fsfreeze -f /boot && fsfreeze -u /boot
+# x86_64 + aarch64: no need to sync before fsfreeze
+elif [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "aarch64" ]; then
+    mountpoint -q /boot && fsfreeze -f /boot && fsfreeze -u /boot
 fi
 
 exit 0
