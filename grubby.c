@@ -29,6 +29,8 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <linux/fs.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <libgen.h>
@@ -1929,6 +1931,21 @@ static int writeConfig(struct grubConfig *cfg, char *outName,
 				rc = 1;
 			else if (fsync(dirfd))
 				rc = 1;
+
+			struct stat mproot, mpboot;
+			stat("/", &mproot);
+			stat("/boot/", &mpboot);
+			if (mproot.st_dev != mpboot.st_dev) {
+		                if (ioctl(dirfd, FIFREEZE, 0)) {
+					fprintf(stderr, _("grubby: warning: freeze failed for /boot"));
+		                }
+				if (ioctl(dirfd, FITHAW, 0)) {
+	                                fprintf(stderr, _("grubby: warning: thaw failed for /boot"));
+				}
+			}
+			else {
+				fprintf(stderr, _("grubby: warning: /boot is not a mountpoint, refusing to freeze the filesystem mounted on /"));
+			}
 
 			if (dirfd >= 0)
 				close(dirfd);
