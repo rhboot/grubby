@@ -8,7 +8,8 @@ new-kernel-pkg \- tool to script kernel installation
        [--kernel-args=\fIargs\fR] [--remove-args=\fIargs\fR]
        [--banner=\fIbanner\fR] [--multiboot=\fImultiboot\fR]
        [--mbargs=\fImbargs\fR] [--make-default] [--add-dracut-args]
-       [--add-plymouth-initrd] [--host-only] [--devtree=\fIdevicetree.dtb\fR]
+       [--add-plymouth-initrd] [--host-only] [--dracutoptions]
+       [--devtree=\fIdevicetree.dtb\fR]
        <--install | --remove | --update | --rpmposttrans> <kernel-version>
 
 .SH DESCRIPTION
@@ -102,6 +103,10 @@ Update the specified kernel.
 .TP
 \fB-\-rpmposttrans\fR \fIkernel-version\fR
 Run the rpmposttrans for the specified kernel.
+
+.TP
+\fB-\-dracutoptions\fR=\fIoptions\fR
+Pass options to dracut.
 
 .SH "SEE ALSO"
 .BR grubby(8)

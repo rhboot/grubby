@@ -110,7 +110,7 @@ mode=""
 version=""
 initrd=""
 dracut=""
-dracuthostonly=""
+dracutoptions=""
 initrdfile=""
 devtreefile=""
 moddep=""
@@ -129,8 +129,8 @@ usage() {
     echo "       [--kernel-args=<args>] [--remove-args=<args>]" >&2
     echo "       [--banner=<banner>] [--multiboot=multiboot]" >&2
     echo "       [--mbargs=mbargs] [--make-default] [--add-dracut-args]" >&2
-    echo "       [--add-plymouth-initrd]" >&2
-    echo "       [--host-only] [--devtree=<devicetree.dtb>] [--devtreedir=</devicetree/path/>]" >&2
+    echo "       [--add-plymouth-initrd] [--host-only] [--dracutoptions]" >&2
+    echo "       [--devtree=<devicetree.dtb>] [--devtreedir=</devicetree/path/>]" >&2
     echo "       <--install | --remove | --update | --rpmposttrans> <kernel-version>" >&2
     echo "       (ex: `basename $0` --mkinitrd --depmod --install 2.4.7-2)" >&2
     exit 1
@@ -580,7 +580,7 @@ update() {
 
 doMkinitrd() {
     if [ -n "$dracut" ]; then
-        tool="dracut $dracuthostonly -f $initrdfile $version"
+	tool="dracut $dracutoptions -f $initrdfile $version"
     else
 	tool="mkinitrd --allow-missing -f $initrdfile $version"
     fi
@@ -650,8 +650,13 @@ while [ $# -gt 0 ]; do
 	    dracut=--dracut
 	    ;;
 
+	--dracutoptions*)
+	    dracutoptions="$1 $dracutoptions"
+	    dracutoptions=${dracutoptions#*=}
+	    ;;
+
 	--host-only)
-	    dracuthostonly=-H
+	    dracutoptions="$dracutoptions -H"
 	    ;;
 
 	--initrdfile*)
