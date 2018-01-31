@@ -5151,22 +5151,27 @@ int main(int argc, const char **argv)
 	if (!cfi) {
 		if (grub2FindConfig(&grub2ConfigType)) {
 			cfi = &grub2ConfigType;
+			configureGrub2 = 1;
 			if (envPath)
 				cfi->envFile = envPath;
-		} else
+		} else {
 #ifdef __ia64__
 			cfi = &eliloConfigType;
-#elif __powerpc__
+			configureLilo = 1;
+#elif defined(__powerpc__)
 			cfi = &yabootConfigType;
-#elif __sparc__
+			configureYaboot = 1;
+#elif defined(__sparc__)
 			cfi = &siloConfigType;
-#elif __s390__
+			configureSilo = 1;
+#elif defined(__s390__) || defined(__s390x__)
 			cfi = &ziplConfigType;
-#elif __s390x__
-			cfi = &ziplConfigtype;
+			configureZipl = 1;
 #else
 			cfi = &grubConfigType;
+			configureGrub = 1;
 #endif
+		}
 	}
 
 	if (!grubConfig) {
