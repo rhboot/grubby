@@ -698,7 +698,7 @@ static int lineWrite(FILE * out, struct singleLine *line,
 		     struct configFileInfo *cfi);
 static int getNextLine(char **bufPtr, struct singleLine *line,
 		       struct configFileInfo *cfi);
-static char *getRootSpecifier(char *str);
+static size_t getRootSpecifier(const char *str);
 static void requote(struct singleLine *line, struct configFileInfo *cfi);
 static void insertElement(struct singleLine *line,
 			  const char *item, int insertHere,
@@ -2122,7 +2122,7 @@ int suitableImage(struct singleEntry *entry, const char *bootPrefix,
 	char *fullName;
 	int i;
 	char *dev;
-	char *rootspec;
+	size_t rs;
 	char *rootdev;
 
 	if (skipRemoved && entry->skip) {
@@ -2150,12 +2150,11 @@ int suitableImage(struct singleEntry *entry, const char *bootPrefix,
 
 	fullName = alloca(strlen(bootPrefix) +
 			  strlen(line->elements[1].item) + 1);
-	rootspec = getRootSpecifier(line->elements[1].item);
-	int rootspec_offset = rootspec ? strlen(rootspec) : 0;
+	rs = getRootSpecifier(line->elements[1].item);
 	int hasslash = endswith(bootPrefix, '/') ||
-	    beginswith(line->elements[1].item + rootspec_offset, '/');
+	    beginswith(line->elements[1].item + rs, '/');
 	sprintf(fullName, "%s%s%s", bootPrefix, hasslash ? "" : "/",
-		line->elements[1].item + rootspec_offset);
+		line->elements[1].item + rs);
 	if (access(fullName, R_OK)) {
 		notSuitablePrintf(entry, 0, "access to %s failed\n", fullName);
 		return 0;
@@ -2247,7 +2246,6 @@ struct singleEntry *findEntryByPath(struct grubConfig *config,
 	struct singleLine *line;
 	int i;
 	char *chptr;
-	char *rootspec = NULL;
 	enum lineType_e checkType = LT_KERNEL;
 
 	if (isdigit(*kernel)) {
@@ -2352,14 +2350,10 @@ struct singleEntry *findEntryByPath(struct grubConfig *config,
 
 				if (line && line->type != LT_MENUENTRY &&
 				    line->numElements >= 2) {
-					rootspec =
-					    getRootSpecifier(line->elements[1].
-							     item);
-					if (!strcmp
-					    (line->elements[1].item +
-					     ((rootspec !=
-					       NULL) ? strlen(rootspec) : 0),
-					     kernel + strlen(prefix)))
+					if (!strcmp(line->elements[1].item +
+						getRootSpecifier(
+							line->elements[1].item),
+						kernel + strlen(prefix)))
 						break;
 				}
 				if (line->type == LT_MENUENTRY &&
@@ -3268,12 +3262,12 @@ struct singleLine *addLineTmpl(struct singleEntry *entry,
 		    type & (LT_HYPER | LT_KERNEL | LT_MBMODULE | LT_INITRD |
 			    LT_KERNEL_EFI | LT_INITRD_EFI | LT_KERNEL_16 |
 			    LT_INITRD_16)) {
-			char *rootspec =
-			    getRootSpecifier(tmplLine->elements[1].item);
-			if (rootspec != NULL) {
+			size_t rs = getRootSpecifier(tmplLine->elements[1].item);
+			if (rs > 0) {
 				free(newLine->elements[1].item);
-				newLine->elements[1].item =
-				    sdupprintf("%s%s", rootspec, val);
+				newLine->elements[1].item = sdupprintf(
+					"%.*s%s", (int) rs,
+					tmplLine->elements[1].item, val);
 			}
 		}
 	}
@@ -4325,17 +4319,19 @@ int checkForElilo(struct grubConfig *config)
 	return 1;
 }
 
-static char *getRootSpecifier(char *str)
+static size_t getRootSpecifier(const char *str)
 {
-	char *idx, *rootspec = NULL;
+	size_t rs = 0;
 
 	if (*str == '(') {
-		idx = rootspec = strdup(str);
-		while (*idx && (*idx != ')') && (!isspace(*idx)))
-			idx++;
-		*(++idx) = '\0';
+		for (; str[rs] != ')' && !isspace(str[rs]); rs++) {
+			if (!str[rs])
+				return rs;
+		}
+		rs++;
 	}
-	return rootspec;
+
+	return rs;
 }
 
 static char *getInitrdVal(struct grubConfig *config,
@@ -5365,7 +5361,7 @@ int main(int argc, const char **argv)
 	if (displayDefault) {
 		struct singleLine *line;
 		struct singleEntry *entry;
-		char *rootspec;
+		size_t rs;
 
 		if (config->defaultImage == NO_DEFAULT_ENTRY)
 			return 0;
@@ -5384,9 +5380,8 @@ int main(int argc, const char **argv)
 		if (!line)
 			return 0;
 
-		rootspec = getRootSpecifier(line->elements[1].item);
-		printf("%s%s\n", bootPrefix, line->elements[1].item +
-		       ((rootspec != NULL) ? strlen(rootspec) : 0));
+		rs = getRootSpecifier(line->elements[1].item);
+		printf("%s%s\n", bootPrefix, line->elements[1].item + rs);
 
 		return 0;
 
