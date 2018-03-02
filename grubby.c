@@ -68,6 +68,8 @@ int isEfi = 0;
 
 char *saved_command_line = NULL;
 
+const char *mounts = "/proc/mounts";
+
 /* comments get lumped in with indention */
 struct lineElement {
 	char *item;
@@ -2115,6 +2117,129 @@ static int endswith(const char *s, char c)
 	return s[slen] == c;
 }
 
+typedef struct {
+	const char *start;
+	size_t      chars;
+} field;
+
+static int iscomma(int c)
+{
+	return c == ',';
+}
+
+static int isequal(int c)
+{
+	return c == '=';
+}
+
+static field findField(const field *in, typeof(isspace) *isdelim, field *out)
+{
+	field nxt = {};
+	size_t off = 0;
+
+	while (off < in->chars && isdelim(in->start[off]))
+		off++;
+
+	if (off == in->chars)
+		return nxt;
+
+	out->start = &in->start[off];
+	out->chars = 0;
+
+	while (off + out->chars < in->chars && !isdelim(out->start[out->chars]))
+		out->chars++;
+
+	nxt.start = out->start + out->chars;
+	nxt.chars = in->chars - off - out->chars;
+	return nxt;
+}
+
+static int fieldEquals(const field *in, const char *str)
+{
+	return in->chars == strlen(str) &&
+		strncmp(in->start, str, in->chars) == 0;
+}
+
+/* Parse /proc/mounts to determine the subvolume prefix. */
+static size_t subvolPrefix(const char *str)
+{
+	FILE *file = NULL;
+	char *line = NULL;
+	size_t prfx = 0;
+	size_t size = 0;
+
+	file = fopen(mounts, "r");
+	if (!file)
+		return 0;
+
+	for (ssize_t s; (s = getline(&line, &size, file)) >= 0; ) {
+		field nxt = { line, s };
+		field dev = {};
+		field path = {};
+		field type = {};
+		field opts = {};
+		field opt = {};
+
+		nxt = findField(&nxt, isspace, &dev);
+		if (!nxt.start)
+			continue;
+
+		nxt = findField(&nxt, isspace, &path);
+		if (!nxt.start)
+			continue;
+
+		nxt = findField(&nxt, isspace, &type);
+		if (!nxt.start)
+			continue;
+
+		nxt = findField(&nxt, isspace, &opts);
+		if (!nxt.start)
+			continue;
+
+		if (!fieldEquals(&type, "btrfs"))
+			continue;
+
+		/* We have found a btrfs mount point. */
+
+		nxt = opts;
+		while ((nxt = findField(&nxt, iscomma, &opt)).start) {
+			field key = {};
+			field val = {};
+
+			opt = findField(&opt, isequal, &key);
+			if (!opt.start)
+				continue;
+
+			opt = findField(&opt, isequal, &val);
+			if (!opt.start)
+				continue;
+
+			if (!fieldEquals(&key, "subvol"))
+				continue;
+
+			/* We have found a btrfs subvolume mount point. */
+
+			if (strncmp(val.start, str, val.chars))
+				continue;
+
+			if (val.start[val.chars - 1] != '/' &&
+				str[val.chars] != '/')
+				continue;
+
+			/* The subvolume mount point matches our input. */
+
+			if (prfx < val.chars)
+				prfx = val.chars;
+		}
+	}
+
+	dbgPrintf("%s(): str: '%s', prfx: '%s'\n", __FUNCTION__, str, prfx);
+
+	fclose(file);
+	free(line);
+	return prfx;
+}
+
 int suitableImage(struct singleEntry *entry, const char *bootPrefix,
 		  int skipRemoved, int flags)
 {
@@ -3262,12 +3387,22 @@ struct singleLine *addLineTmpl(struct singleEntry *entry,
 		    type & (LT_HYPER | LT_KERNEL | LT_MBMODULE | LT_INITRD |
 			    LT_KERNEL_EFI | LT_INITRD_EFI | LT_KERNEL_16 |
 			    LT_INITRD_16)) {
-			size_t rs = getRootSpecifier(tmplLine->elements[1].item);
+			const char *prfx = tmplLine->elements[1].item;
+			size_t rs = getRootSpecifier(prfx);
+			if (isinitrd(tmplLine->type)) {
+				for (struct singleLine *l = entry->lines;
+				     rs == 0 && l; l = l->next) {
+					if (iskernel(l->type)) {
+						prfx = l->elements[1].item;
+						rs = getRootSpecifier(prfx);
+						break;
+					}
+				}
+			}
 			if (rs > 0) {
 				free(newLine->elements[1].item);
 				newLine->elements[1].item = sdupprintf(
-					"%.*s%s", (int) rs,
-					tmplLine->elements[1].item, val);
+					"%.*s%s", (int) rs, prfx, val);
 			}
 		}
 	}
@@ -4331,7 +4466,7 @@ static size_t getRootSpecifier(const char *str)
 		rs++;
 	}
 
-	return rs;
+	return rs + subvolPrefix(str + rs);
 }
 
 static char *getInitrdVal(struct grubConfig *config,
@@ -4963,6 +5098,9 @@ int main(int argc, const char **argv)
 		{"mbargs", 0, POPT_ARG_STRING, &newMBKernelArgs, 0,
 		 _("default arguments for the new multiboot kernel or "
 		   "new arguments for multiboot kernel being updated"), NULL},
+		{"mounts", 0, POPT_ARG_STRING, &mounts, 0,
+		 _("path to fake /proc/mounts file (for testing only)"),
+		 _("mounts")},
 		{"bad-image-okay", 0, 0, &badImageOkay, 0,
 		 _
 		 ("don't sanity check images in boot entries (for testing only)"),
