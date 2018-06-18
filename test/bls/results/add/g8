@@ -1,0 +1,15 @@
+index=0
+kernel=/new-kernel0
+args="$kernelopts"
+initrd=/new-initrd
+title=title 0
+index=1
+kernel=/new-kernel.img
+args="$kernelopts root=/fooooo"
+initrd=/new-initrd
+title=title
+index=2
+kernel=/vmlinuz-0-rescue-5a94251776a14678911d4ae0949500f5
+args="$kernelopts root=/fooooo"
+initrd=/initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img
+title=Fedora 21 Rescue
