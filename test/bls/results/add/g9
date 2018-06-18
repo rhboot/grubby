@@ -1,0 +1,14 @@
+index=0
+kernel=/new-kernel0
+args="$kernelopts"
+initrd=/new-initrd
+title=title 0
+index=1
+kernel=/new-kernel.img
+args="$kernelopts root=/fooooo"
+initrd=/new-initrd
+title=Fedora (3.10.3-300.fc19.x86_64) 19 (Schrödinger’s Cat)
+index=2
+kernel=/vmlinuz-0-rescue-5a94251776a14678911d4ae0949500f5
+args="$kernelopts root=/fooooo"
+initrd=/initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img
