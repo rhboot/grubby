@@ -561,10 +561,6 @@ done
 
 if [[ -z $blsdir ]]; then
     blsdir="/boot/loader/entries"
-    if [[ -d /sys/firmware/efi ]]; then
-	efidir="$(grep ^ID= /etc/os-release | sed -e 's/^ID=//' -e 's/rhel/redhat/')"
-	blsdir="/boot/efi/EFI/${efidir}/loader/entries"
-    fi
 fi
 
 if [[ -z $env ]]; then
