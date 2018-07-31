@@ -20,6 +20,8 @@
 # Author(s): tyson@rwii.com
 #
 
+[[ -f /etc/default/grub ]] && . /etc/default/grub
+
 usage() {
     echo "Usage: `basename $0` <kernel_version> <bootimage> <mapfile>" >&2
     exit 1
@@ -76,6 +78,11 @@ cp $MAPFILE $INSTALL_PATH/System.map-$KERNEL_VERSION
 
 ln -fs ${RELATIVE_PATH}$INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION $LINK_PATH/$KERNEL_NAME
 ln -fs ${RELATIVE_PATH}$INSTALL_PATH/System.map-$KERNEL_VERSION $LINK_PATH/System.map
+
+if [ "x${GRUB_ENABLE_BLSCFG}" = "xtrue" ] || [ ! -f /sbin/new-kernel-pkg ]; then
+	kernel-install add $KERNEL_VERSION $INSTALL_PATH/$KERNEL_NAME-$KERNEL_VERSION
+	exit $?
+fi
 
 if [ -n "$cfgLoader" ] && [ -x /sbin/new-kernel-pkg ]; then
 	if [ -n "$(which dracut 2>/dev/null)" ]; then
