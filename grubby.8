@@ -85,16 +85,18 @@ include \fB-\-initrd\fR with memtest86 as a notable exception.
 The \fB-\-update-kernel\fR option may not be used in the same invocation.
 
 .TP
-\fB-\-remove-kernel\fR=\fIkernel-path\fR
-Remove all boot entries which match \fIkernel-path\fR. This may be used
-along with \fB-\-add-kernel\fR, in which case the new entry being added will
+\fB-\-remove-kernel\fR=\fI[kernel-path|ALL|DEFAULT|TITLE="title"|index{,index}]\fR
+Remove all boot entries which match \fIkernel-path\fR or using one of the
+methods described in the Special Arguments section. This may be used along
+with \fB-\-add-kernel\fR, in which case the new entry being added will
 not be removed.
 
 .TP
-\fB-\-update-kernel\fR=\fIkernel-path\fR
-Update the entries for kernels matching \fRkernel-path\fR. Currently
-the only item that can be updated is the kernel argument list, which is
-modified via the \fB-\-args\fR and \fB-\-remove-args\fR options.
+\fB-\-update-kernel\fR=\fI[kernel-path|ALL|DEFAULT|TITLE="title"|index{,index}]\fR
+Update the entries for kernels matching \fRkernel-path\fR or using one of
+the methods described in the Special Arguments section. Currently the only
+item that can be updated is the kernel argument list, which is modified via
+the \fB-\-args\fR and \fB-\-remove-args\fR options.
 
 .TP
 \fB-\-args\fR=\fIkernel-args\fR
@@ -184,8 +186,9 @@ Display the numeric index of the current default boot entry and exit.
 Display the title of the current default boot entry and exit.
 
 .TP
-\fB-\-info\fR=\fIkernel-path\fR
-Display information on all boot entries which match \fIkernel-path\fR. I
+\fB-\-info\fR=\fI[kernel-path|ALL|DEFAULT|TITLE="title"|index{,index}]\fR
+Display information on all boot entries which match \fIkernel-path\fR or
+using one of the methods described in the Special Arguments section.
 
 .TP
 \fB-\-bootloader-probe\fR
