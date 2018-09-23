@@ -98,7 +98,7 @@ menuentry 'Red Hat Enterprise Linux Server' --class red --class gnu-linux --clas
 	else
 	  search --no-floppy --fs-uuid --set=root cae02b39-f239-4d26-9032-674d261c93d8
 	fi
-	linux16 /vmlinuz-foo root=/dev/mapper/foo-- ro crashkernel=auto rd.lvm.lv=rhel_hp-dl380pgen8-02-vm-10/root rd.lvm.lv=rhel_hp-dl380pgen8-02-vm-10/swap console=ttyS0,115200n81  $tuned_params LANG=en_US.UTF-8
+	linux16 /boot/vmlinuz-foo root=/dev/mapper/foo-- ro crashkernel=auto rd.lvm.lv=rhel_hp-dl380pgen8-02-vm-10/root rd.lvm.lv=rhel_hp-dl380pgen8-02-vm-10/swap console=ttyS0,115200n81  $tuned_params LANG=en_US.UTF-8
 }
 menuentry 'Red Hat Enterprise Linux Server (3.10.0-297.el7.x86_64) 7.2 (Maipo)' --class red --class gnu-linux --class gnu --class os --unrestricted $menuentry_id_option 'gnulinux-3.10.0-296.el7.x86_64-advanced-ae7b3742-9092-4432-9f7f-8abdbf0dc3db' {
 	load_video
