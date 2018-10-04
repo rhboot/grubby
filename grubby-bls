@@ -159,7 +159,7 @@ param_to_indexes() {
     fi
 
     for i in ${!bls_file[@]}; do
-        if [[ $param = "${bls_linux[$i]}" ]]; then
+        if [[ $param = "${bls_linux[$i]}" || "/${param##*/}" = "${bls_linux[$i]}" ]]; then
             indexes="$indexes $i"
         fi
 
@@ -247,11 +247,12 @@ add_bls_fragment() {
 
     if [[ $kernel = *"vmlinuz-"* ]]; then
 	kernelver="${kernel##*/vmlinuz-}"
+	prefix="vmlinuz-"
     else
 	kernelver="${kernel##*/}"
     fi
 
-    if [[ ! -d "/lib/modules/${kernelver}" || ! -f "/boot/vmlinuz-${kernelver}" ]] &&
+    if [[ ! -f "/boot/${prefix}${kernelver}" ]] &&
        [[ $bad_image != "true" ]]; then
         print_error "The ${kernelver} kernel isn't installed in the machine"
     fi
