@@ -56,7 +56,7 @@ get_bls_value() {
     local bls="$1" && shift
     local key="$1" && shift
 
-    echo "$(grep "^${key}[ \t]" "${bls}" | sed -e "s,^${key}[ \t]*,,")"
+    echo "$(grep "^${key}[ \t]" "${bls}" | sed -e "s!^${key}[ \t]*!!")"
 }
 
 set_bls_value() {
@@ -64,7 +64,7 @@ set_bls_value() {
     local key="$1" && shift
     local value="$1" && shift
 
-    sed -i -e "s,^${key}.*,${key} ${value}," "${bls}"
+    sed -i -e "s!^${key}.*!${key} ${value}!" "${bls}"
 }
 
 append_bls_value() {
@@ -322,7 +322,7 @@ update_args() {
     local add_args=($1) && shift
 
     for arg in ${remove_args[*]}; do
-        args="$(echo $args | sed -e "s,$arg[^ ]*,,")"
+        args="$(echo $args | sed -e "s!$arg[^ ]*!!")"
     done
 
     for arg in ${add_args[*]}; do
@@ -331,7 +331,7 @@ update_args() {
             key=${arg%%=$value}
             exist=$(echo $args | grep "${key}=")
             if [[ -n $exist ]]; then
-                args="$(echo $args | sed -e "s,$key=[^ ]*,$key=$value,")"
+                args="$(echo $args | sed -e "s!$key=[^ ]*!$key=$value!")"
             else
                 args="$args $key=$value"
             fi
