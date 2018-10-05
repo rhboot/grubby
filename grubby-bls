@@ -48,6 +48,10 @@ print_error() {
     exit 1
 }
 
+print_info() {
+    echo "$1" >&2
+}
+
 if [[ ${#} = 0 ]]; then
     print_error "no action specified"
 fi
@@ -380,6 +384,8 @@ set_default_bls() {
             echo "default=${default}" >> "${zipl_config}"
         fi
     fi
+
+    print_info "The default is ${bls_file[$index]} with index $index and kernel ${bls_linux[$index]}"
 }
 
 remove_var_prefix() {
