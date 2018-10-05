@@ -234,6 +234,8 @@ remove_bls_fragment() {
     done
 
     get_bls_values
+
+    update_grubcfg
 }
 
 add_bls_fragment() {
@@ -308,6 +310,8 @@ add_bls_fragment() {
         set_default_bls "TITLE=${title}"
     fi
 
+    update_grubcfg
+
     exit 0
 }
 
@@ -357,6 +361,8 @@ update_bls_fragment() {
 	    set_bls_value "${bls_file[$i]}" "initrd" "${initrd}"
 	fi
     done
+
+    update_grubcfg
 }
 
 set_default_bls() {
@@ -394,6 +400,13 @@ remove_var_prefix() {
 
     if [[ -n $update_kernel && $update_kernel =~ ^/ ]]; then
 	update_kernel="/${update_kernel##*/}"
+    fi
+}
+
+update_grubcfg()
+{
+    if [[ $arch = 'ppc64' || $arch = 'ppc64le' ]]; then
+	grub2-mkconfig -o /boot/grub2/grub.cfg >& /dev/null
     fi
 }
 
