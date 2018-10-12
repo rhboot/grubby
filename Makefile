@@ -29,7 +29,7 @@ LDFLAGS := $(RPM_LD_FLAGS)
 
 grubby_LIBS = -lblkid -lpopt
 
-all: grubby
+all: grubby rpm-sort
 
 debug : clean
 	$(MAKE) CFLAGS="${CFLAGS} -DDEBUG=1" all
@@ -52,12 +52,17 @@ install: all
 		install -m 755 grubby $(DESTDIR)$(PREFIX)$(sbindir) ; \
 		install -m 644 grubby.8 $(DESTDIR)/$(mandir)/man8 ; \
 	fi
+	install -m 755 -d $(DESTDIR)$(PREFIX)$(libexecdir)/grubby/
+	install -m 755 rpm-sort $(DESTDIR)$(PREFIX)$(libexecdir)/grubby/rpm-sort
 
 grubby:: $(OBJECTS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(grubby_LIBS)
 
+rpm-sort::rpm-sort.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lrpm
+
 clean:
-	rm -f *.o grubby *~
+	rm -f *.o grubby rpm-sort *~
 
 GITTAG = $(VERSION)-1
 
