@@ -1,4 +1,5 @@
 grubby
+rpm-sort
 version.h
 *.o
 core.*
