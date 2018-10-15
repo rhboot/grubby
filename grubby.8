@@ -1,4 +1,4 @@
-.TH GRUBBY 8 "Tue Jan 18 2005"
+.TH GRUBBY 8 "Sun Oct 14 2018"
 
 .SH NAME
 
@@ -323,6 +323,15 @@ an argument already exists the new value replaces the old values.
 \fB-\-remove-mbargs\fR=\fImultiboot-args\fR
 The arguments specified by \fImultiboot-args\fR are removed from the
 kernels specified by \fB-\-update-kernel\fR.
+
+.SH "EXIT STATUS"
+
+If valid information about the current setup was correctly retrieved or if
+the grub configuration adjustment completed successfully, a value of 0 is
+returned.
+
+If an error is encountered or if grubby was unable to find the requested
+config information, a value of 1 is returned.
 
 .SH "BUGS"
 

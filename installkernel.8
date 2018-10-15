@@ -1,4 +1,4 @@
-.TH INSTALLKERNEL 8 "Wed Apr 14 2010"
+.TH INSTALLKERNEL 8 "Sun Oct 14 2018"
 .SH NAME
 installkernel \- tool to script kernel installation
 
@@ -14,6 +14,13 @@ The new kernel is installed into {directory}/vmlinuz-{version}. If a
 symbolic link {directory}/vmlinuz already exists, it is refreshed by
 making a link from {directory}/vmlinuz to the new kernel, and the
 previously installed kernel is available as {directory}/vmlinuz.old.
+
+.SH "EXIT STATUS"
+
+This script makes use of the kernel-install program. Specifically, if
+every executable returns 0 or 77, then 0 is returned.
+
+In the event of an error or failure, then a non-zero code is returned.
 
 .SH "SEE ALSO"
 .BR grubby(8)

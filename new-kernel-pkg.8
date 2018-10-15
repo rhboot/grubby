@@ -1,4 +1,4 @@
-.TH NEW-KERNEL-PKG 8 "Wed Apr 14 2010"
+.TH NEW-KERNEL-PKG 8 "Sun Oct 14 2018"
 .SH NAME
 new-kernel-pkg \- tool to script kernel installation
 
@@ -102,6 +102,14 @@ Update the specified kernel.
 .TP
 \fB-\-rpmposttrans\fR \fIkernel-version\fR
 Run the rpmposttrans for the specified kernel.
+
+.SH "EXIT STATUS"
+
+If the new kernel was successfully installed or updated, a value of 0 is
+returned.
+
+If the program is improperly called or an error is encountered, a value
+of 1 is returned.
 
 .SH "SEE ALSO"
 .BR grubby(8)
