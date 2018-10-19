@@ -2233,7 +2233,7 @@ static size_t subvolPrefix(const char *str)
 		}
 	}
 
-	dbgPrintf("%s(): str: '%s', prfx: '%s'\n", __FUNCTION__, str, prfx);
+	dbgPrintf("%s(): str: '%s', prfx: '%Zu'\n", __FUNCTION__, str, prfx);
 
 	fclose(file);
 	free(line);
