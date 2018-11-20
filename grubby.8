@@ -185,7 +185,10 @@ Display the title of the current default boot entry and exit.
 
 .TP
 \fB-\-info\fR=\fIkernel-path\fR
-Display information on all boot entries which match \fIkernel-path\fR. I
+Display information on all boot entries which match \fIkernel-path\fR. If
+\fIkernel-path\fR is \fBDEFAULT\fR, then information on the default kernel
+is displayed. If \fIkernel-path\fR is \fBALL\fR, then information on all boot
+entries are displayed.
 
 .TP
 \fB-\-bootloader-probe\fR
