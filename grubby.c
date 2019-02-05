@@ -479,20 +479,28 @@ char *grub2ExtractTitle(struct singleLine *line)
 	snprintf(result, resultMaxSize, "%s", ++current);
 
 	i++;
+	int result_len = 0;
 	for (; i < line->numElements; ++i) {
 		current = line->elements[i].item;
 		current_len = strlen(current);
 		current_indent = line->elements[i].indent;
 		current_indent_len = strlen(current_indent);
 
-		strncat(result, current_indent, current_indent_len);
+		memcpy(result + result_len, current_indent, current_indent_len);
+		result_len += current_indent_len;
+
 		if (current[current_len - 1] != quote_char) {
-			strncat(result, current, current_len);
+			memcpy(result + result_len, current_indent,
+			       current_indent_len);
+			result_len += current_len;
 		} else {
-			strncat(result, current, current_len - 1);
+			memcpy(result + result_len, current_indent,
+			       current_indent_len);
+			result_len += (current_len - 1);
 			break;
 		}
 	}
+	result[result_len] = '\0';
 	return result;
 }
 
@@ -1437,6 +1445,7 @@ static struct grubConfig *readConfig(const char *inName,
 			extras = malloc(len + 1);
 			*extras = '\0';
 
+			int buf_len = 0;
 			/* get title. */
 			for (int i = 0; i < line->numElements; i++) {
 				if (!strcmp
@@ -1453,13 +1462,18 @@ static struct grubConfig *readConfig(const char *inName,
 
 				len = strlen(title);
 				if (title[len - 1] == quote_char) {
-					strncat(buf, title, len - 1);
+					memcpy(buf + buf_len, title, len - 1);
+					buf_len += (len - 1);
 					break;
 				} else {
-					strcat(buf, title);
-					strcat(buf, line->elements[i].indent);
+					memcpy(buf + buf_len, title, len);
+					buf_len += len;
+					len = strlen(line->elements[i].indent);
+					memcpy(buf + buf_len, line->elements[i].indent, len);
+					buf_len += len;
 				}
 			}
+			buf[buf_len] = '\0';
 
 			/* get extras */
 			int count = 0;
@@ -5209,10 +5223,18 @@ int main(int argc, const char **argv)
 		exit(1);
 	}
 	saved_command_line[0] = '\0';
+	int cmdline_len = 0, arg_len;
 	for (int j = 1; j < argc; j++) {
-		strcat(saved_command_line, argv[j]);
-		strncat(saved_command_line, j == argc - 1 ? "" : " ", 1);
+		arg_len = strlen(argv[j]);
+		memcpy(saved_command_line + cmdline_len, argv[j], arg_len);
+		cmdline_len += arg_len;
+		if (j != argc - 1) {
+			memcpy(saved_command_line + cmdline_len, " ", 1);
+			cmdline_len++;
+		}
+
 	}
+	saved_command_line[cmdline_len] = '\0';
 
 	optCon = poptGetContext("grubby", argc, argv, options, 0);
 	poptReadDefaultConfig(optCon, 1);
