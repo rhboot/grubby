@@ -3761,9 +3761,9 @@ static int argValueMatch(const char *one, const char *two)
 
 	if (!chptra && !chptrb)
 		return 0;
-	else if (!chptra)
+	else if (!chptra && chptrb)
 		return *chptrb - 0;
-	else if (!chptrb)
+	else if (!chptrb && chptra)
 		return 0 - *chptra;
 	else
 		return strcmp(chptra, chptrb);
