@@ -5531,8 +5531,9 @@ int main(int argc, const char **argv)
 		entry = findEntryByIndex(config, config->defaultImage);
 		if (!entry)
 			return 0;
-		if (!suitableImage(entry, bootPrefix, 0, flags))
-			return 0;
+
+		/* check if is a suitable image but still print it */
+		suitableImage(entry, bootPrefix, 0, flags);
 
 		line =
 		    getLineByType(LT_KERNEL | LT_HYPER | LT_KERNEL_EFI |
