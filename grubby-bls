@@ -389,24 +389,29 @@ set_default_bls() {
 }
 
 remove_var_prefix() {
+    local prefix="*"
+    if [[ -n ${GRUBBY_STRIP_BOOT_PREFIX} ]]; then
+        prefix="/boot"
+    fi
+
     if [[ -n $remove_kernel && $remove_kernel =~ ^/ ]]; then
-       remove_kernel="/${remove_kernel##*/}"
+       remove_kernel="/${remove_kernel##${prefix}/}"
     fi
 
     if [[ -n $initrd ]]; then
-	initrd="/${initrd##*/}"
+	initrd="/${initrd##${prefix}/}"
     fi
 
     if [[ -n $extra_initrd ]]; then
-	extra_initrd=" /${extra_initrd##*/}"
+	extra_initrd=" /${extra_initrd##${prefix}/}"
     fi
 
     if [[ -n $kernel ]]; then
-	kernel="/${kernel##*/}"
+	kernel="/${kernel##${prefix}/}"
     fi
 
     if [[ -n $update_kernel && $update_kernel =~ ^/ ]]; then
-	update_kernel="/${update_kernel##*/}"
+	update_kernel="/${update_kernel##${prefix}/}"
     fi
 }
 
