@@ -44,7 +44,6 @@ debug : clean
 test: all
 	@export TOPDIR=$(TOPDIR)
 	@./test.sh $(VERBOSE_TEST)
-	@./test-bls.sh $(VERBOSE_TEST)
 
 install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/sbin
@@ -53,7 +52,6 @@ install: all
 	install -m 644 new-kernel-pkg.8 $(DESTDIR)/$(mandir)/man8
 	install -m 755 installkernel $(DESTDIR)$(PREFIX)/sbin
 	install -m 644 installkernel.8 $(DESTDIR)/$(mandir)/man8
-	install -m 755 grubby-bls $(DESTDIR)$(PREFIX)/sbin
 	if [ -f grubby ]; then \
 		install -m 755 grubby $(DESTDIR)$(PREFIX)/sbin ; \
 		install -m 644 grubby.8 $(DESTDIR)/$(mandir)/man8 ; \

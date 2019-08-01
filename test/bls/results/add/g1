@@ -1,5 +1,0 @@
-index=0
-kernel=/new-kernel0
-args="$kernelopts"
-initrd=/new-initrd0.img
-title=title 0
