@@ -5217,24 +5217,27 @@ int main(int argc, const char **argv)
 	int i = 0;
 	for (int j = 1; j < argc; j++)
 		i += strlen(argv[j]) + 1;
-	saved_command_line = malloc(i);
-	if (!saved_command_line) {
-		fprintf(stderr, "grubby: %m\n");
-		exit(1);
-	}
-	saved_command_line[0] = '\0';
-	int cmdline_len = 0, arg_len;
-	for (int j = 1; j < argc; j++) {
-		arg_len = strlen(argv[j]);
-		memcpy(saved_command_line + cmdline_len, argv[j], arg_len);
-		cmdline_len += arg_len;
-		if (j != argc - 1) {
-			memcpy(saved_command_line + cmdline_len, " ", 1);
-			cmdline_len++;
+
+	if (i > 0) {
+		saved_command_line = malloc(i);
+		if (!saved_command_line) {
+			fprintf(stderr, "grubby: %m\n");
+			exit(1);
 		}
 
+		saved_command_line[0] = '\0';
+		int cmdline_len = 0, arg_len;
+		for (int j = 1; j < argc; j++) {
+			arg_len = strlen(argv[j]);
+			memcpy(saved_command_line + cmdline_len, argv[j], arg_len);
+			cmdline_len += arg_len;
+			if (j != argc - 1) {
+				memcpy(saved_command_line + cmdline_len, " ", 1);
+				cmdline_len++;
+			}
+		}
+		saved_command_line[cmdline_len] = '\0';
 	}
-	saved_command_line[cmdline_len] = '\0';
 
 	optCon = poptGetContext("grubby", argc, argv, options, 0);
 	poptReadDefaultConfig(optCon, 1);
