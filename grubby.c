@@ -3206,7 +3206,7 @@ int grubGetBootFromDeviceMap(const char *device, char **bootPtr)
 
 int suseGrubConfGetBoot(const char *path, char **bootPtr)
 {
-	char *grubDevice;
+	char *grubDevice = NULL;
 
 	if (suseGrubConfGetInstallDevice(path, &grubDevice))
 		dbgPrintf("error looking for grub installation device\n");
