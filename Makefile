@@ -59,7 +59,7 @@ grubby:: $(OBJECTS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(grubby_LIBS)
 
 rpm-sort::rpm-sort.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lrpm
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lrpmio
 
 clean:
 	rm -f *.o grubby rpm-sort *~
