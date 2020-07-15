@@ -57,6 +57,8 @@ int debug = 0;			/* Currently just for template debugging */
 
 #define NOOP_OPCODE 0x90
 #define JMP_SHORT_OPCODE 0xeb
+#define MTAB_FILE_BUF_SIZE (1024 * 1024)
+#define INTER_RETRY_MAX 20
 
 int isEfi = 0;
 
@@ -1975,31 +1977,47 @@ static int numEntries(struct grubConfig *cfg)
 static char *findDiskForRoot()
 {
 	int fd;
-	char buf[65536];
+	char *buf;
 	char *devname;
 	char *chptr;
 	int rc;
+	int buf_i = 0;
+	int ninters = 0;
+
+	buf = (char *)malloc(MTAB_FILE_BUF_SIZE);
+	if (!buf) {
+		fprintf(stderr, "grubby: failed to allocate file buffer for %s\n", _PATH_MOUNTED);
+		return NULL;
+	}
 
 	if ((fd = open(_PATH_MOUNTED, O_RDONLY)) < 0) {
 		fprintf(stderr, "grubby: failed to open %s: %s\n",
 			_PATH_MOUNTED, strerror(errno));
+		free(buf);
 		return NULL;
 	}
-
-	rc = read(fd, buf, sizeof(buf) - 1);
-	if (rc <= 0) {
+	while ((rc = read(fd, buf + buf_i, MTAB_FILE_BUF_SIZE - buf_i - 1 ))) {
+		if (rc > 0) {
+			buf_i += rc;
+			continue;
+		}
+		if ((errno == EAGAIN || errno == EINTR) && (ninters++ < INTER_RETRY_MAX)) {
+			usleep(10 * 1000);
+			continue;
+		}
 		fprintf(stderr, "grubby: failed to read %s: %s\n",
 			_PATH_MOUNTED, strerror(errno));
+		free(buf);
 		close(fd);
 		return NULL;
 	}
 	close(fd);
-	buf[rc] = '\0';
+	buf[buf_i] = '\0';
 	chptr = buf;
 
 	char *foundanswer = NULL;
 
-	while (chptr && chptr != buf + rc) {
+	while (chptr && chptr != (buf + buf_i)) {
 		devname = chptr;
 
 		/*
@@ -2017,8 +2035,9 @@ static char *findDiskForRoot()
 		/* Seek to the next space */
 		chptr = strchr(chptr, ' ');
 		if (!chptr) {
-			fprintf(stderr, "grubby: error parsing %s: %s\n",
-				_PATH_MOUNTED, strerror(errno));
+			fprintf(stderr, "grubby: %s: error parsing or file size over %d bytes\n",
+					_PATH_MOUNTED, MTAB_FILE_BUF_SIZE);
+			free(buf);
 			return NULL;
 		}
 
@@ -2041,9 +2060,14 @@ static char *findDiskForRoot()
 	if (foundanswer) {
 		chptr = strchr(foundanswer, ' ');
 		*chptr = '\0';
-		return strdup(foundanswer);
+		char *new_buf = strdup(foundanswer);
+		free(buf);
+		return new_buf;
 	}
 
+	fprintf(stderr, "grubby: %s: no root mount_point found or file size over %d bytes\n",
+			_PATH_MOUNTED, MTAB_FILE_BUF_SIZE);
+	free(buf);
 	return NULL;
 }
 
