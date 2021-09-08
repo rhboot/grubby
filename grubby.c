@@ -1799,7 +1799,7 @@ static void writeDefault(FILE * out, char *indent,
 static int writeConfig(struct grubConfig *cfg, char *outName,
 		       const char *prefix)
 {
-	FILE *out;
+	FILE *out = NULL;
 	struct singleLine *line;
 	struct singleEntry *entry;
 	char *tmpOutName;
@@ -1929,9 +1929,6 @@ static int writeConfig(struct grubConfig *cfg, char *outName,
 		if (fsync(fileno(out)))
 			rc = 1;
 
-		if (fclose(out))
-			rc = 1;
-
 		if (rc == 0 && rename(tmpOutName, outName)) {
 			unlink(tmpOutName);
 			rc = 1;
@@ -1956,6 +1953,8 @@ static int writeConfig(struct grubConfig *cfg, char *outName,
 				_("grubby: error flushing data: %m\n"));
 	}
 
+	if (out != stdout)
+		fclose(out);
 	return rc;
 }
 
