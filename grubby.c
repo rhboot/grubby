@@ -4378,9 +4378,9 @@ int checkForGrub2(struct grubConfig *config)
 
 int checkForGrub(struct grubConfig *config)
 {
-	int fd;
+	int ret, fd = -1;
 	unsigned char bootSect[512];
-	char *boot;
+	char *boot = NULL;
 	int onSuse = isSuseSystem();
 
 	if (onSuse) {
@@ -4392,29 +4392,38 @@ int checkForGrub(struct grubConfig *config)
 	}
 
 	/* assume grub is not installed -- not an error condition */
-	if (!boot)
-		return 0;
+	if (!boot) {
+		ret = 0;
+		goto done;
+	}
 
 	fd = open("/boot/grub/stage1", O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		/* this doesn't exist if grub hasn't been installed */
-		return 0;
+		ret = 0;
+		goto done;
+	}
 
 	if (read(fd, bootSect, 512) != 512) {
 		fprintf(stderr, _("grubby: unable to read %s: %s\n"),
 			"/boot/grub/stage1", strerror(errno));
-		close(fd);
-		return 1;
+		ret = 1;
+		goto done;
 	}
-	close(fd);
 
 	/* The more elaborate checks do not work on SuSE. The checks done
 	 * seem to be reasonble (at least for now), so just return success
 	 */
-	if (onSuse)
-		return 2;
+	if (onSuse) {
+		ret = 2;
+		goto done;
+	}
 
-	return checkDeviceBootloader(boot, bootSect);
+	ret = checkDeviceBootloader(boot, bootSect);
+done:
+	free(boot);
+	close(fd);
+	return ret;
 }
 
 int checkForExtLinux(struct grubConfig *config)
