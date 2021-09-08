@@ -4428,9 +4428,9 @@ done:
 
 int checkForExtLinux(struct grubConfig *config)
 {
-	int fd;
+	int ret, fd = -1;
 	unsigned char bootSect[512];
-	char *boot;
+	char *boot = NULL;
 	char executable[] = "/boot/extlinux/extlinux";
 
 	printf("entered: checkForExtLinux()\n");
@@ -4439,22 +4439,30 @@ int checkForExtLinux(struct grubConfig *config)
 		return 0;
 
 	/* assume grub is not installed -- not an error condition */
-	if (!boot)
-		return 0;
+	if (!boot) {
+		ret = 0;
+		goto done;
+	}
 
 	fd = open(executable, O_RDONLY);
-	if (fd < 0)
+	if (fd < 0) {
 		/* this doesn't exist if grub hasn't been installed */
-		return 0;
+		ret = 0;
+		goto done;
+	}
 
 	if (read(fd, bootSect, 512) != 512) {
 		fprintf(stderr, _("grubby: unable to read %s: %s\n"),
 			executable, strerror(errno));
-		return 1;
+		ret = 1;
+		goto done;
 	}
-	close(fd);
 
-	return checkDeviceBootloader(boot, bootSect);
+	ret = checkDeviceBootloader(boot, bootSect);
+done:
+	close(fd);
+	free(boot);
+	return ret;
 }
 
 int checkForYaboot(struct grubConfig *config)
