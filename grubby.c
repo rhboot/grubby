@@ -704,6 +704,7 @@ static int readFile(int fd, char **bufPtr);
 static void lineInit(struct singleLine *line);
 struct singleLine *lineDup(struct singleLine *line);
 static void lineReset(struct singleLine *line);
+static void lineFree(struct singleLine *line);
 static int lineWrite(FILE * out, struct singleLine *line,
 		     struct configFileInfo *cfi);
 static int getNextLine(char **bufPtr, struct singleLine *line,
@@ -992,6 +993,12 @@ static void lineReset(struct singleLine *line)
 	if (line->elements)
 		free(line->elements);
 	lineInit(line);
+}
+
+static inline void lineFree(struct singleLine *line)
+{
+	lineReset(line);
+	free(line);
 }
 
 static int lineWrite(FILE * out, struct singleLine *line,
@@ -1561,8 +1568,7 @@ static struct grubConfig *readConfig(const char *inName,
 		 * option which was moved, drop it. */
 		if (movedLine && line->type == LT_WHITESPACE
 		    && last->type == LT_WHITESPACE) {
-			lineReset(line);
-			free(line);
+			lineFree(line);
 			movedLine = 0;
 			continue;
 		}
@@ -4627,7 +4633,7 @@ int addNewKernel(struct grubConfig *config, struct singleEntry *template,
 	if (template) {
 		for (masterLine = template->lines;
 		     masterLine && (tmplLine = lineDup(masterLine));
-		     lineReset(tmplLine), masterLine = masterLine->next) {
+		     lineFree(tmplLine), masterLine = masterLine->next) {
 			dbgPrintf("addNewKernel processing %d\n",
 				  tmplLine->type);
 
