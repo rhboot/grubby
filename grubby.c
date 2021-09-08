@@ -2537,8 +2537,11 @@ struct singleEntry *findEntryByTitle(struct grubConfig *cfg, char *title,
 		newtitle = grub2ExtractTitle(line);
 		if (!newtitle)
 			continue;
-		if (!strcmp(title, newtitle))
+		if (!strcmp(title, newtitle)) {
+			free(newtitle);
 			break;
+		}
+		free(newtitle);
 	}
 
 	if (!entry)
