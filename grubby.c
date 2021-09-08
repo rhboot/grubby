@@ -4357,6 +4357,7 @@ int checkForLilo(struct grubConfig *config)
 	if (read(fd, boot, 512) != 512) {
 		fprintf(stderr, _("grubby: unable to read %s: %s\n"),
 			"/boot/boot.b", strerror(errno));
+		close(fd);
 		return 1;
 	}
 	close(fd);
