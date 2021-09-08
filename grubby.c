@@ -703,7 +703,7 @@ struct singleEntry *findEntryByTitle(struct grubConfig *cfg, char *title,
 static int readFile(int fd, char **bufPtr);
 static void lineInit(struct singleLine *line);
 struct singleLine *lineDup(struct singleLine *line);
-static void lineFree(struct singleLine *line);
+static void lineReset(struct singleLine *line);
 static int lineWrite(FILE * out, struct singleLine *line,
 		     struct configFileInfo *cfi);
 static int getNextLine(char **bufPtr, struct singleLine *line,
@@ -979,7 +979,7 @@ struct singleLine *lineDup(struct singleLine *line)
 	return newLine;
 }
 
-static void lineFree(struct singleLine *line)
+static void lineReset(struct singleLine *line)
 {
 	if (line->indent)
 		free(line->indent);
@@ -1062,7 +1062,7 @@ static int getNextLine(char **bufPtr, struct singleLine *line,
 	struct lineElement *element;
 	int first = 1;
 
-	lineFree(line);
+	lineReset(line);
 
 	end = strchr(start, '\n');
 	*end = '\0';
@@ -1561,7 +1561,7 @@ static struct grubConfig *readConfig(const char *inName,
 		 * option which was moved, drop it. */
 		if (movedLine && line->type == LT_WHITESPACE
 		    && last->type == LT_WHITESPACE) {
-			lineFree(line);
+			lineReset(line);
 			free(line);
 			movedLine = 0;
 			continue;
@@ -4627,7 +4627,7 @@ int addNewKernel(struct grubConfig *config, struct singleEntry *template,
 	if (template) {
 		for (masterLine = template->lines;
 		     masterLine && (tmplLine = lineDup(masterLine));
-		     lineFree(tmplLine), masterLine = masterLine->next) {
+		     lineReset(tmplLine), masterLine = masterLine->next) {
 			dbgPrintf("addNewKernel processing %d\n",
 				  tmplLine->type);
 
