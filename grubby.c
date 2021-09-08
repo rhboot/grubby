@@ -2957,6 +2957,7 @@ void displayEntry(struct grubConfig *config, struct singleEntry *entry, const ch
 			title = grub2ExtractTitle(line);
 			if (title)
 				printf("title=%s\n", title);
+			free(title);
 		}
 	}
 
