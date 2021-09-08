@@ -465,7 +465,7 @@ char *grub2ExtractTitle(struct singleLine *line)
 
 	/* if no quotes, return second word verbatim */
 	if (!isquote(*current))
-		return current;
+		return strdup(current);
 
 	/* second element start with a quote, so we have to find the element
 	 * whose last character is also quote (assuming it's the closing one) */
