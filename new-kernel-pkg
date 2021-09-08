@@ -150,7 +150,7 @@ rungrubby() {
 	else
 		[ -n "$verbose" ] && echo "- Making a normal entry."
 	fi
-	$(eval $grubby $@)
+	$grubby "$@"
 	export -n debugargs
 	export -n debugtitle
 	unset debugargs
