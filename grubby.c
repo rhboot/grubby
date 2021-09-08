@@ -4183,6 +4183,7 @@ int checkDeviceBootloader(const char *device, const unsigned char *boot)
 	if (read(fd, bootSect, 512) != 512) {
 		fprintf(stderr, _("grubby: unable to read %s: %s\n"),
 			device, strerror(errno));
+		close(fd);
 		return 1;
 	}
 	close(fd);
