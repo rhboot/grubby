@@ -753,11 +753,12 @@ static char *sdupprintf(const char *format, ...)
 	}
 
 	va_end(args);
-	va_start(args, format);
 
 	buf = malloc(size);
 	if (buf == NULL)
 		return NULL;
+
+	va_start(args, format);
 	vsnprintf(buf, size, format, args);
 	va_end(args);
 
