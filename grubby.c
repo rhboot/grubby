@@ -275,6 +275,9 @@ const char *grub2FindConfig(struct configFileInfo *cfi)
 				}
 				continue;
 			} else {
+				if ((0 == i || 3 == i) && !access("/sys/firmware/efi", F_OK)) {
+					continue;
+				}
 				dbgPrintf("found\n");
 				return configFiles[i];
 			}
