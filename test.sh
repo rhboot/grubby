@@ -527,6 +527,11 @@ if [ "$testgrub2" == "y" ]; then
                 --title='title' \
                 --initrd=/boot/new-initrd --boot-filesystem=/boot/ \
                 --copy-default --efi
+            grub2Test grub2.15 add/g2-1.15 \
+                --add-kernel=/boot/vmlinuz-0-rescue-5a94251776a14678911d4ae0949500f5 \
+                --initrd /boot/initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img \
+                --copy-default --title "Fedora 21 Rescue" --args=root=/fooooo \
+                --remove-kernel=wtf --boot-filesystem=/boot/ --efi
             ;;
     esac
     grub2Test grub2.6 add/g2-1.7 --add-kernel=/boot/new-kernel.img \
@@ -555,11 +560,6 @@ if [ "$testgrub2" == "y" ]; then
         --devtree='/boot/dtb-2.6.38.8-32.fc15.x86_64/foobarbaz.dtb' \
         --initrd=/boot/initramfs-2.6.38.8-32.fc15.x86_64.img \
         --boot-filesystem=/boot/ --copy-default --efi
-    grub2Test grub2.15 add/g2-1.15 \
-        --add-kernel=/boot/vmlinuz-0-rescue-5a94251776a14678911d4ae0949500f5 \
-        --initrd /boot/initramfs-0-rescue-5a94251776a14678911d4ae0949500f5.img \
-        --copy-default --title "Fedora 21 Rescue" --args=root=/fooooo \
-        --remove-kernel=wtf --boot-filesystem=/boot/ --efi
 
     # a grub2 add with a "set" of the form: set foo="bar=1,2".  bz#1152550
     # has this being emitted as: set foo="bar=1,2"=1,2"
