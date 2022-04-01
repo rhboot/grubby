@@ -10,6 +10,3 @@ What should grubby look like:
      callbacks
   6) top level functionality to be exposed with library API
   7) maintain 100% test suite compatibility
-2) new-kernel-pkg
-  1) goes away mostly
-  2) per-arch single scripts in /usr/lib/kernel/install.d
