@@ -46,14 +46,14 @@ test: all
 	@./test.sh $(VERBOSE_TEST)
 
 install: all
-	mkdir -p $(DESTDIR)$(PREFIX)/sbin
+	mkdir -p $(DESTDIR)$(PREFIX)$(sbindir)
 	mkdir -p $(DESTDIR)/$(mandir)/man8
-	install -m 755 new-kernel-pkg $(DESTDIR)$(PREFIX)/sbin
+	install -m 755 new-kernel-pkg $(DESTDIR)$(PREFIX)$(sbindir)
 	install -m 644 new-kernel-pkg.8 $(DESTDIR)/$(mandir)/man8
-	install -m 755 installkernel $(DESTDIR)$(PREFIX)/sbin
+	install -m 755 installkernel $(DESTDIR)$(PREFIX)$(sbindir)
 	install -m 644 installkernel.8 $(DESTDIR)/$(mandir)/man8
 	if [ -f grubby ]; then \
-		install -m 755 grubby $(DESTDIR)$(PREFIX)/sbin ; \
+		install -m 755 grubby $(DESTDIR)$(PREFIX)$(sbindir) ; \
 		install -m 644 grubby.8 $(DESTDIR)/$(mandir)/man8 ; \
 	fi
 
