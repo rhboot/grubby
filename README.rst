@@ -1,3 +1,12 @@
+This repo is retired
+====================
+
+With the adoption of BLS, grubby has been largely superseded by a shell script
+that lives downstream in Fedora.  This repo is no longer maintained.
+
+grubby
+======
+
 grubby is a command line tool for updating and displaying information about
 the configuration files for the grub, lilo, elilo (ia64), yaboot (powerpc)
 and zipl (s390) boot loaders. It is primarily designed to be used from scripts
